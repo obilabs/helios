@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Users Endpoint Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .user { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 5px; }
+        .admin { background: #e6f3ff; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Testing Users Endpoint</h1>
+    <button onclick="testEndpoint()">Test Users Endpoint</button>
+    <div id="results"></div>
+
+    <script>
+        async function testEndpoint() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                // Get token from localStorage (assuming user is logged in)
+                const token = localStorage.getItem('helios_token');
+
+                const response = await fetch('http://localhost:3001/api/organization/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = `<h2 class="success">✅ Success! Found ${data.data.length} users</h2>`;
+                    html += `<p>Source: ${data.meta.source}</p>`;
+
+                    data.data.forEach(user => {
+                        const userClass = user.role === 'admin' ? 'user admin' : 'user';
+                        html += `
+                            <div class="${userClass}">
+                                <strong>${user.displayName}</strong> (${user.email})<br>
+                                Role: ${user.role} |
+                                Active: ${user.isActive ? '✅' : '❌'} |
+                                Platform: ${user.platforms.join(', ')}<br>
+                                Department: ${user.department || 'N/A'}
+                            </div>
+                        `;
+                    });
+
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = `<h2 class="error">❌ Error: ${data.error}</h2>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<h2 class="error">❌ Error: ${error.message}</h2>`;
+            }
+        }
+
+        // Test on page load
+        window.onload = testEndpoint;
+    </script>
+</body>
+</html>

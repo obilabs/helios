@@ -1,0 +1,405 @@
+.account-setup-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-end) 100%);
+  padding: 2rem;
+}
+
+.account-setup-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.account-setup-header {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-end) 100%);
+  color: white;
+  padding: 2rem;
+  text-align: center;
+}
+
+.account-setup-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.account-setup-header p {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.setup-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.progress-step.active .step-number {
+  background: var(--theme-primary);
+  color: white;
+  box-shadow: 0 4px 12px var(--theme-primary-shadow, rgba(139, 92, 246, 0.4));
+}
+
+.step-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.progress-step.active .step-label {
+  color: var(--theme-primary);
+}
+
+.progress-line {
+  width: 60px;
+  height: 2px;
+  background: #e5e7eb;
+  transition: all 0.3s;
+}
+
+.progress-line.active {
+  background: var(--theme-primary);
+}
+
+.account-setup-body {
+  padding: 2rem;
+}
+
+.setup-step h2 {
+  font-size: 1.5rem;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.step-description {
+  color: #6b7280;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-primary-light, rgba(139, 92, 246, 0.1));
+}
+
+.form-hint {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.info-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+}
+
+.info-box strong {
+  display: block;
+  color: #1e40af;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.info-box p {
+  color: #1e40af;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.setup-error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.account-setup-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-end) 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--theme-primary-shadow, rgba(139, 92, 246, 0.4));
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+/* ============================================
+ * Theme Selection Grid
+ * ============================================ */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.theme-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  overflow: hidden;
+}
+
+.theme-card:hover {
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.theme-card.selected {
+  border-color: var(--theme-primary, #8b5cf6);
+  box-shadow: 0 0 0 3px var(--theme-primary-light, rgba(139, 92, 246, 0.15));
+}
+
+.theme-preview {
+  height: 90px;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+/* Main gradient header - prominent color display */
+.theme-preview-header {
+  height: 36px;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  flex-shrink: 0;
+}
+
+/* Content area with sidebar mockup */
+.theme-preview-content {
+  flex: 1;
+  display: flex;
+  background: #f9fafb;
+}
+
+/* Sidebar mockup */
+.theme-preview-sidebar {
+  width: 20px;
+  background: #374151;
+  flex-shrink: 0;
+}
+
+/* Main content card mockup */
+.theme-preview-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  margin: 6px;
+  border-radius: 3px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ============================================
+ * Theme-specific preview colors
+ * ============================================ */
+
+/* Helios Purple (default brand) */
+.theme-preview-helios-purple .theme-preview-header {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+}
+
+/* Corporate Blue */
+.theme-preview-corporate-blue .theme-preview-header {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+}
+
+/* Sophisticated Purple */
+.theme-preview-sophisticated-purple .theme-preview-header {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+}
+
+/* Google Blue */
+.theme-preview-google-blue .theme-preview-header {
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+}
+
+/* Modern Teal */
+.theme-preview-modern-teal .theme-preview-header {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+}
+
+/* Soft Purple (default/light) */
+.theme-preview-default .theme-preview-header {
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+}
+
+/* Dark Mode - special handling */
+.theme-preview-helios-dark {
+  background: #0f172a;
+}
+.theme-preview-helios-dark .theme-preview-header {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+}
+.theme-preview-helios-dark .theme-preview-content {
+  background: #0f172a;
+}
+.theme-preview-helios-dark .theme-preview-sidebar {
+  background: #1e293b;
+}
+.theme-preview-helios-dark .theme-preview-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.theme-card-info {
+  padding: 0.75rem;
+}
+
+.theme-card-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.theme-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--theme-primary, #8b5cf6);
+  color: white;
+  border-radius: 50%;
+}
+
+.theme-card-description {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .account-setup-container {
+    padding: 1rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .account-setup-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

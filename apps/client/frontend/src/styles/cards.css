@@ -1,0 +1,108 @@
+/* Unified Card System - Use across all components */
+
+/* Standard card (for Settings, Dashboard, etc.) */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px var(--card-shadow);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  background: var(--card-bg-hover);
+  box-shadow: 0 4px 12px var(--card-shadow);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card-icon {
+  font-size: 1.5rem;
+  color: var(--theme-primary);
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--card-heading);
+  margin: 0;
+}
+
+.card-description {
+  font-size: 0.875rem;
+  color: var(--card-text);
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.card-content {
+  color: var(--card-text);
+}
+
+/* Card on gradient backgrounds (Login page, etc.) */
+.card-on-gradient {
+  background: var(--card-on-gradient-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-on-gradient-border);
+  border-radius: 16px;
+  padding: 2rem;
+  color: var(--card-on-gradient-text);
+}
+
+.card-on-gradient h2,
+.card-on-gradient h3,
+.card-on-gradient h4 {
+  color: var(--card-on-gradient-heading);
+}
+
+.card-on-gradient p {
+  color: var(--card-on-gradient-text);
+}
+
+/* Interactive card (clickable) */
+.card-interactive {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--card-shadow);
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+}
+
+/* Status badges on cards */
+.card-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-badge.enabled {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+.card-badge.disabled {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--color-gray-600);
+}
+
+.card-badge.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+}

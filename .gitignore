@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+service-account-*.json
+gcp-*.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+storageState*.json
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Nested git safety: no app should carry its own .git in this monorepo
+apps/*/.git/

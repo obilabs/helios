@@ -1,0 +1,560 @@
+/* Users Page - JumpCloud Inspired */
+.users-page {
+  padding: 0;
+  background: white;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page Title */
+.page-title {
+  padding: 20px 24px 12px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+  letter-spacing: -0.01em;
+}
+
+/* Inline Statistics Bar - Compact horizontal display */
+.users-stats-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.stat-item .stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.stat-item .stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Status-specific colors for stat values */
+.stat-item .stat-value.stat-active {
+  color: #059669;
+}
+
+.stat-item .stat-value.stat-pending {
+  color: #d97706;
+}
+
+.stat-item .stat-value.stat-suspended {
+  color: #dc2626;
+}
+
+.stat-item .stat-value.stat-deleted {
+  color: #9ca3af;
+}
+
+.stat-divider {
+  color: #d1d5db;
+  font-size: 14px;
+  font-weight: 300;
+}
+
+/* Type Tabs (Staff / Guests / Contacts) */
+.type-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.type-tab {
+  padding: 14px 20px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.type-tab:hover {
+  color: #374151;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.type-tab.active {
+  color: var(--theme-primary);
+  border-bottom-color: var(--theme-primary);
+  background: rgba(139, 92, 246, 0.08);
+  font-weight: 600;
+}
+
+.btn-settings {
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  margin-left: auto;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.btn-settings:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Status Tabs (All / Active / Pending / Suspended) */
+.status-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.status-tab {
+  padding: 6px 14px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.status-tab:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.status-tab.active {
+  background: #f5f3ff;
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
+}
+
+/* Actions Bar */
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+}
+
+/* Add User Dropdown */
+.add-user-dropdown {
+  position: relative;
+}
+
+.btn-add-user-primary {
+  height: 32px;
+  padding: 0 14px;
+  background: var(--theme-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-add-user-primary:hover {
+  background: var(--theme-primary-hover);
+}
+
+.dropdown-chevron {
+  transition: transform 0.2s;
+}
+
+.dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.add-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 260px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.add-dropdown-menu .dropdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 16px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.add-dropdown-menu .dropdown-item svg {
+  position: absolute;
+  right: 16px;
+  top: 14px;
+  color: #9ca3af;
+}
+
+.add-dropdown-menu .dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.add-dropdown-menu .dropdown-item.highlight {
+  background: #f5f3ff;
+}
+
+.add-dropdown-menu .dropdown-item.highlight:hover {
+  background: #ede9fe;
+}
+
+.add-dropdown-menu .dropdown-item-desc {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  max-width: 200px;
+}
+
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Search Box in Actions Bar */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: #9ca3af;
+  pointer-events: none;
+  width: 16px;
+  height: 16px;
+}
+
+.search-input {
+  height: 32px;
+  width: 200px;
+  padding: 0 10px 0 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.15s;
+  background: #fafbfc;
+  color: #374151;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:focus {
+  border-color: var(--theme-primary);
+  background: white;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+/* Icon Buttons */
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.btn-icon:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.btn-icon.active {
+  border-color: var(--theme-primary);
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--theme-primary);
+}
+
+/* Secondary Buttons */
+.btn-secondary {
+  padding: 7px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.btn-secondary svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Filter Pill Buttons - Consistent 32px height */
+.btn-filter-pill {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-filter-pill:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.btn-filter-pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-filter-pill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-filter-pill.active {
+  border-color: var(--theme-primary);
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--theme-primary);
+}
+
+/* Dropdown Wrapper */
+.dropdown-wrapper {
+  position: relative;
+}
+
+/* Filter Dropdown Menu */
+.filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  overflow: hidden;
+  padding: 6px;
+}
+
+.filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.filter-dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.filter-dropdown-item.selected {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--theme-primary);
+}
+
+.filter-dropdown-item svg {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.filter-dropdown-item.selected svg,
+.filter-dropdown-item .check-icon {
+  color: var(--theme-primary);
+  margin-left: auto;
+}
+
+.filter-dropdown-item-danger {
+  color: #dc2626;
+}
+
+.filter-dropdown-item-danger:hover {
+  background: #fef2f2;
+}
+
+.filter-dropdown-item-danger svg {
+  color: #dc2626;
+}
+
+.filter-dropdown-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 6px 0;
+}
+
+/* Icon rotation for dropdowns */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Spinning animation for loading */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Content Card */
+.users-content-card {
+  flex: 1;
+  background: white;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .actions-right {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .search-box {
+    flex: 1;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    padding: 16px 16px 10px 16px;
+  }
+
+  .type-tabs {
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+
+  .status-tabs {
+    padding: 12px 16px;
+    overflow-x: auto;
+  }
+
+  .actions-bar {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-add-user-primary {
+    width: 100%;
+  }
+
+  .actions-right {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .search-box {
+    order: -1;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+}

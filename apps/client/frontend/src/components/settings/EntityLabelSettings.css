@@ -1,0 +1,272 @@
+.entity-label-settings {
+  /* Inherits from .settings-section - no duplicate wrapper */
+}
+
+.entity-label-settings .settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.entity-label-settings .header-content h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.entity-label-settings .header-content p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+.entity-label-settings .header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.entity-label-settings .btn-primary,
+.entity-label-settings .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.entity-label-settings .btn-primary {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+}
+
+.entity-label-settings .btn-primary:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+.entity-label-settings .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.entity-label-settings .btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.entity-label-settings .btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.entity-label-settings .btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.entity-label-settings .status-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.entity-label-settings .status-message.success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.entity-label-settings .status-message.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.entity-label-settings .info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  color: #0369a1;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.entity-label-settings .info-box svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.entity-label-settings .entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.entity-label-settings .entity-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.entity-label-settings .entity-card.unavailable {
+  opacity: 0.6;
+}
+
+.entity-label-settings .entity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.entity-label-settings .entity-header h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.entity-label-settings .unavailable-badge {
+  font-size: 11px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.entity-label-settings .entity-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+}
+
+.entity-label-settings .entity-examples {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 16px 0;
+}
+
+.entity-label-settings .entity-examples strong {
+  color: #6b7280;
+}
+
+.entity-label-settings .label-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.entity-label-settings .label-field label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.entity-label-settings .label-field .char-count {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.entity-label-settings .label-field input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #111827;
+  background: white;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.entity-label-settings .label-field input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.entity-label-settings .label-field input:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.entity-label-settings .label-preview {
+  background: #f3f4f6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.entity-label-settings .preview-label {
+  color: #6b7280;
+  margin-right: 6px;
+}
+
+.entity-label-settings .preview-text {
+  color: #374151;
+  font-family: monospace;
+}
+
+.entity-label-settings .admin-only-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 13px;
+  margin-top: 24px;
+}
+
+.entity-label-settings .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .entity-label-settings .settings-header {
+    flex-direction: column;
+  }
+
+  .entity-label-settings .header-actions {
+    width: 100%;
+  }
+
+  .entity-label-settings .header-actions button {
+    flex: 1;
+  }
+
+  .entity-label-settings .label-fields {
+    grid-template-columns: 1fr;
+  }
+}

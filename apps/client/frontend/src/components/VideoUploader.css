@@ -1,0 +1,295 @@
+.video-uploader {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.video-uploader-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.video-uploader-header p {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 16px 0;
+}
+
+.video-uploader-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* Dropzone */
+.video-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.video-dropzone:hover {
+  border-color: #8b5cf6;
+  background: #faf5ff;
+}
+
+.dropzone-icon {
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+
+.video-dropzone:hover .dropzone-icon {
+  color: #8b5cf6;
+}
+
+.dropzone-text {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+
+.dropzone-text span {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.dropzone-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Video preview */
+.video-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-container {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000000;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.preview-thumbnail,
+.preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease;
+}
+
+.preview-container:hover .preview-play-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.preview-play-overlay svg {
+  color: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.preview-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.preview-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.upload-status.success {
+  color: #059669;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.preview-actions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-cancel:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-upload {
+  background: #8b5cf6;
+  color: #ffffff;
+  border: none;
+}
+
+.btn-upload:hover {
+  background: #7c3aed;
+}
+
+.btn-delete {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-delete:hover {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+/* Upload progress */
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 24px;
+}
+
+.progress-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-content .spinner {
+  color: #8b5cf6;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progress-content p {
+  font-size: 14px;
+  color: #374151;
+  margin: 0;
+}
+
+.upload-progress .progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.upload-progress .progress-fill {
+  height: 100%;
+  background: #8b5cf6;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+/* Responsive styles */
+@media (max-width: 480px) {
+  .video-uploader {
+    padding: 12px;
+  }
+
+  .video-dropzone {
+    padding: 24px 16px;
+  }
+
+  .preview-actions {
+    flex-direction: column;
+  }
+
+  .preview-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

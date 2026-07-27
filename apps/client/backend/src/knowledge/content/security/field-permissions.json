@@ -1,0 +1,561 @@
+{
+  "id": "field-permissions",
+  "title": "Field-Level Permissions",
+  "description": "Defines who can view and edit which user profile fields, including security restrictions and change request workflows.",
+  "version": "1.0.0",
+
+  "overview": {
+    "purpose": "Different roles should have different permissions for different fields. Users can edit their display name, HR can edit titles, IT can edit most things, but some security-sensitive fields have special restrictions.",
+    "principle": "Least privilege - give each role only the permissions they need for their job.",
+    "syncBehavior": "Most fields sync bidirectionally with Google Workspace. Some fields are read-only from Google (like recovery info).",
+    "heliosOnlyFields": "Some fields exist only in Helios because Google either doesn't have them or doesn't expose them via API. These fields power features like dynamic signatures."
+  },
+
+  "googleApiGaps": {
+    "description": "Fields that Helios provides because Google Workspace either lacks them or doesn't expose them via Admin API. This is a key value-add of Helios.",
+    "gaps": [
+      {
+        "field": "bookingLink",
+        "googleHasFeature": true,
+        "googleApiAccess": false,
+        "explanation": "Google Calendar has appointment scheduling, but there's no Admin API to read a user's booking link. Helios lets users enter their booking link (Google Calendar, Calendly, Cal.com, HubSpot, etc.) for use in signatures.",
+        "heliosSolution": "User-editable field, included in dynamic signatures"
+      },
+      {
+        "field": "pronouns",
+        "googleHasFeature": true,
+        "googleApiAccess": false,
+        "explanation": "Google Workspace profiles support pronouns, but the Admin API doesn't expose this field for reading or writing.",
+        "heliosSolution": "User-editable field, included in signatures and directory"
+      },
+      {
+        "field": "professionalDesignations",
+        "googleHasFeature": false,
+        "googleApiAccess": false,
+        "explanation": "Google has no concept of credentials after name (CPA, PhD, etc.). These are important for professional services firms.",
+        "heliosSolution": "User-editable array field, appended to name in signatures"
+      },
+      {
+        "field": "certifications",
+        "googleHasFeature": false,
+        "googleApiAccess": false,
+        "explanation": "Google doesn't track professional certifications or allow badge images in profiles.",
+        "heliosSolution": "User-editable with badge images, displayed in signatures and profiles"
+      },
+      {
+        "field": "socialLinks",
+        "googleHasFeature": false,
+        "googleApiAccess": false,
+        "explanation": "Google profiles don't have social media links (LinkedIn, Twitter, GitHub, etc.).",
+        "heliosSolution": "User-editable object with common platforms + custom links"
+      },
+      {
+        "field": "bannerMessage",
+        "googleHasFeature": false,
+        "googleApiAccess": false,
+        "explanation": "Google doesn't support promotional banners or CTAs in signatures.",
+        "heliosSolution": "User-editable promotional message with optional link"
+      },
+      {
+        "field": "signatureImage",
+        "googleHasFeature": "partial",
+        "googleApiAccess": "limited",
+        "explanation": "Google allows profile photos but signature images require Gmail API with user consent. Helios provides a simpler self-service option.",
+        "heliosSolution": "User-uploadable image optimized for email signatures"
+      },
+      {
+        "field": "officeHours",
+        "googleHasFeature": false,
+        "googleApiAccess": false,
+        "explanation": "Google Calendar has working hours but no simple text field for signatures.",
+        "heliosSolution": "User-editable text field for availability display"
+      }
+    ],
+    "valueProposition": "Helios gives you the profile and signature fields that Google doesn't expose via API - enabling richer, more professional email signatures without manual management."
+  },
+
+  "fieldCategories": {
+    "userEditable": {
+      "description": "Fields users can edit for themselves without approval",
+      "fields": [
+        {
+          "field": "displayName",
+          "label": "Display Name",
+          "description": "How the user's name appears in the UI",
+          "syncToGoogle": true,
+          "googleField": "name.fullName"
+        },
+        {
+          "field": "nickname",
+          "label": "Nickname / Preferred Name",
+          "description": "Informal name the user prefers",
+          "syncToGoogle": false
+        },
+        {
+          "field": "personalPhone",
+          "label": "Personal Phone",
+          "description": "Personal contact number (not synced to Google)",
+          "syncToGoogle": false,
+          "note": "For Helios notifications only, not Google recovery"
+        },
+        {
+          "field": "notificationEmail",
+          "label": "Notification Email",
+          "description": "Personal email for out-of-band notifications",
+          "syncToGoogle": false,
+          "note": "Used for security alerts, NOT Google recovery"
+        },
+        {
+          "field": "profilePhoto",
+          "label": "Profile Photo",
+          "description": "User's avatar image",
+          "syncToGoogle": true,
+          "googleField": "thumbnailPhotoUrl"
+        },
+        {
+          "field": "workLocation",
+          "label": "Work Location",
+          "description": "Office or remote location",
+          "syncToGoogle": true,
+          "googleField": "locations[0]"
+        },
+        {
+          "field": "pronouns",
+          "label": "Pronouns",
+          "description": "User's preferred pronouns",
+          "syncToGoogle": false
+        },
+        {
+          "field": "bio",
+          "label": "Bio / About",
+          "description": "Short description about the user",
+          "syncToGoogle": false
+        },
+        {
+          "field": "timezone",
+          "label": "Timezone",
+          "description": "User's preferred timezone",
+          "syncToGoogle": false
+        },
+        {
+          "field": "professionalDesignations",
+          "label": "Professional Designations",
+          "description": "Credentials after name (CPA, PhD, CISSP, PMP, etc.)",
+          "syncToGoogle": false,
+          "type": "array",
+          "examples": ["CPA", "PhD", "MBA", "CISSP", "PMP", "SHRM-CP", "LEED AP", "PE", "Esq."],
+          "usedIn": ["signature", "profile", "directory"],
+          "displayFormat": "John Smith, CPA, MBA"
+        },
+        {
+          "field": "certifications",
+          "label": "Certifications",
+          "description": "Professional certifications with optional badge images",
+          "syncToGoogle": false,
+          "type": "array",
+          "structure": {
+            "name": "string (e.g., 'AWS Solutions Architect')",
+            "issuer": "string (e.g., 'Amazon Web Services')",
+            "badgeUrl": "string (URL to badge image)",
+            "credentialId": "string (optional)",
+            "expiryDate": "date (optional)"
+          },
+          "usedIn": ["signature", "profile"],
+          "note": "Badge images can be included in email signatures"
+        },
+        {
+          "field": "socialLinks",
+          "label": "Social Links",
+          "description": "Professional social media profiles",
+          "syncToGoogle": false,
+          "type": "object",
+          "structure": {
+            "linkedin": "URL",
+            "twitter": "URL or @handle",
+            "github": "URL or username",
+            "website": "URL",
+            "calendly": "URL",
+            "custom": "array of {label, url}"
+          },
+          "usedIn": ["signature", "profile"],
+          "validation": "URLs validated, handles converted to full URLs"
+        },
+        {
+          "field": "bannerMessage",
+          "label": "Banner Message",
+          "description": "Optional promotional message for signature",
+          "syncToGoogle": false,
+          "type": "object",
+          "structure": {
+            "text": "string (e.g., 'Book a meeting with me!')",
+            "linkUrl": "URL (optional)",
+            "linkText": "string (optional, e.g., 'Schedule Now')",
+            "active": "boolean"
+          },
+          "usedIn": ["signature"],
+          "approvalRequired": false,
+          "note": "Organization can set policies on banner content"
+        },
+        {
+          "field": "signatureImage",
+          "label": "Signature Image",
+          "description": "Custom image for email signature (headshot, logo)",
+          "syncToGoogle": false,
+          "type": "image",
+          "constraints": {
+            "maxSize": "500KB",
+            "formats": ["jpg", "png", "gif"],
+            "maxDimensions": "400x400",
+            "recommended": "200x200"
+          },
+          "usedIn": ["signature"],
+          "note": "If not set, profile photo is used"
+        },
+        {
+          "field": "awardsAndBadges",
+          "label": "Awards & Badges",
+          "description": "Company awards, recognition badges",
+          "syncToGoogle": false,
+          "type": "array",
+          "structure": {
+            "name": "string (e.g., 'Top Performer Q4 2024')",
+            "imageUrl": "URL to badge image",
+            "awardedDate": "date",
+            "showInSignature": "boolean"
+          },
+          "usedIn": ["signature", "profile"],
+          "managedBy": "hr_or_admin",
+          "note": "Some badges may be auto-assigned based on criteria"
+        },
+        {
+          "field": "bookingLink",
+          "label": "Booking Link",
+          "description": "Calendar scheduling link (Calendly, Cal.com, etc.)",
+          "syncToGoogle": false,
+          "type": "url",
+          "usedIn": ["signature", "profile"],
+          "examples": ["calendly.com/john-smith", "cal.com/john"]
+        },
+        {
+          "field": "officeHours",
+          "label": "Office Hours",
+          "description": "When user is typically available",
+          "syncToGoogle": false,
+          "type": "string",
+          "usedIn": ["signature", "profile"],
+          "examples": ["Mon-Fri 9am-5pm PST", "Available by appointment"]
+        }
+      ]
+    },
+
+    "hrEditable": {
+      "description": "Fields HR can edit for any user",
+      "requiresRole": ["hr", "admin", "super_admin"],
+      "fields": [
+        {
+          "field": "title",
+          "label": "Job Title",
+          "description": "Official job title",
+          "syncToGoogle": true,
+          "googleField": "organizations[0].title",
+          "securityNote": "In Paranoid Mode, changes that affect Approval Group require approval",
+          "updatesSignature": true
+        },
+        {
+          "field": "department",
+          "label": "Department",
+          "description": "Organizational department",
+          "syncToGoogle": true,
+          "googleField": "organizations[0].department",
+          "updatesSignature": true
+        },
+        {
+          "field": "manager",
+          "label": "Manager / Reports To",
+          "description": "User's direct manager",
+          "syncToGoogle": true,
+          "googleField": "relations[type=manager]",
+          "affectsOrgChart": true
+        },
+        {
+          "field": "costCenter",
+          "label": "Cost Center",
+          "description": "Financial cost center code",
+          "syncToGoogle": true,
+          "googleField": "organizations[0].costCenter"
+        },
+        {
+          "field": "employeeId",
+          "label": "Employee ID",
+          "description": "HR system employee identifier",
+          "syncToGoogle": true,
+          "googleField": "externalIds[type=employee]"
+        },
+        {
+          "field": "employmentType",
+          "label": "Employment Type",
+          "description": "Full-time, Part-time, Contractor, etc.",
+          "syncToGoogle": true,
+          "googleField": "organizations[0].type",
+          "options": ["full_time", "part_time", "contractor", "intern", "temporary"]
+        },
+        {
+          "field": "startDate",
+          "label": "Start Date",
+          "description": "Employment start date",
+          "syncToGoogle": false
+        },
+        {
+          "field": "endDate",
+          "label": "End Date",
+          "description": "Employment end date (if applicable)",
+          "syncToGoogle": false
+        },
+        {
+          "field": "location",
+          "label": "Office Location",
+          "description": "Assigned office location",
+          "syncToGoogle": true,
+          "googleField": "locations[0].buildingId"
+        },
+        {
+          "field": "floorSection",
+          "label": "Floor / Section",
+          "description": "Floor and section within office",
+          "syncToGoogle": true,
+          "googleField": "locations[0].floorSection"
+        }
+      ]
+    },
+
+    "itEditable": {
+      "description": "Fields IT/Admin can edit",
+      "requiresRole": ["admin", "super_admin"],
+      "fields": [
+        {
+          "field": "primaryEmail",
+          "label": "Primary Email",
+          "description": "User's main email address",
+          "syncToGoogle": true,
+          "googleField": "primaryEmail",
+          "warning": "Changing email affects login and all communications"
+        },
+        {
+          "field": "emailAliases",
+          "label": "Email Aliases",
+          "description": "Additional email addresses for the user",
+          "syncToGoogle": true,
+          "googleField": "aliases"
+        },
+        {
+          "field": "orgUnit",
+          "label": "Organizational Unit",
+          "description": "Google Workspace OU for policy assignment",
+          "syncToGoogle": true,
+          "googleField": "orgUnitPath"
+        },
+        {
+          "field": "isAdmin",
+          "label": "Admin Status",
+          "description": "Whether user is a Google Workspace admin",
+          "syncToGoogle": true,
+          "googleField": "isAdmin",
+          "securityNote": "Requires Approval Group in Paranoid Mode"
+        },
+        {
+          "field": "isSuspended",
+          "label": "Suspended",
+          "description": "Account suspension status",
+          "syncToGoogle": true,
+          "googleField": "suspended",
+          "securityNote": "Protected accounts require acknowledgment/approval"
+        },
+        {
+          "field": "includeInGlobalAddressList",
+          "label": "Show in Directory",
+          "description": "Whether user appears in company directory",
+          "syncToGoogle": true,
+          "googleField": "includeInGlobalAddressList"
+        },
+        {
+          "field": "licenses",
+          "label": "Licenses",
+          "description": "Assigned Google Workspace licenses",
+          "syncToGoogle": true,
+          "googleField": "licenses"
+        }
+      ]
+    },
+
+    "readOnlyFromGoogle": {
+      "description": "Fields that are read-only in Helios - sourced from Google only",
+      "rationale": "These fields are security-sensitive. Allowing Helios to write them could enable account takeover attacks.",
+      "fields": [
+        {
+          "field": "recoveryEmail",
+          "label": "Recovery Email",
+          "description": "Google account recovery email",
+          "googleField": "recoveryEmail",
+          "whyReadOnly": "If Helios could write this, an attacker could redirect recovery to their email and take over the Google account",
+          "displayInUI": true,
+          "editable": false
+        },
+        {
+          "field": "recoveryPhone",
+          "label": "Recovery Phone",
+          "description": "Google account recovery phone",
+          "googleField": "recoveryPhone",
+          "whyReadOnly": "Same as recovery email - prevents account takeover",
+          "displayInUI": true,
+          "editable": false
+        },
+        {
+          "field": "lastLoginTime",
+          "label": "Last Login",
+          "description": "When user last logged into Google",
+          "googleField": "lastLoginTime",
+          "whyReadOnly": "Informational, sourced from Google"
+        },
+        {
+          "field": "creationTime",
+          "label": "Account Created",
+          "description": "When Google account was created",
+          "googleField": "creationTime",
+          "whyReadOnly": "Informational, sourced from Google"
+        },
+        {
+          "field": "isEnrolledIn2Sv",
+          "label": "2-Step Verification",
+          "description": "Whether user has 2FA enabled in Google",
+          "googleField": "isEnrolledIn2Sv",
+          "whyReadOnly": "Informational, user controls this in Google"
+        },
+        {
+          "field": "isEnforcedIn2Sv",
+          "label": "2FA Enforced",
+          "description": "Whether 2FA is enforced by policy",
+          "googleField": "isEnforcedIn2Sv",
+          "whyReadOnly": "Policy controlled, not per-user editable"
+        }
+      ]
+    },
+
+    "securitySensitive": {
+      "description": "Fields with special security restrictions in Paranoid Mode",
+      "fields": [
+        {
+          "field": "title",
+          "restriction": "If change would affect Approval Group membership, requires Approval Group approval",
+          "affectsApprovalGroup": true
+        },
+        {
+          "field": "isAdmin",
+          "restriction": "Granting admin requires Approval Group approval in Paranoid Mode",
+          "requiresApproval": true
+        },
+        {
+          "field": "isSuspended",
+          "restriction": "Suspending protected accounts requires acknowledgment or Approval Group approval",
+          "checkProtection": true
+        },
+        {
+          "field": "heliosMfa",
+          "restriction": "Cannot modify MFA settings for 24 hours after password change",
+          "passwordChangeRestriction": true
+        }
+      ]
+    }
+  },
+
+  "rolePermissions": {
+    "user": {
+      "description": "Regular users - self-service only",
+      "canView": ["all own fields"],
+      "canEdit": ["userEditable fields for self only"],
+      "canRequest": ["hrEditable fields via change request"],
+      "cannotEdit": ["any field for other users"],
+      "cannotView": ["other users' private fields (personal phone, notification email)"]
+    },
+    "hr": {
+      "description": "HR role - can manage people data",
+      "canView": ["all fields for all users"],
+      "canEdit": ["userEditable + hrEditable for any user"],
+      "cannotEdit": ["itEditable fields (email, licenses, OUs)"],
+      "specialRestriction": "In Paranoid Mode, title changes affecting Approval Group require approval"
+    },
+    "admin": {
+      "description": "IT Admin - can manage most user settings",
+      "canView": ["all fields"],
+      "canEdit": ["userEditable + hrEditable + itEditable for any user"],
+      "cannotEdit": ["readOnlyFromGoogle fields"],
+      "specialRestriction": "Protected account changes require acknowledgment/approval"
+    },
+    "super_admin": {
+      "description": "Super Admin - full access",
+      "canView": ["all fields"],
+      "canEdit": ["all editable fields"],
+      "cannotEdit": ["readOnlyFromGoogle fields (by design, not permission)"],
+      "specialRestriction": "After password change, cannot edit security-sensitive fields for 24 hours"
+    }
+  },
+
+  "passwordChangeRestrictions": {
+    "description": "After an admin's password is changed, they have temporary restrictions",
+    "duration": "24 hours or until Approval Group lifts",
+    "restrictedFields": [
+      {
+        "field": "any field on other admins",
+        "reason": "Prevents attacker from modifying other admin accounts"
+      },
+      {
+        "field": "title (if affects Approval Group)",
+        "reason": "Prevents attacker from promoting accomplice"
+      },
+      {
+        "field": "isAdmin",
+        "reason": "Prevents attacker from creating new admin"
+      },
+      {
+        "field": "heliosMfa (own or others)",
+        "reason": "Prevents attacker from disabling MFA"
+      },
+      {
+        "field": "Approval Group membership",
+        "reason": "Prevents attacker from modifying security group"
+      }
+    ],
+    "allowedFields": [
+      "Regular user fields (non-admin users)",
+      "Own profile fields (display name, photo, etc.)",
+      "View-only access to all fields"
+    ]
+  },
+
+  "auditLogging": {
+    "allChangesLogged": true,
+    "loggedData": [
+      "Field changed",
+      "Old value",
+      "New value",
+      "Changed by (user ID and email)",
+      "Changed for (target user)",
+      "Timestamp",
+      "IP address",
+      "Source (UI, API, sync)",
+      "Approval request ID (if applicable)"
+    ],
+    "retention": "7 years",
+    "immutable": true
+  },
+
+  "signatureIntegration": {
+    "description": "Some field changes automatically update email signatures",
+    "triggerFields": [
+      "title",
+      "department",
+      "phone",
+      "location"
+    ],
+    "behavior": "When these fields change, signatures using the old values are flagged for update"
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "id": "change-requests",
+  "title": "User Change Requests",
+  "description": "Workflow for users to request changes to fields they cannot edit themselves, with HR/IT approval routing.",
+  "version": "1.0.0",
+
+  "overview": {
+    "purpose": "Users should be able to request changes to their title, department, manager, etc. without having to email HR. This provides a trackable, auditable workflow.",
+    "benefits": [
+      "Self-service reduces HR/IT burden",
+      "All requests are tracked and auditable",
+      "Automatic routing to correct approver",
+      "Integration with Google Workspace sync",
+      "Signature updates triggered automatically"
+    ]
+  },
+
+  "requestableFields": {
+    "description": "Fields users can request changes to",
+    "fields": [
+      {
+        "field": "title",
+        "label": "Job Title",
+        "approver": "hr",
+        "requiresReason": true,
+        "exampleReasons": [
+          "Promoted in performance review",
+          "Role change",
+          "Title correction"
+        ],
+        "syncsTo": ["Google Workspace", "Email Signature"],
+        "securityCheck": "If new title matches Approval Group rules, requires additional approval"
+      },
+      {
+        "field": "department",
+        "label": "Department",
+        "approver": "hr",
+        "requiresReason": true,
+        "exampleReasons": [
+          "Team transfer",
+          "Reorg",
+          "Department name change"
+        ],
+        "syncsTo": ["Google Workspace", "Email Signature"]
+      },
+      {
+        "field": "manager",
+        "label": "Manager / Reports To",
+        "approver": "hr",
+        "requiresReason": true,
+        "exampleReasons": [
+          "New manager assigned",
+          "Reorg",
+          "Team restructure"
+        ],
+        "syncsTo": ["Google Workspace", "Org Chart"],
+        "notifiesNewManager": true
+      },
+      {
+        "field": "location",
+        "label": "Office Location",
+        "approver": "hr",
+        "requiresReason": false,
+        "syncsTo": ["Google Workspace"]
+      },
+      {
+        "field": "employmentType",
+        "label": "Employment Type",
+        "approver": "hr",
+        "requiresReason": true,
+        "syncsTo": ["Google Workspace"]
+      },
+      {
+        "field": "primaryEmail",
+        "label": "Email Address",
+        "approver": "it",
+        "requiresReason": true,
+        "exampleReasons": [
+          "Name change",
+          "Preferred email format"
+        ],
+        "syncsTo": ["Google Workspace"],
+        "warning": "Changing email affects login and all communications"
+      },
+      {
+        "field": "emailAlias",
+        "label": "Email Alias",
+        "approver": "it",
+        "requiresReason": true,
+        "syncsTo": ["Google Workspace"]
+      }
+    ]
+  },
+
+  "requestWorkflow": {
+    "states": [
+      {
+        "state": "draft",
+        "description": "User is composing the request",
+        "actions": ["submit", "cancel"]
+      },
+      {
+        "state": "pending",
+        "description": "Awaiting approver review",
+        "actions": ["approve", "deny", "request_info"],
+        "timeout": "7 days",
+        "timeoutAction": "auto_expire"
+      },
+      {
+        "state": "info_requested",
+        "description": "Approver needs more information",
+        "actions": ["provide_info", "cancel"],
+        "timeout": "7 days",
+        "timeoutAction": "auto_expire"
+      },
+      {
+        "state": "approved",
+        "description": "Request approved, change being applied",
+        "actions": [],
+        "triggersSync": true
+      },
+      {
+        "state": "denied",
+        "description": "Request denied",
+        "actions": ["resubmit"],
+        "requiresReason": true
+      },
+      {
+        "state": "completed",
+        "description": "Change applied successfully",
+        "actions": []
+      },
+      {
+        "state": "failed",
+        "description": "Change failed to apply (sync error)",
+        "actions": ["retry", "cancel"]
+      },
+      {
+        "state": "expired",
+        "description": "Request expired due to timeout",
+        "actions": ["resubmit"]
+      },
+      {
+        "state": "cancelled",
+        "description": "Request cancelled by user",
+        "actions": ["resubmit"]
+      }
+    ],
+
+    "flow": {
+      "happy_path": [
+        "User opens their profile",
+        "Clicks 'Request Change' on title field",
+        "Enters new value and reason",
+        "Submits request",
+        "HR receives notification",
+        "HR reviews and approves",
+        "Change syncs to Google Workspace",
+        "User's signature updates if applicable",
+        "User receives confirmation"
+      ],
+      "with_info_request": [
+        "User submits request",
+        "HR reviews, needs more info",
+        "HR clicks 'Request More Information'",
+        "User receives notification",
+        "User provides additional context",
+        "HR reviews and approves/denies"
+      ]
+    }
+  },
+
+  "approverRouting": {
+    "description": "How requests are routed to the correct approver",
+    "rules": [
+      {
+        "fields": ["title", "department", "manager", "location", "employmentType", "startDate", "endDate"],
+        "routeTo": "hr",
+        "fallback": "admin"
+      },
+      {
+        "fields": ["primaryEmail", "emailAlias", "orgUnit"],
+        "routeTo": "it",
+        "fallback": "admin"
+      }
+    ],
+    "escalation": {
+      "afterDays": 3,
+      "escalateTo": "admin",
+      "notifyOriginalApprover": true
+    },
+    "delegation": {
+      "enabled": true,
+      "description": "Approvers can delegate to another person when OOO"
+    }
+  },
+
+  "notifications": {
+    "toRequester": [
+      {
+        "event": "request_submitted",
+        "message": "Your {field} change request has been submitted and is pending review."
+      },
+      {
+        "event": "info_requested",
+        "message": "{approver} has requested more information about your {field} change request."
+      },
+      {
+        "event": "request_approved",
+        "message": "Your {field} change request has been approved. The change will be applied shortly."
+      },
+      {
+        "event": "request_denied",
+        "message": "Your {field} change request has been denied. Reason: {reason}"
+      },
+      {
+        "event": "change_completed",
+        "message": "Your {field} has been updated to '{newValue}'."
+      },
+      {
+        "event": "request_expired",
+        "message": "Your {field} change request has expired. You can submit a new request if still needed."
+      }
+    ],
+    "toApprover": [
+      {
+        "event": "new_request",
+        "message": "{requester} has requested to change their {field} to '{newValue}'."
+      },
+      {
+        "event": "info_provided",
+        "message": "{requester} has provided additional information for their {field} change request."
+      },
+      {
+        "event": "escalation",
+        "message": "A {field} change request from {requester} has been escalated to you after {days} days."
+      }
+    ],
+    "channels": {
+      "inApp": true,
+      "email": true,
+      "heliosTeams": false
+    }
+  },
+
+  "securityIntegration": {
+    "titleChangeAndApprovalGroup": {
+      "description": "Special handling when title change would affect Approval Group",
+      "detection": "System checks if new title matches any Approval Group dynamic rules",
+      "workflow": [
+        "User requests title change to 'CFO'",
+        "System detects 'CFO' matches Approval Group rule",
+        "Request routed to HR as normal",
+        "HR approves the title change",
+        "ADDITIONAL STEP: Approval Group approval required",
+        "Approval Group member approves",
+        "Title change applied",
+        "User added to Approval Group (pending until they set up Helios auth)"
+      ],
+      "notification": "HR is informed that additional Approval Group approval is required"
+    },
+    "paranoidModeRestrictions": {
+      "adminAfterPasswordChange": {
+        "canSubmitRequests": true,
+        "canApproveRequests": false,
+        "canApproveOwnRequests": false,
+        "duration": "24 hours"
+      }
+    }
+  },
+
+  "bulkRequests": {
+    "enabled": false,
+    "description": "Users cannot submit bulk change requests",
+    "rationale": "Bulk changes should go through HR/IT directly, not self-service"
+  },
+
+  "uiComponents": {
+    "requestButton": {
+      "location": "Next to non-editable fields in user profile",
+      "label": "Request Change",
+      "style": "secondary button or link"
+    },
+    "requestForm": {
+      "fields": [
+        {
+          "name": "newValue",
+          "label": "New {fieldName}",
+          "type": "varies by field",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "label": "Reason for Change",
+          "type": "textarea",
+          "required": "varies by field",
+          "placeholder": "Why are you requesting this change?",
+          "minLength": 10,
+          "maxLength": 500
+        },
+        {
+          "name": "effectiveDate",
+          "label": "Effective Date",
+          "type": "date",
+          "required": false,
+          "default": "today",
+          "helpText": "When should this change take effect?"
+        }
+      ]
+    },
+    "myRequests": {
+      "location": "User profile or dedicated page",
+      "shows": [
+        "Pending requests",
+        "Recently completed requests",
+        "Request history"
+      ],
+      "actions": [
+        "Cancel pending request",
+        "Provide requested information",
+        "View request details"
+      ]
+    },
+    "approvalQueue": {
+      "location": "HR/IT dashboard or dedicated page",
+      "shows": [
+        "Pending requests needing my approval",
+        "Requests I've delegated",
+        "Recently processed requests"
+      ],
+      "filters": [
+        "By field type",
+        "By requester",
+        "By date",
+        "By status"
+      ],
+      "actions": [
+        "Approve",
+        "Deny with reason",
+        "Request more information",
+        "Delegate to another approver"
+      ]
+    }
+  },
+
+  "reporting": {
+    "availableReports": [
+      {
+        "name": "Change Request Volume",
+        "description": "Number of requests by type, status, time period"
+      },
+      {
+        "name": "Approval Time",
+        "description": "Average time to approve/deny by field type"
+      },
+      {
+        "name": "Denial Rate",
+        "description": "Percentage of requests denied, by field type"
+      },
+      {
+        "name": "Pending Requests Aging",
+        "description": "Requests pending for more than X days"
+      }
+    ],
+    "exportFormats": ["CSV", "PDF"]
+  },
+
+  "auditTrail": {
+    "logged": [
+      "Request created",
+      "Request submitted",
+      "Approver assigned",
+      "Information requested",
+      "Information provided",
+      "Request approved",
+      "Request denied",
+      "Change applied",
+      "Change failed",
+      "Request cancelled",
+      "Request expired"
+    ],
+    "retention": "7 years",
+    "includesValues": true
+  }
+}

@@ -1,0 +1,377 @@
+{
+  "id": "recovery-mechanisms",
+  "title": "Admin Recovery Mechanisms",
+  "description": "Layered recovery options for when Super Admins lose access to their accounts. Designed to be secure against attackers while remaining accessible to legitimate admins.",
+  "version": "1.0.0",
+
+  "overview": {
+    "principle": "Recovery should be possible for legitimate admins but difficult for attackers. Each tier has increasing friction and audit trail.",
+    "tieredApproach": "Multiple recovery options ensure legitimate admins are never permanently locked out, while each option has safeguards against abuse."
+  },
+
+  "recoveryScenarios": {
+    "forgotPassword": {
+      "description": "Admin forgot their Helios password",
+      "method": "Approval Group Recovery or Recovery Codes",
+      "timeToRecover": "Minutes to hours"
+    },
+    "passwordChanged": {
+      "description": "Admin's password was changed (by them or attacker)",
+      "method": "Approval Group Recovery",
+      "timeToRecover": "Minutes (with Approval Group) to 24 hours (wait)"
+    },
+    "mfaLost": {
+      "description": "Admin lost access to MFA device",
+      "method": "Recovery Codes or Approval Group Recovery",
+      "timeToRecover": "Minutes"
+    },
+    "accountCompromised": {
+      "description": "Admin believes their account was compromised",
+      "method": "Approval Group initiates recovery, forces password/MFA reset",
+      "timeToRecover": "Minutes"
+    },
+    "allAdminsLocked": {
+      "description": "All Super Admins are locked out",
+      "method": "Approval Group Recovery or Domain Verification",
+      "timeToRecover": "Minutes to days"
+    }
+  },
+
+  "tiers": {
+    "tier1": {
+      "name": "Approval Group Recovery",
+      "description": "Another human verifies the admin's identity and initiates recovery",
+      "priority": "Primary recovery method",
+      "securityLevel": "High",
+      "humanVerification": true,
+
+      "process": {
+        "steps": [
+          {
+            "step": 1,
+            "actor": "Locked-out Admin",
+            "action": "Contact Approval Group member out-of-band",
+            "methods": ["Phone call", "Video call", "In-person", "Secure messaging (Signal, etc.)"],
+            "note": "NOT via work email (may be compromised)"
+          },
+          {
+            "step": 2,
+            "actor": "Approval Group Member",
+            "action": "Verify identity",
+            "methods": ["Security questions agreed upon during onboarding", "Video call verification", "In-person verification"],
+            "note": "Member should confirm this is actually the admin, not an attacker"
+          },
+          {
+            "step": 3,
+            "actor": "Approval Group Member",
+            "action": "Log into Helios",
+            "requirements": ["Helios local auth", "MFA verification"]
+          },
+          {
+            "step": 4,
+            "actor": "Approval Group Member",
+            "action": "Navigate to Security > Emergency Recovery",
+            "action2": "Select the admin to recover"
+          },
+          {
+            "step": 5,
+            "actor": "System",
+            "action": "Generate one-time recovery link",
+            "details": {
+              "validity": "1 hour",
+              "usageLimit": "Single use",
+              "delivery": "Displayed to Approval Group member (they share out-of-band)"
+            }
+          },
+          {
+            "step": 6,
+            "actor": "Locked-out Admin",
+            "action": "Use recovery link",
+            "requirements": ["Set new password", "Verify/reconfigure MFA"]
+          },
+          {
+            "step": 7,
+            "actor": "System",
+            "action": "Apply 24-hour restriction",
+            "note": "Admin can log in but cannot modify other admins until Approval Group lifts restriction"
+          }
+        ]
+      },
+
+      "safeguards": [
+        "Recovery link is single-use",
+        "Link expires in 1 hour",
+        "All Approval Group members are notified of the recovery",
+        "Full audit trail of who initiated recovery",
+        "24-hour restriction on recovered account",
+        "Cannot recover own account"
+      ]
+    },
+
+    "tier2": {
+      "name": "Recovery Codes",
+      "description": "Pre-generated one-time codes stored securely by the admin",
+      "priority": "Backup when Approval Group unavailable",
+      "securityLevel": "Medium-High",
+      "humanVerification": false,
+
+      "setup": {
+        "when": "During Super Admin account creation",
+        "count": 10,
+        "format": "XXXX-XXXX-XXXX-XXXX (16 characters)",
+        "storage": {
+          "recommendations": [
+            "Password manager (1Password, Bitwarden)",
+            "Printed and stored in physical safe",
+            "Encrypted USB drive in secure location"
+          ],
+          "warnings": [
+            "Do NOT store in Google Drive (may be compromised)",
+            "Do NOT store in work email",
+            "Do NOT store in cloud notes (unless encrypted)"
+          ]
+        }
+      },
+
+      "process": {
+        "steps": [
+          {
+            "step": 1,
+            "actor": "Locked-out Admin",
+            "action": "Go to Helios login page"
+          },
+          {
+            "step": 2,
+            "actor": "Locked-out Admin",
+            "action": "Click 'Can't access your account?' > 'Use Recovery Code'"
+          },
+          {
+            "step": 3,
+            "actor": "Locked-out Admin",
+            "action": "Enter one of their recovery codes"
+          },
+          {
+            "step": 4,
+            "actor": "System",
+            "action": "Validate code and mark as used",
+            "note": "Each code can only be used once"
+          },
+          {
+            "step": 5,
+            "actor": "Locked-out Admin",
+            "action": "Set new password"
+          },
+          {
+            "step": 6,
+            "actor": "Locked-out Admin",
+            "action": "Reconfigure MFA"
+          },
+          {
+            "step": 7,
+            "actor": "System",
+            "action": "Alert all Approval Group members",
+            "details": "Recovery code was used by [admin] at [time] from [IP]"
+          },
+          {
+            "step": 8,
+            "actor": "System",
+            "action": "Apply 24-hour restriction"
+          }
+        ]
+      },
+
+      "safeguards": [
+        "Each code is single-use",
+        "All Approval Group members notified when used",
+        "IP address and timestamp logged",
+        "24-hour restriction applied",
+        "Remaining code count shown (to encourage regeneration)"
+      ],
+
+      "regeneration": {
+        "when": [
+          "When codes run low (< 3 remaining)",
+          "When admin believes codes may be compromised",
+          "Periodically (annual refresh recommended)"
+        ],
+        "process": "Admin can regenerate codes in Security Settings. Old codes are immediately invalidated.",
+        "requirement": "Requires current MFA verification or Approval Group approval"
+      }
+    },
+
+    "tier3": {
+      "name": "Domain Verification",
+      "description": "Prove ownership of the organization's domain via DNS",
+      "priority": "Last resort when all other methods fail",
+      "securityLevel": "High (but disruptive)",
+      "humanVerification": false,
+
+      "whenToUse": [
+        "All Super Admins are locked out",
+        "Approval Group members are all unavailable",
+        "Recovery codes are lost or exhausted",
+        "Organization needs to regain access urgently"
+      ],
+
+      "process": {
+        "steps": [
+          {
+            "step": 1,
+            "actor": "Anyone with domain DNS access",
+            "action": "Go to Helios login page"
+          },
+          {
+            "step": 2,
+            "actor": "User",
+            "action": "Click 'Can't access your account?' > 'Emergency Domain Recovery'"
+          },
+          {
+            "step": 3,
+            "actor": "User",
+            "action": "Enter organization's primary domain",
+            "example": "acme.com"
+          },
+          {
+            "step": 4,
+            "actor": "System",
+            "action": "Generate unique verification string",
+            "format": "helios-verify=abc123xyz789",
+            "note": "String is unique per request and expires in 24 hours"
+          },
+          {
+            "step": 5,
+            "actor": "User",
+            "action": "Add TXT record to domain DNS",
+            "details": {
+              "host": "_helios-recovery",
+              "type": "TXT",
+              "value": "helios-verify=abc123xyz789"
+            }
+          },
+          {
+            "step": 6,
+            "actor": "User",
+            "action": "Click 'Verify Domain'",
+            "note": "DNS propagation may take up to 24 hours"
+          },
+          {
+            "step": 7,
+            "actor": "System",
+            "action": "Check DNS for verification record",
+            "retryInterval": "Every 5 minutes for 24 hours"
+          },
+          {
+            "step": 8,
+            "actor": "System (on success)",
+            "action": "Grant emergency Super Admin access",
+            "details": {
+              "creates": "Temporary emergency admin account",
+              "validity": "24 hours",
+              "capabilities": "Full Super Admin access"
+            }
+          },
+          {
+            "step": 9,
+            "actor": "Emergency Admin",
+            "action": "Recover/reset other admin accounts",
+            "action2": "Re-establish normal access"
+          },
+          {
+            "step": 10,
+            "actor": "System",
+            "action": "Notify everyone",
+            "notifications": [
+              "All existing admins (if any)",
+              "All Approval Group members",
+              "All Google Workspace Super Admins (via email to domain)"
+            ]
+          }
+        ]
+      },
+
+      "safeguards": [
+        "Verification string is unique and expires in 24 hours",
+        "Emergency account is temporary (24 hours)",
+        "ALL users with admin or Approval Group status are notified",
+        "Full audit trail with IP, user agent, timing",
+        "DNS record requirement proves domain ownership",
+        "Cannot be done if valid Super Admin sessions exist (prevents hostile takeover)"
+      ],
+
+      "restrictions": {
+        "cannotUseIf": [
+          "Any Super Admin has logged in within past 24 hours",
+          "Domain verification was used in past 30 days"
+        ],
+        "rationale": "Prevents attacker from using domain access to hijack active organization"
+      }
+    }
+  },
+
+  "restrictionLifting": {
+    "title": "Lifting 24-Hour Restrictions",
+    "description": "After password change or recovery, admins are restricted. Here's how to lift it early.",
+
+    "whoCanLift": [
+      "Approval Group member (not the restricted admin)",
+      "Another Super Admin (not the restricted admin)"
+    ],
+
+    "process": {
+      "requestingLift": [
+        "Restricted admin logs into Helios",
+        "Sees banner: 'Your account is restricted for X hours'",
+        "Clicks 'Request Restriction Lift'",
+        "Enters reason (optional)",
+        "Approval Group is notified"
+      ],
+      "approvingLift": [
+        "Approval Group member logs into Helios",
+        "Sees notification in Security channel",
+        "Reviews request details",
+        "Verifies with admin out-of-band if unsure",
+        "Clicks 'Approve' or 'Deny'"
+      ]
+    },
+
+    "automaticLift": {
+      "condition": "24 hours elapsed since restriction started",
+      "action": "Restriction automatically lifts",
+      "notification": "Admin and Approval Group notified"
+    }
+  },
+
+  "auditLogging": {
+    "allRecoveryActionsLogged": true,
+    "loggedFields": [
+      "Recovery method used",
+      "Who initiated",
+      "Who was recovered",
+      "Timestamp",
+      "IP address",
+      "User agent",
+      "Geolocation (if available)",
+      "Success/failure",
+      "Who approved (if applicable)"
+    ],
+    "retention": "7 years (compliance)",
+    "externalShipping": "Recommended to SIEM"
+  },
+
+  "testingRecovery": {
+    "recommendation": "Test recovery procedures quarterly",
+    "testProcess": [
+      "Schedule recovery test with Approval Group",
+      "Simulate locked-out admin scenario",
+      "Walk through Tier 1 recovery",
+      "Verify all notifications work",
+      "Document any issues",
+      "Update procedures if needed"
+    ],
+    "dryRunMode": {
+      "available": true,
+      "description": "Practice recovery without actually locking account",
+      "location": "Settings > Security > Test Recovery"
+    }
+  }
+}

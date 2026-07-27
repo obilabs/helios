@@ -1,0 +1,247 @@
+/**
+ * DomainsSection Styles
+ */
+
+.domains-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.domains-header {
+  margin-bottom: 1.5rem;
+}
+
+.domains-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.domains-title h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
+.domains-title svg {
+  color: var(--theme-primary, #8b5cf6);
+}
+
+.domains-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  line-height: 1.5;
+}
+
+.domains-description strong {
+  color: var(--color-text-secondary, #374151);
+}
+
+/* Add Domain Form */
+.add-domain-form {
+  margin-bottom: 1rem;
+}
+
+.add-domain-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-domain-input input {
+  flex: 1;
+  max-width: 300px;
+}
+
+.add-domain-error {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(220, 38, 38, 0.1);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-error, #dc2626);
+}
+
+/* Domains List */
+.domains-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.domains-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  background: var(--color-bg-subtle, #f9fafb);
+  border-radius: 0.5rem;
+  border: 1px dashed var(--color-border, #e5e7eb);
+  text-align: center;
+}
+
+.domains-empty svg {
+  color: var(--color-text-muted, #9ca3af);
+  margin-bottom: 0.75rem;
+}
+
+.domains-empty p {
+  margin: 0 0 0.25rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #4b5563);
+}
+
+.domains-empty span {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+/* Domain Item */
+.domain-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 0.375rem;
+  transition: border-color 0.15s ease;
+}
+
+.domain-item:hover {
+  border-color: var(--color-border-hover, #d1d5db);
+}
+
+.domain-item.primary {
+  border-color: var(--theme-primary, #8b5cf6);
+  background: rgba(139, 92, 246, 0.03);
+}
+
+.domain-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.domain-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text, #111827);
+}
+
+.domain-name .primary-icon {
+  color: var(--theme-primary, #8b5cf6);
+}
+
+.domain-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.domain-type {
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.domain-type.primary {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--theme-primary, #8b5cf6);
+}
+
+.domain-type.alias {
+  background: var(--color-bg-muted, #f3f4f6);
+  color: var(--color-text-muted, #6b7280);
+}
+
+.domain-verified {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.domain-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.domain-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--color-text-muted, #6b7280);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.domain-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--color-error, #dc2626);
+}
+
+/* Info Box */
+.domains-info {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 0.5rem;
+}
+
+.domains-info > svg {
+  flex-shrink: 0;
+  color: var(--color-info, #3b82f6);
+  margin-top: 2px;
+}
+
+.domains-info strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text, #111827);
+}
+
+.domains-info ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #4b5563);
+  line-height: 1.6;
+}
+
+.domains-info ul strong {
+  display: inline;
+  font-size: inherit;
+}
+
+/* Loading */
+.domains-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--color-text-muted, #6b7280);
+}

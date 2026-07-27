@@ -1,0 +1,359 @@
+{
+  "id": "paranoid-mode",
+  "title": "Paranoid Mode - Security Hardening",
+  "description": "Helios Paranoid Mode provides layered security controls to protect against account compromise, insider threats, and accidental destructive actions.",
+  "version": "1.0.0",
+
+  "overview": {
+    "purpose": "Paranoid Mode is a tiered security system that adds friction to destructive operations in exchange for protection against sophisticated attacks. Higher levels provide more protection but require more verification steps.",
+    "philosophy": "Defense in depth - multiple layers of protection so that compromising one control doesn't give full access.",
+    "targetUsers": "Organizations with compliance requirements, handling sensitive data, or with high-value Google Workspace environments."
+  },
+
+  "levels": {
+    "0": {
+      "name": "Standard",
+      "displayName": "Standard Security",
+      "description": "Default security with basic protections. Suitable for small teams with high trust.",
+      "icon": "shield",
+      "color": "gray",
+      "protections": [
+        "Basic audit logging",
+        "Session management",
+        "MFA available (optional)",
+        "Standard rate limiting"
+      ],
+      "requirements": {
+        "minAdmins": 1,
+        "approvalGroupRequired": false,
+        "superAdminLocalAuth": false,
+        "mfaRequired": false
+      },
+      "scenariosProtected": [],
+      "scenariosVulnerable": [
+        {
+          "name": "SSO Account Compromise",
+          "description": "If attacker gains access to admin's Google/SSO account, they can access Helios immediately.",
+          "likelihood": "Medium",
+          "impact": "Critical"
+        },
+        {
+          "name": "Single Admin Lockout",
+          "description": "Rogue actor or compromised account can delete other admins with no approval required.",
+          "likelihood": "Low",
+          "impact": "Critical"
+        },
+        {
+          "name": "Stolen Device",
+          "description": "Unlocked stolen device with active session can perform any admin action.",
+          "likelihood": "Medium",
+          "impact": "Critical"
+        }
+      ]
+    },
+
+    "1": {
+      "name": "Enhanced",
+      "displayName": "Enhanced Security",
+      "description": "Added protections for destructive operations. Recommended for most organizations.",
+      "icon": "shield-check",
+      "color": "blue",
+      "protections": [
+        "All Standard protections",
+        "Admin accounts auto-protected",
+        "Dual-admin approval for admin deletion",
+        "Bulk operations (10+) require approval",
+        "Audit logs shipped to external destination",
+        "MFA required for all admins"
+      ],
+      "requirements": {
+        "minAdmins": 1,
+        "approvalGroupRequired": false,
+        "superAdminLocalAuth": false,
+        "mfaRequired": true,
+        "mfaRequiredForRoles": ["super_admin", "admin"]
+      },
+      "scenariosProtected": [
+        {
+          "name": "Accidental Admin Deletion",
+          "description": "Cannot accidentally delete another admin - requires second admin approval.",
+          "mechanism": "Dual-admin approval"
+        },
+        {
+          "name": "Bulk Operation Mistakes",
+          "description": "Mass suspend/delete operations require approval, preventing catastrophic mistakes.",
+          "mechanism": "Approval threshold"
+        }
+      ],
+      "scenariosVulnerable": [
+        {
+          "name": "SSO Account Compromise",
+          "description": "Still vulnerable - attacker with SSO access can log into Helios.",
+          "likelihood": "Medium",
+          "impact": "High"
+        },
+        {
+          "name": "Coordinated Attack",
+          "description": "Two compromised admins could approve each other's malicious actions.",
+          "likelihood": "Low",
+          "impact": "Critical"
+        }
+      ]
+    },
+
+    "2": {
+      "name": "Paranoid",
+      "displayName": "Paranoid Mode",
+      "description": "Maximum protection for high-security environments. Super Admins use separate authentication.",
+      "icon": "shield-alert",
+      "color": "amber",
+      "protections": [
+        "All Enhanced protections",
+        "Super Admins use Helios local auth (NO SSO)",
+        "Password change triggers 24-hour restriction",
+        "Cannot modify other admins after password change",
+        "Cannot modify MFA settings after password change",
+        "Approval Group required for security overrides",
+        "Out-of-band alerts to Approval Group",
+        "Security level changes delayed 24 hours",
+        "Recovery field changes blocked (read-only from Google)"
+      ],
+      "requirements": {
+        "minAdmins": 1,
+        "approvalGroupRequired": true,
+        "approvalGroupMinMembers": 2,
+        "approvalGroupNotAllSuperAdmins": true,
+        "superAdminLocalAuth": true,
+        "mfaRequired": true,
+        "mfaNoOptOut": true,
+        "heliosTeamsRequired": true
+      },
+      "scenariosProtected": [
+        {
+          "name": "SSO Account Compromise",
+          "description": "Super Admins don't use SSO - compromising Google doesn't give Helios access.",
+          "mechanism": "Separate authentication"
+        },
+        {
+          "name": "Password Change Attack",
+          "description": "Even if attacker changes password, they can't modify other admins for 24 hours.",
+          "mechanism": "Time-based restriction"
+        },
+        {
+          "name": "MFA Tampering",
+          "description": "Cannot disable or change MFA after password change without Approval Group.",
+          "mechanism": "MFA lock"
+        },
+        {
+          "name": "Stolen Device",
+          "description": "Active session can't modify other admins - requires Approval Group to lift.",
+          "mechanism": "Approval Group verification"
+        },
+        {
+          "name": "Recovery Email/Phone Hijack",
+          "description": "Helios never writes recovery fields to Google - can't hijack recovery.",
+          "mechanism": "Read-only sync"
+        }
+      ],
+      "scenariosVulnerable": [
+        {
+          "name": "Compromised Approval Group",
+          "description": "If both admin AND Approval Group member are compromised, protections can be bypassed.",
+          "likelihood": "Very Low",
+          "impact": "Critical",
+          "mitigation": "Use non-admin personnel (HR, Exec) as Approval Group members"
+        }
+      ]
+    },
+
+    "3": {
+      "name": "Lockdown",
+      "displayName": "Lockdown Mode",
+      "description": "Emergency mode - ALL admin actions require dual approval. Use during active incidents or high-risk periods.",
+      "icon": "lock",
+      "color": "red",
+      "protections": [
+        "All Paranoid protections",
+        "ALL admin actions require Approval Group sign-off",
+        "No single admin can make any change alone",
+        "Automatic session timeout (1 hour)",
+        "Real-time alerts for every action",
+        "Cannot be disabled for 24 hours after enabling"
+      ],
+      "requirements": {
+        "minAdmins": 2,
+        "approvalGroupRequired": true,
+        "approvalGroupMinMembers": 2,
+        "approvalGroupNotAllSuperAdmins": true,
+        "superAdminLocalAuth": true,
+        "mfaRequired": true,
+        "mfaNoOptOut": true,
+        "heliosTeamsRequired": true
+      },
+      "scenariosProtected": [
+        {
+          "name": "Active Incident",
+          "description": "During suspected compromise, no single person can make changes.",
+          "mechanism": "Universal dual-approval"
+        },
+        {
+          "name": "Insider Threat",
+          "description": "Rogue admin cannot act alone - every action needs verification.",
+          "mechanism": "Universal dual-approval"
+        }
+      ],
+      "useCases": [
+        "Active security incident",
+        "Suspected admin compromise",
+        "High-risk period (M&A, layoffs)",
+        "Compliance audit period",
+        "Temporary elevated security"
+      ],
+      "automaticTriggers": [
+        {
+          "trigger": "Multiple failed admin logins",
+          "threshold": "5 failed attempts in 1 hour",
+          "action": "Auto-enable Lockdown for 24 hours"
+        },
+        {
+          "trigger": "Admin deletion attempted during restriction",
+          "action": "Auto-enable Lockdown, alert all Approval Group"
+        }
+      ]
+    }
+  },
+
+  "superAdminAuthentication": {
+    "whyNoSSO": {
+      "title": "Why Super Admins Cannot Use SSO in Paranoid Mode",
+      "reasons": [
+        {
+          "reason": "SSO Compromise Isolation",
+          "explanation": "If Google Workspace (or JumpCloud, Okta, etc.) is compromised, the attacker gains access to everything using SSO. By using separate Helios authentication, Super Admins remain protected even when SSO is compromised."
+        },
+        {
+          "reason": "No Detection Gap",
+          "explanation": "With SSO, there's a window between password change and Helios detecting it. With local auth, Helios knows immediately when the password changes because Helios controls it."
+        },
+        {
+          "reason": "Full Auth Stack Control",
+          "explanation": "Helios controls password policy, MFA requirements, session management, and recovery. No dependency on external systems that may have different security postures."
+        },
+        {
+          "reason": "Attack Surface Reduction",
+          "explanation": "SSO providers are high-value targets. Removing SSO for the most privileged accounts reduces the blast radius of SSO compromise."
+        }
+      ],
+      "tradeoff": "Super Admins (typically 1-3 people) must remember a separate password. This small friction for few people provides significant security benefit for the entire organization."
+    },
+    "requirements": {
+      "passwordPolicy": {
+        "minLength": 16,
+        "requireUppercase": true,
+        "requireLowercase": true,
+        "requireNumbers": true,
+        "requireSpecial": true,
+        "noCommonPasswords": true,
+        "noReuse": 12
+      },
+      "mfa": {
+        "required": true,
+        "allowedMethods": ["totp", "hardware_key"],
+        "disallowedMethods": ["sms", "email"],
+        "backupCodes": true,
+        "backupCodeCount": 10
+      },
+      "session": {
+        "maxDuration": "8 hours",
+        "idleTimeout": "30 minutes",
+        "singleSession": false,
+        "reAuthForSensitive": true
+      }
+    }
+  },
+
+  "passwordChangeRestrictions": {
+    "title": "24-Hour Restriction After Password Change",
+    "description": "When a Super Admin's password changes, they are restricted from certain actions for 24 hours or until an Approval Group member lifts the restriction.",
+    "rationale": "Even if an attacker changes the password, they cannot immediately take over. This buys time for detection and response.",
+    "restrictedActions": [
+      "Modify other admin accounts",
+      "Delete any admin account",
+      "Create new admin accounts",
+      "Change own MFA settings",
+      "Change other users' MFA settings",
+      "Disable Paranoid Mode",
+      "Change security level",
+      "Modify Approval Group membership",
+      "Access recovery mechanisms"
+    ],
+    "allowedActions": [
+      "View dashboards and reports",
+      "View user information",
+      "Modify non-admin users (with normal approval flows)",
+      "Use Helios Teams chat",
+      "Request restriction lift from Approval Group"
+    ],
+    "liftingRestriction": {
+      "methods": [
+        {
+          "method": "Approval Group Verification",
+          "process": "Approval Group member logs into Helios and approves the lift request",
+          "requirements": "Different person from the restricted admin"
+        },
+        {
+          "method": "Time-Based Expiry",
+          "process": "Restriction automatically lifts after 24 hours",
+          "requirements": "No action needed, automatic"
+        }
+      ],
+      "cannotSelfApprove": true
+    }
+  },
+
+  "dashboardNotice": {
+    "showWhen": [
+      "Paranoid Mode is not enabled",
+      "Approval Group has fewer than 2 members",
+      "Super Admin is using SSO (should switch to local auth)",
+      "MFA is not enabled for all admins",
+      "Helios Teams not set up"
+    ],
+    "noticeContent": {
+      "title": "Review Your Security Settings",
+      "message": "Helios Paranoid Mode provides additional protection against account compromise and insider threats. Review your security configuration to ensure your organization is protected.",
+      "cta": "Review Security Settings",
+      "learnMore": "/docs/security/paranoid-mode"
+    },
+    "dismissable": true,
+    "dismissDuration": "7 days",
+    "priority": "medium"
+  },
+
+  "implementation": {
+    "databaseTables": [
+      "security_settings",
+      "approval_group_members",
+      "password_change_restrictions",
+      "security_level_changes",
+      "recovery_codes"
+    ],
+    "services": [
+      "paranoid-mode.service.ts",
+      "approval-group.service.ts",
+      "password-restriction.service.ts",
+      "recovery.service.ts"
+    ],
+    "middleware": [
+      "check-paranoid-restrictions.middleware.ts",
+      "require-approval.middleware.ts"
+    ],
+    "frontendComponents": [
+      "ParanoidModeSettings",
+      "ApprovalGroupManager",
+      "RestrictionNotice",
+      "SecurityLevelSelector",
+      "DashboardSecurityNotice"
+    ]
+  }
+}

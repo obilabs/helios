@@ -1,0 +1,75 @@
+.org-chart-tree {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.org-chart-tree svg {
+  cursor: move;
+}
+
+.org-chart-controls-overlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.zoom-btn {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.zoom-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.org-chart-hints {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.org-chart-hint {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #6b7280;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dragging state */
+.node.dragging {
+  cursor: grabbing !important;
+}
+
+.node.dragging rect {
+  stroke: var(--theme-primary) !important;
+  stroke-width: 2 !important;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.node {
+  cursor: grab;
+}
+
+/* D3.js specific styles will be applied inline */

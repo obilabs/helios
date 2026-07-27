@@ -1,0 +1,42 @@
+{
+  "name": "helios-client",
+  "version": "1.0.0",
+  "description": "Helios Client Portal - Single Organization Management System",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "npm run start:backend",
+    "start:backend": "cd backend && npm start",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+    "test:generate": "cd openspec/testing && npx ts-node generate-tests.ts",
+    "test:auth": "playwright test openspec/testing/tests/example-authentication.test.ts",
+    "test:bulk": "playwright test openspec/testing/tests/example-bulk-operations.test.ts",
+    "test:ci": "playwright test --reporter=junit,html"
+  },
+  "keywords": [
+    "helios",
+    "portal",
+    "organization",
+    "management"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "@playwright/test": "^1.57.0",
+    "@types/pg": "^8.15.6",
+    "concurrently": "^8.2.2",
+    "pg": "^8.16.3",
+    "playwright": "^1.57.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

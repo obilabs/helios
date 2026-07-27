@@ -1,0 +1,352 @@
+/**
+ * Design Tokens - Helios Admin Portal
+ *
+ * This file defines all design tokens (sizing, spacing, colors, etc.)
+ * used throughout the application. All components should reference
+ * these tokens instead of hardcoding values.
+ *
+ * Benefits:
+ * - Theme switching works consistently
+ * - Single source of truth for design decisions
+ * - Easy to maintain and update
+ */
+
+:root {
+  /* ============================================
+   * SPACING SCALE (4px base unit)
+   * ============================================ */
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* ============================================
+   * SIZING - Component Heights
+   * ============================================ */
+  --height-input: 40px;
+  --height-input-sm: 32px;
+  --height-input-lg: 48px;
+
+  --height-button: 40px;
+  --height-button-sm: 32px;
+  --height-button-lg: 48px;
+  --height-button-icon: 36px;
+
+  --height-table-row: 48px;
+  --height-table-header: 44px;
+
+  --height-navbar: 56px;
+  --height-sidebar-item: 40px;
+
+  /* ============================================
+   * SIZING - Widths
+   * ============================================ */
+  --width-sidebar: 240px;
+  --width-sidebar-collapsed: 64px;
+  --width-modal-sm: 400px;
+  --width-modal-md: 560px;
+  --width-modal-lg: 720px;
+  --width-search: 280px;
+  --width-dropdown: 200px;
+
+  /* ============================================
+   * BORDER RADIUS
+   * ============================================ */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* ============================================
+   * FONT SIZES
+   * ============================================ */
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 28px;
+
+  /* ============================================
+   * FONT WEIGHTS
+   * ============================================ */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* ============================================
+   * LINE HEIGHTS
+   * ============================================ */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* ============================================
+   * SHADOWS
+   * ============================================ */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-focus: 0 0 0 3px var(--color-primary-light);
+
+  /* ============================================
+   * TRANSITIONS
+   * ============================================ */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* ============================================
+   * Z-INDEX SCALE
+   * ============================================ */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-tooltip: 600;
+  --z-toast: 700;
+
+  /* ============================================
+   * COLORS - Gray Scale (Neutral)
+   * ============================================ */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* ============================================
+   * COLORS - Primary (Helios Purple)
+   * ============================================ */
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-primary-active: #6d28d9;
+  --color-primary-light: rgba(139, 92, 246, 0.1);
+  --color-primary-lighter: rgba(139, 92, 246, 0.05);
+  --color-primary-shadow: rgba(139, 92, 246, 0.35);
+
+  /* ============================================
+   * COLORS - Status
+   * ============================================ */
+  --color-success: #10b981;
+  --color-success-hover: #059669;
+  --color-success-light: rgba(16, 185, 129, 0.1);
+  --color-success-bg: #ecfdf5;
+  --color-success-border: #a7f3d0;
+
+  --color-warning: #f59e0b;
+  --color-warning-hover: #d97706;
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  --color-error: #ef4444;
+  --color-error-hover: #dc2626;
+  --color-error-light: rgba(239, 68, 68, 0.1);
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+
+  --color-info: #3b82f6;
+  --color-info-hover: #2563eb;
+  --color-info-light: rgba(59, 130, 246, 0.1);
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+
+  /* ============================================
+   * COLORS - Platform Specific
+   * ============================================ */
+  --color-google: #4285f4;
+  --color-google-hover: #3367d6;
+  --color-google-light: rgba(66, 133, 244, 0.1);
+
+  --color-microsoft: #00a4ef;
+  --color-microsoft-hover: #0078d4;
+  --color-microsoft-light: rgba(0, 164, 239, 0.1);
+
+  /* ============================================
+   * SEMANTIC COLORS - Text
+   * ============================================ */
+  --text-primary: var(--color-gray-900);
+  --text-secondary: var(--color-gray-500);
+  --text-tertiary: var(--color-gray-400);
+  --text-disabled: var(--color-gray-300);
+  --text-inverse: #ffffff;
+  --text-link: var(--color-primary);
+  --text-link-hover: var(--color-primary-hover);
+
+  /* ============================================
+   * SEMANTIC COLORS - Backgrounds
+   * ============================================ */
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--color-gray-50);
+  --bg-tertiary: var(--color-gray-100);
+  --bg-hover: var(--color-gray-50);
+  --bg-active: var(--color-gray-100);
+  --bg-disabled: var(--color-gray-100);
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* ============================================
+   * SEMANTIC COLORS - Borders
+   * ============================================ */
+  --border-default: var(--color-gray-200);
+  --border-light: var(--color-gray-100);
+  --border-dark: var(--color-gray-300);
+  --border-focus: var(--color-primary);
+
+  /* ============================================
+   * COMPONENT TOKENS - Buttons
+   * ============================================ */
+  --button-font-size: var(--font-size-sm);
+  --button-font-weight: var(--font-weight-medium);
+  --button-padding-x: var(--spacing-4);
+  --button-padding-x-sm: var(--spacing-3);
+  --button-padding-x-lg: var(--spacing-6);
+  --button-gap: var(--spacing-2);
+  --button-radius: var(--radius-md);
+
+  /* Button Primary */
+  --button-primary-bg: var(--color-primary);
+  --button-primary-bg-hover: var(--color-primary-hover);
+  --button-primary-text: var(--text-inverse);
+  --button-primary-border: transparent;
+
+  /* Button Secondary */
+  --button-secondary-bg: var(--bg-primary);
+  --button-secondary-bg-hover: var(--bg-hover);
+  --button-secondary-text: var(--text-primary);
+  --button-secondary-border: var(--border-default);
+
+  /* Button Ghost */
+  --button-ghost-bg: transparent;
+  --button-ghost-bg-hover: var(--bg-hover);
+  --button-ghost-text: var(--text-secondary);
+  --button-ghost-text-hover: var(--text-primary);
+
+  /* ============================================
+   * COMPONENT TOKENS - Inputs
+   * ============================================ */
+  --input-font-size: var(--font-size-sm);
+  --input-padding-x: var(--spacing-3);
+  --input-padding-y: var(--spacing-2);
+  --input-radius: var(--radius-md);
+  --input-bg: var(--bg-primary);
+  --input-border: var(--border-default);
+  --input-border-hover: var(--color-gray-300);
+  --input-border-focus: var(--color-primary);
+  --input-placeholder: var(--text-tertiary);
+
+  /* ============================================
+   * COMPONENT TOKENS - Cards
+   * ============================================ */
+  --card-bg: var(--bg-primary);
+  --card-border: var(--border-default);
+  --card-radius: var(--radius-lg);
+  --card-padding: var(--spacing-5);
+  --card-shadow: var(--shadow-sm);
+
+  /* ============================================
+   * COMPONENT TOKENS - Tables
+   * ============================================ */
+  --table-header-bg: var(--bg-secondary);
+  --table-header-text: var(--text-secondary);
+  --table-row-bg: var(--bg-primary);
+  --table-row-hover: var(--bg-hover);
+  --table-border: var(--border-light);
+  --table-cell-padding-x: var(--spacing-4);
+  --table-cell-padding-y: var(--spacing-3);
+
+  /* ============================================
+   * COMPONENT TOKENS - Badges
+   * ============================================ */
+  --badge-font-size: var(--font-size-xs);
+  --badge-font-weight: var(--font-weight-medium);
+  --badge-padding-x: var(--spacing-2);
+  --badge-padding-y: 2px;
+  --badge-radius: var(--radius-sm);
+
+  /* ============================================
+   * COMPONENT TOKENS - Modal/Dialog
+   * ============================================ */
+  --modal-bg: var(--bg-primary);
+  --modal-radius: var(--radius-xl);
+  --modal-shadow: var(--shadow-xl);
+  --modal-padding: var(--spacing-6);
+  --modal-header-padding: var(--spacing-5);
+
+  /* ============================================
+   * COMPONENT TOKENS - Sidebar
+   * ============================================ */
+  --sidebar-bg: var(--bg-primary);
+  --sidebar-border: var(--border-light);
+  --sidebar-item-radius: var(--radius-md);
+  --sidebar-item-padding: var(--spacing-3) var(--spacing-4);
+  --sidebar-active-bg: var(--color-primary-light);
+  --sidebar-active-text: var(--color-primary);
+}
+
+/* ============================================
+ * DARK THEME OVERRIDES
+ * ============================================ */
+.dark,
+[data-theme="dark"] {
+  --color-gray-50: #18181b;
+  --color-gray-100: #27272a;
+  --color-gray-200: #3f3f46;
+  --color-gray-300: #52525b;
+  --color-gray-400: #71717a;
+  --color-gray-500: #a1a1aa;
+  --color-gray-600: #d4d4d8;
+  --color-gray-700: #e4e4e7;
+  --color-gray-800: #f4f4f5;
+  --color-gray-900: #fafafa;
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+
+  --bg-primary: #09090b;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  --bg-hover: #27272a;
+  --bg-active: #3f3f46;
+
+  --border-default: #27272a;
+  --border-light: #18181b;
+  --border-dark: #3f3f46;
+
+  --card-bg: #18181b;
+  --card-border: #27272a;
+
+  --table-header-bg: #18181b;
+  --table-row-bg: #09090b;
+  --table-row-hover: #18181b;
+
+  --sidebar-bg: #09090b;
+  --modal-bg: #18181b;
+  --input-bg: #18181b;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}

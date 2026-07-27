@@ -1,0 +1,248 @@
+{
+  "id": "dashboard-security-notice",
+  "title": "Dashboard Security Notice",
+  "description": "Specification for the security review notice shown on the admin dashboard when security configuration is incomplete or suboptimal.",
+  "version": "1.0.0",
+
+  "displayConditions": {
+    "showNoticeWhen": [
+      {
+        "condition": "paranoidModeNotEnabled",
+        "check": "organization.securityLevel < 2",
+        "priority": 1,
+        "dismissable": true,
+        "dismissDuration": "7 days"
+      },
+      {
+        "condition": "approvalGroupIncomplete",
+        "check": "approvalGroup.members.length < 2",
+        "priority": 2,
+        "dismissable": false
+      },
+      {
+        "condition": "approvalGroupAllAdmins",
+        "check": "approvalGroup.members.every(m => m.isSuperAdmin)",
+        "priority": 3,
+        "dismissable": true,
+        "dismissDuration": "7 days"
+      },
+      {
+        "condition": "superAdminUsingSso",
+        "check": "superAdmins.some(a => a.authMethod === 'sso')",
+        "priority": 4,
+        "dismissable": false,
+        "showInParanoidModeOnly": true
+      },
+      {
+        "condition": "mfaNotEnabled",
+        "check": "admins.some(a => !a.mfaEnabled)",
+        "priority": 5,
+        "dismissable": true,
+        "dismissDuration": "3 days"
+      },
+      {
+        "condition": "noRecoveryCodes",
+        "check": "superAdmins.some(a => a.recoveryCodes.remaining === 0)",
+        "priority": 6,
+        "dismissable": true,
+        "dismissDuration": "7 days"
+      },
+      {
+        "condition": "heliosTeamsNotSetup",
+        "check": "!organization.heliosTeamsEnabled",
+        "priority": 7,
+        "dismissable": true,
+        "dismissDuration": "14 days"
+      },
+      {
+        "condition": "restrictionActive",
+        "check": "currentUser.hasActiveRestriction",
+        "priority": 0,
+        "dismissable": false,
+        "style": "warning"
+      }
+    ]
+  },
+
+  "noticeVariants": {
+    "paranoidModeNotEnabled": {
+      "style": "info",
+      "icon": "shield",
+      "title": "Review Your Security Settings",
+      "message": "Helios Paranoid Mode provides additional protection against account compromise and insider threats. Consider enabling it for your organization.",
+      "cta": {
+        "label": "Review Security Settings",
+        "action": "navigate",
+        "target": "/settings/security"
+      },
+      "learnMore": "/docs/security/paranoid-mode",
+      "stats": {
+        "show": true,
+        "items": [
+          "Current level: {securityLevel}",
+          "Approval Group: {approvalGroupCount} members",
+          "MFA enabled: {mfaPercentage}% of admins"
+        ]
+      }
+    },
+
+    "approvalGroupIncomplete": {
+      "style": "warning",
+      "icon": "users",
+      "title": "Complete Your Approval Group Setup",
+      "message": "Your Approval Group needs at least 2 members to enable Paranoid Mode. These members will verify security-sensitive actions.",
+      "cta": {
+        "label": "Add Approval Group Members",
+        "action": "navigate",
+        "target": "/settings/security/approval-group"
+      },
+      "tips": [
+        "Add members from outside IT (HR, Finance, Executives)",
+        "Members don't need to be admins",
+        "They'll only approve security actions, not day-to-day tasks"
+      ]
+    },
+
+    "approvalGroupAllAdmins": {
+      "style": "warning",
+      "icon": "alert-triangle",
+      "title": "Diversify Your Approval Group",
+      "message": "All your Approval Group members are Super Admins. For better security, add members from other departments (HR, Finance, or Executives).",
+      "cta": {
+        "label": "Manage Approval Group",
+        "action": "navigate",
+        "target": "/settings/security/approval-group"
+      },
+      "reason": "If an attacker compromises all admins, they shouldn't also control the Approval Group."
+    },
+
+    "superAdminUsingSso": {
+      "style": "error",
+      "icon": "alert-circle",
+      "title": "Super Admin Using SSO - Security Risk",
+      "message": "In Paranoid Mode, Super Admins must use Helios local authentication, not SSO. This protects against SSO provider compromise.",
+      "cta": {
+        "label": "Switch to Local Auth",
+        "action": "navigate",
+        "target": "/settings/account/authentication"
+      },
+      "affectedAdmins": "{ssoAdminList}",
+      "urgent": true
+    },
+
+    "mfaNotEnabled": {
+      "style": "warning",
+      "icon": "smartphone",
+      "title": "Enable MFA for All Admins",
+      "message": "{mfaMissingCount} admin(s) haven't enabled multi-factor authentication. MFA is required for Paranoid Mode.",
+      "cta": {
+        "label": "View Admin MFA Status",
+        "action": "navigate",
+        "target": "/settings/security/mfa"
+      },
+      "affectedAdmins": "{mfaMissingList}"
+    },
+
+    "noRecoveryCodes": {
+      "style": "warning",
+      "icon": "key",
+      "title": "Generate Recovery Codes",
+      "message": "You have no recovery codes remaining. Generate new codes to ensure you can recover your account if needed.",
+      "cta": {
+        "label": "Generate Recovery Codes",
+        "action": "navigate",
+        "target": "/settings/account/recovery-codes"
+      },
+      "tip": "Store recovery codes in a password manager or physical safe - not in Google Drive or work email."
+    },
+
+    "heliosTeamsNotSetup": {
+      "style": "info",
+      "icon": "message-square",
+      "title": "Set Up Helios Teams",
+      "message": "Helios Teams provides a secure communication channel that works even when your email is compromised. It's required for Paranoid Mode.",
+      "cta": {
+        "label": "Set Up Helios Teams",
+        "action": "navigate",
+        "target": "/settings/teams"
+      }
+    },
+
+    "restrictionActive": {
+      "style": "warning",
+      "icon": "clock",
+      "title": "Your Account is Restricted",
+      "message": "Due to a recent password change, you cannot modify other admin accounts for {remainingTime}. This is a security precaution.",
+      "cta": {
+        "label": "Request Early Lift",
+        "action": "requestRestrictionLift"
+      },
+      "details": {
+        "restrictedSince": "{restrictionStart}",
+        "restrictedUntil": "{restrictionEnd}",
+        "reason": "{restrictionReason}",
+        "restrictedActions": "{restrictedActionsList}"
+      },
+      "dismissable": false,
+      "persistent": true
+    }
+  },
+
+  "layout": {
+    "position": "top of dashboard, below header",
+    "maxNotices": 2,
+    "priorityOrder": "ascending (0 = highest)",
+    "animation": "slide down on appear",
+    "responsive": {
+      "desktop": "full width with icon, message, CTA side by side",
+      "tablet": "stacked layout",
+      "mobile": "compact with expandable details"
+    }
+  },
+
+  "styling": {
+    "info": {
+      "background": "#EFF6FF",
+      "border": "#3B82F6",
+      "icon": "#3B82F6",
+      "text": "#1E40AF"
+    },
+    "warning": {
+      "background": "#FFFBEB",
+      "border": "#F59E0B",
+      "icon": "#F59E0B",
+      "text": "#92400E"
+    },
+    "error": {
+      "background": "#FEF2F2",
+      "border": "#EF4444",
+      "icon": "#EF4444",
+      "text": "#991B1B"
+    }
+  },
+
+  "dismissBehavior": {
+    "storage": "database (user_preferences)",
+    "key": "dismissed_security_notices",
+    "format": {
+      "noticeId": "string",
+      "dismissedAt": "timestamp",
+      "dismissedUntil": "timestamp"
+    },
+    "resetDismissal": [
+      "When condition changes (e.g., member removed from Approval Group)",
+      "When security level changes",
+      "When dismiss duration expires"
+    ]
+  },
+
+  "analytics": {
+    "trackEvents": [
+      "notice_displayed",
+      "notice_dismissed",
+      "notice_cta_clicked",
+      "notice_learn_more_clicked"
+    ],
+    "includeInSecurityReport": true
+  }
+}

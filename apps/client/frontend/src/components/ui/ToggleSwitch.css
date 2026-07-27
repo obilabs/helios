@@ -1,0 +1,151 @@
+/**
+ * ToggleSwitch Styles
+ *
+ * Clean, simple toggle switch with sliding knob.
+ * Based on standard checkbox + CSS approach.
+ * Uses theme colors via CSS variables.
+ *
+ * IMPORTANT: Uses !important where needed to override Tailwind resets
+ */
+
+/* ============================================
+ * Base Switch Container
+ * ============================================ */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none !important;
+  box-sizing: content-box;
+}
+
+.toggle-switch.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hide the actual checkbox */
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+/* ============================================
+ * Slider Track
+ * ============================================ */
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d1d5db;
+  transition: background-color 0.2s ease;
+  border-radius: 9999px;
+  border: none !important;
+  box-sizing: border-box;
+}
+
+/* Slider Knob */
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  background-color: white;
+  transition: transform 0.2s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: none !important;
+  box-sizing: border-box;
+}
+
+/* ============================================
+ * Checked State - Uses Theme Color
+ * ============================================ */
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--theme-primary, #8b5cf6);
+}
+
+/* Focus state */
+.toggle-switch input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* ============================================
+ * Size: Small (32x18px)
+ * ============================================ */
+.toggle-switch-small {
+  width: 32px !important;
+  height: 18px !important;
+  min-width: 32px;
+  min-height: 18px;
+}
+
+.toggle-switch-small .toggle-slider::before {
+  height: 14px !important;
+  width: 14px !important;
+  left: 2px !important;
+  top: 2px !important;
+}
+
+.toggle-switch-small input:checked + .toggle-slider::before {
+  transform: translateX(14px) !important;
+}
+
+/* ============================================
+ * Size: Medium (44x24px) - Default
+ * ============================================ */
+.toggle-switch-medium {
+  width: 44px !important;
+  height: 24px !important;
+  min-width: 44px;
+  min-height: 24px;
+}
+
+.toggle-switch-medium .toggle-slider::before {
+  height: 20px !important;
+  width: 20px !important;
+  left: 2px !important;
+  top: 2px !important;
+}
+
+.toggle-switch-medium input:checked + .toggle-slider::before {
+  transform: translateX(20px) !important;
+}
+
+/* ============================================
+ * Size: Large (60x34px)
+ * ============================================ */
+.toggle-switch-large {
+  width: 60px !important;
+  height: 34px !important;
+  min-width: 60px;
+  min-height: 34px;
+}
+
+.toggle-switch-large .toggle-slider::before {
+  height: 26px !important;
+  width: 26px !important;
+  left: 4px !important;
+  top: 4px !important;
+}
+
+.toggle-switch-large input:checked + .toggle-slider::before {
+  transform: translateX(26px) !important;
+}
+
+/* ============================================
+ * Disabled State
+ * ============================================ */
+.toggle-switch.disabled .toggle-slider {
+  cursor: not-allowed;
+}
+
+.toggle-switch.disabled input:checked + .toggle-slider {
+  background-color: var(--theme-primary, #8b5cf6);
+  opacity: 0.6;
+}

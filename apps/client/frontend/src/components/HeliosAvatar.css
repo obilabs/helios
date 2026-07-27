@@ -1,0 +1,319 @@
+/* Helios AI Avatar Styles */
+
+.helios-avatar {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.3s ease-out;
+}
+
+.helios-avatar__svg {
+  display: block;
+  transition: filter 0.3s ease;
+}
+
+/* Size variants */
+.helios-avatar--small {
+  font-size: 10px;
+}
+
+.helios-avatar--medium {
+  font-size: 12px;
+}
+
+.helios-avatar--large {
+  font-size: 14px;
+}
+
+/* Head animation */
+.helios-avatar__head {
+  transition: all 0.3s ease;
+}
+
+/* Eyes */
+.helios-avatar__eye {
+  transition: all 0.15s ease;
+}
+
+.helios-avatar__eyebrow {
+  transition: all 0.3s ease;
+}
+
+/* Mouth animations */
+.helios-avatar__mouth {
+  transition: all 0.2s ease;
+}
+
+.helios-avatar__mouth--speaking {
+  animation: speak 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes speak {
+  0% {
+    d: path('M 40 60 Q 48 65 56 60');
+  }
+  100% {
+    d: path('M 40 60 Q 48 70 56 60');
+  }
+}
+
+/* Glow ring animations */
+.helios-avatar__glow-ring {
+  transition: all 0.3s ease;
+}
+
+.helios-avatar__glow-ring--thinking {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.helios-avatar__glow-ring--searching {
+  animation: search-pulse 1s ease-in-out infinite;
+}
+
+.helios-avatar__glow-ring--speaking {
+  animation: speaking-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.helios-avatar__glow-ring--error {
+  animation: error-pulse 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.3;
+    r: 44;
+  }
+  50% {
+    opacity: 0.6;
+    r: 46;
+  }
+}
+
+@keyframes search-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    stroke-dasharray: 0 276;
+  }
+  50% {
+    opacity: 0.7;
+    stroke-dasharray: 138 276;
+  }
+}
+
+@keyframes speaking-pulse {
+  0% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes error-pulse {
+  0% {
+    opacity: 0.3;
+    stroke: #f87171;
+  }
+  100% {
+    opacity: 0.7;
+    stroke: #ef4444;
+  }
+}
+
+/* Thinking dots animation */
+.helios-avatar__thinking-dots circle {
+  animation: thinking-bounce 1.4s ease-in-out infinite;
+}
+
+.helios-avatar__thinking-dots circle:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.helios-avatar__thinking-dots circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.helios-avatar__thinking-dots circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Search accent animation */
+.helios-avatar__search-accent {
+  animation: search-wobble 1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes search-wobble {
+  0%, 100% {
+    transform: translate(68px, 14px) rotate(0deg);
+  }
+  25% {
+    transform: translate(70px, 12px) rotate(10deg);
+  }
+  75% {
+    transform: translate(66px, 16px) rotate(-10deg);
+  }
+}
+
+/* State label */
+.helios-avatar__state-label {
+  font-size: 1em;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.helios-avatar__state-label--thinking {
+  background: rgba(167, 139, 250, 0.15);
+  color: #7c3aed;
+}
+
+.helios-avatar__state-label--searching {
+  background: rgba(96, 165, 250, 0.15);
+  color: #2563eb;
+}
+
+.helios-avatar__state-label--speaking {
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c3aed;
+}
+
+.helios-avatar__state-label--happy {
+  background: rgba(52, 211, 153, 0.15);
+  color: #059669;
+}
+
+.helios-avatar__state-label--concerned {
+  background: rgba(251, 191, 36, 0.15);
+  color: #d97706;
+}
+
+.helios-avatar__state-label--error {
+  background: rgba(248, 113, 113, 0.15);
+  color: #dc2626;
+}
+
+/* Hover effects */
+.helios-avatar:hover .helios-avatar__head {
+  filter: brightness(1.05);
+}
+
+/* State-specific head modifications */
+.helios-avatar--thinking .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.4));
+}
+
+.helios-avatar--searching .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.4));
+}
+
+.helios-avatar--speaking .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
+}
+
+.helios-avatar--happy .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.4));
+}
+
+.helios-avatar--concerned .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
+}
+
+.helios-avatar--error .helios-avatar__svg {
+  filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.4));
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* Error eyes animation */
+.helios-avatar__error-eyes {
+  animation: error-eyes-appear 0.3s ease;
+}
+
+@keyframes error-eyes-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .helios-avatar--large {
+    font-size: 12px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .helios-avatar__state-label--thinking {
+    background: rgba(167, 139, 250, 0.25);
+  }
+
+  .helios-avatar__state-label--searching {
+    background: rgba(96, 165, 250, 0.25);
+  }
+
+  .helios-avatar__state-label--speaking {
+    background: rgba(139, 92, 246, 0.25);
+  }
+
+  .helios-avatar__state-label--happy {
+    background: rgba(52, 211, 153, 0.25);
+  }
+
+  .helios-avatar__state-label--concerned {
+    background: rgba(251, 191, 36, 0.25);
+  }
+
+  .helios-avatar__state-label--error {
+    background: rgba(248, 113, 113, 0.25);
+  }
+}

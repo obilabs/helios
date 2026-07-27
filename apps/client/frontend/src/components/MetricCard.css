@@ -1,0 +1,153 @@
+/**
+ * MetricCard Styles
+ *
+ * Uses design tokens for consistent theming.
+ * These styles provide fallback when Tailwind classes don't load.
+ */
+
+.metric-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: var(--card-radius, 8px);
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(0, 0, 0, 0.08));
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  transition: all var(--transition-normal, 0.2s ease);
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+}
+
+.metric-card:hover {
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.08));
+  background: var(--bg-hover, #f9fafb);
+}
+
+.metric-card.clickable {
+  cursor: pointer;
+}
+
+.metric-card.clickable:hover {
+  border-color: var(--color-primary, #8b5cf6);
+}
+
+/* Header row with icon and title */
+.metric-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.metric-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.metric-card-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.metric-card-title {
+  font-size: var(--font-size-xs, 11px);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Main content area */
+.metric-card-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+}
+
+.metric-card-value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  font-size: var(--font-size-xl, 18px);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--text-primary, #111827);
+  line-height: var(--line-height-tight, 1.25);
+}
+
+.metric-card-label {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--text-secondary, #6b7280);
+  margin-top: var(--spacing-1, 4px);
+}
+
+/* Footer with trend or timestamp */
+.metric-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-2, 8px);
+  margin-top: var(--spacing-2, 8px);
+  border-top: 1px solid var(--border-light, #f3f4f6);
+}
+
+.metric-card-trend {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  font-size: var(--font-size-xs, 11px);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.metric-card-trend.up {
+  color: var(--color-success, #10b981);
+}
+
+.metric-card-trend.down {
+  color: var(--color-error, #ef4444);
+}
+
+.metric-card-timestamp {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* State variants */
+.metric-card.state-success .metric-card-icon,
+.metric-card.state-success .metric-card-value {
+  color: var(--color-success, #10b981);
+}
+
+.metric-card.state-warning .metric-card-icon,
+.metric-card.state-warning .metric-card-value {
+  color: var(--color-warning, #f59e0b);
+}
+
+.metric-card.state-error .metric-card-icon,
+.metric-card.state-error .metric-card-value {
+  color: var(--color-error, #ef4444);
+}
+
+/* Size variants */
+.metric-card.size-small {
+  min-height: 64px;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+}
+
+.metric-card.size-small .metric-card-value {
+  font-size: var(--font-size-lg, 16px);
+}
+
+.metric-card.size-medium {
+  min-height: 80px;
+}
+
+.metric-card.size-large {
+  min-height: 100px;
+  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
+}
+
+.metric-card.size-large .metric-card-value {
+  font-size: var(--font-size-2xl, 20px);
+}

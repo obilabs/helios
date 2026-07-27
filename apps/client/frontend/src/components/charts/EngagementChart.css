@@ -1,0 +1,166 @@
+.engagement-chart {
+  width: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  justify-content: flex-end;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-dot.opens {
+  background: #8b5cf6;
+}
+
+.legend-dot.unique {
+  background: #22c55e;
+}
+
+.chart-container {
+  display: flex;
+  gap: 8px;
+}
+
+.y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 24px;
+  min-width: 32px;
+}
+
+.y-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-align: right;
+}
+
+.chart-area {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.grid-line {
+  height: 1px;
+  background: #f3f4f6;
+}
+
+.chart-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding-bottom: 24px;
+}
+
+.bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.bars-container {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  width: 100%;
+  justify-content: center;
+  height: calc(100% - 24px);
+}
+
+.bar {
+  width: 12px;
+  max-width: 20px;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 2px;
+}
+
+.bar-opens {
+  background: linear-gradient(180deg, #8b5cf6 0%, #a78bfa 100%);
+}
+
+.bar-opens:hover {
+  background: linear-gradient(180deg, #7c3aed 0%, #8b5cf6 100%);
+}
+
+.bar-unique {
+  background: linear-gradient(180deg, #22c55e 0%, #4ade80 100%);
+}
+
+.bar-unique:hover {
+  background: linear-gradient(180deg, #16a34a 0%, #22c55e 100%);
+}
+
+.bar-value {
+  font-size: 9px;
+  color: white;
+  padding-top: 2px;
+  font-weight: 600;
+}
+
+.bar-label {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+.chart-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .bar {
+    width: 8px;
+  }
+
+  .bar-value {
+    display: none;
+  }
+
+  .y-axis {
+    min-width: 24px;
+  }
+}

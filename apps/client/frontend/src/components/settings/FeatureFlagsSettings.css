@@ -1,0 +1,255 @@
+.feature-flags-settings {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.feature-flags-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  color: #6b7280;
+}
+
+.feature-flags-loading .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ff-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ff-header-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.ff-header-info p {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.ff-header .btn-icon {
+  padding: 8px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+
+.ff-header .btn-icon:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.ff-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.ff-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ff-category-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.ff-item:hover {
+  background: #f3f4f6;
+}
+
+.ff-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ff-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.ff-item-desc {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.ff-item-key {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.ff-item-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.ff-item-toggle .ff-updating {
+  color: var(--theme-primary, #8b5cf6);
+  animation: spin 1s linear infinite;
+}
+
+.ff-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.ff-toggle.enabled {
+  color: var(--helios-purple);
+}
+
+.ff-toggle.disabled {
+  color: #d1d5db;
+}
+
+.ff-toggle:hover.enabled {
+  color: var(--helios-purple-hover);
+}
+
+.ff-toggle:hover.disabled {
+  color: #9ca3af;
+}
+
+.ff-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #0369a1;
+}
+
+/* ============================================
+ * Navigation Hierarchy Styles
+ * ============================================ */
+
+.ff-nav-hierarchy {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.ff-nav-section {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.ff-section-header {
+  background: #f3f4f6 !important;
+  border-left: 3px solid var(--theme-primary, #8b5cf6) !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.ff-section-header .ff-item-name {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+.ff-section-header.ff-disabled {
+  border-left-color: #d1d5db !important;
+  opacity: 0.7;
+}
+
+.ff-child-item {
+  margin-left: 24px !important;
+  padding-left: 16px !important;
+  background: #fafafa !important;
+  border-left: 2px solid #e5e7eb !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.ff-child-item .ff-item-info {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ff-indent-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.ff-child-item .ff-item-name {
+  font-weight: 400 !important;
+  font-size: 13px !important;
+}
+
+.ff-parent-disabled {
+  opacity: 0.5;
+}
+
+.ff-parent-disabled .ff-item-name::after {
+  content: ' (section disabled)';
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 400;
+}

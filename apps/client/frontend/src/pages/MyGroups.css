@@ -1,0 +1,360 @@
+/* My Groups Page Styles */
+.my-groups-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.my-groups-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.my-groups-page .header-content h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px;
+}
+
+.my-groups-page .page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Header Stats */
+.header-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Search Container */
+.search-container {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 12px 12px 42px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-input:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Loading & Error States */
+.my-groups-page .loading-state,
+.my-groups-page .error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  color: #6b7280;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.my-groups-page .error-state {
+  color: #dc2626;
+}
+
+.my-groups-page .retry-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  background: #8b5cf6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.my-groups-page .retry-btn:hover {
+  background: #7c3aed;
+}
+
+/* Empty States */
+.empty-groups-state,
+.empty-search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 64px 24px;
+  color: #6b7280;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.empty-groups-state h3,
+.empty-search-state h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.empty-groups-state p,
+.empty-search-state p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  max-width: 400px;
+}
+
+/* Groups List */
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Group Card */
+.group-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-card:hover {
+  border-color: #8b5cf6;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
+}
+
+.group-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.group-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.group-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.group-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-member-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.group-platform {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.group-type {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.group-type.dynamic {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.group-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.group-action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #6b7280;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.group-action-btn:hover {
+  background: #8b5cf6;
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .my-groups-page {
+    padding: 16px;
+  }
+
+  .my-groups-page .page-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .header-stats {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .group-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .group-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .group-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .group-description {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+
+/* Animate spin utility */
+.my-groups-page .animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

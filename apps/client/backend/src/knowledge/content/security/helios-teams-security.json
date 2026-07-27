@@ -1,0 +1,354 @@
+{
+  "id": "helios-teams-security",
+  "title": "Helios Teams - Secure Communication Channel",
+  "description": "Helios Teams provides an out-of-band communication channel that remains accessible even when external systems (Google Workspace, SSO) are compromised.",
+  "version": "1.0.0",
+
+  "overview": {
+    "purpose": "When Google Workspace is compromised, work email cannot be trusted. Helios Teams provides a secure channel for coordination, approvals, and incident response that is independent of the compromised infrastructure.",
+    "keyBenefit": "Helios Teams uses Helios local authentication, so it remains accessible when SSO is compromised.",
+    "secondaryBenefit": "Approval requests, security alerts, and notifications are delivered in-app rather than via email."
+  },
+
+  "autoCreatedChannels": {
+    "security": {
+      "name": "Security",
+      "icon": "shield",
+      "color": "red",
+      "autoCreated": true,
+      "createdWhen": "When Approval Group is set up",
+      "members": {
+        "automatic": ["All Approval Group members", "All Super Admins"],
+        "canAdd": false,
+        "canRemove": false
+      },
+      "purpose": [
+        "Security alerts and notifications",
+        "Approval request notifications",
+        "Incident coordination",
+        "Recovery coordination"
+      ],
+      "systemMessages": {
+        "enabled": true,
+        "types": [
+          "Password change detected",
+          "Approval request created",
+          "Approval granted/denied",
+          "Recovery initiated",
+          "Paranoid Mode changes",
+          "Suspicious activity detected",
+          "Lockdown Mode triggered"
+        ]
+      },
+      "permissions": {
+        "canPost": ["All members"],
+        "canDelete": ["Message author only"],
+        "canPin": ["Super Admins", "Approval Group members"]
+      }
+    },
+
+    "admins": {
+      "name": "Admins",
+      "icon": "users",
+      "color": "blue",
+      "autoCreated": true,
+      "createdWhen": "When second admin is added",
+      "members": {
+        "automatic": ["All Super Admins", "All Admins"],
+        "canAdd": true,
+        "canRemove": true
+      },
+      "purpose": [
+        "General admin coordination",
+        "Day-to-day communication",
+        "Non-security discussions"
+      ],
+      "systemMessages": {
+        "enabled": false
+      }
+    }
+  },
+
+  "singleAdminSetup": {
+    "scenario": "Organization has only one Super Admin",
+    "flow": [
+      {
+        "step": 1,
+        "trigger": "Admin attempts to enable Paranoid Mode",
+        "systemResponse": "Detects no Approval Group exists"
+      },
+      {
+        "step": 2,
+        "display": "Setup Wizard",
+        "content": {
+          "title": "Set Up Your Security Team",
+          "message": "Paranoid Mode requires an Approval Group - trusted people who can verify security actions. Since you're the only admin, you'll need to add at least 2 members from your organization.",
+          "suggestedRoles": [
+            {
+              "role": "Executive",
+              "examples": ["CEO", "COO", "President", "Managing Director"],
+              "icon": "briefcase",
+              "reason": "Has authority to make critical decisions"
+            },
+            {
+              "role": "HR / People",
+              "examples": ["HR Director", "People Ops Lead", "CHRO"],
+              "icon": "users",
+              "reason": "Already involved in personnel decisions"
+            },
+            {
+              "role": "Finance",
+              "examples": ["CFO", "Controller", "Finance Director"],
+              "icon": "dollar-sign",
+              "reason": "Controls perspective, different access patterns"
+            },
+            {
+              "role": "Legal / Compliance",
+              "examples": ["General Counsel", "Compliance Officer"],
+              "icon": "scale",
+              "reason": "Understands regulatory requirements"
+            },
+            {
+              "role": "Security",
+              "examples": ["CISO", "Security Manager"],
+              "icon": "shield",
+              "reason": "Security-focused, if organization has dedicated role"
+            }
+          ]
+        }
+      },
+      {
+        "step": 3,
+        "action": "Admin adds Approval Group members",
+        "validation": {
+          "minMembers": 2,
+          "cannotAllBeAdmins": true,
+          "requiresEmailVerification": true
+        }
+      },
+      {
+        "step": 4,
+        "action": "System creates Security channel",
+        "members": "Admin + new Approval Group members"
+      },
+      {
+        "step": 5,
+        "action": "Invitations sent to Approval Group members",
+        "invitation": {
+          "type": "email",
+          "content": "You've been added to {org}'s Security Approval Group in Helios. You'll be asked to approve sensitive security actions.",
+          "cta": "Create Your Account",
+          "requirements": ["Set password (not SSO)", "Set up MFA"]
+        }
+      },
+      {
+        "step": 6,
+        "action": "Wait for members to accept",
+        "showProgress": true,
+        "canProceedWith": "At least 2 members accepted"
+      },
+      {
+        "step": 7,
+        "action": "Paranoid Mode can now be enabled",
+        "display": "Success message with Security channel preview"
+      }
+    ]
+  },
+
+  "multiAdminSetup": {
+    "scenario": "Organization has 2+ Super Admins",
+    "autoActions": [
+      {
+        "trigger": "Second Super Admin added",
+        "action": "Auto-create 'Admins' channel",
+        "members": "All Super Admins"
+      },
+      {
+        "trigger": "Paranoid Mode enabled",
+        "action": "Prompt to set up Approval Group if not exists",
+        "message": "Add non-admin members to your Approval Group for additional security"
+      }
+    ]
+  },
+
+  "approvalRequestFlow": {
+    "title": "How Approval Requests Work in Helios Teams",
+    "flow": [
+      {
+        "step": 1,
+        "actor": "Admin",
+        "action": "Attempts action requiring approval",
+        "example": "Delete another admin account"
+      },
+      {
+        "step": 2,
+        "actor": "System",
+        "action": "Creates approval request",
+        "posts": "Message to Security channel"
+      },
+      {
+        "step": 3,
+        "display": "Approval Request Card",
+        "content": {
+          "header": "Approval Required",
+          "icon": "alert-triangle",
+          "color": "amber",
+          "fields": [
+            {"label": "Requested by", "value": "sarah@acme.com"},
+            {"label": "Action", "value": "Delete admin account"},
+            {"label": "Target", "value": "john@acme.com"},
+            {"label": "Reason", "value": "Employee terminated, requires immediate offboarding"},
+            {"label": "Expires", "value": "in 23 hours 45 minutes"}
+          ],
+          "actions": [
+            {"label": "Approve", "style": "primary", "requiresAuth": true},
+            {"label": "Deny", "style": "danger", "requiresReason": true},
+            {"label": "View Details", "style": "secondary"}
+          ]
+        }
+      },
+      {
+        "step": 4,
+        "actor": "Approval Group Member",
+        "action": "Clicks Approve or Deny",
+        "validation": {
+          "cannotSelfApprove": true,
+          "requiresRecentAuth": "Within 15 minutes"
+        }
+      },
+      {
+        "step": 5,
+        "actor": "System",
+        "action": "Posts result to Security channel",
+        "notifies": "Original requester"
+      }
+    ]
+  },
+
+  "securityAlerts": {
+    "title": "Automatic Security Alerts in Helios Teams",
+    "alerts": [
+      {
+        "type": "password_changed",
+        "severity": "high",
+        "message": "Admin password changed: {admin_email}. Account restricted for 24 hours.",
+        "icon": "key",
+        "color": "amber"
+      },
+      {
+        "type": "failed_logins",
+        "severity": "high",
+        "threshold": "5 failures in 1 hour",
+        "message": "Multiple failed login attempts for {admin_email} from {ip_address}",
+        "icon": "alert-triangle",
+        "color": "red"
+      },
+      {
+        "type": "recovery_initiated",
+        "severity": "critical",
+        "message": "Emergency recovery initiated for {admin_email} by {initiator}",
+        "icon": "life-buoy",
+        "color": "red"
+      },
+      {
+        "type": "recovery_code_used",
+        "severity": "critical",
+        "message": "Recovery code used by {admin_email} from {ip_address}",
+        "icon": "key",
+        "color": "red"
+      },
+      {
+        "type": "lockdown_triggered",
+        "severity": "critical",
+        "message": "Lockdown Mode triggered. Reason: {reason}",
+        "icon": "lock",
+        "color": "red"
+      },
+      {
+        "type": "bulk_operation",
+        "severity": "medium",
+        "threshold": "10+ users affected",
+        "message": "Bulk operation: {action} affecting {count} users by {admin_email}",
+        "icon": "users",
+        "color": "amber"
+      },
+      {
+        "type": "paranoid_mode_change",
+        "severity": "high",
+        "message": "Paranoid Mode {enabled/disabled} by {admin_email}. Takes effect in 24 hours.",
+        "icon": "shield",
+        "color": "amber"
+      },
+      {
+        "type": "approval_group_change",
+        "severity": "high",
+        "message": "Approval Group member {added/removed}: {member_email} by {admin_email}",
+        "icon": "users",
+        "color": "amber"
+      }
+    ]
+  },
+
+  "incidentCoordination": {
+    "title": "Using Helios Teams During Security Incidents",
+    "guidance": [
+      {
+        "phase": "Detection",
+        "useTeamsFor": [
+          "Discussing suspicious activity",
+          "Confirming if alerts are real",
+          "Initial coordination"
+        ],
+        "whyNotEmail": "Email may be compromised"
+      },
+      {
+        "phase": "Containment",
+        "useTeamsFor": [
+          "Coordinating lockdown",
+          "Approving emergency restrictions",
+          "Communicating with Approval Group"
+        ]
+      },
+      {
+        "phase": "Recovery",
+        "useTeamsFor": [
+          "Coordinating admin recovery",
+          "Approving restriction lifts",
+          "Documenting what happened"
+        ]
+      },
+      {
+        "phase": "Post-Incident",
+        "useTeamsFor": [
+          "Post-mortem discussion",
+          "Planning improvements",
+          "Documenting lessons learned"
+        ]
+      }
+    ]
+  },
+
+  "implementation": {
+    "database": {
+      "tables": [
+        "teams_channels",
+        "teams_messages",
+        "teams_members",
+        "teams_reactions",
+        "approval_requests_teams"
+      ]
+    },
+    "features": {
+      "realtime": "WebSocket for instant message delivery",
+      "notifications": "In-app + push (mobile)",
+      "search": "Full-text search within channels",
+      "retention": "Messages retained for 7 years (compliance)",
+      "export": "Export channel history for audits"
+    },
+    "authentication": {
+      "accessVia": "Helios local auth only",
+      "ssoAllowed": false,
+      "sessionShared": "With main Helios session"
+    }
+  }
+}

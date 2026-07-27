@@ -1,0 +1,336 @@
+/* UserSignatureStatus Component Styles */
+
+.user-signature-status {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Loading State */
+.user-signature-status .status-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Header */
+.user-signature-status .status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.user-signature-status .user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-signature-status .user-info svg {
+  color: #8b5cf6;
+}
+
+.user-signature-status .user-info > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-signature-status .user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.user-signature-status .user-email {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Error */
+.user-signature-status .status-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* Content */
+.user-signature-status .status-content {
+  padding: 16px;
+}
+
+.user-signature-status .status-section {
+  margin-bottom: 16px;
+}
+
+.user-signature-status .status-section:last-child {
+  margin-bottom: 0;
+}
+
+.user-signature-status .status-section h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Assignment Info */
+.user-signature-status .assignment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-signature-status .source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.user-signature-status .template-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.user-signature-status .template-info .label {
+  color: #6b7280;
+}
+
+.user-signature-status .template-info .value {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.user-signature-status .no-assignment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.user-signature-status .no-assignment svg {
+  color: #d1d5db;
+  margin-bottom: 10px;
+}
+
+.user-signature-status .no-assignment p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.user-signature-status .no-assignment span {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* Sync Info */
+.user-signature-status .sync-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-signature-status .sync-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.user-signature-status .sync-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-signature-status .detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.user-signature-status .detail-row .label {
+  color: #6b7280;
+}
+
+.user-signature-status .detail-row .value {
+  color: #1f2937;
+}
+
+.user-signature-status .detail-row.error .value {
+  color: #dc2626;
+}
+
+/* Preview */
+.user-signature-status .preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.user-signature-status .preview-toggle:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.user-signature-status .signature-preview {
+  margin-top: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.user-signature-status .preview-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+.user-signature-status .preview-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Footer */
+.user-signature-status .status-footer {
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Re-sync Button */
+.user-signature-status .btn-resync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b5cf6;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.user-signature-status .btn-resync:hover {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.user-signature-status .btn-resync:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Spinning Animation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================================
+   COMPACT MODE
+   ===================================================== */
+
+.user-signature-status.compact {
+  padding: 10px 12px;
+}
+
+.user-signature-status.compact .compact-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-signature-status.compact .signature-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.user-signature-status.compact .compact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-signature-status.compact .template-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-signature-status.compact .source-label {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.user-signature-status.compact .sync-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

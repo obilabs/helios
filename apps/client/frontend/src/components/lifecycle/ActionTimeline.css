@@ -1,0 +1,353 @@
+/**
+ * ActionTimeline Component Styles
+ *
+ * Follows DESIGN-SYSTEM.md specifications:
+ * - Clean white backgrounds with subtle borders
+ * - Purple primary accent (#8b5cf6)
+ * - Status colors: green (success), red (failed), amber (warning), gray (pending/skipped)
+ */
+
+.action-timeline {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.action-timeline.empty {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  padding: 32px 20px;
+}
+
+/* Timeline Header */
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.timeline-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.step-count {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Timeline Steps Container */
+.timeline-steps {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Individual Step */
+.timeline-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+/* Connector (vertical line + dot) */
+.step-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.connector-line {
+  width: 2px;
+  flex: 1;
+  background: #e5e7eb;
+}
+
+.connector-line.top {
+  min-height: 8px;
+}
+
+.connector-line.bottom {
+  min-height: 24px;
+}
+
+.timeline-step:first-child .connector-line.top {
+  background: transparent;
+}
+
+/* Step Dot */
+.step-dot {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+/* Status-based dot colors */
+.timeline-step.success .step-dot {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.timeline-step.failed .step-dot {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.timeline-step.warning .step-dot {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.timeline-step.pending .step-dot {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.timeline-step.skipped .step-dot {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.timeline-step.in_progress .step-dot {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+}
+
+/* Status Icons */
+.status-icon {
+  flex-shrink: 0;
+}
+
+.status-icon.success {
+  color: #10b981;
+}
+
+.status-icon.failed {
+  color: #ef4444;
+}
+
+.status-icon.warning {
+  color: #f59e0b;
+}
+
+.status-icon.pending {
+  color: #9ca3af;
+}
+
+.status-icon.skipped {
+  color: #9ca3af;
+}
+
+.status-icon.in-progress {
+  color: #8b5cf6;
+}
+
+/* Animate spin for in-progress */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Step Content */
+.step-content {
+  flex: 1;
+  padding-bottom: 20px;
+  min-width: 0;
+}
+
+.timeline-step:last-child .step-content {
+  padding-bottom: 0;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.step-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.step-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-duration {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.step-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.step-status.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.step-status.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.step-status.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.step-status.pending {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.step-status.skipped {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.step-status.in_progress {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+/* Step Description */
+.step-description {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Step Error */
+.step-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #991b1b;
+}
+
+.step-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-error span {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: white;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #991b1b;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.retry-btn:hover {
+  background: #fef2f2;
+}
+
+/* Step Details */
+.step-details {
+  margin-top: 8px;
+}
+
+.step-details details {
+  font-size: 12px;
+}
+
+.step-details summary {
+  cursor: pointer;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.step-details summary:hover {
+  color: #374151;
+}
+
+.step-details pre {
+  margin: 0;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+/* Step Timestamp */
+.step-timestamp {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .action-timeline {
+    padding: 16px;
+  }
+
+  .step-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .step-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
