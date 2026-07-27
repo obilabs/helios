@@ -32,12 +32,20 @@ first, the Google-dependent parts behind fixtures.
 
 ## Phase 2 — Transport (behind fixtures)
 
-- [ ] Replace the hardcoded broad-scope JWT (transparent-proxy.ts ~336-339) with
+- [x] Replace the hardcoded broad-scope JWT (transparent-proxy.ts ~336-339) with
       per-capability scope minting — a request gets only the scopes its rule needs
-- [ ] Wire the engine decision in front of the forward: deny → return the auth
+      (services/relay/scopes.ts; legacy broad scopes still minted when the
+      `api_relay` flag is OFF, preserving identical passthrough behavior)
+- [x] Wire the engine decision in front of the forward: deny → return the auth
       error without forwarding; allow → mint scoped token, forward
+      (services/relay/enforce.ts + transparent-proxy.ts; storage in migration
+      063 + services/relay/store.ts; batch requests go through
+      authorizeGoogleBatch with deny-on-unparseable. NOTE: batch bodies need a
+      raw-body capture middleware to be parseable in production — until then an
+      enforced batch is denied fail-closed; flag-off batches are untouched)
 - [ ] Record-and-replay test harness using the scrubbed fixtures
-- [ ] One manual live smoke test against the sandbox
+- [ ] One manual live smoke test against the sandbox (scoped-token exchange
+      against real Google is unverified until this runs)
 
 ## Phase 3 — Audit + discovery
 
@@ -78,10 +86,14 @@ first, the Google-dependent parts behind fixtures.
 
 ## Phase 4 — Dark-launch controls
 
-- [ ] `api_relay` feature flag, per-org, off by default (use the existing
-      feature-flag system)
-- [ ] Separate writes toggle; enabling the relay does not enable writes
-- [ ] Empty rule set on first enable → relay can do nothing until a bundle is added
+- [x] `api_relay` feature flag, per-org, off by default (use the existing
+      feature-flag system) — implemented as the global `api_relay` flag (OFF,
+      seeded by migration 063) gating enforcement, plus per-org opt-in via
+      relay_config.relay_enabled (missing row = closed)
+- [x] Separate writes toggle; enabling the relay does not enable writes
+      (relay_config.writes_enabled, tested)
+- [x] Empty rule set on first enable → relay can do nothing until a bundle is added
+      (default-deny with zero relay_rules rows, tested)
 - [ ] Optional bootstrap window (permissive-logging on writes, then flip to enforce)
 
 ## Phase 5 — Microsoft parity
