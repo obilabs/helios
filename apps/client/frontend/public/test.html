@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios Diagnostic Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
+        pre {
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Helios Client Portal - Diagnostic Test</h1>
+
+    <h2>Test Results:</h2>
+    <div id="results"></div>
+
+    <script>
+        const results = [];
+
+        // Test 1: Basic JavaScript
+        try {
+            results.push({
+                test: 'JavaScript Execution',
+                status: 'success',
+                message: 'JavaScript is running'
+            });
+        } catch (e) {
+            results.push({
+                test: 'JavaScript Execution',
+                status: 'error',
+                message: e.message
+            });
+        }
+
+        // Test 2: Fetch API
+        async function testAPI() {
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                results.push({
+                    test: 'Backend Health Check',
+                    status: 'success',
+                    message: `Backend is ${data.status}`
+                });
+            } catch (e) {
+                results.push({
+                    test: 'Backend Health Check',
+                    status: 'error',
+                    message: e.message
+                });
+            }
+
+            // Test 3: Frontend Files
+            try {
+                const response = await fetch('/src/App.tsx');
+                if (response.ok) {
+                    results.push({
+                        test: 'Frontend Files',
+                        status: 'success',
+                        message: 'App.tsx is accessible'
+                    });
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (e) {
+                results.push({
+                    test: 'Frontend Files',
+                    status: 'error',
+                    message: e.message
+                });
+            }
+
+            // Test 4: New Components
+            try {
+                const response = await fetch('/src/components/MetricCard.tsx');
+                if (response.ok) {
+                    results.push({
+                        test: 'MetricCard Component',
+                        status: 'success',
+                        message: 'MetricCard.tsx is accessible'
+                    });
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (e) {
+                results.push({
+                    test: 'MetricCard Component',
+                    status: 'error',
+                    message: e.message
+                });
+            }
+
+            // Display results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = results.map(r => `
+                <div style="margin-bottom: 1rem; padding: 1rem; background: ${r.status === 'success' ? '#d1fae5' : '#fee2e2'}; border-radius: 8px;">
+                    <strong class="${r.status}">${r.test}:</strong>
+                    <span class="${r.status}">${r.message}</span>
+                </div>
+            `).join('');
+
+            // Add instructions
+            resultsDiv.innerHTML += `
+                <h3>Next Steps:</h3>
+                <ol>
+                    <li>If all tests pass, navigate to <a href="/">http://localhost:3000</a> and open Firefox DevTools (F12)</li>
+                    <li>Check the <strong>Console</strong> tab for any JavaScript errors</li>
+                    <li>Check the <strong>Network</strong> tab for failed requests</li>
+                    <li>Share any errors you find with Claude</li>
+                </ol>
+            `;
+        }
+
+        testAPI();
+    </script>
+</body>
+</html>

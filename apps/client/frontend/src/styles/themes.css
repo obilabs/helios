@@ -1,0 +1,416 @@
+/* Helios Theme System
+ * =====================
+ * Brand Color: #8b5cf6 (Helios Purple)
+ *
+ * This is the single source of truth for the Helios color system.
+ * All components should use these CSS variables instead of hardcoded colors.
+ */
+
+/* ============================================
+   HELIOS DEFAULT THEME (Light Mode)
+   ============================================ */
+:root {
+  /* ===================
+     PRIMARY BRAND COLORS
+     =================== */
+  /* Helios Purple - Our brand identity */
+  --helios-purple: #8b5cf6;
+  --helios-purple-hover: #7c3aed;
+  --helios-purple-light: rgba(139, 92, 246, 0.1);
+  --helios-purple-lighter: rgba(139, 92, 246, 0.05);
+  --helios-purple-shadow: rgba(139, 92, 246, 0.4);
+
+  /* Gradient for headers/hero sections */
+  --helios-gradient-start: #7c3aed;
+  --helios-gradient-end: #8b5cf6;
+  --helios-gradient: linear-gradient(135deg, var(--helios-gradient-start) 0%, var(--helios-gradient-end) 100%);
+
+  /* ===================
+     THEME ALIASES (for components)
+     =================== */
+  --theme-primary: var(--helios-purple);
+  --theme-primary-hover: var(--helios-purple-hover);
+  --theme-primary-light: var(--helios-purple-light);
+  --theme-primary-shadow: var(--helios-purple-shadow);
+  --theme-gradient: var(--helios-gradient);
+  --theme-text-on-gradient: white;
+
+  /* Legacy aliases for backwards compatibility */
+  --theme-primary-start: var(--helios-gradient-start);
+  --theme-primary-end: var(--helios-gradient-end);
+}
+
+/* ============================================
+   HELIOS LIGHT THEME (default)
+   ============================================ */
+:root[data-theme="light"],
+:root[data-theme="default"],
+:root:not([data-theme]) {
+  /* Uses default brand colors defined above */
+}
+
+/* ============================================
+   HELIOS DARK THEME (generic dark variant)
+   ============================================ */
+:root[data-theme="dark"] {
+  /* Primary colors stay the same for brand consistency */
+  --helios-purple-light: rgba(139, 92, 246, 0.2);
+  --helios-purple-lighter: rgba(139, 92, 246, 0.1);
+
+  /* Dark mode backgrounds */
+  --color-bg-main: #0f172a;
+  --color-bg-card: #1e293b;
+  --color-bg-hover: #334155;
+  --color-bg-input: #1e293b;
+
+  /* Dark mode text */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-tertiary: #64748b;
+
+  /* Dark mode borders */
+  --color-border: #334155;
+  --color-border-light: #1e293b;
+
+  /* Gray scale for dark mode */
+  --color-gray-50: #1e293b;
+  --color-gray-100: #334155;
+  --color-gray-200: #475569;
+  --color-gray-300: #64748b;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #cbd5e1;
+  --color-gray-600: #e2e8f0;
+  --color-gray-700: #f1f5f9;
+  --color-gray-800: #f8fafc;
+  --color-gray-900: #ffffff;
+
+  /* Dark mode sidebar */
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #f1f5f9;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover: #1e293b;
+  --sidebar-active-bg: var(--helios-purple-light);
+  --sidebar-active-text: var(--helios-purple);
+  --sidebar-border: #334155;
+
+  /* Dark mode cards */
+  --card-bg: #1e293b;
+  --card-bg-hover: #334155;
+  --card-text: #e2e8f0;
+  --card-heading: #f8fafc;
+  --card-border: #334155;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* Cards on gradient backgrounds (login page) */
+  --card-on-gradient-bg: rgba(15, 23, 42, 0.9);
+  --card-on-gradient-text: #e2e8f0;
+  --card-on-gradient-heading: #f8fafc;
+  --card-on-gradient-border: rgba(139, 92, 246, 0.3);
+  --card-on-gradient-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Interactive elements */
+  --button-primary-bg: var(--helios-purple);
+  --button-primary-hover: var(--helios-purple-hover);
+  --button-primary-text: white;
+  --button-secondary-bg: #334155;
+  --button-secondary-hover: #475569;
+  --button-secondary-text: #f1f5f9;
+  --button-secondary-border: #475569;
+
+  /* Form elements */
+  --input-bg: #1e293b;
+  --input-border: #475569;
+  --input-border-focus: var(--helios-purple);
+  --input-text: #f1f5f9;
+  --input-placeholder: #64748b;
+
+  /* Tables */
+  --table-header-bg: #1e293b;
+  --table-row-hover: #334155;
+  --table-border: #334155;
+
+  /* Toggle/switch states */
+  --toggle-off-bg: #475569;
+  --toggle-on-bg: var(--helios-purple);
+  --toggle-knob: white;
+
+  /* Shadows for dark mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   THEME VARIATIONS
+   ============================================ */
+
+/* Helios Purple (default brand theme) */
+:root[data-theme="helios-purple"] {
+  --helios-purple: #8b5cf6;
+  --helios-purple-hover: #7c3aed;
+  --helios-purple-light: rgba(139, 92, 246, 0.1);
+  --helios-purple-shadow: rgba(139, 92, 246, 0.4);
+  --theme-primary: #8b5cf6;
+  --theme-primary-hover: #7c3aed;
+  --theme-primary-light: rgba(139, 92, 246, 0.1);
+  --theme-primary-shadow: rgba(139, 92, 246, 0.4);
+  --theme-gradient: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  --theme-primary-start: #7c3aed;
+  --theme-primary-end: #8b5cf6;
+}
+
+/* Corporate Blue - Professional, trustworthy */
+:root[data-theme="corporate-blue"] {
+  --helios-purple: #3b82f6;
+  --helios-purple-hover: #2563eb;
+  --helios-purple-light: rgba(59, 130, 246, 0.1);
+  --helios-purple-shadow: rgba(59, 130, 246, 0.4);
+  --theme-primary: #3b82f6;
+  --theme-primary-hover: #2563eb;
+  --theme-primary-light: rgba(59, 130, 246, 0.1);
+  --theme-primary-shadow: rgba(59, 130, 246, 0.4);
+  --theme-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  --theme-primary-start: #2563eb;
+  --theme-primary-end: #3b82f6;
+}
+
+/* Sophisticated Purple - Deeper purple */
+:root[data-theme="sophisticated-purple"] {
+  --helios-purple: #7c3aed;
+  --helios-purple-hover: #6d28d9;
+  --helios-purple-light: rgba(124, 58, 237, 0.1);
+  --helios-purple-shadow: rgba(124, 58, 237, 0.4);
+  --theme-primary: #7c3aed;
+  --theme-primary-hover: #6d28d9;
+  --theme-primary-light: rgba(124, 58, 237, 0.1);
+  --theme-primary-shadow: rgba(124, 58, 237, 0.4);
+  --theme-gradient: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  --theme-primary-start: #6d28d9;
+  --theme-primary-end: #7c3aed;
+}
+
+/* Modern Teal - Fresh and contemporary */
+:root[data-theme="modern-teal"] {
+  --helios-purple: #14b8a6;
+  --helios-purple-hover: #0d9488;
+  --helios-purple-light: rgba(20, 184, 166, 0.1);
+  --helios-purple-shadow: rgba(20, 184, 166, 0.4);
+  --theme-primary: #14b8a6;
+  --theme-primary-hover: #0d9488;
+  --theme-primary-light: rgba(20, 184, 166, 0.1);
+  --theme-primary-shadow: rgba(20, 184, 166, 0.4);
+  --theme-gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+  --theme-primary-start: #0d9488;
+  --theme-primary-end: #14b8a6;
+}
+
+/* Google Workspace Blue - Google-inspired */
+:root[data-theme="google-blue"] {
+  --helios-purple: #1a73e8;
+  --helios-purple-hover: #1765cc;
+  --helios-purple-light: rgba(26, 115, 232, 0.1);
+  --helios-purple-shadow: rgba(26, 115, 232, 0.4);
+  --theme-primary: #1a73e8;
+  --theme-primary-hover: #1765cc;
+  --theme-primary-light: rgba(26, 115, 232, 0.1);
+  --theme-primary-shadow: rgba(26, 115, 232, 0.4);
+  --theme-gradient: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  --theme-primary-start: #1a73e8;
+  --theme-primary-end: #4285f4;
+}
+
+/* Helios Dark Mode - Complete dark theme */
+:root[data-theme="helios-dark"] {
+  /* Primary colors stay the same for brand consistency */
+  --helios-purple: #8b5cf6;
+  --helios-purple-hover: #7c3aed;
+  --helios-purple-light: rgba(139, 92, 246, 0.2);
+  --helios-purple-lighter: rgba(139, 92, 246, 0.1);
+  --helios-purple-shadow: rgba(139, 92, 246, 0.4);
+  --theme-primary: #8b5cf6;
+  --theme-primary-hover: #7c3aed;
+  --theme-primary-light: rgba(139, 92, 246, 0.2);
+  --theme-primary-shadow: rgba(139, 92, 246, 0.4);
+  --theme-gradient: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  --theme-primary-start: #7c3aed;
+  --theme-primary-end: #8b5cf6;
+
+  /* Dark mode backgrounds */
+  --color-bg-main: #0f172a;
+  --color-bg-card: #1e293b;
+  --color-bg-hover: #334155;
+  --color-bg-input: #1e293b;
+
+  /* Dark mode text */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-tertiary: #64748b;
+
+  /* Dark mode borders */
+  --color-border: #334155;
+  --color-border-light: #1e293b;
+
+  /* Gray scale for dark mode */
+  --color-gray-50: #1e293b;
+  --color-gray-100: #334155;
+  --color-gray-200: #475569;
+  --color-gray-300: #64748b;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #cbd5e1;
+  --color-gray-600: #e2e8f0;
+  --color-gray-700: #f1f5f9;
+  --color-gray-800: #f8fafc;
+  --color-gray-900: #ffffff;
+
+  /* Dark mode sidebar */
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #f1f5f9;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover: #1e293b;
+  --sidebar-active-bg: var(--helios-purple-light);
+  --sidebar-active-text: var(--helios-purple);
+  --sidebar-border: #334155;
+
+  /* Dark mode cards */
+  --card-bg: #1e293b;
+  --card-bg-hover: #334155;
+  --card-text: #e2e8f0;
+  --card-heading: #f8fafc;
+  --card-border: #334155;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* Cards on gradient backgrounds (login page) */
+  --card-on-gradient-bg: rgba(15, 23, 42, 0.9);
+  --card-on-gradient-text: #e2e8f0;
+  --card-on-gradient-heading: #f8fafc;
+  --card-on-gradient-border: rgba(139, 92, 246, 0.3);
+  --card-on-gradient-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Interactive elements */
+  --button-primary-bg: var(--helios-purple);
+  --button-primary-hover: var(--helios-purple-hover);
+  --button-primary-text: white;
+  --button-secondary-bg: #334155;
+  --button-secondary-hover: #475569;
+  --button-secondary-text: #f1f5f9;
+  --button-secondary-border: #475569;
+
+  /* Form elements */
+  --input-bg: #1e293b;
+  --input-border: #475569;
+  --input-border-focus: var(--helios-purple);
+  --input-text: #f1f5f9;
+  --input-placeholder: #64748b;
+
+  /* Tables */
+  --table-header-bg: #1e293b;
+  --table-row-hover: #334155;
+  --table-border: #334155;
+
+  /* Toggle/switch states */
+  --toggle-off-bg: #475569;
+  --toggle-on-bg: var(--helios-purple);
+  --toggle-knob: white;
+
+  /* Shadows for dark mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   SHARED COLOR SYSTEM (theme-independent)
+   ============================================ */
+:root {
+  /* Gray scale */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* Status colors */
+  --color-success: #10b981;
+  --color-success-light: rgba(16, 185, 129, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-error: #ef4444;
+  --color-error-light: rgba(239, 68, 68, 0.1);
+  --color-info: #3b82f6;
+  --color-info-light: rgba(59, 130, 246, 0.1);
+
+  /* Backgrounds (light mode defaults) */
+  --color-bg-main: #f5f5f5;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #f9fafb;
+  --color-bg-input: #ffffff;
+
+  /* Text */
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+
+  /* Borders */
+  --color-border: #e5e7eb;
+  --color-border-light: #f3f4f6;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* Sidebar (light mode) */
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #374151;
+  --sidebar-text-muted: #6b7280;
+  --sidebar-hover: #f9fafb;
+  --sidebar-active-bg: var(--helios-purple-light);
+  --sidebar-active-text: var(--helios-purple);
+  --sidebar-border: #e5e7eb;
+
+  /* Cards */
+  --card-bg: #ffffff;
+  --card-bg-hover: #f9fafb;
+  --card-text: #374151;
+  --card-heading: #111827;
+  --card-border: #e5e7eb;
+  --card-shadow: rgba(0, 0, 0, 0.08);
+
+  /* Cards on gradient backgrounds (login page) */
+  --card-on-gradient-bg: rgba(0, 0, 0, 0.7);
+  --card-on-gradient-text: rgba(255, 255, 255, 0.95);
+  --card-on-gradient-heading: rgba(255, 255, 255, 1);
+  --card-on-gradient-border: rgba(255, 255, 255, 0.25);
+  --card-on-gradient-shadow: rgba(0, 0, 0, 0.4);
+
+  /* Interactive elements */
+  --button-primary-bg: var(--helios-purple);
+  --button-primary-hover: var(--helios-purple-hover);
+  --button-primary-text: white;
+  --button-secondary-bg: white;
+  --button-secondary-hover: #f9fafb;
+  --button-secondary-text: #374151;
+  --button-secondary-border: #e5e7eb;
+
+  /* Form elements */
+  --input-bg: white;
+  --input-border: #d1d5db;
+  --input-border-focus: var(--helios-purple);
+  --input-text: #1f2937;
+  --input-placeholder: #9ca3af;
+
+  /* Tables */
+  --table-header-bg: #f9fafb;
+  --table-row-hover: #f9fafb;
+  --table-border: #e5e7eb;
+
+  /* Toggle/switch states */
+  --toggle-off-bg: #d1d5db;
+  --toggle-on-bg: var(--helios-purple);
+  --toggle-knob: white;
+}
