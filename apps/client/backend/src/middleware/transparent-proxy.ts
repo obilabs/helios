@@ -13,13 +13,17 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { google } from 'googleapis';
+import jwt from 'jsonwebtoken';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
 import axios from 'axios';
 import { telemetryService } from '../services/telemetry.service.js';
+import {
+  enforceRelayAuthorization,
+  type RelayAuditRecord,
+} from '../services/relay/enforce.js';
 
 // Extend Express Request type for API keys
 // Note: The base user type is declared in auth.ts with isAdmin/isEmployee flags
@@ -167,6 +171,54 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
       query: req.query
     });
 
+    // 3.5 RELAY AUTHORIZATION (OpenSpec: secure-api-relay-authorization)
+    //
+    // Behind the `api_relay` feature flag, OFF by default. Flag OFF =>
+    // 'passthrough' and the proxy behaves EXACTLY as before. Flag ON =>
+    // deny-by-default: the request must match a configured allow rule, fall
+    // within the caller's ceiling, and be mintable with minimal scopes. A
+    // denial is returned WITHOUT forwarding anything to Google, and the
+    // decision (allow or deny) is recorded to the audit trail.
+    const relayVerdict = await enforceRelayAuthorization({
+      organizationId: req.user?.organizationId,
+      path: googleApiPath,
+      method: req.method,
+      contentType: req.headers['content-type'] as string | undefined,
+      body: req.body,
+      caller: {
+        // Ceiling derives from the ACTUAL authority the caller was issued:
+        // API keys carry only their issued permissions (combinedAuth), and a
+        // JWT user's isAdmin comes from their real role. Non-admin callers
+        // with no relay-pattern permissions can reach nothing (narrow-never-
+        // widen).
+        isAdmin: req.user?.isAdmin === true,
+        patterns: Array.isArray(req.apiKey?.permissions) ? req.apiKey.permissions : [],
+      },
+    });
+
+    if (relayVerdict.mode === 'deny') {
+      logger.warn('Relay authorization denied', {
+        organizationId: req.user?.organizationId,
+        method: req.method,
+        path: googleApiPath,
+        reason: relayVerdict.reason
+      });
+
+      await updateAuditLogEntry(auditLogId, {
+        status: 'failure',
+        statusCode: 403,
+        error: `relay-denied: ${relayVerdict.reason}`,
+        relayDecision: relayVerdict.audit,
+        duration: Date.now() - startTime
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: 'Relay request denied by authorization policy',
+        reason: relayVerdict.reason
+      });
+    }
+
     // 4. GET GOOGLE CREDENTIALS
     const googleCreds = await getGoogleCredentials(req.user?.organizationId);
 
@@ -185,13 +237,16 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
     }
 
     // 5. PROXY TO GOOGLE
+    // Under enforcement ('forward'), mint ONLY the scopes the matched
+    // capability needs (design §6, ceiling 2). Flag off ('passthrough') =>
+    // null => the legacy broad scopes, exactly as before.
     const googleResponse = await proxyToGoogle({
       method: req.method,
       path: googleApiPath,
       body: req.body,
       query: req.query,
       headers: req.headers
-    }, googleCreds);
+    }, googleCreds, relayVerdict.mode === 'forward' ? relayVerdict.scopes : null);
 
     // 6. INTELLIGENT SYNC
     await intelligentSync({
@@ -202,10 +257,13 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
     });
 
     // 7. UPDATE AUDIT LOG (SUCCESS)
+    // When enforcement is active, the allow decision is recorded too — every
+    // decision is audited, allow and deny alike (design §12).
     await updateAuditLogEntry(auditLogId, {
       status: 'success',
       statusCode: googleResponse.status,
       responseBody: googleResponse.data,
+      relayDecision: relayVerdict.mode === 'forward' ? relayVerdict.audit : undefined,
       duration: Date.now() - startTime
     });
 
@@ -317,27 +375,37 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
 }
 
 /**
+ * LEGACY broad scopes — what the proxy has always minted when the relay
+ * feature flag is off. Under enforcement these are never used; the verdict's
+ * per-capability minimal scopes are minted instead.
+ */
+const LEGACY_BROAD_SCOPES = [
+  'https://www.googleapis.com/auth/admin.directory.user',
+  'https://www.googleapis.com/auth/admin.directory.group',
+  'https://www.googleapis.com/auth/admin.directory.orgunit',
+  'https://www.googleapis.com/auth/admin.directory.domain'
+];
+
+/**
  * Proxy request to Google Admin SDK
  * Uses Google SDK clients directly to avoid JWT scope/audience bugs
+ *
+ * `scopes`: the OAuth scopes to mint. `null` = legacy behavior (broad
+ * directory scopes, relay flag off). Under enforcement the caller passes the
+ * minimal scopes selected for the matched capability.
  */
 async function proxyToGoogle(
   proxyRequest: ProxyRequest,
-  credentials: GoogleCredentials
+  credentials: GoogleCredentials,
+  scopes: string[] | null = null
 ): Promise<{ status: number; data: any; headers: any }> {
 
   // Use manual JWT token generation to avoid Google Auth Library bugs
   // Build JWT manually and exchange for access token
-  const jwt = require('jsonwebtoken');
-
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
     iss: credentials.client_email,
-    scope: [
-      'https://www.googleapis.com/auth/admin.directory.user',
-      'https://www.googleapis.com/auth/admin.directory.group',
-      'https://www.googleapis.com/auth/admin.directory.orgunit',
-      'https://www.googleapis.com/auth/admin.directory.domain'
-    ].join(' '),
+    scope: (scopes ?? LEGACY_BROAD_SCOPES).join(' '),
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
@@ -535,6 +603,8 @@ async function updateAuditLogEntry(
     responseBody?: any;
     error?: string;
     duration: number;
+    /** Relay authorization decision (allow or deny) when enforcement ran. */
+    relayDecision?: RelayAuditRecord;
   }
 ): Promise<void> {
   await db.query(`
@@ -551,7 +621,8 @@ async function updateAuditLogEntry(
       responseBody: update.responseBody ? JSON.stringify(update.responseBody).substring(0, 5000) : null, // Limit size
       error: update.error,
       durationMs: update.duration,
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
+      ...(update.relayDecision ? { relayDecision: update.relayDecision } : {})
     }),
     auditLogId,
     update.status // Update the result column with success/failure
