@@ -1,5 +1,18 @@
 # Helios (clean monorepo)
 
+<!--
+Badges activate once this repo is public on GitHub under the company org. Replace
+OWNER/REPO with the real path. Kept here so the security posture is visible on the
+repo's front page — verify, don't trust.
+-->
+<!-- badges:start -->
+[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CodeQL](https://github.com/OWNER/REPO/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/OWNER/REPO/badge)](https://securityscorecards.dev/viewer/?uri=github.com/OWNER/REPO)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Security Policy](https://img.shields.io/badge/security-policy-brightgreen.svg)](SECURITY.md)
+<!-- badges:end -->
+
 Google Workspace security & management. **This is the consolidated, single-repo
 version** of Helios — built side-by-side with the old nested-repo layout so it can be
 tested and swapped in without risky in-place git surgery.
