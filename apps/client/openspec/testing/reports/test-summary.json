@@ -1,0 +1,11 @@
+{
+  "screenshots": [
+    "reports/screenshots/1-login-page.png",
+    "reports/screenshots/2-login-filled.png",
+    "reports/screenshots/3-after-login.png",
+    "reports/screenshots/4-users-page.png",
+    "reports/screenshots/5-settings-page.png"
+  ],
+  "timestamp": "2025-11-03T07:13:30.744Z",
+  "url": "http://localhost:3000"
+}

@@ -1,0 +1,67 @@
+# Production Dockerfile for Helios Client Frontend
+# Multi-stage build: Build in Node, serve with nginx
+
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies (npm ci installs all deps including devDependencies by default)
+COPY package*.json ./
+RUN npm ci
+
+# Copy source files
+COPY . .
+
+# Build arguments for environment configuration
+ARG VITE_API_URL=""
+ARG VITE_DEFAULT_THEME="helios-purple"
+
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_DEFAULT_THEME=$VITE_DEFAULT_THEME
+
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration for SPA
+RUN rm /etc/nginx/conf.d/default.conf
+COPY <<'EOF' /etc/nginx/conf.d/default.conf
+server {
+    listen 3000;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # Cache static assets
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA fallback - serve index.html for all routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "OK";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+
+EXPOSE 3000
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,526 @@
+{
+  "id": "approval-group",
+  "title": "Approval Group - Security Verification",
+  "description": "The Approval Group is a set of trusted individuals who can approve security-sensitive actions and recover admin access. They provide social verification that prevents single-point-of-failure attacks.",
+  "version": "1.0.0",
+
+  "overview": {
+    "purpose": "Approval Group members serve as a human verification layer. They can approve sensitive actions but cannot perform admin actions themselves. This separation of duties prevents any single compromised account from causing catastrophic damage.",
+    "keyPrinciple": "Different people on different devices. An attacker would need to compromise multiple accounts to bypass Approval Group verification."
+  },
+
+  "requirements": {
+    "minimumMembers": 2,
+    "maximumMembers": 10,
+    "composition": {
+      "rule": "Cannot all be Super Admins",
+      "rationale": "If all Approval Group members are Super Admins, compromising the admin group compromises the Approval Group. Including non-admins (HR, Executives) provides true separation.",
+      "recommended": [
+        {
+          "role": "CEO / COO",
+          "reason": "Has authority, different access patterns, rarely targeted in initial attacks"
+        },
+        {
+          "role": "HR Director",
+          "reason": "Already involved in onboarding/offboarding, understands personnel changes"
+        },
+        {
+          "role": "CFO",
+          "reason": "Financial controls perspective, different access patterns"
+        },
+        {
+          "role": "Security Officer",
+          "reason": "Security-focused, if organization has one"
+        },
+        {
+          "role": "Department Head",
+          "reason": "Senior enough to make decisions, not a primary attack target"
+        }
+      ]
+    },
+    "authentication": {
+      "method": "Helios local auth only",
+      "ssoAllowed": false,
+      "mfaRequired": true,
+      "rationale": "Approval Group must be accessible when SSO is compromised. Using Helios local auth ensures they can still log in and help recover."
+    }
+  },
+
+  "capabilities": {
+    "canDo": [
+      {
+        "action": "Approve admin deletion",
+        "description": "Second approval required when one admin tries to delete another"
+      },
+      {
+        "action": "Approve bulk operations",
+        "description": "Approve mass suspend/delete affecting 10+ users"
+      },
+      {
+        "action": "Lift password-change restrictions",
+        "description": "Allow admin to perform restricted actions before 24-hour window"
+      },
+      {
+        "action": "Approve MFA changes",
+        "description": "Allow admin to modify MFA settings after password change"
+      },
+      {
+        "action": "Initiate admin recovery",
+        "description": "Help locked-out admin regain access"
+      },
+      {
+        "action": "Approve security level changes",
+        "description": "Approve enabling/disabling Paranoid Mode"
+      },
+      {
+        "action": "Approve critical protection overrides",
+        "description": "Allow actions on critically protected accounts"
+      },
+      {
+        "action": "View security audit logs",
+        "description": "Read-only access to security events"
+      }
+    ],
+    "cannotDo": [
+      "Create, modify, or delete users",
+      "Modify Google Workspace settings",
+      "Access admin-only features",
+      "Change organization settings",
+      "Manage groups or OUs",
+      "Perform any write operations to Google",
+      "Approve their own requests"
+    ]
+  },
+
+  "approvalWorkflow": {
+    "requestCreation": {
+      "triggeredBy": "Admin attempts action requiring approval",
+      "notification": {
+        "channels": [
+          "Helios Teams (Security channel)",
+          "In-app notification",
+          "Push notification (if mobile app)"
+        ],
+        "excludeChannels": [
+          "Work email (may be compromised)"
+        ]
+      },
+      "expiry": "24 hours",
+      "requiredApprovers": 1
+    },
+    "approvalProcess": {
+      "steps": [
+        "Approval Group member receives notification",
+        "Member logs into Helios (local auth + MFA)",
+        "Member reviews request details (who, what, why)",
+        "Member approves or denies with optional notes",
+        "Requester is notified of decision",
+        "If approved, requester can proceed with action"
+      ],
+      "constraints": {
+        "selfApproval": false,
+        "sameDeviceApproval": false,
+        "mustBeDifferentPerson": true
+      }
+    },
+    "denyProcess": {
+      "steps": [
+        "Member clicks Deny with required reason",
+        "Request is marked as denied",
+        "Requester is notified",
+        "Security alert is logged",
+        "If multiple denials, consider enabling Lockdown Mode"
+      ]
+    }
+  },
+
+  "heliosTeamsIntegration": {
+    "autoCreatedChannels": [
+      {
+        "name": "Security",
+        "members": "All Approval Group members + Super Admins",
+        "purpose": "Security alerts, approval requests, incident coordination",
+        "systemMessages": true
+      },
+      {
+        "name": "Admins",
+        "members": "All Super Admins + Admins",
+        "purpose": "General admin communication",
+        "autoCreated": "When more than 1 admin exists"
+      }
+    ],
+    "approvalNotifications": {
+      "showIn": "Security channel",
+      "format": {
+        "type": "approval_request",
+        "fields": [
+          "Requester name and email",
+          "Action being requested",
+          "Target user/resource",
+          "Reason provided",
+          "Time remaining to approve"
+        ],
+        "actions": ["Approve", "Deny", "View Details"]
+      }
+    }
+  },
+
+  "singleAdminScenario": {
+    "problem": "Organization has only one Super Admin - who approves their actions?",
+    "solution": {
+      "requirement": "Must set up Approval Group before enabling Paranoid Mode",
+      "suggestedMembers": [
+        {
+          "type": "Executive",
+          "examples": ["CEO", "COO", "President"],
+          "reason": "Has ultimate authority, can make decisions"
+        },
+        {
+          "type": "HR",
+          "examples": ["HR Director", "HR Manager", "People Ops Lead"],
+          "reason": "Involved in personnel decisions"
+        },
+        {
+          "type": "Finance",
+          "examples": ["CFO", "Controller", "Finance Director"],
+          "reason": "Different department, controls perspective"
+        },
+        {
+          "type": "Operations",
+          "examples": ["COO", "Operations Manager"],
+          "reason": "Understands business impact"
+        }
+      ],
+      "flow": [
+        "Admin attempts to enable Paranoid Mode",
+        "System detects < 2 Approval Group members",
+        "Prompt: 'Set up Approval Group to continue'",
+        "Admin adds at least 2 members (not all admins)",
+        "Members receive invitation to create Helios account",
+        "Members set up local auth + MFA",
+        "Paranoid Mode can now be enabled"
+      ]
+    }
+  },
+
+  "memberManagement": {
+    "adding": {
+      "whoCanAdd": "Super Admins",
+      "process": [
+        "Admin opens Approval Group settings",
+        "Enters member email and selects role/title",
+        "System sends invitation to member",
+        "Member creates Helios account (local auth)",
+        "Member sets up MFA",
+        "Member is now active in Approval Group"
+      ],
+      "restrictions": {
+        "inParanoidMode": "Adding members requires existing Approval Group approval",
+        "rationale": "Prevents attacker from adding themselves to Approval Group"
+      }
+    },
+    "removing": {
+      "whoCanRemove": "Super Admins",
+      "process": [
+        "Admin initiates removal",
+        "If in Paranoid Mode, requires Approval Group approval",
+        "Cannot remove if would leave < 2 members",
+        "Member is notified of removal",
+        "Member's Helios account is deactivated"
+      ]
+    },
+    "afterPasswordChange": {
+      "restrictions": [
+        "Cannot add new Approval Group members",
+        "Cannot remove Approval Group members",
+        "Cannot modify Approval Group settings"
+      ],
+      "rationale": "If attacker changes admin password, they cannot modify the Approval Group to bypass protections.",
+      "duration": "24 hours or until Approval Group lifts restriction"
+    }
+  },
+
+  "setupWizard": {
+    "trigger": "When enabling Paranoid Mode without sufficient Approval Group",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Understanding Approval Group",
+        "content": "The Approval Group provides a human verification layer for sensitive actions. Members can approve security actions but cannot perform admin tasks themselves."
+      },
+      {
+        "step": 2,
+        "title": "Add Members",
+        "content": "Add at least 2 members. We recommend including people outside IT - like HR, Finance, or Executives.",
+        "form": {
+          "fields": [
+            {"name": "email", "type": "email", "required": true},
+            {"name": "name", "type": "text", "required": true},
+            {"name": "role", "type": "select", "options": ["Executive", "HR", "Finance", "Security", "Operations", "Other"]}
+          ],
+          "minEntries": 2,
+          "maxEntries": 10,
+          "validation": "Cannot all be current Super Admins"
+        }
+      },
+      {
+        "step": 3,
+        "title": "Invitations Sent",
+        "content": "We've sent invitations to your Approval Group members. They'll need to create a Helios account with a password and MFA.",
+        "showPending": true
+      },
+      {
+        "step": 4,
+        "title": "Ready",
+        "content": "Your Approval Group is set up. You can now enable Paranoid Mode.",
+        "showMembers": true,
+        "action": "Enable Paranoid Mode"
+      }
+    ]
+  },
+
+  "dynamicMembership": {
+    "overview": {
+      "purpose": "Automatically maintain Approval Group membership based on user attributes (title, department, etc.) to prevent orphaned groups when people leave or change roles.",
+      "principle": "Dynamic rules provide automation, static members provide stability. Both work together.",
+      "benefits": [
+        "New CFO automatically joins when hired",
+        "Old CFO automatically leaves when they depart",
+        "No manual maintenance required",
+        "Scales with organizational changes"
+      ]
+    },
+
+    "membershipTypes": {
+      "dynamic": {
+        "description": "Members added/removed automatically based on rules",
+        "source": "Dynamic group or attribute-based rules",
+        "canBeRemovedByAdmin": false,
+        "followsGracePeriod": true
+      },
+      "static": {
+        "description": "Members added manually by admins",
+        "canBeRemovedByAdmin": true,
+        "cannotBeRemovedByDynamicRules": true,
+        "minimumRequired": 1,
+        "rationale": "At least 1 static member ensures group cannot be orphaned if dynamic rules match nobody"
+      }
+    },
+
+    "dynamicRules": {
+      "ruleTypes": [
+        {
+          "type": "title_match",
+          "description": "Match users whose title contains specific values",
+          "example": "Title contains 'CEO' OR 'CFO' OR 'CHRO' OR 'HR Director'",
+          "recommendedTitles": [
+            "CEO", "COO", "CFO", "CHRO", "CTO", "CIO", "CISO",
+            "President", "Vice President",
+            "HR Director", "People Ops Director",
+            "General Counsel", "Chief Legal Officer",
+            "Controller", "Finance Director"
+          ]
+        },
+        {
+          "type": "dynamic_group",
+          "description": "Connect to an existing Helios dynamic group",
+          "example": "Members of 'Executive Team' dynamic group",
+          "requirement": "Dynamic group must exist and have members"
+        },
+        {
+          "type": "department_and_level",
+          "description": "Match by department and seniority",
+          "example": "Department = 'Executive' OR (Department = 'HR' AND Title contains 'Director')"
+        }
+      ],
+      "ruleValidation": {
+        "previewRequired": true,
+        "showMatchedUsers": true,
+        "warnIfZeroMatches": true,
+        "warnIfOnlyAdmins": true,
+        "blockIfResultBelowMinimum": true
+      }
+    },
+
+    "memberStates": {
+      "active": {
+        "description": "Member has completed Helios auth setup and can approve requests",
+        "canApprove": true,
+        "countsTowardMinimum": true
+      },
+      "pending": {
+        "description": "Member matched by rules but hasn't completed Helios auth setup",
+        "canApprove": false,
+        "countsTowardMinimum": false,
+        "reminder": "Invited users receive reminders at 1 day, 3 days, 7 days"
+      },
+      "grace": {
+        "description": "Member no longer matches rules but is in grace period before removal",
+        "canApprove": true,
+        "countsTowardMinimum": true,
+        "duration": "7 days",
+        "rationale": "Allows smooth transitions when people change roles"
+      },
+      "inactive": {
+        "description": "Member removed (grace period expired or manually removed)",
+        "canApprove": false,
+        "countsTowardMinimum": false
+      }
+    },
+
+    "memberLifecycle": {
+      "joining": {
+        "trigger": "User matches dynamic rule (e.g., title changed to 'CFO')",
+        "steps": [
+          "System detects user matches Approval Group rule",
+          "User added to Approval Group as 'Pending'",
+          "Invitation sent to create Helios account",
+          "User creates account (local auth + MFA)",
+          "Status changes to 'Active'",
+          "User can now approve requests"
+        ],
+        "securityCheck": {
+          "inParanoidMode": true,
+          "condition": "Title change that causes user to join Approval Group",
+          "requirement": "Requires existing Approval Group approval",
+          "rationale": "Prevents attacker from promoting accomplice into Approval Group"
+        }
+      },
+      "leaving": {
+        "trigger": "User no longer matches dynamic rule (e.g., title changed from 'CFO' to 'Advisor')",
+        "steps": [
+          "System detects user no longer matches",
+          "Status changes to 'Grace'",
+          "User notified they will be removed in 7 days",
+          "User can still approve during grace period",
+          "After 7 days, status changes to 'Inactive'",
+          "If removal would leave < 2 active members, alert admins"
+        ],
+        "gracePeriod": {
+          "duration": "7 days",
+          "canBeExtended": true,
+          "canBeSkipped": false,
+          "rationale": "Allows time to add replacement before member loses access"
+        }
+      }
+    },
+
+    "securityProtections": {
+      "titleChangeApproval": {
+        "description": "Title changes that affect Approval Group membership require approval in Paranoid Mode",
+        "scenarios": [
+          {
+            "scenario": "Title change would ADD user to Approval Group",
+            "example": "Changing title to 'CFO' (matches Approval Group rule)",
+            "requirement": "Requires Approval Group approval before change takes effect",
+            "rationale": "Prevents attacker from promoting accomplice"
+          },
+          {
+            "scenario": "Title change would REMOVE user from Approval Group",
+            "example": "Changing title from 'CFO' to 'Advisor'",
+            "requirement": "Allowed immediately, but triggers 7-day grace period",
+            "notification": "All Approval Group members notified"
+          }
+        ],
+        "whoCanChangeTitles": {
+          "hrRole": "Can change titles freely (except security-sensitive scenarios above)",
+          "itAdmin": "Can change titles freely (except security-sensitive scenarios above)",
+          "user": "Cannot change own title, can request change",
+          "adminAfterPasswordChange": "Cannot change titles that affect Approval Group for 24 hours"
+        }
+      },
+      "minimumMemberEnforcement": {
+        "minimum": 2,
+        "staticMinimum": 1,
+        "enforced": true,
+        "actions": [
+          "Cannot save rules that would result in < 2 members",
+          "Cannot remove static member if only 1 remains",
+          "Alert when approaching minimum (3 or fewer active members)",
+          "Block title changes that would drop below minimum"
+        ]
+      },
+      "orphanPrevention": {
+        "staticMemberRequired": true,
+        "rationale": "If all members are dynamic and rules match nobody, group would be orphaned. At least 1 static member ensures recovery is always possible.",
+        "recommendation": "Add Board Member, Owner, or Founder as static member - someone who won't leave easily"
+      }
+    },
+
+    "uiComponents": {
+      "ruleBuilder": {
+        "description": "Interface for creating dynamic membership rules",
+        "features": [
+          "Title autocomplete from existing titles in org",
+          "Live preview of matched users",
+          "Warning if all matches are admins",
+          "Warning if no matches",
+          "Test rule before saving"
+        ]
+      },
+      "membershipView": {
+        "description": "View showing all Approval Group members",
+        "sections": [
+          "Dynamic Members (from rules) - shows which rule matched",
+          "Static Members (manually added)",
+          "Pending Members (awaiting auth setup)",
+          "Grace Period Members (leaving soon)"
+        ],
+        "actions": [
+          "Add static member",
+          "Edit rules",
+          "Extend grace period",
+          "Resend invitation"
+        ]
+      }
+    }
+  },
+
+  "emergencyAccess": {
+    "scenario": "All admins are locked out - how does the organization recover?",
+    "process": [
+      {
+        "tier": 1,
+        "name": "Approval Group Recovery",
+        "process": [
+          "Locked-out admin contacts Approval Group member out-of-band (phone, in-person)",
+          "Approval Group member logs into Helios",
+          "Member goes to Security > Emergency Recovery",
+          "Member initiates recovery for the admin",
+          "System generates one-time login link (valid 1 hour)",
+          "Admin uses link, sets new password, verifies MFA",
+          "24-hour restriction still applies"
+        ],
+        "requirements": "At least one Approval Group member can log in"
+      },
+      {
+        "tier": 2,
+        "name": "Recovery Codes",
+        "process": [
+          "Admin locates their recovery codes (stored securely)",
+          "Goes to Helios login page, clicks 'Use Recovery Code'",
+          "Enters recovery code",
+          "Completes MFA verification",
+          "Sets new password",
+          "All Approval Group members are notified"
+        ],
+        "requirements": "Admin has access to recovery codes"
+      },
+      {
+        "tier": 3,
+        "name": "Domain Verification",
+        "process": [
+          "Admin proves domain ownership",
+          "Goes to Helios login page, clicks 'Emergency Recovery'",
+          "Selects 'Domain Verification'",
+          "System provides unique DNS TXT record value",
+          "Admin adds TXT record to domain DNS",
+          "Helios verifies ownership",
+          "Grants emergency Super Admin access",
+          "All users are notified of emergency recovery"
+        ],
+        "requirements": "Admin has access to domain DNS"
+      }
+    ]
+  }
+}

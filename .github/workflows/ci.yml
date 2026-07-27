@@ -1,0 +1,42 @@
+name: CI
+
+# The gate that makes the enforcement tests real. The deny-by-default route
+# coverage and mount-coverage tests only enforce anything if they RUN on every
+# change — this is what would have stopped the "disable auth for testing" commits
+# from ever landing on main.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/client/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Typecheck
+        run: node node_modules/typescript/bin/tsc --noEmit
+      - name: Test (includes route-auth-coverage + route-mount-coverage + relay engine)
+        run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/client/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build
+        run: npm run build

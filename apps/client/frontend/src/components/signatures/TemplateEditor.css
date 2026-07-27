@@ -1,0 +1,421 @@
+.template-editor {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #e5e7eb;
+  margin: 0 4px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toolbar-button:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.toolbar-button.active {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: var(--theme-primary);
+}
+
+.toolbar-button svg {
+  flex-shrink: 0;
+}
+
+.font-size-icon {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.color-icon {
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--theme-primary);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 2px;
+}
+
+.merge-field-button {
+  padding: 0 12px;
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: var(--theme-primary);
+}
+
+.merge-field-button:hover {
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.merge-field-button span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Dropdowns */
+.toolbar-dropdown {
+  position: relative;
+}
+
+.dropdown-trigger {
+  gap: 2px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 140px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.font-family-menu {
+  min-width: 180px;
+}
+
+.color-picker {
+  padding: 8px;
+  min-width: auto;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+/* Merge Field Dropdown */
+.merge-field-dropdown {
+  position: absolute;
+  top: 50px;
+  right: 80px;
+  width: 320px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Editor Content */
+.editor-content-wrapper {
+  flex: 1;
+  min-height: 200px;
+  position: relative;
+}
+
+.editor-content {
+  padding: 16px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  outline: none;
+}
+
+.editor-content:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.editor-content:focus {
+  background: #fefefe;
+}
+
+.editor-content a {
+  color: var(--theme-primary);
+}
+
+.editor-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.editor-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.editor-content td,
+.editor-content th {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+}
+
+/* Merge field styling in editor */
+.editor-content .merge-field {
+  display: inline;
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 12px;
+  color: var(--theme-primary);
+  white-space: nowrap;
+}
+
+/* Source Mode */
+.editor-source {
+  width: 100%;
+  min-height: 200px;
+  max-height: 400px;
+  padding: 16px;
+  border: none;
+  resize: none;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2937;
+  background: #f9fafb;
+  outline: none;
+}
+
+.editor-source:focus {
+  background: white;
+}
+
+/* Dialogs */
+.editor-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.editor-dialog {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 400px;
+  max-width: 90%;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.dialog-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.dialog-body {
+  padding: 20px;
+}
+
+.dialog-field {
+  margin-bottom: 16px;
+}
+
+.dialog-field:last-child {
+  margin-bottom: 0;
+}
+
+.dialog-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dialog-field input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  transition: border-color 0.15s;
+}
+
+.dialog-field input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.dialog-footer .btn-primary,
+.dialog-footer .btn-secondary {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.dialog-footer .btn-primary {
+  background: var(--theme-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dialog-footer .btn-primary:hover:not(:disabled) {
+  background: #7c3aed;
+}
+
+.dialog-footer .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog-footer .btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dialog-footer .btn-secondary:hover {
+  background: #f9fafb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    gap: 2px;
+    padding: 6px 8px;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+
+  .toolbar-button {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+  }
+
+  .merge-field-button span {
+    display: none;
+  }
+
+  .merge-field-dropdown {
+    width: 280px;
+    right: 10px;
+  }
+}

@@ -1,0 +1,268 @@
+.helpdesk-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f9fafb;
+}
+
+.helpdesk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.helpdesk-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.helpdesk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 8px;
+  color: var(--theme-primary);
+}
+
+.stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.helpdesk-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.tickets-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.panel-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.view-tabs .tab {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-tabs .tab:hover {
+  background: #f3f4f6;
+}
+
+.view-tabs .tab.active {
+  background: #ede9fe;
+  color: var(--theme-primary);
+}
+
+.panel-filters {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+}
+
+.search-box .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group .icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  margin: 24px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+}
+
+.error-message .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-primary {
+  background: var(--theme-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--theme-primary-hover);
+}
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+}
+
+/* Priority colors */
+.priority-urgent {
+  color: #dc2626;
+}
+
+.priority-high {
+  color: #ea580c;
+}
+
+.priority-normal {
+  color: #059669;
+}
+
+.priority-low {
+  color: #6b7280;
+}

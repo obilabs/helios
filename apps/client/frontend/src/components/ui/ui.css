@@ -1,0 +1,1203 @@
+/* ========================================
+   HELIOS UI COMPONENT LIBRARY - BASE STYLES
+   Design System Compliant
+   ======================================== */
+
+/* ========================================
+   DESIGN TOKENS
+   ======================================== */
+
+:root {
+  /* Primary - Purple */
+  --primary-50: #faf5ff;
+  --primary-100: #f3e8ff;
+  --primary-200: #e9d5ff;
+  --primary-300: #d8b4fe;
+  --primary-400: #c084fc;
+  --primary-500: #a855f7;
+  --primary-600: var(--theme-primary);
+  --primary-700: var(--theme-primary-hover);
+  --primary-800: #6d28d9;
+  --primary-900: #5b21b6;
+
+  /* Neutral Grays */
+  --gray-50: #fafbfc;
+  --gray-100: #f9fafb;
+  --gray-200: #f3f4f6;
+  --gray-300: #e5e7eb;
+  --gray-400: #d1d5db;
+  --gray-500: #9ca3af;
+  --gray-600: #6b7280;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #1a1a1a;
+
+  /* Semantic Colors */
+  --success-50: #f0fdf4;
+  --success-500: #22c55e;
+  --success-600: #10b981;
+
+  --warning-50: #fef3c7;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+
+  --error-50: #fee2e2;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+
+  --info-50: #eff6ff;
+  --info-500: #3b82f6;
+  --info-600: #2563eb;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* Typography */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+/* ========================================
+   THEME VARIANTS
+   ======================================== */
+
+/* Helios Purple (Default) */
+[data-theme="helios-purple"] {
+  --primary-50: #faf5ff;
+  --primary-100: #f3e8ff;
+  --primary-200: #e9d5ff;
+  --primary-300: #d8b4fe;
+  --primary-400: #c084fc;
+  --primary-500: #a855f7;
+  --primary-600: var(--theme-primary);
+  --primary-700: var(--theme-primary-hover);
+  --primary-800: #6d28d9;
+  --primary-900: #5b21b6;
+}
+
+/* Corporate Blue */
+[data-theme="corporate-blue"] {
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+}
+
+/* Sophisticated Purple */
+[data-theme="sophisticated-purple"] {
+  --primary-50: #f5f3ff;
+  --primary-100: #ede9fe;
+  --primary-200: #ddd6fe;
+  --primary-300: #c4b5fd;
+  --primary-400: var(--theme-primary-end);
+  --primary-500: var(--theme-primary);
+  --primary-600: var(--theme-primary-hover);
+  --primary-700: #6d28d9;
+  --primary-800: #5b21b6;
+  --primary-900: #4c1d95;
+}
+
+/* Google Blue */
+[data-theme="google-blue"] {
+  --primary-50: #e8f0fe;
+  --primary-100: #d2e3fc;
+  --primary-200: #aecbfa;
+  --primary-300: #8ab4f8;
+  --primary-400: #669df6;
+  --primary-500: #4285f4;
+  --primary-600: #1a73e8;
+  --primary-700: #1967d2;
+  --primary-800: #185abc;
+  --primary-900: #174ea6;
+}
+
+/* Modern Teal */
+[data-theme="modern-teal"] {
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #14b8a6;
+  --primary-600: #0d9488;
+  --primary-700: #0f766e;
+  --primary-800: #115e59;
+  --primary-900: #134e4a;
+}
+
+/* Soft Purple */
+[data-theme="default"] {
+  --primary-50: #faf5ff;
+  --primary-100: #f3e8ff;
+  --primary-200: #e9d5ff;
+  --primary-300: #d8b4fe;
+  --primary-400: #c084fc;
+  --primary-500: #a855f7;
+  --primary-600: #9333ea;
+  --primary-700: #7e22ce;
+  --primary-800: #6b21a8;
+  --primary-900: #581c87;
+}
+
+/* Dark Mode */
+[data-theme="helios-dark"] {
+  --primary-50: #1e1b4b;
+  --primary-100: #312e81;
+  --primary-200: #3730a3;
+  --primary-300: #4338ca;
+  --primary-400: #4f46e5;
+  --primary-500: #6366f1;
+  --primary-600: #818cf8;
+  --primary-700: #a5b4fc;
+  --primary-800: #c7d2fe;
+  --primary-900: #e0e7ff;
+  --gray-50: #111827;
+  --gray-100: #1f2937;
+  --gray-200: #374151;
+  --gray-300: #4b5563;
+  --gray-400: #6b7280;
+  --gray-500: #9ca3af;
+  --gray-600: #d1d5db;
+  --gray-700: #e5e7eb;
+  --gray-800: #f3f4f6;
+  --gray-900: #f9fafb;
+}
+
+
+
+/* ========================================
+   MODAL BASE COMPONENT
+   ======================================== */
+
+.helios-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--transition-normal);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.helios-modal-content {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow-xl);
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp var(--transition-normal);
+  z-index: 1001;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.helios-modal-content.size-small {
+  width: 90%;
+  max-width: 400px;
+}
+
+.helios-modal-content.size-medium {
+  width: 90%;
+  max-width: 600px;
+}
+
+.helios-modal-content.size-large {
+  width: 90%;
+  max-width: 900px;
+}
+
+.helios-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xl);
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.helios-modal-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.helios-modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--gray-200);
+  border-radius: 6px;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.helios-modal-close:hover {
+  background: var(--gray-300);
+  color: var(--gray-700);
+}
+
+.helios-modal-body {
+  padding: var(--space-xl);
+}
+
+/* ========================================
+   CONFIRM DIALOG COMPONENT
+   ======================================== */
+
+.helios-confirm-dialog .helios-modal-content {
+  max-width: 500px;
+}
+
+.helios-confirm-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.helios-confirm-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.helios-confirm-icon.variant-danger {
+  background: var(--error-50);
+  color: var(--error-600);
+}
+
+.helios-confirm-icon.variant-warning {
+  background: var(--warning-50);
+  color: var(--warning-600);
+}
+
+.helios-confirm-icon.variant-info {
+  background: var(--info-50);
+  color: var(--info-600);
+}
+
+.helios-confirm-icon.variant-success {
+  background: var(--success-50);
+  color: var(--success-600);
+}
+
+.helios-confirm-content h3 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.helios-confirm-content p {
+  font-size: var(--text-base);
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.helios-confirm-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: flex-end;
+  margin-top: var(--space-xl);
+}
+
+.helios-btn {
+  padding: 7px 14px;
+  border-radius: 5px;
+  font-size: var(--text-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.helios-btn-secondary {
+  background: white;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-400);
+}
+
+.helios-btn-secondary:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-500);
+}
+
+.helios-btn-danger {
+  background: var(--error-600);
+  color: white;
+}
+
+.helios-btn-danger:hover {
+  background: var(--error-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.helios-btn-warning {
+  background: var(--warning-600);
+  color: white;
+}
+
+.helios-btn-warning:hover {
+  background: var(--warning-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.helios-btn-info {
+  background: var(--info-600);
+  color: white;
+}
+
+.helios-btn-info:hover {
+  background: var(--info-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.helios-btn-success {
+  background: var(--success-600);
+  color: white;
+}
+
+.helios-btn-success:hover {
+  background: var(--success-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.helios-btn-primary {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--theme-primary-end) 100%);
+  color: white;
+}
+
+.helios-btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-700) 0%, #9333ea 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   USER SELECTOR COMPONENT
+   ======================================== */
+
+.helios-user-selector {
+  position: relative;
+}
+
+.helios-user-selector-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--space-sm);
+}
+
+.helios-user-selector-input {
+  position: relative;
+  width: 100%;
+}
+
+.helios-user-selector-field {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--gray-400);
+  border-radius: 6px;
+  font-size: var(--text-base);
+  color: var(--gray-700);
+  transition: all var(--transition-fast);
+}
+
+.helios-user-selector-field:focus {
+  outline: none;
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+.helios-user-selector-field::placeholder {
+  color: var(--gray-500);
+}
+
+.helios-user-selector-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-500);
+  pointer-events: none;
+}
+
+.helios-user-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.helios-user-selector-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.helios-user-selector-option:hover {
+  background: var(--gray-100);
+}
+
+.helios-user-selector-option.selected {
+  background: var(--primary-50);
+}
+
+.helios-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--theme-primary-end) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+
+.helios-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.helios-user-name {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helios-user-email {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helios-user-selector-loading {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+.helios-user-selector-empty {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+.helios-user-selector-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.helios-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 4px 8px 4px 4px;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: 12px;
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+}
+
+.helios-user-chip .helios-user-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.helios-user-chip-remove {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.helios-user-chip-remove:hover {
+  background: var(--primary-200);
+  color: var(--gray-800);
+}
+
+/* ========================================
+   SELECTABLE BLOCK COMPONENT
+   ======================================== */
+
+.helios-selectable-block {
+  border: 2px solid var(--gray-300);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: white;
+}
+
+.helios-selectable-block:hover {
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.helios-selectable-block.selected {
+  border-color: var(--primary-600);
+  background: var(--primary-50);
+}
+
+.helios-block-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.helios-block-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.helios-selectable-block.selected .helios-block-icon {
+  background: var(--primary-100);
+  color: var(--primary-600);
+}
+
+.helios-block-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.helios-block-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.helios-block-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.helios-block-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 9px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.helios-block-badge.variant-info {
+  background: var(--info-50);
+  color: var(--info-600);
+}
+
+.helios-block-badge.variant-success {
+  background: var(--success-50);
+  color: var(--success-600);
+}
+
+.helios-block-badge.variant-warning {
+  background: var(--warning-50);
+  color: var(--warning-600);
+}
+
+.helios-block-badge.variant-danger {
+  background: var(--error-50);
+  color: var(--error-600);
+}
+
+.helios-block-description {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  margin: 0;
+}
+
+.helios-block-expanded {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--gray-200);
+  animation: expandBlock var(--transition-normal);
+}
+
+@keyframes expandBlock {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.helios-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--primary-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.helios-text-muted {
+  color: var(--gray-600);
+}
+
+.helios-text-error {
+  color: var(--error-600);
+}
+
+.helios-text-success {
+  color: var(--success-600);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .helios-modal-content {
+    width: 95% !important;
+    max-width: none;
+  }
+
+  .helios-confirm-actions {
+    flex-direction: column;
+  }
+
+  .helios-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   TREE SELECT COMPONENT
+   ======================================== */
+
+.helios-tree-select {
+  position: relative;
+  width: 100%;
+}
+
+.helios-tree-select.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.helios-tree-select-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--space-sm);
+}
+
+.helios-tree-select-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px 12px;
+  border: 1px solid var(--gray-400);
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 38px;
+}
+
+.helios-tree-select-trigger:hover {
+  border-color: var(--gray-500);
+}
+
+.helios-tree-select-trigger.open {
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+.helios-tree-select-icon {
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.helios-tree-select-value {
+  flex: 1;
+  font-size: var(--text-base);
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helios-tree-select-value.placeholder {
+  color: var(--gray-500);
+}
+
+.helios-tree-select-clear {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--gray-200);
+  color: var(--gray-600);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.helios-tree-select-clear:hover {
+  background: var(--gray-300);
+  color: var(--gray-700);
+}
+
+.helios-tree-select-arrow {
+  color: var(--gray-500);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.helios-tree-select-arrow.open {
+  transform: rotate(180deg);
+}
+
+.helios-tree-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.helios-tree-select-search {
+  position: relative;
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.helios-tree-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-500);
+  pointer-events: none;
+}
+
+.helios-tree-select-search input {
+  width: 100%;
+  padding: 6px 28px 6px 32px;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+  transition: all var(--transition-fast);
+}
+
+.helios-tree-select-search input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.helios-tree-select-search input::placeholder {
+  color: var(--gray-400);
+}
+
+.helios-tree-search-clear {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: var(--gray-200);
+  color: var(--gray-600);
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.helios-tree-search-clear:hover {
+  background: var(--gray-300);
+}
+
+.helios-tree-select-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: var(--space-xs) 0;
+}
+
+.helios-tree-select-empty {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--gray-500);
+  font-size: var(--text-sm);
+}
+
+.helios-tree-node {
+  user-select: none;
+}
+
+.helios-tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.helios-tree-node-content:hover {
+  background: var(--gray-100);
+}
+
+.helios-tree-node-content.selected {
+  background: var(--primary-50);
+}
+
+.helios-tree-expand {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--gray-500);
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+.helios-tree-expand.has-children {
+  cursor: pointer;
+}
+
+.helios-tree-expand.has-children:hover {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.helios-tree-node-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helios-tree-node-content.selected .helios-tree-node-name {
+  color: var(--primary-700);
+  font-weight: 500;
+}
+
+.helios-tree-node-count {
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.helios-tree-node-content.selected .helios-tree-node-count {
+  background: var(--primary-100);
+  color: var(--primary-600);
+}
+
+.helios-tree-check {
+  color: var(--primary-600);
+  flex-shrink: 0;
+}
+
+.helios-tree-children {
+  /* Children are indented via paddingLeft in JS */
+}
+
+.helios-tree-select-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.helios-tree-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px 8px 4px 10px;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: 12px;
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+}
+
+.helios-tree-chip-remove {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+  transition: all var(--transition-fast);
+}
+
+.helios-tree-chip-remove:hover {
+  background: var(--primary-200);
+  color: var(--gray-700);
+}
+
+/* ========================================
+   TOGGLE COMPONENT - Standardized Switch
+   Use this for all on/off settings
+   ======================================== */
+
+.helios-toggle-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.helios-toggle-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.helios-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.helios-toggle-label {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--gray-900);
+  cursor: pointer;
+}
+
+.helios-toggle-description {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  line-height: 1.4;
+}
+
+.helios-toggle {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.helios-toggle:focus-visible .helios-toggle-track {
+  box-shadow: 0 0 0 2px var(--primary-200);
+}
+
+.helios-toggle-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  background: var(--gray-300);
+  transition: background var(--transition-fast);
+}
+
+.helios-toggle.checked .helios-toggle-track {
+  background: var(--primary-600, #8b5cf6);
+}
+
+.helios-toggle-thumb {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform var(--transition-fast);
+}
+
+/* Medium size (default) - 44x24px */
+.helios-toggle-medium .helios-toggle-track {
+  width: 44px;
+  height: 24px;
+}
+
+.helios-toggle-medium .helios-toggle-thumb {
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  top: 2px;
+}
+
+.helios-toggle-medium.checked .helios-toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* Small size - 36x20px */
+.helios-toggle-small .helios-toggle-track {
+  width: 36px;
+  height: 20px;
+}
+
+.helios-toggle-small .helios-toggle-thumb {
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+}
+
+.helios-toggle-small.checked .helios-toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* Disabled state */
+.helios-toggle:disabled {
+  cursor: not-allowed;
+}
+
+.helios-toggle:disabled .helios-toggle-track {
+  background: var(--gray-200);
+}
+
+.helios-toggle:disabled.checked .helios-toggle-track {
+  background: var(--primary-300);
+}

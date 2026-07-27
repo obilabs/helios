@@ -1,0 +1,29 @@
+{
+  "name": "helios-openspec-testing",
+  "version": "1.0.0",
+  "description": "OpenSpec automated testing framework for Helios Client Portal",
+  "main": "index.js",
+  "scripts": {
+    "generate": "ts-node generate-tests.ts",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+    "test:auth": "playwright test tests/example-authentication.test.ts",
+    "test:bulk": "playwright test tests/example-bulk-operations.test.ts",
+    "test:ci": "playwright test --reporter=junit,html",
+    "fixtures:create": "ts-node helpers/create-fixtures.ts",
+    "db:seed": "ts-node helpers/seed-database.ts"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.0.0",
+    "@playwright/test": "^1.40.0",
+    "pg": "^8.11.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.0"
+  }
+}

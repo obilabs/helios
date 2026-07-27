@@ -1,0 +1,110 @@
+/**
+ * Standardized API Error Codes
+ *
+ * These codes provide consistent, machine-readable error identification
+ * across all API endpoints. Use these in error responses for easier
+ * client-side error handling and debugging.
+ */
+
+export enum ErrorCode {
+  // Authentication errors (401)
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
+  TOKEN_INVALID = 'TOKEN_INVALID',
+  API_KEY_INVALID = 'API_KEY_INVALID',
+  API_KEY_EXPIRED = 'API_KEY_EXPIRED',
+
+  // Authorization errors (403)
+  FORBIDDEN = 'FORBIDDEN',
+  INSUFFICIENT_PERMISSIONS = 'INSUFFICIENT_PERMISSIONS',
+  ROLE_REQUIRED = 'ROLE_REQUIRED',
+
+  // Validation errors (400)
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  INVALID_INPUT = 'INVALID_INPUT',
+  MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
+  INVALID_FORMAT = 'INVALID_FORMAT',
+
+  // Resource errors (404, 409)
+  NOT_FOUND = 'NOT_FOUND',
+  RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
+  USER_NOT_FOUND = 'USER_NOT_FOUND',
+  GROUP_NOT_FOUND = 'GROUP_NOT_FOUND',
+  ORGANIZATION_NOT_FOUND = 'ORGANIZATION_NOT_FOUND',
+  ALREADY_EXISTS = 'ALREADY_EXISTS',
+  CONFLICT = 'CONFLICT',
+
+  // Rate limiting (429)
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  TOO_MANY_REQUESTS = 'TOO_MANY_REQUESTS',
+
+  // Server errors (500)
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+  DATABASE_ERROR = 'DATABASE_ERROR',
+  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+  EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
+
+  // Integration errors
+  GOOGLE_WORKSPACE_ERROR = 'GOOGLE_WORKSPACE_ERROR',
+  SYNC_ERROR = 'SYNC_ERROR',
+  CONFIGURATION_ERROR = 'CONFIGURATION_ERROR',
+
+  // Setup errors
+  SETUP_REQUIRED = 'SETUP_REQUIRED',
+  SETUP_INCOMPLETE = 'SETUP_INCOMPLETE',
+  ALREADY_CONFIGURED = 'ALREADY_CONFIGURED',
+}
+
+/**
+ * HTTP status code mapping for error codes
+ */
+export const ErrorStatusMap: Record<ErrorCode, number> = {
+  // 401
+  [ErrorCode.UNAUTHORIZED]: 401,
+  [ErrorCode.TOKEN_EXPIRED]: 401,
+  [ErrorCode.TOKEN_INVALID]: 401,
+  [ErrorCode.API_KEY_INVALID]: 401,
+  [ErrorCode.API_KEY_EXPIRED]: 401,
+
+  // 403
+  [ErrorCode.FORBIDDEN]: 403,
+  [ErrorCode.INSUFFICIENT_PERMISSIONS]: 403,
+  [ErrorCode.ROLE_REQUIRED]: 403,
+
+  // 400
+  [ErrorCode.VALIDATION_ERROR]: 400,
+  [ErrorCode.INVALID_INPUT]: 400,
+  [ErrorCode.MISSING_REQUIRED_FIELD]: 400,
+  [ErrorCode.INVALID_FORMAT]: 400,
+
+  // 404
+  [ErrorCode.NOT_FOUND]: 404,
+  [ErrorCode.RESOURCE_NOT_FOUND]: 404,
+  [ErrorCode.USER_NOT_FOUND]: 404,
+  [ErrorCode.GROUP_NOT_FOUND]: 404,
+  [ErrorCode.ORGANIZATION_NOT_FOUND]: 404,
+
+  // 409
+  [ErrorCode.ALREADY_EXISTS]: 409,
+  [ErrorCode.CONFLICT]: 409,
+
+  // 429
+  [ErrorCode.RATE_LIMIT_EXCEEDED]: 429,
+  [ErrorCode.TOO_MANY_REQUESTS]: 429,
+
+  // 500
+  [ErrorCode.INTERNAL_ERROR]: 500,
+  [ErrorCode.DATABASE_ERROR]: 500,
+  [ErrorCode.SERVICE_UNAVAILABLE]: 503,
+  [ErrorCode.EXTERNAL_SERVICE_ERROR]: 502,
+
+  // Integration
+  [ErrorCode.GOOGLE_WORKSPACE_ERROR]: 502,
+  [ErrorCode.SYNC_ERROR]: 500,
+  [ErrorCode.CONFIGURATION_ERROR]: 500,
+
+  // Setup
+  [ErrorCode.SETUP_REQUIRED]: 503,
+  [ErrorCode.SETUP_INCOMPLETE]: 503,
+  [ErrorCode.ALREADY_CONFIGURED]: 409,
+};

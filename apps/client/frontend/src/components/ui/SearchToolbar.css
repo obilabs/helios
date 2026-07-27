@@ -1,0 +1,253 @@
+/**
+ * SearchToolbar Styles
+ *
+ * All toolbar elements have uniform height for visual consistency.
+ * Uses design tokens for theming support.
+ */
+
+/* ============================================
+ * Toolbar Container
+ * ============================================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+/* ============================================
+ * Shared Input/Button Base Styles
+ * ============================================ */
+.toolbar-search,
+.toolbar-select,
+.toolbar-button,
+.toolbar-icon-button {
+  height: var(--height-input, 40px);
+  font-size: var(--font-size-sm, 13px);
+  border-radius: var(--radius-md, 6px);
+  transition: all var(--transition-normal, 0.2s ease);
+}
+
+/* ============================================
+ * Search Input
+ * ============================================ */
+.toolbar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+  max-width: var(--width-search, 280px);
+  flex: 1;
+}
+
+.toolbar-search-icon {
+  position: absolute;
+  left: var(--spacing-3, 12px);
+  color: var(--text-tertiary, #9ca3af);
+  pointer-events: none;
+}
+
+.toolbar-search-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--spacing-3, 12px) 0 var(--spacing-10, 40px);
+  border: 1px solid var(--input-border, #e5e7eb);
+  border-radius: inherit;
+  background: var(--input-bg, #ffffff);
+  font-size: inherit;
+  color: var(--text-primary, #111827);
+}
+
+.toolbar-search-input::placeholder {
+  color: var(--input-placeholder, #9ca3af);
+}
+
+.toolbar-search-input:hover {
+  border-color: var(--input-border-hover, #d1d5db);
+}
+
+.toolbar-search-input:focus {
+  outline: none;
+  border-color: var(--input-border-focus, #8b5cf6);
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(139, 92, 246, 0.1));
+}
+
+.toolbar-search-clear {
+  position: absolute;
+  right: var(--spacing-2, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: var(--bg-tertiary, #f3f4f6);
+  border-radius: var(--radius-full, 9999px);
+  color: var(--text-tertiary, #9ca3af);
+  cursor: pointer;
+}
+
+.toolbar-search-clear:hover {
+  background: var(--bg-active, #e5e7eb);
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ============================================
+ * Select Dropdown
+ * ============================================ */
+.toolbar-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 140px;
+}
+
+.toolbar-select-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--spacing-8, 32px) 0 var(--spacing-3, 12px);
+  border: 1px solid var(--input-border, #e5e7eb);
+  border-radius: inherit;
+  background: var(--input-bg, #ffffff);
+  font-size: inherit;
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.toolbar-select-input:hover {
+  border-color: var(--input-border-hover, #d1d5db);
+}
+
+.toolbar-select-input:focus {
+  outline: none;
+  border-color: var(--input-border-focus, #8b5cf6);
+  box-shadow: var(--shadow-focus, 0 0 0 3px rgba(139, 92, 246, 0.1));
+}
+
+.toolbar-select-icon {
+  position: absolute;
+  right: var(--spacing-3, 12px);
+  color: var(--text-tertiary, #9ca3af);
+  pointer-events: none;
+}
+
+/* ============================================
+ * Buttons
+ * ============================================ */
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-gap, 8px);
+  padding: 0 var(--button-padding-x, 16px);
+  border: 1px solid transparent;
+  font-weight: var(--button-font-weight, 500);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toolbar-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toolbar-button-icon {
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-button-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Primary Button */
+.toolbar-button-primary {
+  background: var(--button-primary-bg, #8b5cf6);
+  border-color: var(--button-primary-border, transparent);
+  color: var(--button-primary-text, #ffffff);
+}
+
+.toolbar-button-primary:hover:not(:disabled) {
+  background: var(--button-primary-bg-hover, #7c3aed);
+}
+
+/* Secondary Button */
+.toolbar-button-secondary {
+  background: var(--button-secondary-bg, #ffffff);
+  border-color: var(--button-secondary-border, #e5e7eb);
+  color: var(--button-secondary-text, #374151);
+}
+
+.toolbar-button-secondary:hover:not(:disabled) {
+  background: var(--button-secondary-bg-hover, #f9fafb);
+  border-color: var(--color-primary, #8b5cf6);
+  color: var(--color-primary, #8b5cf6);
+}
+
+/* Ghost Button */
+.toolbar-button-ghost {
+  background: var(--button-ghost-bg, transparent);
+  border-color: transparent;
+  color: var(--button-ghost-text, #6b7280);
+}
+
+.toolbar-button-ghost:hover:not(:disabled) {
+  background: var(--button-ghost-bg-hover, #f9fafb);
+  color: var(--button-ghost-text-hover, #374151);
+}
+
+/* ============================================
+ * Icon Button (Square)
+ * ============================================ */
+.toolbar-icon-button {
+  width: var(--height-button-icon, 36px);
+  height: var(--height-button-icon, 36px);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.toolbar-icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============================================
+ * Responsive
+ * ============================================ */
+@media (max-width: 767px) {
+  .toolbar {
+    gap: var(--spacing-2, 8px);
+  }
+
+  .toolbar-search {
+    min-width: 100%;
+    max-width: none;
+    order: -1;
+  }
+
+  .toolbar-button-text {
+    display: none;
+  }
+
+  .toolbar-button {
+    padding: 0 var(--spacing-3, 12px);
+  }
+}
