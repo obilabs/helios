@@ -1,0 +1,285 @@
+/* Person Card - Grid View */
+.person-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.person-card:hover {
+  border-color: #8b5cf6;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.person-card-header {
+  position: relative;
+  padding: 20px 20px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.person-avatar-large-wrapper {
+  position: relative;
+}
+
+.person-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.person-avatar-large-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.new-badge-large {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.person-media-badges {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+}
+
+.media-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.media-badge.voice {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.media-badge.video {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.person-card-body {
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.person-card-body .person-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px;
+}
+
+.person-card-body .person-title {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 12px;
+}
+
+.person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.meta-item {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.meta-item.department {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.meta-item.location {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.person-card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.tag-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tag-count.expertise {
+  color: #d97706;
+}
+
+.tag-count.interests {
+  color: #7c3aed;
+}
+
+/* Person Card - List View */
+.person-card-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr 120px 180px;
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.person-card-list:hover {
+  background: #f9fafb;
+}
+
+.person-card-list:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.person-card-list:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-bottom: none;
+}
+
+.person-avatar-wrapper {
+  position: relative;
+  width: fit-content;
+}
+
+.person-card-list .person-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.person-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.person-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.new-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+.person-card-list .person-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.person-card-list .person-title {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.person-department,
+.person-location {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.person-media-indicators {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.media-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.media-indicator .count {
+  font-weight: 500;
+}
+
+.media-indicator.expertise {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.media-indicator.interests {
+  background: #ede9fe;
+  color: #7c3aed;
+}

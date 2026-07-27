@@ -1,0 +1,37 @@
+{
+  "admin": {
+    "email": "admin@test.helios.local",
+    "password": "AdminTest123!",
+    "firstName": "Admin",
+    "lastName": "User",
+    "role": "admin"
+  },
+  "user": {
+    "email": "user@test.helios.local",
+    "password": "UserTest123!",
+    "firstName": "Regular",
+    "lastName": "User",
+    "role": "user"
+  },
+  "manager": {
+    "email": "manager@test.helios.local",
+    "password": "ManagerTest123!",
+    "firstName": "Manager",
+    "lastName": "User",
+    "role": "manager"
+  },
+  "support": {
+    "email": "support@test.helios.local",
+    "password": "SupportTest123!",
+    "firstName": "Support",
+    "lastName": "Agent",
+    "role": "user"
+  },
+  "test": {
+    "email": "test@test.helios.local",
+    "password": "TestUser123!",
+    "firstName": "Test",
+    "lastName": "Account",
+    "role": "user"
+  }
+}

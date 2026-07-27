@@ -1,0 +1,182 @@
+
+Running 1 test using 1 worker
+
+[1A[2K[1/1] tests\manual-crud-test.test.ts:48:5 › Manual CRUD Test - User Operations
+[1A[2Ktests\manual-crud-test.test.ts:48:5 › Manual CRUD Test - User Operations
+
+=== TEST 1: helios users list ===
+
+[1A[2K
+🔹 Running: helios users list
+
+[1A[2K📄 Output: [14:04:03]Helios Developer Console v1.0.0[14:04:03]Type "help" for available commands or "examples" for usage examples.[14:04:05]$ helios users list[14:04:05]
+EMAIL                         FIRST NAME     LAST NAME      STATUS
+===========================================================================
+aberdeen@gridworx.io           aberdeen                        active    
+anthony@gridworx.io            anthony                         active    
+chikezie@gridworx.io           chikezie           
+
+[1A[2K✅ helios users list - PASSED
+
+[1A[2K
+=== TEST 2: helios gw users list ===
+
+[1A[2K
+🔹 Running: helios gw users list
+
+[1A[2K📄 Output: aberdeen@gridworx.io           aberdeen                        active    
+anthony@gridworx.io            anthony                         active    
+chikezie@gridworx.io           chikezie                        active    
+coriander@gridworx.io          coriander                       active    
+indigo@gridwrx.io              indigo                          active    
+jack@gridwrx.io                jack                            active    
+mike@gridworx.io               mike                     
+
+[1A[2K✅ helios gw users list - PASSED
+
+[1A[2K
+=== TEST 3: helios gw users get (existing user) ===
+
+[1A[2K
+🔹 Running: helios gw users get mike@gridworx.io
+
+[1A[2K📄 Output:       "preference": "preferred"
+    }
+  ],
+  "nonEditableAliases": [
+    "mike@gridworx.io.test-google-a.com"
+  ],
+  "customerId": "C03wupx5h",
+  "orgUnitPath": "/Admins",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true,
+  "recoveryEmail": "mike.c.agu@gmail.com",
+  "recoveryPhone": "+15875010021"
+}
+
+[1A[2K✅ helios gw users get - PASSED
+
+[1A[2K
+=== TEST 4: helios gw groups list ===
+
+[1A[2K
+🔹 Running: helios gw groups list
+
+[1A[2K📄 Output:   "customerId": "C03wupx5h",
+  "orgUnitPath": "/Admins",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true,
+  "recoveryEmail": "mike.c.agu@gmail.com",
+  "recoveryPhone": "+15875010021"
+}[14:04:17]$ helios gw groups list[14:04:18]
+EMAIL                                   NAME                          MEMBERS
+=====================================================================================
+all-staff@gridworx.io               
+
+[1A[2K✅ helios gw groups list - PASSED
+
+[1A[2K
+=== TEST 5: DELETE test user if exists ===
+
+[1A[2K
+🔹 Running: helios gw users get playwrighttest@gridworx.io
+
+[1A[2K📄 Output:     {
+      "languageCode": "en",
+      "preference": "preferred"
+    }
+  ],
+  "nonEditableAliases": [
+    "playwrighttest@gridworx.io.test-google-a.com"
+  ],
+  "customerId": "C03wupx5h",
+  "orgUnitPath": "/",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true
+}
+
+[1A[2K⚠️  Test user exists, deleting...
+
+[1A[2K
+🔹 Running: helios gw users delete playwrighttest@gridworx.io
+
+[1A[2K📄 Output:     {
+      "languageCode": "en",
+      "preference": "preferred"
+    }
+  ],
+  "nonEditableAliases": [
+    "playwrighttest@gridworx.io.test-google-a.com"
+  ],
+  "customerId": "C03wupx5h",
+  "orgUnitPath": "/",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true
+}[14:04:25]$ helios gw users delete playwrighttest@gridworx.io[14:04:26]Command failed: Failed to execute 'json' on 'Response': Unexpected end of JSON input
+
+[1A[2K
+=== TEST 6: CREATE USER ===
+
+[1A[2K
+🔹 Running: helios gw users create playwrighttest@gridworx.io --firstName=Playwright --lastName=Test --password=TempPass123!
+
+[1A[2K📄 Output:     {
+      "languageCode": "en",
+      "preference": "preferred"
+    }
+  ],
+  "nonEditableAliases": [
+    "playwrighttest@gridworx.io.test-google-a.com"
+  ],
+  "customerId": "C03wupx5h",
+  "orgUnitPath": "/",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true
+}[14:04:25]$ helios gw users delete playwrighttest@gridworx.io[14:04:26]Command failed: Failed to execute 'json' on 'Response': Unexpected end of JSON input[14:04:32]$ he
+
+[1A[2K❌ User creation - FAILED
+
+[1A[2KError:     {
+      "languageCode": "en",
+      "preference": "preferred"
+    }
+  ],
+  "nonEditableAliases": [
+    "playwrighttest@gridworx.io.test-google-a.com"
+  ],
+  "customerId": "C03wupx5h",
+  "orgUnitPath": "/",
+  "isMailboxSetup": false,
+  "isEnrolledIn2Sv": false,
+  "isEnforcedIn2Sv": false,
+  "includeInGlobalAddressList": true
+}[14:04:25]$ helios gw users delete playwrighttest@gridworx.io[14:04:26]Command failed: Failed to execute 'json' on 'Response': Unexpected end of JSON input[14:04:32]$ helios gw users create playwrighttest@gridworx.io --firstName=Playwright --lastName=Test --password=TempPass123![14:04:35]User created: playwrighttest@gridworx.io
+
+[1A[2K  1) tests\manual-crud-test.test.ts:48:5 › Manual CRUD Test - User Operations ──────────────────────
+
+    Error: Failed to create user
+
+      93 |     console.log('❌ User creation - FAILED');
+      94 |     console.log('Error:', output);
+    > 95 |     throw new Error('Failed to create user');
+         |           ^
+      96 |   } else {
+      97 |     expect(output.toLowerCase()).toMatch(/created|success/i);
+      98 |     console.log('✅ User creation - PASSED');
+        at D:\personal-projects\helios\helios-client\openspec\testing\tests\manual-crud-test.test.ts:95:11
+
+    Error Context: test-results\tests-manual-crud-test-Manual-CRUD-Test---User-Operations\error-context.md
+
+
+[1A[2K  1 failed
+    tests\manual-crud-test.test.ts:48:5 › Manual CRUD Test - User Operations ───────────────────────
