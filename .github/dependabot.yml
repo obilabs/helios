@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Backend (Express/TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/apps/client/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      backend-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # Frontend (Vite/React)
+  - package-ecosystem: "npm"
+    directory: "/apps/client/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      frontend-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions themselves
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
