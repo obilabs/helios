@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authService } from '../services/auth.service.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
@@ -22,6 +22,37 @@ import {
 import { ErrorCode } from '../types/error-codes.js';
 
 const router = Router();
+
+/**
+ * Roles that carry admin privileges. Mirrors isAdminRole() in middleware/auth.ts.
+ *
+ * PRINCIPLE ("Admin is bootstrapped once, then only granted — never self-served"):
+ * - Account creation NEVER sets one of these roles from client input.
+ * - The ONLY paths to a privileged role are the one-time bootstrap
+ *   (POST /organization/setup) and the admin-gated, audited elevation route
+ *   (POST /organization/admins/promote/:userId).
+ */
+const PRIVILEGED_ROLES = ['admin', 'super_admin', 'platform_owner'];
+
+/**
+ * LAST-ADMIN GUARD helper: count active, non-deleted admins in the
+ * organization OTHER than the given user. Every path that could remove an
+ * admin's access (delete, demote, suspend, deactivate, block) must refuse
+ * when this returns 0 — the system must never lock out administration.
+ */
+async function countOtherActiveAdmins(organizationId: string, excludeUserId: string): Promise<number> {
+  const result = await db.query(
+    `SELECT COUNT(*) as count
+     FROM organization_users
+     WHERE organization_id = $1
+       AND role = 'admin'
+       AND is_active = true
+       AND status IS DISTINCT FROM 'deleted'
+       AND id != $2`,
+    [organizationId, excludeUserId]
+  );
+  return parseInt(result.rows[0].count, 10);
+}
 
 /**
  * @openapi
@@ -156,7 +187,15 @@ router.post('/setup', async (req: Request, res: Response) => {
       return validationErrorResponse(res, [{ message: 'All fields are required' }]);
     }
 
-    // Check if organization already exists
+    // PRINCIPLE: "Admin is bootstrapped once, then only granted — never self-served."
+    // This is the ONLY code path that creates an admin account directly. Once
+    // an organization (and its bootstrap admin) exists, this endpoint is
+    // permanently closed (409 below — idempotent-closed). Break-glass
+    // recovery: if the system is ever left with zero admins
+    // (DatabaseInitializer.getAdminCount() === 0 in database/init.ts),
+    // recovery happens server-side ONLY — e.g. the DEFAULT_ADMIN_EMAIL /
+    // DEFAULT_ADMIN_PASSWORD seed in DatabaseInitializer.seedDefaultAdmin(),
+    // or direct operator DB access — never by re-opening a public page.
     const existingOrg = await db.query('SELECT id FROM organizations LIMIT 1');
     if (existingOrg.rows.length > 0) {
       return errorResponse(res, ErrorCode.CONFLICT, 'Organization already exists');
@@ -1095,8 +1134,13 @@ router.get('/users/:userId', authenticateToken, async (req: Request, res: Respon
 /**
  * POST /api/organization/users
  * Create a new organization user (manual account creation)
+ *
+ * SECURITY: admin-gated, and account creation NEVER sets a privileged role
+ * from client input. To make someone an admin: create them as a regular user
+ * here, then elevate via POST /organization/admins/promote/:userId
+ * (separate, admin-gated, audited).
  */
-router.post('/users', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const {
       email,
@@ -1198,13 +1242,22 @@ router.post('/users', authenticateToken, async (req: Request, res: Response) => 
       });
     }
 
-    // Validate role
-    const validRoles = ['admin', 'manager', 'user'];
+    // Validate role.
+    // SECURITY: privileged roles can never be assigned at creation — not even
+    // by an admin. Admin is conferred only by the separate, audited elevation
+    // route (POST /organization/admins/promote/:userId).
     const userRole = role || 'user';
+    if (PRIVILEGED_ROLES.includes(userRole)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Privileged roles cannot be assigned at account creation. Create the user first, then promote via POST /organization/admins/promote/:userId'
+      });
+    }
+    const validRoles = ['manager', 'user'];
     if (!validRoles.includes(userRole)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid role. Must be admin, manager, or user'
+        error: 'Invalid role. Must be manager or user'
       });
     }
 
@@ -1464,8 +1517,12 @@ router.post('/users', authenticateToken, async (req: Request, res: Response) => 
 /**
  * PUT /api/organization/users/:userId
  * Update an existing organization user
+ *
+ * SECURITY: admin-gated. This generic update route can never GRANT a
+ * privileged role (use POST /organization/admins/promote/:userId), and it
+ * refuses to demote or deactivate the last remaining admin.
  */
-router.put('/users/:userId', authenticateToken, async (req: Request, res: Response) => {
+router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const {
@@ -1527,9 +1584,36 @@ router.put('/users/:userId', authenticateToken, async (req: Request, res: Respon
       });
     }
 
+    const currentRole = existingUser.rows[0].role;
+
+    // SECURITY: elevation to a privileged role is NOT allowed through this
+    // generic update route. It happens only via the separate, admin-gated,
+    // audited route POST /organization/admins/promote/:userId.
+    // (Echoing back the target's current role is allowed so profile edits of
+    // existing admins don't break.)
+    if (role && PRIVILEGED_ROLES.includes(role) && role !== currentRole) {
+      return res.status(400).json({
+        success: false,
+        error: 'Privileged roles cannot be assigned through user update. Use POST /organization/admins/promote/:userId'
+      });
+    }
+
+    // LAST-ADMIN GUARD: refuse to demote or deactivate the final remaining
+    // admin — the system must never lock out administration.
+    const isDemotion = !!role && PRIVILEGED_ROLES.includes(currentRole) && !PRIVILEGED_ROLES.includes(role);
+    const isDeactivation = isActive === false && PRIVILEGED_ROLES.includes(currentRole);
+    if (isDemotion || isDeactivation) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot demote or deactivate the last administrator'
+        });
+      }
+    }
+
     // Determine external admin status
     // Can only be set to true if the user is an admin
-    const currentRole = existingUser.rows[0].role;
     const newRole = role || currentRole;
     // If changing to non-admin role, force isExternalAdmin to false
     // If staying admin or becoming admin, allow isExternalAdmin to be set
@@ -1750,15 +1834,11 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
 
     const userToDelete = userResult.rows[0];
 
-    // If deleting an admin, ensure there's at least one other admin
-    if (userToDelete.role === 'admin') {
-      const adminCount = await db.query(`
-        SELECT COUNT(*) as count
-        FROM organization_users
-        WHERE organization_id = $1 AND role = 'admin' AND status != 'deleted'
-      `, [organizationId]);
-
-      if (parseInt(adminCount.rows[0].count) <= 1) {
+    // LAST-ADMIN GUARD: if deleting an admin, ensure at least one other
+    // active admin remains (never lock out administration).
+    if (PRIVILEGED_ROLES.includes(userToDelete.role)) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
         return res.status(400).json({
           success: false,
           error: 'Cannot delete the last administrator'
@@ -1893,7 +1973,7 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     // Get current user info
     const userResult = await db.query(
-      `SELECT id, email, status FROM organization_users WHERE id = $1 AND organization_id = $2 AND status != 'deleted'`,
+      `SELECT id, email, status, role FROM organization_users WHERE id = $1 AND organization_id = $2 AND status != 'deleted'`,
       [userId, organizationId]
     );
 
@@ -1905,6 +1985,18 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
     }
 
     const oldStatus = userResult.rows[0].status;
+
+    // LAST-ADMIN GUARD: suspending/staging the final remaining admin would
+    // lock out administration — refuse.
+    if (status !== 'active' && PRIVILEGED_ROLES.includes(userResult.rows[0].role)) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot suspend the last administrator'
+        });
+      }
+    }
 
     // Update user status
     const isActive = status === 'active';
@@ -2385,7 +2477,11 @@ router.get('/admins', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // Promote a user to admin
-router.post('/admins/promote/:userId', authenticateToken, async (req: Request, res: Response) => {
+//
+// SECURITY: this is the ONLY way to become admin after the one-time bootstrap
+// (POST /organization/setup). It is a separate, existing-admin-performed,
+// AUDITED elevation — account creation routes never set a privileged role.
+router.post('/admins/promote/:userId', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
@@ -2407,11 +2503,11 @@ router.post('/admins/promote/:userId', authenticateToken, async (req: Request, r
       });
     }
 
-    // Update user role to admin
+    // Update user role to admin (deleted accounts can never be elevated)
     const result = await db.query(`
       UPDATE organization_users
       SET role = 'admin', updated_at = NOW()
-      WHERE id = $1 AND organization_id = $2
+      WHERE id = $1 AND organization_id = $2 AND status IS DISTINCT FROM 'deleted'
       RETURNING id, email, first_name, last_name, role
     `, [userId, organizationId]);
 
@@ -2421,6 +2517,25 @@ router.post('/admins/promote/:userId', authenticateToken, async (req: Request, r
         error: 'User not found'
       });
     }
+
+    // AUDIT: elevation to admin must always leave an audit trail
+    await db.query(
+      `INSERT INTO audit_logs (user_id, organization_id, action, resource, resource_id, ip_address, user_agent)
+       VALUES ($1, $2, 'promote_admin', 'organization_user', $3, $4, $5)`,
+      [req.user?.userId, organizationId, userId, req.ip, req.get('User-Agent') || 'Unknown']
+    );
+
+    await activityTracker.trackUserChange(
+      organizationId as string,
+      userId,
+      req.user?.userId || '',
+      req.user?.email || '',
+      'updated',
+      {
+        change: 'promoted_to_admin',
+        userEmail: result.rows[0].email
+      }
+    );
 
     logger.info('User promoted to admin', {
       promotedUserId: userId,
@@ -2442,7 +2557,7 @@ router.post('/admins/promote/:userId', authenticateToken, async (req: Request, r
 });
 
 // Demote an admin to regular user
-router.post('/admins/demote/:userId', authenticateToken, async (req: Request, res: Response) => {
+router.post('/admins/demote/:userId', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
@@ -2472,14 +2587,11 @@ router.post('/admins/demote/:userId', authenticateToken, async (req: Request, re
       });
     }
 
-    // Check if there will be at least one admin left
-    const adminCount = await db.query(`
-      SELECT COUNT(*) as count
-      FROM organization_users
-      WHERE organization_id = $1 AND role = 'admin'
-    `, [organizationId]);
-
-    if (parseInt(adminCount.rows[0].count) <= 1) {
+    // LAST-ADMIN GUARD: there must be at least one other ACTIVE admin left.
+    // (The previous count included deleted/inactive admins, which could let
+    // the last working admin be demoted — a lockout.)
+    const otherAdmins = await countOtherActiveAdmins(organizationId as string, userId);
+    if (otherAdmins === 0) {
       return res.status(400).json({
         success: false,
         error: 'Cannot demote the last administrator'
@@ -2500,6 +2612,13 @@ router.post('/admins/demote/:userId', authenticateToken, async (req: Request, re
         error: 'User not found'
       });
     }
+
+    // AUDIT: demotion from admin must always leave an audit trail
+    await db.query(
+      `INSERT INTO audit_logs (user_id, organization_id, action, resource, resource_id, ip_address, user_agent)
+       VALUES ($1, $2, 'demote_admin', 'organization_user', $3, $4, $5)`,
+      [req.user?.userId, organizationId, userId, req.ip, req.get('User-Agent') || 'Unknown']
+    );
 
     logger.info('Admin demoted to user', {
       demotedUserId: userId,
@@ -2550,6 +2669,18 @@ router.post('/users/:userId/block', authenticateToken, async (req: Request, res:
     }
 
     const user = userResult.rows[0];
+
+    // LAST-ADMIN GUARD: blocking the final remaining admin would lock out
+    // administration — refuse before any side effects.
+    if (PRIVILEGED_ROLES.includes(user.role)) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot block the last administrator'
+        });
+      }
+    }
 
     if (!user.google_workspace_id) {
       return res.status(400).json({

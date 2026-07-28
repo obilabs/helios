@@ -47,6 +47,12 @@ export const auth = betterAuth({
   // Email + Password authentication with custom bcrypt hashing
   emailAndPassword: {
     enabled: true,
+    // SECURITY (principle: "Admin is bootstrapped once, then only granted — never self-served"):
+    // Public self-signup is OFF. Accounts are created only by the one-time
+    // bootstrap (POST /organization/setup), by an admin (POST /organization/users),
+    // or by provider sync — never by an anonymous POST /auth/sign-up/email.
+    // Do not re-enable without an explicit, gated decision.
+    disableSignUp: true,
     // Use bcrypt instead of scrypt (our existing passwords are bcrypt)
     password: {
       hash: async (password: string) => {
@@ -94,7 +100,11 @@ export const auth = betterAuth({
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    // Additional fields we need in user sessions
+    // Additional fields we need in user sessions.
+    // SECURITY: `input: false` on role / organizationId / isExternalAdmin /
+    // isActive means better-auth will NEVER accept these from client request
+    // bodies (e.g. a crafted sign-up payload). They are read from the DB only.
+    // Privilege is granted server-side (admin elevation route), never self-served.
     additionalFields: {
       firstName: {
         type: 'string',
@@ -107,14 +117,17 @@ export const auth = betterAuth({
       role: {
         type: 'string',
         fieldName: 'role',
+        input: false,
       },
       organizationId: {
         type: 'string',
         fieldName: 'organization_id',
+        input: false,
       },
       isExternalAdmin: {
         type: 'boolean',
         fieldName: 'is_external_admin',
+        input: false,
       },
       defaultView: {
         type: 'string',
@@ -123,6 +136,7 @@ export const auth = betterAuth({
       isActive: {
         type: 'boolean',
         fieldName: 'is_active',
+        input: false,
       },
       department: {
         type: 'string',
