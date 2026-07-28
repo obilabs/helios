@@ -416,8 +416,23 @@ export class BulkOperationsService {
 
   /**
    * Create a user
+   *
+   * SECURITY: account creation NEVER sets a privileged role from import data.
+   * Admin is conferred only via the admin-gated, audited elevation route
+   * (POST /organization/admins/promote/:userId).
    */
   private async createUser(item: any, organizationId: string): Promise<any> {
+    const requestedRole = item.role || 'user';
+    if (['admin', 'super_admin', 'platform_owner'].includes(requestedRole)) {
+      throw new Error(
+        `Cannot create '${item.email}' with privileged role '${requestedRole}' via bulk import. ` +
+        'Create the user as a regular account, then promote via the admin elevation route.'
+      );
+    }
+    if (!['manager', 'user'].includes(requestedRole)) {
+      throw new Error(`Invalid role '${requestedRole}' for '${item.email}'. Must be manager or user.`);
+    }
+
     const result = await db.query(`
       INSERT INTO organization_users (
         organization_id,
@@ -441,7 +456,7 @@ export class BulkOperationsService {
       item.department || null,
       item.jobTitle || null,
       item.organizationalUnit || null,
-      item.role || 'user',
+      requestedRole,
       true,
       'active',
       item.userType || 'staff',
@@ -454,6 +469,34 @@ export class BulkOperationsService {
    * Suspend a user
    */
   private async suspendUser(item: any, organizationId: string): Promise<any> {
+    // LAST-ADMIN GUARD: refuse to suspend the final remaining active admin —
+    // the system must never lock out administration.
+    const targetResult = await db.query(
+      'SELECT id, role FROM organization_users WHERE organization_id = $1 AND email = $2',
+      [organizationId, item.email]
+    );
+
+    if (targetResult.rows.length === 0) {
+      throw new Error(`User not found: ${item.email}`);
+    }
+
+    const target = targetResult.rows[0];
+    if (['admin', 'super_admin', 'platform_owner'].includes(target.role)) {
+      const otherAdmins = await db.query(
+        `SELECT COUNT(*) as count
+         FROM organization_users
+         WHERE organization_id = $1
+           AND role = 'admin'
+           AND is_active = true
+           AND status IS DISTINCT FROM 'deleted'
+           AND id != $2`,
+        [organizationId, target.id]
+      );
+      if (parseInt(otherAdmins.rows[0].count, 10) === 0) {
+        throw new Error(`Cannot suspend the last administrator: ${item.email}`);
+      }
+    }
+
     const result = await db.query(`
       UPDATE organization_users
       SET is_active = false, user_status = 'suspended', updated_at = NOW()
