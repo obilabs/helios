@@ -506,7 +506,7 @@ bulk_operation_audit (
 ### For Users
 - **User Guide:** `BULK-OPERATIONS-README.md`
 - **Access:** Automation → Bulk Operations
-- **Support:** [Submit ticket](https://helios.obilabs.dev/support)
+- **Support:** [Submit ticket](https://api.obilabs.dev/support)
 
 ### For Product/UX
 - **MVP Status:** `BULK-OPERATIONS-MVP-STATUS.md`
