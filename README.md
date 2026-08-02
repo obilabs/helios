@@ -2,13 +2,13 @@
 
 <!--
 Badges activate once this repo is public on GitHub under the company org. Replace
-OWNER/REPO with the real path. Kept here so the security posture is visible on the
+obilabs/helios-client with the real path. Kept here so the security posture is visible on the
 repo's front page — verify, don't trust.
 -->
 <!-- badges:start -->
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![CodeQL](https://github.com/OWNER/REPO/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/OWNER/REPO/badge)](https://securityscorecards.dev/viewer/?uri=github.com/OWNER/REPO)
+[![CI](https://github.com/obilabs/helios-client/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CodeQL](https://github.com/obilabs/helios-client/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/obilabs/helios-client/badge)](https://securityscorecards.dev/viewer/?uri=github.com/obilabs/helios-client)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen.svg)](SECURITY.md)
 <!-- badges:end -->
@@ -44,8 +44,10 @@ packages/            ← shared code as it emerges (e.g. the licensing client)
 (deny-by-default route auth, encryption-at-rest for service-account keys, the relay
 authorization engine, and the enforcement tests). The near-empty former apps
 (`mtp`, `owner`, `web`) are **not** carried over: `owner`/`web` collapse into the
-**shared company control plane** (hosted separately; Helios and Aegis both point to it
-for licensing/telemetry), and `mtp` is created fresh here when it's actually built.
+**shared obilabs control plane** (hosted separately; Helios and Aegis both point to it
+for licensing/telemetry). **Helios has no MTP of its own** — MSP multi-tenant management
+is a single, product-neutral **obilabs MTP**, and Helios plugs into it as a *module*.
+See `_north_star/OBILABS-ALIGNMENT.md`.
 
 ## Provenance
 

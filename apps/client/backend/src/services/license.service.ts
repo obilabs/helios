@@ -1,7 +1,7 @@
 /**
  * License Validation Service
  *
- * Validates license with helios.obilabs.dev and caches the result.
+ * Validates license with api.obilabs.dev and caches the result.
  * Provides feature flags based on license plan.
  */
 
@@ -36,7 +36,7 @@ class LicenseService {
 
   // Validation endpoint
   private readonly VALIDATE_ENDPOINT =
-    process.env.HELIOS_LICENSE_URL || 'https://helios.obilabs.dev/api/instances/validate';
+    process.env.HELIOS_LICENSE_URL || 'https://api.obilabs.dev/api/instances/validate';
 
   // Default community features
   private readonly COMMUNITY_FEATURES: LicenseFeatures = {

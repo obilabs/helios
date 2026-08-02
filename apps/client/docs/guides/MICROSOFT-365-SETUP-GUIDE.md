@@ -175,6 +175,6 @@ When your secret is about to expire:
 
 ## Need Help?
 
-- Check the [Helios Documentation](https://helios.obilabs.dev/docs)
-- Contact support at support@helios.obilabs.dev
+- Check the [Helios Documentation](https://api.obilabs.dev/docs)
+- Contact support at support@api.obilabs.dev
 - Open an issue on [GitHub](https://github.com/obilabs/helios-client)
