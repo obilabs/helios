@@ -349,9 +349,9 @@ Access audit logs:
 ## Support
 
 ### Getting Help
-- **Documentation:** [Helios Admin Portal Docs](https://helios.obilabs.dev/docs)
-- **Support:** [Submit a ticket](https://helios.obilabs.dev/support)
-- **Community:** [Helios Community Forum](https://community.helios.obilabs.dev)
+- **Documentation:** [Helios Admin Portal Docs](https://api.obilabs.dev/docs)
+- **Support:** [Submit a ticket](https://api.obilabs.dev/support)
+- **Community:** [Helios Community Forum](https://community.api.obilabs.dev)
 
 ### Reporting Issues
 Include in your support ticket:
