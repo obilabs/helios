@@ -18,7 +18,7 @@ This project is currently in active development. Features, database schemas, and
 │  │  • Full control     │          │  • Auto-updates     │       │
 │  │  • GitHub support   │          │  • Chat support     │       │
 │  │                     │          │                     │       │
-│  │  git clone & go     │          │  helios.gridworx.io │       │
+│  │  git clone & go     │          │  obilabs.dev │       │
 │  └─────────────────────┘          └─────────────────────┘       │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -56,7 +56,7 @@ Helios is a web-based admin portal for Google Workspace. It gives you a modern U
 
 ```bash
 # Clone the repository
-git clone https://github.com/gridworx/helios-client.git
+git clone https://github.com/obilabs/helios-client.git
 cd helios-client
 
 # Copy environment template and configure
@@ -82,7 +82,7 @@ See [docs/guides/SETUP.md](docs/guides/SETUP.md) for complete setup including Go
 
 ### Option 2: Hosted by Us
 
-Visit [helios.gridworx.io](https://helios.gridworx.io) to sign up.
+Visit [obilabs.dev](https://obilabs.dev) to sign up.
 
 | Plan | Price | Includes |
 |------|-------|----------|
@@ -153,11 +153,11 @@ HELIOS_TELEMETRY_ENABLED=false  # Default: disabled
                           ▼
                    ┌─────────────┐
                    │ helios-web  │
-                   │ (gridworx)  │
+                   │ (obilabs)  │
                    └─────────────┘
 ```
 
-Your instance talks to Google Workspace using your own service account. Optionally, it can send anonymous health/usage data to helios.gridworx.io.
+Your instance talks to Google Workspace using your own service account. Optionally, it can send anonymous health/usage data to obilabs.dev.
 
 ---
 
@@ -179,7 +179,7 @@ Your instance talks to Google Workspace using your own service account. Optional
 | Project | License | Purpose |
 |---------|---------|---------|
 | **helios-client** (this) | MIT | Single-organization admin portal |
-| [helios-mtp](https://github.com/gridworx/helios-mtp) | BSL | Multi-tenant portal for MSPs |
+| [helios-mtp](https://github.com/obilabs/helios-mtp) | BSL | Multi-tenant portal for MSPs |
 | helios-web | Proprietary | Marketing site & hosting portal |
 
 ---
@@ -220,15 +220,15 @@ See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Self-hosted:** [GitHub Discussions](https://github.com/gridworx/helios-client/discussions)
+- **Self-hosted:** [GitHub Discussions](https://github.com/obilabs/helios-client/discussions)
 - **Hosted customers:** Chat support via your dashboard
 
 ---
 
 ## About
 
-Built by [Gridworx](https://gridworx.io). We also offer:
+Built by [ObiLabs](https://obilabs.dev). We also offer:
 - **Managed Services:** We manage your Google Workspace for you
 - **helios-mtp:** Multi-tenant version for MSPs and IT providers
 
-Contact: [info@gridworx.io](mailto:info@gridworx.io)
+Contact: [info@obilabs.dev](mailto:info@obilabs.dev)

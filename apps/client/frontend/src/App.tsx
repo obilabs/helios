@@ -1703,15 +1703,15 @@ function AppContent() {
       <footer className="client-footer">
         <p>Helios Admin Portal v1.0.0</p>
         <p>
-          <a href="https://helios.gridworx.io/docs" target="_blank" rel="noopener noreferrer">
+          <a href="https://api.obilabs.dev/docs" target="_blank" rel="noopener noreferrer">
             📚 Documentation
           </a>
           {' • '}
-          <a href="https://helios.gridworx.io/support" target="_blank" rel="noopener noreferrer">
+          <a href="https://api.obilabs.dev/support" target="_blank" rel="noopener noreferrer">
             🆘 Support
           </a>
           {' • '}
-          Powered by <a href="https://helios.gridworx.io" target="_blank" rel="noopener noreferrer">Helios</a>
+          Powered by <a href="https://api.obilabs.dev" target="_blank" rel="noopener noreferrer">Helios</a>
         </p>
       </footer>
 

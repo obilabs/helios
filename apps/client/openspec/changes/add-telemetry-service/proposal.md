@@ -2,7 +2,7 @@
 
 ## Summary
 
-Implement an opt-in telemetry service that sends anonymous usage data to helios.gridworx.io. This enables usage-driven development where popular API relay calls become UI features and frequent commands become buttons/shortcuts.
+Implement an opt-in telemetry service that sends anonymous usage data to api.obilabs.dev. This enables usage-driven development where popular API relay calls become UI features and frequent commands become buttons/shortcuts.
 
 ## Problem Statement
 
@@ -30,7 +30,7 @@ Create a telemetry service that:
 - Is **disabled by default** for self-hosted instances
 - Is **required for basic health** on hosted instances
 - Collects **anonymous aggregate data only**
-- Publishes usage insights publicly at helios.gridworx.io/insights
+- Publishes usage insights publicly at api.obilabs.dev/insights
 
 ### What We Collect
 
@@ -98,7 +98,7 @@ This transparency builds trust and helps users see value in opting in.
                                │ (HTTPS)
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     helios.gridworx.io                           │
+│                     api.obilabs.dev                           │
 │                                                                  │
 │  • Receives heartbeat                                           │
 │  • Stores in database (90-day retention)                        │
@@ -138,7 +138,7 @@ class TelemetryService {
     this.commandUsage.set(commandName, (this.commandUsage.get(commandName) || 0) + 1);
   }
 
-  // Send heartbeat to helios.gridworx.io
+  // Send heartbeat to api.obilabs.dev
   async sendHeartbeat() {
     if (!this.enabled) return;
 
@@ -157,7 +157,7 @@ class TelemetryService {
       },
     };
 
-    await fetch('https://helios.gridworx.io/api/instances/heartbeat', {
+    await fetch('https://api.obilabs.dev/api/instances/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

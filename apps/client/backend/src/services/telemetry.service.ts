@@ -1,7 +1,7 @@
 /**
  * Telemetry Service
  *
- * Sends anonymous usage data to helios.gridworx.io for usage-driven development.
+ * Sends anonymous usage data to api.obilabs.dev for usage-driven development.
  * - Disabled by default for self-hosted instances
  * - Collects anonymous aggregate data only
  * - Never collects PII, credentials, or organization-specific data
@@ -43,7 +43,7 @@ class TelemetryService {
   private heartbeatInterval: NodeJS.Timeout | null = null;
 
   // Helios web endpoint
-  private readonly TELEMETRY_ENDPOINT = process.env.HELIOS_TELEMETRY_URL || 'https://helios.gridworx.io/api/instances/heartbeat';
+  private readonly TELEMETRY_ENDPOINT = process.env.HELIOS_TELEMETRY_URL || 'https://api.obilabs.dev/api/instances/heartbeat';
 
   constructor() {
     // Will be initialized async in init()
@@ -241,7 +241,7 @@ class TelemetryService {
   }
 
   /**
-   * Send heartbeat to helios.gridworx.io
+   * Send heartbeat to api.obilabs.dev
    */
   async sendHeartbeat(): Promise<void> {
     if (!this.enabled || !this.instanceId) return;

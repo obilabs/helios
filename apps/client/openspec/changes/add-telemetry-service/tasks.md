@@ -104,7 +104,7 @@
 ### 4.2 Integration tests
 **File:** `backend/src/__tests__/telemetry.integration.test.ts`
 
-- [ ] Mock helios.gridworx.io endpoint
+- [ ] Mock api.obilabs.dev endpoint
 - [ ] Verify heartbeat sent correctly
 - [ ] Verify counters reset after send
 
@@ -139,4 +139,4 @@
 - [ ] Graceful failure on network issues
 - [ ] Privacy policy link in UI
 - [ ] All tests passing
-- [ ] Manual test: verify data appears on helios.gridworx.io/insights
+- [ ] Manual test: verify data appears on api.obilabs.dev/insights
