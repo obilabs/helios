@@ -263,7 +263,7 @@ export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSucce
                   <input
                     type="text"
                     className="form-input"
-                    placeholder={config.type === 'service' ? 'e.g., Automated Daily Sync' : 'e.g., GridWorx MSP Access'}
+                    placeholder={config.type === 'service' ? 'e.g., Automated Daily Sync' : 'e.g., ObiLabs MSP Access'}
                     value={config.name}
                     onChange={(e) => setConfig({ ...config, name: e.target.value })}
                   />
@@ -288,7 +288,7 @@ export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSucce
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="e.g., GridWorx MSP"
+                        placeholder="e.g., ObiLabs MSP"
                         value={config.vendorConfig.vendorName}
                         onChange={(e) =>
                           setConfig({
