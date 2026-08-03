@@ -28,7 +28,7 @@
     "management"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "devDependencies": {
     "@faker-js/faker": "^10.1.0",
     "@playwright/test": "^1.57.0",

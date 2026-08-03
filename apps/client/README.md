@@ -178,7 +178,7 @@ Your instance talks to Google Workspace using your own service account. Optional
 
 | Project | License | Purpose |
 |---------|---------|---------|
-| **helios-client** (this) | MIT | Single-organization admin portal |
+| **helios-client** (this) | AGPL-3.0 | Single-organization admin portal |
 | [helios-mtp](https://github.com/obilabs/helios-mtp) | BSL | Multi-tenant portal for MSPs |
 | helios-web | Proprietary | Marketing site & hosting portal |
 
@@ -212,7 +212,7 @@ npm test
 
 ## License
 
-**MIT License** - Use it however you want.
+**AGPL-3.0** — free and open source. If you run a modified version as a network service, you must make your source available under the same license (anti-lock-in).
 
 See [LICENSE](LICENSE) for details.
 
