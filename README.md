@@ -17,8 +17,8 @@ Google Workspace security & management. **This is the consolidated, single-repo
 version** of Helios — built side-by-side with the old nested-repo layout so it can be
 tested and swapped in without risky in-place git surgery.
 
-> **Working name / location is temporary** (`helios-v2`). Rename to `helios` and move
-> under the company org when the business/name is finalized.
+> **Renamed** from the working name `helios-v2` to `helios` (consolidated single-repo
+> layout that supersedes the old nested-repo structure described below).
 
 ## Why this exists
 

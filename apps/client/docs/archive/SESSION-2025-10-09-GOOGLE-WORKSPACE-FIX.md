@@ -32,7 +32,7 @@ User reported three main issues:
 ### 3. Missing Service Account Credentials
 - **Problem:** No valid credentials in `gw_credentials` table
 - **Impact:** Connection tests failing with "unauthorized_client" error
-- **User's Working Service Account:** `C:\Users\mike\Downloads\helios-workspace-automation-5378c60aff3a.json`
+- **User's Working Service Account:** `~/Downloads/helios-workspace-automation-<id>.json`
 
 ### 4. No Overwrite Confirmation
 - **Problem:** Wizard didn't warn when overwriting existing configuration
@@ -262,7 +262,7 @@ WHERE organization_id = '161da501-7076-4bd5-91b5-248e35f178c1'
 }
 ```
 
-**Source:** User's working service account from `C:\Users\mike\Downloads\helios-workspace-automation-5378c60aff3a.json`
+**Source:** User's working service account from `~/Downloads/helios-workspace-automation-<id>.json`
 
 ---
 
