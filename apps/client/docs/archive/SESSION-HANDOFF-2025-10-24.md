@@ -206,7 +206,7 @@ docker-compose up -d --build
 
 ### Follow-up Work (if needed)
 1. **Google Workspace Module Configuration:**
-   - Service account file provided: `C:\Users\mike\Downloads\helios-workspace-automation-5378c60aff3a.json`
+   - Service account file provided: `~/Downloads/helios-workspace-automation-<id>.json`
    - Not configured yet (no entry in `gw_credentials` table)
    - If you want to enable Google Workspace module, go to Settings > Modules
 
