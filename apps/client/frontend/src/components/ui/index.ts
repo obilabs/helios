@@ -4,7 +4,7 @@
  * Design system compliant reusable components.
  * All components follow the Helios design system (DESIGN-SYSTEM.md)
  *
- * @see D:\personal-projects\helios\helios-client\DESIGN-SYSTEM.md
+ * @see ../../../../docs/architecture/DESIGN-SYSTEM.md
  */
 
 export { Modal } from './Modal';
