@@ -1636,6 +1636,21 @@ CREATE TABLE public.organization_settings (
 );
 
 
+-- Name: system_settings; Type: TABLE; Schema: public; Owner: -
+-- Install-level key/value (NOT org-scoped). Home of `instance_id`, the stable
+-- identity this install reports to the control plane. Keyed by `key` alone so it
+-- survives org deletion. IF NOT EXISTS: this schema is applied whole on fresh
+-- installs and must be safe if a partial schema already exists. See
+-- migrations/007_add_system_settings.sql.
+
+CREATE TABLE IF NOT EXISTS public.system_settings (
+    key character varying(255) PRIMARY KEY,
+    value text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
 -- Name: password_setup_tokens; Type: TABLE; Schema: public; Owner: -
 
 CREATE TABLE public.password_setup_tokens (
