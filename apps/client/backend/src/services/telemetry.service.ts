@@ -8,7 +8,8 @@
  */
 
 import { db } from '../database/connection.js';
-import crypto from 'crypto';
+import { getOrCreateInstanceId } from './instance-identity.js';
+import { getHeliosVersion } from '../utils/version.js';
 
 interface TelemetryPayload {
   instance_id: string;
@@ -63,8 +64,8 @@ class TelemetryService {
     }
 
     try {
-      // Get or create instance ID
-      this.instanceId = await this.getOrCreateInstanceId();
+      // Get or create instance ID (shared install identity — instance-identity.ts).
+      this.instanceId = await getOrCreateInstanceId();
       console.log(`[Telemetry] Enabled - Instance ID: ${this.instanceId}`);
 
       // Send initial heartbeat
@@ -95,40 +96,6 @@ class TelemetryService {
     return hasLicense
       ? 60 * 60 * 1000      // Hosted: hourly
       : 24 * 60 * 60 * 1000; // Self-hosted: daily
-  }
-
-  /**
-   * Get or create a unique instance ID
-   * Stored in organization_settings table
-   */
-  private async getOrCreateInstanceId(): Promise<string> {
-    const client = await db.getClient();
-    try {
-      // Check for existing instance ID
-      const result = await client.query(`
-        SELECT value FROM organization_settings
-        WHERE key = 'instance_id'
-        LIMIT 1
-      `);
-
-      if (result.rows[0]?.value) {
-        return result.rows[0].value;
-      }
-
-      // Generate new instance ID
-      const instanceId = `helios_${crypto.randomUUID().replace(/-/g, '').slice(0, 21)}`;
-
-      // Store it
-      await client.query(`
-        INSERT INTO organization_settings (key, value, created_at, updated_at)
-        VALUES ('instance_id', $1, NOW(), NOW())
-        ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()
-      `, [instanceId]);
-
-      return instanceId;
-    } finally {
-      client.release();
-    }
   }
 
   /**
@@ -228,19 +195,6 @@ class TelemetryService {
   }
 
   /**
-   * Get package version
-   */
-  private getVersion(): string {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const pkg = require('../../package.json');
-      return pkg.version || '0.0.0';
-    } catch {
-      return '0.0.0';
-    }
-  }
-
-  /**
    * Send heartbeat to api.obilabs.dev
    */
   async sendHeartbeat(): Promise<void> {
@@ -249,7 +203,7 @@ class TelemetryService {
     try {
       const payload: TelemetryPayload = {
         instance_id: this.instanceId,
-        version: this.getVersion(),
+        version: getHeliosVersion(),
         license_key: process.env.HELIOS_LICENSE_KEY || undefined,
         user_count_range: await this.getUserCountRange(),
         modules_enabled: await this.getEnabledModules(),

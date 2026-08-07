@@ -84,6 +84,7 @@ import { startCampaignSchedulerJob, stopCampaignSchedulerJob } from './jobs/camp
 import { startTrackingRetentionJob, stopTrackingRetentionJob } from './jobs/tracking-retention.job.js';
 import { syncScheduler } from './services/sync-scheduler.service.js';
 import { telemetryService } from './services/telemetry.service.js';
+import { licenseService } from './services/license.service.js';
 
 import transparentProxyRouter from './middleware/transparent-proxy.js';
 import microsoftTransparentProxyRouter from './middleware/microsoft-transparent-proxy.js';
@@ -889,6 +890,14 @@ async function startServer(): Promise<void> {
       logger.warn('Telemetry initialization failed (non-critical)', err);
     }
 
+    // Initialize licence heartbeat (fail-open — never blocks boot). Helios is
+    // community-licensed: this reports liveness + donor status and NEVER gates.
+    try {
+      await licenseService.init();
+    } catch (err) {
+      logger.warn('License initialization failed (non-critical, fail-open)', err);
+    }
+
     // Start Google Workspace sync scheduler for configured organizations
     try {
       const orgsWithGW = await db.query(`
@@ -952,6 +961,7 @@ process.on('SIGTERM', async () => {
   stopTrackingRetentionJob();
   syncScheduler.stopAll();
   telemetryService.shutdown();
+  licenseService.shutdown();
   await db.close();
   process.exit(0);
 });
@@ -964,6 +974,7 @@ process.on('SIGINT', async () => {
   stopTrackingRetentionJob();
   syncScheduler.stopAll();
   telemetryService.shutdown();
+  licenseService.shutdown();
   await db.close();
   process.exit(0);
 });

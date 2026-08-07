@@ -25,6 +25,7 @@
     "@better-auth/passkey": "^1.4.9",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.24.3",
+    "@obilabs/licensing": "^0.1.0",
     "@types/cron": "^2.0.1",
     "@types/handlebars": "^4.0.40",
     "@types/socket.io": "^3.0.1",

@@ -6,9 +6,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci
+# Install dependencies (@obilabs/licensing from GitHub Packages via NPM_TOKEN secret)
+COPY package*.json .npmrc ./
+RUN --mount=type=secret,id=npm_token \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm ci
 
 # Copy source and build
 COPY tsconfig.json ./
@@ -23,9 +24,11 @@ WORKDIR /app
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy package files and install production deps only
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# Copy package files and install production deps only (@obilabs/licensing needs the
+# same GitHub Packages auth; NPM_TOKEN via BuildKit secret, never baked in)
+COPY package*.json .npmrc ./
+RUN --mount=type=secret,id=npm_token \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm ci --omit=dev && npm cache clean --force
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
