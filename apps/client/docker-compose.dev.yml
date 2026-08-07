@@ -86,6 +86,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # @obilabs/licensing installs from GitHub Packages via a BuildKit secret.
+      # Build with: NPM_TOKEN=<PAT> docker compose -f docker-compose.dev.yml build backend
+      secrets:
+        - npm_token
     container_name: helios_client_backend
     user: root
     # Internal only - nginx proxies /api requests
@@ -185,3 +189,9 @@ networks:
   helios_client_network:
     name: helios_client_network
     driver: bridge
+
+secrets:
+  # GitHub Packages auth for @obilabs/* installs, read from the host NPM_TOKEN env
+  # var at build time (a PAT with read:packages). Not required at runtime.
+  npm_token:
+    environment: NPM_TOKEN
