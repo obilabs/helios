@@ -17,11 +17,14 @@ RUN mkdir -p /app/logs && chown nodejs:nodejs /app/logs
 # Switch to non-root user BEFORE any file operations
 USER nodejs
 
-# Copy package files (already owned by nodejs due to USER switch)
-COPY --chown=nodejs:nodejs package*.json ./
+# Copy package files + .npmrc (@obilabs registry; auth via NPM_TOKEN injected below)
+COPY --chown=nodejs:nodejs package*.json .npmrc ./
 
-# Install all dependencies (including dev for development)
-RUN npm install
+# Install all dependencies (including dev for development). @obilabs/licensing
+# resolves from GitHub Packages; NPM_TOKEN is supplied via a BuildKit secret mount
+# (uid 1001 = the nodejs user that runs this step), never baked into a layer.
+RUN --mount=type=secret,id=npm_token,uid=1001 \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm install
 
 # Copy tsconfig
 COPY --chown=nodejs:nodejs tsconfig.json ./
