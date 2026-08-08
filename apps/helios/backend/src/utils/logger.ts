@@ -44,8 +44,11 @@ const logger = winston.createLogger({
   ],
 });
 
-// If we're not in production, add console transport
-if (process.env['NODE_ENV'] !== 'production') {
+// Always add a console transport. In containers, stdout is the canonical log
+// sink (captured by `docker logs`) — and it is the ONLY operator-visible signal
+// for the fail-open licence heartbeat, which never gates the product. The file
+// transports above remain as a durable secondary sink.
+{
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
