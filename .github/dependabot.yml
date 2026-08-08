@@ -2,7 +2,7 @@ version: 2
 updates:
   # Backend (Express/TypeScript)
   - package-ecosystem: "npm"
-    directory: "/apps/client/backend"
+    directory: "/apps/helios/backend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
@@ -12,7 +12,7 @@ updates:
 
   # Frontend (Vite/React)
   - package-ecosystem: "npm"
-    directory: "/apps/client/frontend"
+    directory: "/apps/helios/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
