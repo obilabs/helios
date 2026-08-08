@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/var/www/helios/**)",
+      "Write(/var/www/helios/**)",
+      "Edit(/var/www/helios/**)",
+      "Glob(/var/www/helios/**)",
+      "Grep(/var/www/helios/**)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(pwd:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Task",
+      "TodoWrite"
+    ],
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
+    ]
+  }
+}

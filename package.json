@@ -5,9 +5,9 @@
   "description": "Helios — Google Workspace security & management. Clean single-repo monorepo (consolidation of the previous nested-repo layout).",
   "license": "AGPL-3.0",
   "scripts": {
-    "test:backend": "cd apps/client/backend && npm test",
-    "typecheck:backend": "cd apps/client/backend && node node_modules/typescript/bin/tsc --noEmit",
-    "build:backend": "cd apps/client/backend && npm run build",
-    "build:frontend": "cd apps/client/frontend && npm run build"
+    "test:backend": "cd apps/helios/backend && npm test",
+    "typecheck:backend": "cd apps/helios/backend && node node_modules/typescript/bin/tsc --noEmit",
+    "build:backend": "cd apps/helios/backend && npm run build",
+    "build:frontend": "cd apps/helios/frontend && npm run build"
   }
 }

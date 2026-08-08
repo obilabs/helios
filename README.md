@@ -2,13 +2,13 @@
 
 <!--
 Badges activate once this repo is public on GitHub under the company org. Replace
-obilabs/helios-client with the real path. Kept here so the security posture is visible on the
+obilabs/helios with the real path. Kept here so the security posture is visible on the
 repo's front page — verify, don't trust.
 -->
 <!-- badges:start -->
-[![CI](https://github.com/obilabs/helios-client/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![CodeQL](https://github.com/obilabs/helios-client/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/obilabs/helios-client/badge)](https://securityscorecards.dev/viewer/?uri=github.com/obilabs/helios-client)
+[![CI](https://github.com/obilabs/helios/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CodeQL](https://github.com/obilabs/helios/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/obilabs/helios/badge)](https://securityscorecards.dev/viewer/?uri=github.com/obilabs/helios)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen.svg)](SECURITY.md)
 <!-- badges:end -->
@@ -23,7 +23,7 @@ tested and swapped in without risky in-place git surgery.
 ## Why this exists
 
 The previous structure was a parent `helios` repo containing separate *nested* git
-repos (`helios-client`, `helios-mtp`, …) plus a large uncommitted migration — messy,
+repos (`helios`, `helios-mtp`, …) plus a large uncommitted migration — messy,
 un-CI-able, and error-prone. This is the clean replacement: **one git repo, one
 history, an Aegis-style `apps/` layout.**
 
@@ -40,7 +40,7 @@ packages/            ← shared code as it emerges (e.g. the licensing client)
 .github/workflows/   ← CI: typecheck + tests + build on every push/PR
 ```
 
-`apps/client` is the current, working Helios client — including all the security work
+`apps/helios` is the current, working Helios client — including all the security work
 (deny-by-default route auth, encryption-at-rest for service-account keys, the relay
 authorization engine, and the enforcement tests). The near-empty former apps
 (`mtp`, `owner`, `web`) are **not** carried over: `owner`/`web` collapse into the
@@ -51,7 +51,7 @@ See `_north_star/OBILABS-ALIGNMENT.md`.
 
 ## Provenance
 
-Ported from `helios/helios-client` (its git history was left behind deliberately; the
+Ported from `helios/helios` (its git history was left behind deliberately; the
 *code*, with all fixes, came across). The old `helios/` tree stays untouched until this
 version is verified and swapped in.
 
@@ -66,4 +66,4 @@ npm run test:backend      # relay engine, gw-credentials, route-auth/mount cover
 npm run build:frontend
 ```
 
-Or work inside `apps/client/backend` and `apps/client/frontend` directly.
+Or work inside `apps/helios/backend` and `apps/helios/frontend` directly.
