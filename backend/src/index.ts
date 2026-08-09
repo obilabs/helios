@@ -105,6 +105,7 @@ import externalSharingRoutes from './routes/external-sharing.routes.js';
 import loginActivityRoutes from './routes/login-activity.routes.js';
 import initialPasswordsRoutes from './routes/initial-passwords.routes.js';
 import securityRoutes from './routes/security.routes.js';
+import mtpRoutes from './routes/mtp.routes.js';
 import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.js';
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
@@ -692,6 +693,11 @@ registerRoute('/tracking', trackingAnalyticsRoutes);
 registerRoute('/settings', trackingAnalyticsRoutes);
 // Admin tracking routes are at /admin/tracking
 registerRoute('/admin', trackingAnalyticsRoutes);
+
+// MTP (MSP multi-tenant portal) surface — pairing-key bearer auth only
+// (OpenSpec: mtp-integration). Handshake completes the single-use bind;
+// poll returns the directory/security aggregate.
+registerRoute('/mtp', mtpRoutes);
 
 // MCP (Model Context Protocol) for AI integration
 registerRoute('/mcp', mcpRoutes);
