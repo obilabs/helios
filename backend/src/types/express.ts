@@ -29,7 +29,7 @@ declare global {
         // Authentication method (added by session-auth middleware)
         authMethod?: 'session' | 'jwt' | 'api-key';
         // API Key context
-        keyType?: 'service' | 'vendor';
+        keyType?: 'service' | 'vendor' | 'helios-mtp-pairing';
         apiKeyId?: string;
         apiKeyName?: string;
         serviceName?: string;

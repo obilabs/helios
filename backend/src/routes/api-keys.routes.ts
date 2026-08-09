@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { generateApiKey } from '../utils/apiKey.js';
+import { generateApiKey, MTP_PAIRING_KEY_TYPE } from '../utils/apiKey.js';
 import { db } from '../database/connection.js';
+import { mtpPairingService } from '../services/mtp-pairing.service.js';
 
 const router = Router();
 
@@ -132,11 +133,51 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Validate type
-    if (type !== 'service' && type !== 'vendor') {
+    if (type !== 'service' && type !== 'vendor' && type !== MTP_PAIRING_KEY_TYPE) {
       res.status(400).json({
         success: false,
         error: 'Validation error',
-        message: 'Type must be "service" or "vendor"',
+        message: 'Type must be "service", "vendor" or "helios-mtp-pairing"',
+      });
+      return;
+    }
+
+    // MTP pairing keys have their own lifecycle (single-use, 15-minute
+    // pairing window, atomic bind on first handshake) — delegate to the
+    // pairing service instead of the generic insert below.
+    // (OpenSpec: mtp-integration)
+    if (type === MTP_PAIRING_KEY_TYPE) {
+      const organizationIdForPairing = req.user?.organizationId;
+      if (!organizationIdForPairing) {
+        res.status(400).json({
+          success: false,
+          error: 'Authentication error',
+          message: 'Organization ID not found',
+        });
+        return;
+      }
+
+      const issued = await mtpPairingService.issuePairing(organizationIdForPairing, {
+        name,
+        description,
+        scopes: Array.isArray(permissions) && permissions.length > 0 ? permissions : undefined,
+        createdBy: req.user?.userId,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          // Full key - shown only once!
+          key: issued.key,
+          id: issued.id,
+          name: issued.name,
+          type: MTP_PAIRING_KEY_TYPE,
+          keyPrefix: issued.keyPrefix,
+          scopes: issued.scopes,
+          pairingWindowExpiresAt: issued.pairingWindowExpiresAt,
+        },
+        message:
+          'MTP pairing key created. Hand it to your MSP now — it must complete the handshake within 15 minutes and binds permanently on first use.',
       });
       return;
     }
@@ -680,6 +721,49 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
+
+    // MTP pairing keys get authoritative revocation: revoked_at is set and an
+    // explicit "MSP access revoked" security event is recorded so the MTP
+    // learns of a real revocation rather than inferring it from a poll 401.
+    // (OpenSpec: mtp-integration, design D6)
+    const typeCheck = await db.query(
+      'SELECT type FROM api_keys WHERE id = $1 AND organization_id = $2',
+      [id, organizationId]
+    );
+
+    if (typeCheck.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        error: 'API key not found',
+      });
+      return;
+    }
+
+    if (typeCheck.rows[0].type === MTP_PAIRING_KEY_TYPE) {
+      const revoked = await mtpPairingService.revokePairing(id!, organizationId!, {
+        revokedBy: req.user?.userId,
+      });
+
+      if (!revoked) {
+        // Already revoked earlier — treat as success (idempotent revoke).
+        res.json({
+          success: true,
+          message: 'MTP pairing was already revoked',
+        });
+        return;
+      }
+
+      logger.info('MTP pairing key revoked via api-keys route', {
+        keyId: id,
+        keyName: revoked.name,
+      });
+
+      res.json({
+        success: true,
+        message: 'MTP pairing revoked. The MSP portal will receive an authoritative revocation signal on its next call.',
+      });
+      return;
+    }
 
     const result = await db.query(
       `UPDATE api_keys

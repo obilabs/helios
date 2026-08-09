@@ -168,6 +168,28 @@ export function verifyApiKey(plaintext: string, storedHash: string): boolean {
   }
 }
 
+// API key types
+//
+// - service:            long-lived automation keys (no actor required)
+// - vendor:             long-lived keys for human operators (actor asserted)
+// - helios-mtp-pairing: single-use, time-bounded MTP pairing keys.
+//   Issuance opens a 15-minute pairing window; the first successful
+//   POST /api/v1/mtp/handshake atomically and permanently binds the key
+//   (paired_at / paired_from_ip / paired_user_agent). Pairing keys are ONLY
+//   valid on the /api/v1/mtp/* surface — never as general API keys.
+//   (OpenSpec: mtp-integration, design D1/D2)
+export const API_KEY_TYPES = ['service', 'vendor', 'helios-mtp-pairing'] as const;
+export type ApiKeyType = (typeof API_KEY_TYPES)[number];
+
+export const MTP_PAIRING_KEY_TYPE: ApiKeyType = 'helios-mtp-pairing';
+
+/** Minutes an unbound MTP pairing key stays claimable after issuance. */
+export const MTP_PAIRING_WINDOW_MINUTES = 15;
+
+export function isValidKeyType(type: string): type is ApiKeyType {
+  return (API_KEY_TYPES as readonly string[]).includes(type);
+}
+
 // Available API permission scopes
 export const API_SCOPES = {
   // Users
@@ -190,6 +212,10 @@ export const API_SCOPES = {
 
   // Audit
   'read:audit-logs': 'View audit logs',
+
+  // MTP (MSP portal) surface — granted on helios-mtp-pairing keys only
+  'mtp:poll': 'Read the MTP directory/security poll aggregate',
+  'mtp:offboard': 'Offboard (suspend/transfer/delete) a Workspace user via an MTP action',
 
   // Bulk operations
   'bulk:users': 'Perform bulk user operations',
