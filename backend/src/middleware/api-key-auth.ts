@@ -10,7 +10,7 @@ declare global {
       apiKey?: {
         id: string;
         name: string;
-        type: 'service' | 'vendor';
+        type: 'service' | 'vendor' | 'helios-mtp-pairing';
         organizationId: string;
         permissions: string[];
         vendorConfig?: any;
@@ -104,6 +104,32 @@ export const authenticateApiKey = async (
     }
 
     const key = result.rows[0];
+
+    // MTP pairing keys (type 'helios-mtp-pairing') are NOT general API keys.
+    // They are only meaningful on the /api/v1/mtp/* surface, where the
+    // dedicated MTP middleware (middleware/mtp-auth.ts) enforces the pairing
+    // gates (single-use bind, 15-min window, authoritative revocation).
+    // Refuse them everywhere else; on /mtp paths, defer to the MTP middleware
+    // so a revoked pairing gets the authoritative revoked signal rather than
+    // this middleware's generic 401. (OpenSpec: mtp-integration)
+    if (key.type === 'helios-mtp-pairing') {
+      const normalizedPath = req.path.startsWith('/v1') ? req.path.slice(3) : req.path;
+      if (!normalizedPath.startsWith('/mtp')) {
+        logger.warn('MTP pairing key used outside the MTP surface', {
+          keyId: key.id,
+          keyName: key.name,
+          path: req.path,
+        });
+        res.status(403).json({
+          success: false,
+          error: 'Invalid key type',
+          message: 'MTP pairing keys are only valid on /api/v1/mtp/* endpoints',
+        });
+        return;
+      }
+      // Let the MTP surface's own auth middleware handle this key.
+      return next();
+    }
 
     // Check if key is active
     if (!key.is_active) {

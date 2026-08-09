@@ -33,7 +33,7 @@ declare global {
       apiKey?: {
         id: string;
         name: string;
-        type: 'service' | 'vendor';
+        type: 'service' | 'vendor' | 'helios-mtp-pairing';
         organizationId: string;
         permissions: string[];
         vendorConfig?: any;
