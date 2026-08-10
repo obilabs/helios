@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.js';
-import { hashApiKey, validateApiKeyFormat, MTP_PAIRING_KEY_TYPE } from '../utils/apiKey.js';
+import {
+  hashApiKey,
+  validateApiKeyFormat,
+  hasPermission,
+  MTP_PAIRING_KEY_TYPE,
+  type ApiScope,
+} from '../utils/apiKey.js';
 import { db } from '../database/connection.js';
 
 /**
@@ -42,10 +48,23 @@ export interface MtpPairingContext {
   keyHash: string;
 }
 
+/**
+ * The asserted MSP technician behind a write action (design D4). The bearer
+ * pairing key auths the MSP *firm*; these headers identify the specific human
+ * for the audit trail. Attached by `requireActorAssertion`, read from the
+ * `X-Actor-*` headers the MTP's HeliosAdapter sends. NEVER trusted from a
+ * request body.
+ */
+export interface MtpActorContext {
+  email: string;
+  name: string;
+}
+
 declare global {
   namespace Express {
     interface Request {
       mtpPairing?: MtpPairingContext;
+      mtpActor?: MtpActorContext;
     }
   }
 }
@@ -195,5 +214,80 @@ export const requirePairedMtpKey = (
     return;
   }
 
+  next();
+};
+
+/**
+ * Gate an MTP action on a required scope carried by the pairing key
+ * (OpenSpec mtp-integration task 3.2). Scopes are the fine-grained grants the
+ * customer attached when issuing the pairing key (`api_keys.permissions`);
+ * `mtp:offboard` is issued separately from `mtp:poll` so the customer can
+ * grant read-only polling without granting destructive offboards.
+ *
+ * Refuses with 403 `insufficient_scope` (frozen kind, mtp-contract.ts). Must
+ * run AFTER authenticateMtpPairing + requirePairedMtpKey so `req.mtpPairing`
+ * exists.
+ */
+export const requireMtpScope = (scope: ApiScope) => (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const scopes = req.mtpPairing?.scopes ?? [];
+  if (!hasPermission(scopes, scope)) {
+    logger.warn('MTP action refused: insufficient scope', {
+      keyId: req.mtpPairing?.id,
+      required: scope,
+      path: req.path,
+    });
+    res.status(403).json({
+      success: false,
+      kind: 'insufficient_scope',
+      error: 'Insufficient scope',
+      message: `This action requires the '${scope}' scope, which this pairing was not granted`,
+    });
+    return;
+  }
+  next();
+};
+
+/** Minimal RFC-5322-ish check — the MTP already validates before sending. */
+function looksLikeEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+/**
+ * Require actor assertion on an MTP write action (design D4, task 3.2). The
+ * bearer key auths the MSP firm; `X-Actor-Email` / `X-Actor-Name` identify the
+ * specific technician for the append-only audit trail. Refuses with 400
+ * `missing_actor_context` when either header is absent or malformed — a
+ * destructive write is never performed without an attributable actor.
+ *
+ * The actor is read ONLY from headers set by the MTP core (which derives them
+ * server-side from the tech's session), never from the request body.
+ */
+export const requireActorAssertion = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const emailRaw = req.headers['x-actor-email'];
+  const nameRaw = req.headers['x-actor-name'];
+  const email = typeof emailRaw === 'string' ? emailRaw.trim() : '';
+  const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
+
+  if (!email || !name || !looksLikeEmail(email)) {
+    res.status(400).json({
+      success: false,
+      kind: 'missing_actor_context',
+      error: 'Actor assertion required',
+      message:
+        'Every MTP write action must carry X-Actor-Email and X-Actor-Name identifying the acting technician',
+      requiredHeaders: ['X-Actor-Email', 'X-Actor-Name'],
+    });
+    return;
+  }
+
+  req.mtpActor = { email, name };
   next();
 };

@@ -4,15 +4,21 @@ import { db } from '../database/connection.js';
 import {
   authenticateMtpPairing,
   requirePairedMtpKey,
+  requireMtpScope,
+  requireActorAssertion,
 } from '../middleware/mtp-auth.js';
 import { mtpPairingService } from '../services/mtp-pairing.service.js';
 import { mtpPollService } from '../services/mtp-poll.service.js';
+import { googleWorkspaceService } from '../services/google-workspace.service.js';
+import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 import {
   MTP_API_VERSION,
   MTP_CAPABILITIES,
   MTP_POLL_ENDPOINT,
   mtpHandshakeResponseSchema,
   mtpPollResponseSchema,
+  mtpOffboardRequestSchema,
+  mtpOffboardResponseSchema,
 } from '../types/mtp-contract.js';
 
 /**
@@ -197,17 +203,191 @@ router.get(
   }
 );
 
-// ---------------------------------------------------------------------------
-// TODO(mtp-integration, task group 3 — under separate human review):
-// POST /api/v1/mtp/actions/offboard-user
-//   - gate on the dedicated `mtp:offboard` scope (pairing.scopes) AND
-//     actor-assertion headers (X-Actor-Email / X-Actor-Name) — refuse with
-//     400 missing-actor-context / 403 insufficient-scope when absent
-//   - wire to the existing services/user-offboarding.service.ts
-//     (suspend/transfer/delete); NEVER triggered by pairing revocation (D5)
-//   - audit-log every action with the asserted MSP technician (task 3.4)
-// Wire it here, after requirePairedMtpKey, e.g.:
-//   router.post('/actions/offboard-user', requirePairedMtpKey, requireMtpScope('mtp:offboard'), requireActorAssertion, handler)
-// ---------------------------------------------------------------------------
+/**
+ * POST /api/v1/mtp/actions/offboard-user
+ *
+ * The one destructive write Helios exposes to the MTP (OpenSpec mtp-integration
+ * task group 3, seam-review g11). Suspends / (optionally transfers Drive then)
+ * deletes a real Google Workspace account.
+ *
+ * Gates (in middleware order):
+ *   requirePairedMtpKey      — bound, non-revoked pairing
+ *   requireMtpScope          — the pairing was granted `mtp:offboard`
+ *                              (issued separately from mtp:poll) → else 403
+ *   requireActorAssertion    — X-Actor-Email / X-Actor-Name present → else 400
+ *
+ * Design D5 — this action is INDEPENDENT of pairing revocation. Revoking the
+ * MSP's access (api-keys route) never calls this; offboarding a user never
+ * revokes the pairing. The two are deliberately decoupled to prevent a
+ * "revoke access → mass-suspend real accounts" coupling.
+ *
+ * Org-scoping — the target is resolved ONLY within the pairing's organization
+ * (`gw_synced_users WHERE organization_id = <pairing org>`); an MSP tech can
+ * never reach a user in another organization.
+ *
+ * Every outcome (success, blocked, failure) is written to the append-only
+ * security audit with the asserted MSP technician as the actor (task 3.4).
+ */
+router.post(
+  '/actions/offboard-user',
+  requirePairedMtpKey,
+  requireMtpScope('mtp:offboard'),
+  requireActorAssertion,
+  async (req: Request, res: Response): Promise<void> => {
+    const pairing = req.mtpPairing!;
+    const actor = req.mtpActor!;
+    const orgId = pairing.organizationId;
+    const actorIp = req.ip || req.socket.remoteAddress || undefined;
+    const actorUserAgent = (req.headers['user-agent'] as string) || undefined;
+
+    const parsed = mtpOffboardRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        success: false,
+        kind: 'invalid_request',
+        error: 'Invalid offboard request',
+        message: parsed.error.issues.map((e) => e.message).join('; '),
+      });
+      return;
+    }
+    const { user_email, action, transfer_drive_to } = parsed.data;
+    const auditAction =
+      action === 'delete' ? AuditActions.USER_DELETE : AuditActions.USER_SUSPEND;
+
+    // Common audit envelope for this request.
+    const audit = (
+      outcome: 'success' | 'failure' | 'blocked',
+      extra: { errorCode?: string; errorMessage?: string; changesAfter?: Record<string, any> } = {},
+    ) =>
+      securityAudit.log({
+        actorType: 'mtp',
+        actorEmail: actor.email,
+        actorIp,
+        actorUserAgent,
+        action: auditAction,
+        actionCategory: 'admin',
+        targetType: 'workspace_user',
+        targetIdentifier: user_email,
+        organizationId: orgId,
+        outcome,
+        flagged: action === 'delete',
+        ...extra,
+      });
+
+    try {
+      // Resolve the target strictly within the pairing's organization.
+      const target = await db.query(
+        `SELECT google_id, is_suspended
+           FROM gw_synced_users
+          WHERE organization_id = $1 AND email = $2`,
+        [orgId, user_email]
+      );
+
+      if (target.rows.length === 0) {
+        await audit('blocked', { errorCode: 'user_not_found' });
+        res.status(404).json({
+          success: false,
+          kind: 'user_not_found',
+          error: 'User not found',
+          message: 'No Workspace user with that email in this organization',
+        });
+        return;
+      }
+
+      const googleId = target.rows[0].google_id as string;
+
+      // Optional Drive transfer BEFORE the destructive step. If it fails, abort
+      // — never suspend/delete after failing to preserve the user's data.
+      if (transfer_drive_to) {
+        const transfer = await googleWorkspaceService.transferDriveOwnership(
+          orgId,
+          user_email,
+          transfer_drive_to
+        );
+        if (!transfer.success) {
+          await audit('failure', {
+            errorCode: 'drive_transfer_failed',
+            errorMessage: transfer.error,
+            changesAfter: { transfer_drive_to },
+          });
+          res.status(502).json({
+            success: false,
+            kind: 'drive_transfer_failed',
+            error: 'Drive transfer failed',
+            message: transfer.error || 'Could not transfer Drive ownership; action aborted',
+          });
+          return;
+        }
+      }
+
+      // The destructive step.
+      const result =
+        action === 'delete'
+          ? await googleWorkspaceService.deleteUser(orgId, googleId)
+          : await googleWorkspaceService.suspendUser(orgId, googleId);
+
+      if (!result.success) {
+        await audit('failure', {
+          errorMessage: result.error,
+          changesAfter: { action, transfer_drive_to: transfer_drive_to ?? null },
+        });
+        res.status(502).json({
+          success: false,
+          kind: 'workspace_error',
+          error: 'Offboard failed',
+          message: result.error || 'Google Workspace rejected the offboard action',
+        });
+        return;
+      }
+
+      // Reflect the change in the local cache (best-effort; the next sync
+      // reconciles authoritatively from Google).
+      if (action === 'delete') {
+        await db
+          .query('DELETE FROM gw_synced_users WHERE organization_id = $1 AND google_id = $2', [
+            orgId,
+            googleId,
+          ])
+          .catch((e) => logger.warn('offboard: local cache delete failed', { error: e.message }));
+      } else {
+        await db
+          .query(
+            `UPDATE gw_synced_users SET is_suspended = true, updated_at = NOW()
+              WHERE organization_id = $1 AND google_id = $2`,
+            [orgId, googleId]
+          )
+          .catch((e) => logger.warn('offboard: local cache update failed', { error: e.message }));
+      }
+
+      await audit('success', {
+        changesAfter: { action, transfer_drive_to: transfer_drive_to ?? null },
+      });
+
+      const payload = mtpOffboardResponseSchema.parse({
+        success: true,
+        action,
+        user_email,
+        outcome: action === 'delete' ? 'deleted' : 'suspended',
+      });
+      res.status(200).json(payload);
+    } catch (error: any) {
+      logger.error('MTP offboard-user failed', {
+        error: error.message,
+        stack: error.stack,
+        organizationId: orgId,
+        actor: actor.email,
+      });
+      // Best-effort audit of the unexpected failure.
+      await audit('failure', { errorCode: 'internal_error', errorMessage: error.message }).catch(
+        () => {}
+      );
+      res.status(500).json({
+        success: false,
+        error: 'Offboard failed',
+        message: 'An error occurred while performing the offboard action',
+      });
+    }
+  }
+);
 
 export default router;
