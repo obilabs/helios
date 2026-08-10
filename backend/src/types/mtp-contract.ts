@@ -13,9 +13,12 @@ import { z } from 'zod';
  * MTP_API_VERSION, which the MTP reads from `server.api_version` at handshake.
  *
  * Error envelope (not Zod-frozen — documented here for the adapter):
+ *   400 { kind: 'missing_actor_context' }              write action without X-Actor-* headers (D4)
  *   401 { kind: 'invalid_key' }                        unknown/garbled key
+ *   403 { kind: 'insufficient_scope' }                 pairing lacks the action's scope (e.g. mtp:offboard)
  *   403 { kind: 'revoked', revoked: true, revoked_at } authoritative revocation (D6/g12)
  *   403 { kind: 'not_paired' }                         unbound key on a non-handshake endpoint
+ *   404 { kind: 'user_not_found' }                     offboard target not in this organization
  *   409 { kind: 'already_paired' }                     handshake on an already-bound key
  *   410 { kind: 'window_closed' }                      handshake after the 15-min window
  */
@@ -97,3 +100,38 @@ export const mtpPollResponseSchema = z.object({
 });
 
 export type MtpPollResponse = z.infer<typeof mtpPollResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/mtp/actions/offboard-user — the one write action Helios exposes
+// (OpenSpec mtp-integration task group 3, seam-review g11). Gated by the
+// `mtp:offboard` scope + `X-Actor-*` assertion + audit. Per design D5 this is
+// a distinct, explicit action — NEVER implied by revoking the MSP pairing.
+// ---------------------------------------------------------------------------
+
+export const mtpOffboardRequestSchema = z.object({
+  /** Primary email of the Workspace user to offboard (must be in this org). */
+  user_email: z.string().email(),
+  /**
+   * The account action. `suspend` is reversible; `delete` is PERMANENT (the
+   * Workspace account and its data are removed and the licence freed).
+   */
+  action: z.enum(['suspend', 'delete']),
+  /**
+   * Optional: transfer the user's Drive to this account BEFORE suspend/delete.
+   * If the transfer fails the whole action aborts (data is never destroyed
+   * after a failed preservation step).
+   */
+  transfer_drive_to: z.string().email().optional(),
+});
+
+export type MtpOffboardRequest = z.infer<typeof mtpOffboardRequestSchema>;
+
+export const mtpOffboardResponseSchema = z.object({
+  success: z.boolean(),
+  action: z.enum(['suspend', 'delete']),
+  user_email: z.string(),
+  /** Human-readable outcome, e.g. 'suspended', 'deleted'. */
+  outcome: z.string(),
+});
+
+export type MtpOffboardResponse = z.infer<typeof mtpOffboardResponseSchema>;
