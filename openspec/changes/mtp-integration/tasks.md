@@ -14,14 +14,14 @@
 
 ## 3. Actions (write-back) — scope + actor asserted
 
-- [ ] 3.1 Define the MTP action scope(s) (dedicated `mtp:offboard` for separable grant/audit)
-- [ ] 3.2 `POST /api/v1/mtp/actions/offboard-user` — require scope + `X-Actor-Email`/`X-Actor-Name`; refuse when missing
-- [ ] 3.3 Wire the action to the existing `user-offboarding.service` (suspend/transfer/delete); never triggered by pairing-revoke
-- [ ] 3.4 Audit-log every action with the asserted MSP technician
+- [x] 3.1 `mtp:offboard` scope defined in `utils/apiKey.ts` (separable from `mtp:poll`, so a customer can grant read-only polling without destructive offboards)
+- [x] 3.2 `POST /api/v1/mtp/actions/offboard-user` — middleware chain `requirePairedMtpKey → requireMtpScope('mtp:offboard') → requireActorAssertion`; refuses 403 `insufficient_scope` / 400 `missing_actor_context` (both new middlewares in `middleware/mtp-auth.ts`; actor read ONLY from `X-Actor-*` headers, never the body)
+- [x] 3.3 Handler wires to `googleWorkspaceService.suspendUser`/`deleteUser` (+ optional `transferDriveOwnership` first, aborting on transfer failure). Target resolved strictly within the pairing's org (`gw_synced_users WHERE organization_id = <pairing org>`) — cross-org offboard impossible. NEVER triggered by pairing revocation (D5) — revoke and offboard are fully decoupled.
+- [x] 3.4 Every outcome (success/blocked/failure) written to the append-only `security_audit_logs` via `securityAudit.log` with `actorType:'mtp'` + the asserted technician email (`action:'user.suspend'|'user.delete'`)
 
 ## 4. Verification
 
 - [ ] 4.1 Unit: window-closed, already-paired, atomic-bind-under-concurrency, revoked-refuses
 - [ ] 4.2 Contract: handshake + poll payloads match the MTP HeliosAdapter's Zod schemas
-- [ ] 4.3 Action: offboard requires scope + actor; audited; unauthorized/actor-less refused
+- [x] 4.3 Action: offboard requires scope + actor; audited; unauthorized/actor-less refused (`src/__tests__/mtp-offboard.routes.test.ts` — 10/10: 403 insufficient_scope, 400 missing_actor_context, 404 user_not_found→audit blocked, suspend/delete success→audit, transfer-before-destroy ordering, transfer-abort, workspace-error, org-scoping)
 - [ ] 4.4 End-to-end via the harness with the MTP HeliosAdapter (platform change); `openspec validate mtp-integration` passes
