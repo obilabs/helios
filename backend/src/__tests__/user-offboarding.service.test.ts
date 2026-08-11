@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -19,10 +19,10 @@ jest.mock('../utils/logger', () => ({
 }));
 
 // Mock lifecycle log service
-const mockLogSuccess = jest.fn();
-const mockLogFailure = jest.fn();
-const mockLogSkipped = jest.fn();
-jest.mock('../services/lifecycle-log.service', () => ({
+const mockLogSuccess = jest.fn<(...args: any[]) => Promise<any>>();
+const mockLogFailure = jest.fn<(...args: any[]) => Promise<any>>();
+const mockLogSkipped = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/lifecycle-log.service.js', () => ({
   lifecycleLogService: {
     logSuccess: mockLogSuccess,
     logFailure: mockLogFailure,
@@ -32,13 +32,13 @@ jest.mock('../services/lifecycle-log.service', () => ({
 }));
 
 // Mock Google APIs
-const mockGroupsList = jest.fn();
-const mockMembersDelete = jest.fn();
-const mockTokensList = jest.fn();
-const mockTokensDelete = jest.fn();
-const mockUsersUpdate = jest.fn();
-const mockUsersSignOut = jest.fn();
-jest.mock('googleapis', () => ({
+const mockGroupsList = jest.fn<(...args: any[]) => Promise<any>>();
+const mockMembersDelete = jest.fn<(...args: any[]) => Promise<any>>();
+const mockTokensList = jest.fn<(...args: any[]) => Promise<any>>();
+const mockTokensDelete = jest.fn<(...args: any[]) => Promise<any>>();
+const mockUsersUpdate = jest.fn<(...args: any[]) => Promise<any>>();
+const mockUsersSignOut = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('googleapis', () => ({
   google: {
     admin: jest.fn(() => ({
       groups: {
@@ -69,15 +69,15 @@ jest.mock('googleapis', () => ({
 }));
 
 // Mock google-auth-library
-jest.mock('google-auth-library', () => ({
+jest.unstable_mockModule('google-auth-library', () => ({
   JWT: jest.fn().mockImplementation(() => ({
-    authorize: jest.fn().mockResolvedValue({}),
+    authorize: jest.fn(async () => ({})),
   })),
 }));
 
 // Import after mocks
-import { userOffboardingService } from '../services/user-offboarding.service.js';
-import { OffboardingConfig, CreateOffboardingTemplateDTO } from '../types/user-lifecycle.js';
+import type { OffboardingConfig, CreateOffboardingTemplateDTO } from '../types/user-lifecycle.js';
+const { userOffboardingService } = await import('../services/user-offboarding.service.js');
 
 describe('UserOffboardingService', () => {
   const testOrgId = 'test-org-id';
@@ -131,7 +131,7 @@ describe('UserOffboardingService', () => {
             notify_manager: true,
             notify_it_admin: true,
             notify_hr: false,
-            notification_email_addresses: [],
+            notification_email_addresses: [] as any,
             is_active: true,
             is_default: true,
             created_at: new Date(),
@@ -192,7 +192,7 @@ describe('UserOffboardingService', () => {
           notify_manager: true,
           notify_it_admin: true,
           notify_hr: false,
-          notification_email_addresses: [],
+          notification_email_addresses: [] as any,
           is_active: true,
           is_default: false,
           created_at: new Date(),
@@ -253,7 +253,7 @@ describe('UserOffboardingService', () => {
           notify_manager: true,
           notify_it_admin: true,
           notify_hr: false,
-          notification_email_addresses: [],
+          notification_email_addresses: [] as any,
           is_active: true,
           is_default: false,
           created_at: new Date(),
@@ -648,8 +648,8 @@ describe('UserOffboardingService', () => {
           drive_delete_after_days: 90,
           email_action: 'keep',
           email_forward_duration_days: 30,
-          email_auto_reply_message: null,
-          email_auto_reply_subject: null,
+          email_auto_reply_message: null as any,
+          email_auto_reply_subject: null as any,
           calendar_decline_future_meetings: false,
           calendar_transfer_meeting_ownership: false,
           calendar_transfer_to_manager: false,
@@ -670,7 +670,7 @@ describe('UserOffboardingService', () => {
           notify_manager: false,
           notify_it_admin: false,
           notify_hr: false,
-          notification_email_addresses: [],
+          notification_email_addresses: [] as any,
           is_active: true,
           is_default: true,
           created_at: new Date(),
@@ -741,7 +741,7 @@ describe('UserOffboardingService', () => {
           notify_manager: false,
           notify_it_admin: false,
           notify_hr: false,
-          notification_email_addresses: [],
+          notification_email_addresses: [] as any,
           is_active: true,
           is_default: false,
           created_at: new Date(),

@@ -3,8 +3,8 @@ import request from 'supertest';
 import express, { Express } from 'express';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
@@ -12,14 +12,14 @@ jest.mock('../database/connection', () => ({
 
 // Mock media upload service
 const mockMediaUploadService = {
-  getMedia: jest.fn(),
+  getMedia: jest.fn<(...args: any[]) => Promise<any>>(),
 };
-jest.mock('../services/media-upload.service', () => ({
+jest.unstable_mockModule('../services/media-upload.service.js', () => ({
   mediaUploadService: mockMediaUploadService,
 }));
 
 // Mock authentication middleware
-jest.mock('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth.js', () => ({
   requireAuth: (req: any, _res: any, next: any) => {
     req.user = {
       userId: 'viewer-user-id',
@@ -38,7 +38,7 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 // Import routes after mocking
-import peopleRoutes from '../routes/people.routes.js';
+const { default: peopleRoutes } = await import('../routes/people.routes.js');
 
 describe('People Routes', () => {
   let app: Express;

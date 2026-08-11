@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -12,32 +12,32 @@ jest.mock('../utils/logger', () => ({
 
 // Mock Redis client
 const mockRedisClient = {
-  connect: jest.fn(),
+  connect: jest.fn<(...args: any[]) => Promise<any>>(),
   on: jest.fn((event: string, handler: Function) => {
     if (event === 'connect') {
       // Simulate successful connection
       setTimeout(() => handler(), 0);
     }
   }),
-  get: jest.fn(),
-  setEx: jest.fn(),
-  del: jest.fn(),
-  exists: jest.fn(),
-  ttl: jest.fn(),
-  keys: jest.fn(),
-  info: jest.fn(),
-  quit: jest.fn(),
+  get: jest.fn<(...args: any[]) => Promise<any>>(),
+  setEx: jest.fn<(...args: any[]) => Promise<any>>(),
+  del: jest.fn<(...args: any[]) => Promise<any>>(),
+  exists: jest.fn<(...args: any[]) => Promise<any>>(),
+  ttl: jest.fn<(...args: any[]) => Promise<any>>(),
+  keys: jest.fn<(...args: any[]) => Promise<any>>(),
+  info: jest.fn<(...args: any[]) => Promise<any>>(),
+  quit: jest.fn<(...args: any[]) => Promise<any>>(),
 };
 
-jest.mock('redis', () => ({
+jest.unstable_mockModule('redis', () => ({
   createClient: jest.fn(() => mockRedisClient),
 }));
 
 // Import service after mocking
-import { MediaAssetCacheService } from '../services/media-asset-cache.service.js';
+const { MediaAssetCacheService } = await import('../services/media-asset-cache.service.js');
 
 describe('MediaAssetCacheService', () => {
-  let service: MediaAssetCacheService;
+  let service: InstanceType<typeof MediaAssetCacheService>;
 
   const testToken = 'test-access-token-123';
   const testData = Buffer.from('test binary content');
