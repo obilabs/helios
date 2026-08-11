@@ -135,3 +135,28 @@ export const mtpOffboardResponseSchema = z.object({
 });
 
 export type MtpOffboardResponse = z.infer<typeof mtpOffboardResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/mtp/revoke — MSP self-revocation of the presenting pairing
+// (OpenSpec mtp-integration task group 5 / platform `mtp-revoke-cascade`, g12).
+// Actor-asserted + audited; NO scope required — a pairing may always sever its
+// OWN access (kill switch), so gating it on a scope that legacy `mtp:poll`-only
+// keys lack would defeat the purpose. Per design D5 this ends MSP ACCESS ONLY:
+// it touches the pairing key + audit trail and NEVER a Google Workspace user.
+//
+// Idempotent: an already-revoked pairing is blocked upstream by
+// authenticateMtpPairing (403 `kind:'revoked'`); the `already_revoked` flag
+// below only covers the narrow TOCTOU race where the key is revoked between the
+// auth check and the handler.
+// ---------------------------------------------------------------------------
+
+export const mtpRevokeResponseSchema = z.object({
+  success: z.boolean(),
+  revoked: z.boolean(),
+  /** ISO timestamp of the revocation; null on the idempotent no-op path. */
+  revoked_at: z.string().nullable().optional(),
+  /** True when the pairing was already revoked (idempotent no-op). */
+  already_revoked: z.boolean().optional(),
+});
+
+export type MtpRevokeResponse = z.infer<typeof mtpRevokeResponseSchema>;
