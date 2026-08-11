@@ -61,7 +61,12 @@ const GUARD_PATTERN =
 const ROUTE_DEF = /^router\.(get|post|put|patch|delete)\(/;
 
 const ROUTER_LEVEL_GUARD =
-  /^router\.use\(\s*(authenticateToken|requireAuth|requireAdmin|requireSession)/m;
+  // authenticateMtpPairing is the MTP surface's router-level guard: it
+  // authenticates the `helios-mtp-pairing` bearer key on every /api/v1/mtp/*
+  // route (mtp.routes.ts `router.use(authenticateMtpPairing)`), rejecting any
+  // request without a valid, bound, non-revoked pairing key. It gates just as
+  // authenticateToken does, so it counts as a router-level guard here.
+  /^router\.use\(\s*(authenticateToken|requireAuth|requireAdmin|requireSession|authenticateMtpPairing)/m;
 
 /**
  * Routers that are INTENTIONALLY public, with the reason. Adding a router here

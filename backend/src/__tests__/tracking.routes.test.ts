@@ -8,16 +8,18 @@ import { jest } from '@jest/globals';
 import express, { Express } from 'express';
 
 // Mock the tracking events service
-const mockRecordEvent = jest.fn<(...args: any[]) => Promise<any>>().mockResolvedValue({ success: true });
-const mockRecordUserEvent = jest.fn<(...args: any[]) => Promise<any>>().mockResolvedValue({ success: true });
-jest.unstable_mockModule('../services/tracking-events.service.js', () => ({
+jest.mock('../services/tracking-events.service', () => ({
   trackingEventsService: {
-    recordEvent: mockRecordEvent,
-    recordUserEvent: mockRecordUserEvent,
+    recordEvent: jest.fn().mockResolvedValue({ success: true }),
+    recordUserEvent: jest.fn().mockResolvedValue({ success: true }),
   },
 }));
 
-const { default: trackingRoutes } = await import('../routes/tracking.routes.js');
+import { trackingEventsService } from '../services/tracking-events.service.js';
+import trackingRoutes from '../routes/tracking.routes.js';
+
+const mockRecordEvent = trackingEventsService.recordEvent as jest.MockedFunction<typeof trackingEventsService.recordEvent>;
+const mockRecordUserEvent = trackingEventsService.recordUserEvent as jest.MockedFunction<typeof trackingEventsService.recordUserEvent>;
 
 // 1x1 transparent GIF bytes - actual size from base64 decode is 42 bytes
 const TRANSPARENT_GIF_BYTES = 42;

@@ -63,12 +63,14 @@ jest.unstable_mockModule('google-auth-library', () => ({
 }));
 
 // Mock bcrypt
+const mockBcryptHash = jest.fn(async () => 'hashed-password');
 jest.unstable_mockModule('bcryptjs', () => ({
-  hash: jest.fn(async () => 'hashed-password'),
+  hash: mockBcryptHash,
+  default: { hash: mockBcryptHash },
 }));
 
 // Import after mocks
-import type { OnboardingConfig, CreateOnboardingTemplateDTO } from '../types/user-lifecycle.js';
+import type { OnboardingConfig, CreateOnboardingTemplateDTO, SharedDriveAccess } from '../types/user-lifecycle.js';
 const { userOnboardingService } = await import('../services/user-onboarding.service.js');
 
 describe('UserOnboardingService', () => {
@@ -101,8 +103,8 @@ describe('UserOnboardingService', () => {
             google_org_unit_path: '/',
             google_services: { gmail: true, drive: true },
             group_ids: ['group-1'],
-            shared_drive_access: [],
-            calendar_subscriptions: [],
+            shared_drive_access: [] as SharedDriveAccess[],
+            calendar_subscriptions: [] as string[],
             signature_template_id: null as any,
             default_job_title: null as any,
             default_manager_id: null as any,
@@ -158,9 +160,9 @@ describe('UserOnboardingService', () => {
           organization_id: testOrgId,
           name: 'Engineering Template',
           google_services: { gmail: true },
-          group_ids: [],
-          shared_drive_access: [],
-          calendar_subscriptions: [],
+          group_ids: [] as string[],
+          shared_drive_access: [] as SharedDriveAccess[],
+          calendar_subscriptions: [] as string[],
           send_welcome_email: true,
           welcome_email_subject: 'Welcome!',
           welcome_email_body: 'Hello!',
@@ -200,9 +202,9 @@ describe('UserOnboardingService', () => {
           name: 'New Template',
           description: 'A new onboarding template',
           google_services: { gmail: true, drive: true, calendar: true, meet: true, chat: true, docs: true, sheets: true, slides: true },
-          group_ids: [],
-          shared_drive_access: [],
-          calendar_subscriptions: [],
+          group_ids: [] as string[],
+          shared_drive_access: [] as SharedDriveAccess[],
+          calendar_subscriptions: [] as string[],
           send_welcome_email: true,
           welcome_email_subject: 'Welcome to {{company_name}}',
           welcome_email_body: 'Default body',
@@ -233,8 +235,8 @@ describe('UserOnboardingService', () => {
           name: 'Template with Groups',
           google_services: {},
           group_ids: ['group-1', 'group-2', 'group-3'],
-          shared_drive_access: [],
-          calendar_subscriptions: [],
+          shared_drive_access: [] as SharedDriveAccess[],
+          calendar_subscriptions: [] as string[],
           send_welcome_email: true,
           welcome_email_subject: 'Welcome to {{company_name}}',
           welcome_email_body: 'Default body',
@@ -261,9 +263,9 @@ describe('UserOnboardingService', () => {
           organization_id: testOrgId,
           name: 'Old Name',
           google_services: {},
-          group_ids: [],
-          shared_drive_access: [],
-          calendar_subscriptions: [],
+          group_ids: [] as string[],
+          shared_drive_access: [] as SharedDriveAccess[],
+          calendar_subscriptions: [] as string[],
           send_welcome_email: true,
           welcome_email_subject: 'Welcome!',
           welcome_email_body: 'Hello!',
@@ -585,8 +587,8 @@ describe('UserOnboardingService', () => {
           google_org_unit_path: '/Engineering',
           google_services: { gmail: true, drive: true },
           group_ids: ['eng-group'],
-          shared_drive_access: [],
-          calendar_subscriptions: [],
+          shared_drive_access: [] as SharedDriveAccess[],
+          calendar_subscriptions: [] as string[],
           signature_template_id: null as any,
           default_job_title: 'Software Engineer',
           default_manager_id: 'manager-id',
@@ -708,8 +710,7 @@ describe('UserOnboardingService', () => {
       const result = await userOnboardingService.executeOnboarding(testOrgId, config);
 
       // The bcrypt.hash should have been called with a generated password
-      const bcrypt = require('bcryptjs');
-      expect(bcrypt.hash).toHaveBeenCalled();
+      expect(mockBcryptHash).toHaveBeenCalled();
     });
   });
 

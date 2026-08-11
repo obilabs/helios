@@ -106,7 +106,10 @@ describe('Route Guards', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Invalid token');
+      // The auth middleware returns a uniform 'Authentication required' for both
+      // missing AND invalid tokens (it deliberately does not disclose which),
+      // so the rejection is what matters here, not a token-specific message.
+      expect(response.body.error).toBe('Authentication required');
     });
 
     it('should accept valid token and attach user to request', async () => {

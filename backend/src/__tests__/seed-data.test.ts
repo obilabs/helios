@@ -21,6 +21,7 @@ jest.unstable_mockModule('../middleware/auth.js', () => ({
     };
     next();
   },
+  requireAdmin: (_req: any, _res: any, next: any) => next(),
 }));
 
 // Import routes after mocking
@@ -174,7 +175,7 @@ describe('Seed Data Verification', () => {
 
     it('should identify orphaned users correctly', async () => {
       const orphanedUsers = [
-        { id: '101', first_name: 'Frank', last_name: 'Thompson', job_title: 'Security Consultant', reporting_manager_id: null },
+        { id: '101', first_name: 'Frank', last_name: 'Thompson', job_title: 'Security Consultant', reporting_manager_id: null as string | null },
         { id: '102', first_name: 'Grace', last_name: 'Liu', job_title: 'Data Analyst', reporting_manager_id: null },
         { id: '103', first_name: 'Jake', last_name: 'Roberts', job_title: 'Marketing Intern', reporting_manager_id: null },
       ];
