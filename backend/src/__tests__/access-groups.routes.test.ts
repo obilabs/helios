@@ -3,8 +3,8 @@ import request from 'supertest';
 import express, { Express } from 'express';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
@@ -12,34 +12,34 @@ jest.mock('../database/connection', () => ({
 
 // Mock Google Workspace service
 const mockGoogleWorkspaceService = {
-  syncGroupMembers: jest.fn(),
-  getGroupMemberEmails: jest.fn(),
-  addUserToGroup: jest.fn(),
-  removeUserFromGroup: jest.fn(),
+  syncGroupMembers: jest.fn<(...args: any[]) => Promise<any>>(),
+  getGroupMemberEmails: jest.fn<(...args: any[]) => Promise<any>>(),
+  addUserToGroup: jest.fn<(...args: any[]) => Promise<any>>(),
+  removeUserFromGroup: jest.fn<(...args: any[]) => Promise<any>>(),
 };
-jest.mock('../services/google-workspace.service', () => ({
+jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
   googleWorkspaceService: mockGoogleWorkspaceService,
 }));
 
 // Mock activity tracker
 const mockActivityTracker = {
-  trackGroupChange: jest.fn().mockResolvedValue(undefined),
+  trackGroupChange: jest.fn<(...args: any[]) => Promise<any>>().mockResolvedValue(undefined),
 };
-jest.mock('../services/activity-tracker.service', () => ({
+jest.unstable_mockModule('../services/activity-tracker.service.js', () => ({
   activityTracker: mockActivityTracker,
 }));
 
 // Mock dynamic group service
 const mockDynamicGroupService = {
-  getRules: jest.fn(),
-  addRule: jest.fn(),
-  updateRule: jest.fn(),
-  deleteRule: jest.fn(),
-  evaluateRules: jest.fn(),
-  applyRules: jest.fn(),
-  setMembershipType: jest.fn(),
+  getRules: jest.fn<(...args: any[]) => Promise<any>>(),
+  addRule: jest.fn<(...args: any[]) => Promise<any>>(),
+  updateRule: jest.fn<(...args: any[]) => Promise<any>>(),
+  deleteRule: jest.fn<(...args: any[]) => Promise<any>>(),
+  evaluateRules: jest.fn<(...args: any[]) => Promise<any>>(),
+  applyRules: jest.fn<(...args: any[]) => Promise<any>>(),
+  setMembershipType: jest.fn<(...args: any[]) => Promise<any>>(),
 };
-jest.mock('../services/dynamic-group.service', () => ({
+jest.unstable_mockModule('../services/dynamic-group.service.js', () => ({
   dynamicGroupService: mockDynamicGroupService,
   DynamicGroupField: {},
   DynamicGroupOperator: {},
@@ -47,7 +47,7 @@ jest.mock('../services/dynamic-group.service', () => ({
 }));
 
 // Mock authentication middleware
-jest.mock('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth.js', () => ({
   authenticateToken: (req: any, _res: any, next: any) => {
     req.user = {
       userId: 'test-user-id',
@@ -60,7 +60,7 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 // Import routes after mocking
-import accessGroupsRoutes from '../routes/access-groups.routes.js';
+const { default: accessGroupsRoutes } = await import('../routes/access-groups.routes.js');
 
 describe('Access Groups Routes', () => {
   let app: Express;

@@ -1,15 +1,18 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import type { CreateScheduledActionDTO } from '../types/user-lifecycle.js';
+
+// ---- mocks (must be registered before the dynamic imports) ----
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -19,9 +22,9 @@ jest.mock('../utils/logger', () => ({
 }));
 
 // Mock lifecycle log service
-const mockLogSuccess = jest.fn();
-const mockLogFailure = jest.fn();
-jest.mock('../services/lifecycle-log.service', () => ({
+const mockLogSuccess = jest.fn<(...args: any[]) => Promise<any>>();
+const mockLogFailure = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/lifecycle-log.service.js', () => ({
   lifecycleLogService: {
     logSuccess: mockLogSuccess,
     logFailure: mockLogFailure,
@@ -30,9 +33,9 @@ jest.mock('../services/lifecycle-log.service', () => ({
 }));
 
 // Mock onboarding service
-const mockGetOnboardingTemplate = jest.fn();
-const mockExecuteOnboarding = jest.fn();
-jest.mock('../services/user-onboarding.service', () => ({
+const mockGetOnboardingTemplate = jest.fn<(...args: any[]) => Promise<any>>();
+const mockExecuteOnboarding = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/user-onboarding.service.js', () => ({
   userOnboardingService: {
     getTemplate: mockGetOnboardingTemplate,
     executeOnboarding: mockExecuteOnboarding,
@@ -40,9 +43,9 @@ jest.mock('../services/user-onboarding.service', () => ({
 }));
 
 // Mock offboarding service
-const mockGetOffboardingTemplate = jest.fn();
-const mockExecuteFromTemplate = jest.fn();
-jest.mock('../services/user-offboarding.service', () => ({
+const mockGetOffboardingTemplate = jest.fn<(...args: any[]) => Promise<any>>();
+const mockExecuteFromTemplate = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/user-offboarding.service.js', () => ({
   userOffboardingService: {
     getTemplate: mockGetOffboardingTemplate,
     executeFromTemplate: mockExecuteFromTemplate,
@@ -50,8 +53,7 @@ jest.mock('../services/user-offboarding.service', () => ({
 }));
 
 // Import after mocks
-import { scheduledActionService } from '../services/scheduled-action.service.js';
-import { CreateScheduledActionDTO } from '../types/user-lifecycle.js';
+const { scheduledActionService } = await import('../services/scheduled-action.service.js');
 
 describe('ScheduledActionService', () => {
   const testOrgId = 'test-org-id';
@@ -462,7 +464,7 @@ describe('ScheduledActionService', () => {
           retry_count: 0,
           max_retries: 3,
           requires_approval: true,
-          approved_at: null,
+          approved_at: null as any,
           created_at: new Date(),
           updated_at: new Date(),
         };
@@ -604,8 +606,8 @@ describe('ScheduledActionService', () => {
             retry_count: 0,
             max_retries: 3,
             requires_approval: true,
-            approved_at: null,
-            rejected_at: null,
+            approved_at: null as any,
+            rejected_at: null as any,
             created_at: new Date(),
             updated_at: new Date(),
           },

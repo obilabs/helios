@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -20,24 +20,36 @@ jest.mock('../utils/logger', () => ({
 
 // Mock Google Drive service
 const mockGoogleDriveService = {
-  testConnection: jest.fn(),
-  setupAssetsDrive: jest.fn(),
-  uploadFile: jest.fn(),
-  downloadFile: jest.fn(),
-  deleteFile: jest.fn(),
-  createFolder: jest.fn(),
-  listFiles: jest.fn(),
+  testConnection: jest.fn<(...args: any[]) => Promise<any>>(),
+  setupAssetsDrive: jest.fn<(...args: any[]) => Promise<any>>(),
+  uploadFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  downloadFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  deleteFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  createFolder: jest.fn<(...args: any[]) => Promise<any>>(),
+  listFiles: jest.fn<(...args: any[]) => Promise<any>>(),
 };
 
-jest.mock('../services/google-drive.service', () => ({
+jest.unstable_mockModule('../services/google-drive.service.js', () => ({
   googleDriveService: mockGoogleDriveService,
 }));
 
+// Mock S3/MinIO service (no live MinIO in unit tests)
+const mockS3Service = {
+  initialize: jest.fn<(...args: any[]) => Promise<any>>(async () => undefined),
+  uploadFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  downloadFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  deleteFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  listFiles: jest.fn<(...args: any[]) => Promise<any>>(async () => []),
+};
+jest.unstable_mockModule('../services/s3.service.js', () => ({
+  s3Service: mockS3Service,
+}));
+
 // Import service after mocking
-import { MediaAssetStorageService } from '../services/media-asset-storage.service.js';
+const { MediaAssetStorageService } = await import('../services/media-asset-storage.service.js');
 
 describe('MediaAssetStorageService', () => {
-  let service: MediaAssetStorageService;
+  let service: InstanceType<typeof MediaAssetStorageService>;
 
   const testOrgId = 'test-org-id';
 
@@ -163,7 +175,7 @@ describe('MediaAssetStorageService', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.result?.fileId).toBe('file-123');
+      expect((result.result as any)?.fileId).toBe('file-123');
     });
 
     it('should return error for unsupported storage backend', async () => {
@@ -408,6 +420,8 @@ describe('MediaAssetStorageService', () => {
   describe('getStatus', () => {
     it('should return unconfigured status when settings missing', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
+      // MinIO unavailable → auto-configuration must fail
+      mockS3Service.initialize.mockRejectedValueOnce(new Error('MinIO not available'));
 
       const result = await service.getStatus(testOrgId);
 

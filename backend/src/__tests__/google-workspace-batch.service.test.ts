@@ -2,17 +2,18 @@
  * Unit tests for Google Workspace Batch Service
  */
 
-import { googleWorkspaceBatchService, BulkUserUpdate, BulkGroupMemberOperation } from '../services/google-workspace-batch.service.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import type { BulkUserUpdate, BulkGroupMemberOperation } from '../services/google-workspace-batch.service.js';
 
 // Mock the database connection
-jest.mock('../database/connection', () => ({
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
-    query: jest.fn(),
+    query: jest.fn<(...args: any[]) => Promise<any>>(),
   },
 }));
 
 // Mock googleapis
-jest.mock('googleapis', () => ({
+jest.unstable_mockModule('googleapis', () => ({
   google: {
     admin: jest.fn(() => ({
       users: {
@@ -25,17 +26,18 @@ jest.mock('googleapis', () => ({
       },
     })),
   },
+  admin_directory_v1: {},
 }));
 
 // Mock google-auth-library
-jest.mock('google-auth-library', () => ({
+jest.unstable_mockModule('google-auth-library', () => ({
   JWT: jest.fn().mockImplementation(() => ({
-    authorize: jest.fn().mockResolvedValue({}),
+    authorize: jest.fn(async () => ({})),
   })),
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -43,8 +45,10 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-import { db } from '../database/connection.js';
-import { google } from 'googleapis';
+// Import after mocks
+const { googleWorkspaceBatchService } = await import('../services/google-workspace-batch.service.js');
+const { db } = await import('../database/connection.js');
+const { google } = await import('googleapis');
 
 describe('GoogleWorkspaceBatchService', () => {
   beforeEach(() => {
@@ -83,7 +87,7 @@ describe('GoogleWorkspaceBatchService', () => {
 
     beforeEach(() => {
       // Mock database to return credentials
-      (db.query as jest.Mock).mockResolvedValue({
+      (db.query as any).mockResolvedValue({
         rows: [{
           service_account_key: JSON.stringify(mockCredentials),
           admin_email: 'admin@test.com',
@@ -92,7 +96,7 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should return error when Google Workspace is not configured', async () => {
-      (db.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       const updates: BulkUserUpdate[] = [{
         email: 'user@test.com',
@@ -110,8 +114,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should process updates successfully', async () => {
-      const mockUpdate = jest.fn().mockResolvedValue({ data: { primaryEmail: 'user@test.com' } });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockUpdate = jest.fn<any>().mockResolvedValue({ data: { primaryEmail: 'user@test.com' } });
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
@@ -132,11 +136,11 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should handle partial failures', async () => {
-      const mockUpdate = jest.fn()
+      const mockUpdate = jest.fn<any>()
         .mockResolvedValueOnce({ data: {} })
         .mockRejectedValueOnce(new Error('User not found'));
 
-      (google.admin as jest.Mock).mockReturnValue({
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
@@ -158,8 +162,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should skip updates with no changes', async () => {
-      const mockUpdate = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockUpdate = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
@@ -185,7 +189,7 @@ describe('GoogleWorkspaceBatchService', () => {
     };
 
     beforeEach(() => {
-      (db.query as jest.Mock).mockResolvedValue({
+      (db.query as any).mockResolvedValue({
         rows: [{
           service_account_key: JSON.stringify(mockCredentials),
           admin_email: 'admin@test.com',
@@ -194,8 +198,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should suspend users successfully', async () => {
-      const mockUpdate = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockUpdate = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
@@ -224,7 +228,7 @@ describe('GoogleWorkspaceBatchService', () => {
     };
 
     beforeEach(() => {
-      (db.query as jest.Mock).mockResolvedValue({
+      (db.query as any).mockResolvedValue({
         rows: [{
           service_account_key: JSON.stringify(mockCredentials),
           admin_email: 'admin@test.com',
@@ -233,8 +237,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should move users to OU successfully', async () => {
-      const mockUpdate = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockUpdate = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
@@ -261,7 +265,7 @@ describe('GoogleWorkspaceBatchService', () => {
     };
 
     beforeEach(() => {
-      (db.query as jest.Mock).mockResolvedValue({
+      (db.query as any).mockResolvedValue({
         rows: [{
           service_account_key: JSON.stringify(mockCredentials),
           admin_email: 'admin@test.com',
@@ -270,8 +274,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should add members to group successfully', async () => {
-      const mockInsert = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockInsert = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: jest.fn() },
         members: { insert: mockInsert, delete: jest.fn() },
       });
@@ -303,8 +307,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should remove members from group successfully', async () => {
-      const mockDelete = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockDelete = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: jest.fn() },
         members: { insert: jest.fn(), delete: mockDelete },
       });
@@ -333,8 +337,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should handle "Member already exists" gracefully', async () => {
-      const mockInsert = jest.fn().mockRejectedValue(new Error('Member already exists'));
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockInsert = jest.fn<any>().mockRejectedValue(new Error('Member already exists'));
+      (google.admin as any).mockReturnValue({
         users: { update: jest.fn() },
         members: { insert: mockInsert, delete: jest.fn() },
       });
@@ -359,8 +363,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should handle "Resource Not Found" gracefully for remove', async () => {
-      const mockDelete = jest.fn().mockRejectedValue(new Error('Resource Not Found'));
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockDelete = jest.fn<any>().mockRejectedValue(new Error('Resource Not Found'));
+      (google.admin as any).mockReturnValue({
         users: { update: jest.fn() },
         members: { insert: jest.fn(), delete: mockDelete },
       });
@@ -384,8 +388,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should progress callback correctly', async () => {
-      const mockInsert = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockInsert = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: jest.fn() },
         members: { insert: mockInsert, delete: jest.fn() },
       });
@@ -421,7 +425,7 @@ describe('GoogleWorkspaceBatchService', () => {
     };
 
     beforeEach(() => {
-      (db.query as jest.Mock).mockResolvedValue({
+      (db.query as any).mockResolvedValue({
         rows: [{
           service_account_key: JSON.stringify(mockCredentials),
           admin_email: 'admin@test.com',
@@ -430,8 +434,8 @@ describe('GoogleWorkspaceBatchService', () => {
     });
 
     it('should activate (unsuspend) users successfully', async () => {
-      const mockUpdate = jest.fn().mockResolvedValue({ data: {} });
-      (google.admin as jest.Mock).mockReturnValue({
+      const mockUpdate = jest.fn<any>().mockResolvedValue({ data: {} });
+      (google.admin as any).mockReturnValue({
         users: { update: mockUpdate },
         members: { insert: jest.fn(), delete: jest.fn() },
       });
