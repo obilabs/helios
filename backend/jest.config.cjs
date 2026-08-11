@@ -35,4 +35,10 @@ module.exports = {
   },
   // Limit workers to reduce memory usage
   maxWorkers: 1,
+  // ts-jest's ESM transform (useESM) leaks memory across suites, so a single
+  // long-lived worker OOMs partway through the full suite ("Reached heap limit
+  // … Aborted"). Recycle the worker once it exceeds this, freeing the leak
+  // between test files so the whole suite can complete. See the test script's
+  // --max-old-space-size bump for additional headroom.
+  workerIdleMemoryLimit: '512MB',
 };
