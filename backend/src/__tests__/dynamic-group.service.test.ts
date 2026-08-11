@@ -1,20 +1,20 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock the database connection
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Import after mocking
-import {
-  dynamicGroupService,
+import type {
   DynamicGroupRule,
   DynamicGroupField,
   DynamicGroupOperator,
 } from '../services/dynamic-group.service.js';
+const { dynamicGroupService } = await import('../services/dynamic-group.service.js');
 
 describe('DynamicGroupService', () => {
   const testOrganizationId = '11111111-1111-1111-1111-111111111111';

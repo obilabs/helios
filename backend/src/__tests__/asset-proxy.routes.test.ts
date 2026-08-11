@@ -3,15 +3,15 @@ import request from 'supertest';
 import express, { Express } from 'express';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -22,28 +22,28 @@ jest.mock('../utils/logger', () => ({
 
 // Mock cache service
 const mockCacheService = {
-  get: jest.fn(),
-  set: jest.fn(),
-  invalidate: jest.fn(),
-  getStats: jest.fn(),
+  get: jest.fn<(...args: any[]) => Promise<any>>(),
+  set: jest.fn<(...args: any[]) => Promise<any>>(),
+  invalidate: jest.fn<(...args: any[]) => Promise<any>>(),
+  getStats: jest.fn<(...args: any[]) => Promise<any>>(),
 };
 
-jest.mock('../services/media-asset-cache.service', () => ({
+jest.unstable_mockModule('../services/media-asset-cache.service.js', () => ({
   mediaAssetCacheService: mockCacheService,
 }));
 
 // Mock storage service
 const mockStorageService = {
-  getFile: jest.fn(),
-  getSettings: jest.fn(),
+  getFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  getSettings: jest.fn<(...args: any[]) => Promise<any>>(),
 };
 
-jest.mock('../services/media-asset-storage.service', () => ({
+jest.unstable_mockModule('../services/media-asset-storage.service.js', () => ({
   mediaAssetStorageService: mockStorageService,
 }));
 
 // Import routes after mocking
-import assetProxyRoutes from '../routes/asset-proxy.routes.js';
+const { default: assetProxyRoutes } = await import('../routes/asset-proxy.routes.js');
 
 describe('Asset Proxy Routes', () => {
   let app: Express;
