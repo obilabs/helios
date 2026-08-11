@@ -23,6 +23,12 @@ function makeResult(overrides: Partial<LicenseResult>): LicenseResult {
     plan: 'donor',
     features: null,
     expiresAt: null,
+    // Trial lifecycle fields are part of the published LicenseResult contract;
+    // a non-trial community/donor licence sets them to their inactive defaults.
+    trial: false,
+    trialEndsAt: null,
+    daysRemaining: null,
+    trialEndingSoon: false,
     checkedAt: now,
     authoritativeAt: now,
     ...overrides,
