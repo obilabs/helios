@@ -45,6 +45,16 @@ describe('Org Chart Routes', () => {
 
   describe('GET /api/org-chart', () => {
     it('should return org chart with hierarchy structure', async () => {
+      // Mock user-count guard query
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ count: '3' }],
+      });
+
+      // Mock get_org_hierarchy function-exists check
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ exists: true }],
+      });
+
       // Mock hierarchy query
       mockQuery.mockResolvedValueOnce({
         rows: [
@@ -77,6 +87,16 @@ describe('Org Chart Routes', () => {
     });
 
     it('should return orphaned users separately', async () => {
+      // Mock user-count guard query (2 users: 1 in hierarchy + 1 orphan)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ count: '2' }],
+      });
+
+      // Mock get_org_hierarchy function-exists check
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ exists: true }],
+      });
+
       // Mock hierarchy query
       mockQuery.mockResolvedValueOnce({
         rows: [
@@ -107,6 +127,16 @@ describe('Org Chart Routes', () => {
     });
 
     it('should build correct tree structure with direct reports', async () => {
+      // Mock user-count guard query
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ count: '3' }],
+      });
+
+      // Mock get_org_hierarchy function-exists check
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ exists: true }],
+      });
+
       // Mock hierarchy with multiple levels
       mockQuery.mockResolvedValueOnce({
         rows: [
