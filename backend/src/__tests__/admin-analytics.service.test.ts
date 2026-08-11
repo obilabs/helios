@@ -142,7 +142,7 @@ describe('AdminAnalyticsService', () => {
         thisWeek: { opens: 50, unique: 25 },
         thisMonth: { opens: 200, unique: 100 },
         trend: { direction: 'up' as const, percentage: 25 },
-        peakHours: [],
+        peakHours: [] as Array<{ hour: number; day: string; avgOpens: number }>,
         byDevice: { desktop: 50, mobile: 40, tablet: 10 },
       };
 
