@@ -19,6 +19,7 @@ import {
   mtpPollResponseSchema,
   mtpOffboardRequestSchema,
   mtpOffboardResponseSchema,
+  mtpRevokeResponseSchema,
 } from '../types/mtp-contract.js';
 
 /**
@@ -33,6 +34,10 @@ import {
  *   POST /handshake  complete the one-time bind; returns org + scopes +
  *                    server capabilities (seam-review g18)
  *   GET  /poll       header-free read; directory/security aggregate (D3)
+ *   POST /actions/offboard-user  scoped + actor-asserted Workspace offboard (D5)
+ *   POST /revoke     MSP self-revocation of the presenting pairing; actor-
+ *                    asserted + audited; ends MSP access ONLY, never a
+ *                    Workspace user (D5/g12, `mtp-revoke-cascade`)
  *
  * Response payloads are `.parse()`d through the frozen Zod contract shapes
  * (types/mtp-contract.ts) so drift fails loudly here, not in the MTP.
@@ -385,6 +390,109 @@ router.post(
         success: false,
         error: 'Offboard failed',
         message: 'An error occurred while performing the offboard action',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/v1/mtp/revoke
+ *
+ * The MSP severs its OWN access to this Helios install (mtp-revoke-cascade,
+ * g12). The presenting pairing key selects which pairing is revoked (self-
+ * revoke); `revokePairing()` flips `api_keys.is_active=false` + `revoked_at`
+ * and records an `msp_access_revoked` security event — it touches ONLY the
+ * pairing key + audit trail.
+ *
+ * D5 INVARIANT (verified): this handler NEVER imports or calls
+ * googleWorkspaceService. Revoking MSP access does not suspend, delete, or
+ * otherwise alter a single Google Workspace user. Offboard (above) is the only
+ * path that touches Workspace, and it is a separate, explicitly-scoped action.
+ *
+ * NO scope gate: a bound pairing may always revoke itself (kill switch). It is
+ * actor-asserted (`X-Actor-*`) + audited so the acting technician is on record.
+ * Idempotent: a caller whose key is already revoked is rejected upstream by
+ * authenticateMtpPairing (403 `kind:'revoked'`) and never reaches here; the
+ * null branch below only covers the narrow revoke-between-auth-and-handler race.
+ */
+router.post(
+  '/revoke',
+  requirePairedMtpKey,
+  requireActorAssertion,
+  async (req: Request, res: Response): Promise<void> => {
+    const pairing = req.mtpPairing!;
+    const actor = req.mtpActor!;
+    const orgId = pairing.organizationId;
+    const actorIp = req.ip || req.socket.remoteAddress || undefined;
+    const actorUserAgent = (req.headers['user-agent'] as string) || undefined;
+
+    const audit = (
+      outcome: 'success' | 'failure',
+      extra: { errorCode?: string; errorMessage?: string; changesAfter?: Record<string, any> } = {},
+    ) =>
+      securityAudit.log({
+        actorType: 'mtp',
+        actorEmail: actor.email,
+        actorIp,
+        actorUserAgent,
+        action: AuditActions.API_KEY_REVOKE,
+        actionCategory: 'admin',
+        targetType: 'mtp_pairing',
+        targetId: pairing.id,
+        targetIdentifier: pairing.name,
+        organizationId: orgId,
+        outcome,
+        // A pairing revoke is a notable access change — surface it for review.
+        flagged: true,
+        ...extra,
+      });
+
+    try {
+      // `revokedBy` is a portal-user UUID column; the MTP actor is an email, not
+      // a portal user, so we leave it null and attribute the human via the
+      // append-only audit log below (and the security_event metadata).
+      const revoked = await mtpPairingService.revokePairing(pairing.id, orgId, {
+        reason: `MSP self-revoke via MTP by ${actor.email}`,
+      });
+
+      if (!revoked) {
+        // TOCTOU: the key was revoked between the auth check and here. Idempotent
+        // success — the end state (access gone) already holds.
+        await audit('success', { changesAfter: { already_revoked: true } });
+        res.status(200).json(
+          mtpRevokeResponseSchema.parse({
+            success: true,
+            revoked: true,
+            already_revoked: true,
+            revoked_at: null,
+          })
+        );
+        return;
+      }
+
+      await audit('success', { changesAfter: { revoked_at: revoked.revokedAt.toISOString() } });
+      res.status(200).json(
+        mtpRevokeResponseSchema.parse({
+          success: true,
+          revoked: true,
+          revoked_at: revoked.revokedAt.toISOString(),
+        })
+      );
+    } catch (error: any) {
+      logger.error('MTP revoke failed', {
+        error: error.message,
+        stack: error.stack,
+        organizationId: orgId,
+        actor: actor.email,
+        pairingId: pairing.id,
+      });
+      await audit('failure', { errorCode: 'internal_error', errorMessage: error.message }).catch(
+        () => {}
+      );
+      res.status(500).json({
+        success: false,
+        error: 'Revoke failed',
+        message: 'An error occurred while revoking the MSP pairing',
       });
     }
   }
