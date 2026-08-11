@@ -285,7 +285,7 @@ describe('MediaAssetCacheService', () => {
 });
 
 describe('MediaAssetCacheService - Disconnected State', () => {
-  let disconnectedService: MediaAssetCacheService;
+  let disconnectedService: InstanceType<typeof MediaAssetCacheService>;
 
   beforeEach(() => {
     // Simulate connection failure
