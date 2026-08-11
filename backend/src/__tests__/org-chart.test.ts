@@ -3,15 +3,15 @@ import request from 'supertest';
 import express, { Express } from 'express';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock authentication middleware
-jest.mock('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth.js', () => ({
   requireAuth: (req: any, _res: any, next: any) => {
     req.user = {
       userId: 'admin-user-id',
@@ -24,7 +24,7 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 // Import routes after mocking
-import orgChartRoutes from '../routes/org-chart.routes.js';
+const { default: orgChartRoutes } = await import('../routes/org-chart.routes.js');
 
 describe('Org Chart Routes', () => {
   let app: Express;

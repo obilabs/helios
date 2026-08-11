@@ -7,25 +7,23 @@
 import { jest } from '@jest/globals';
 
 // Mock the database connection
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
-    query: jest.fn(),
+    query: mockQuery,
   },
 }));
 
 // Mock the user analytics service
-jest.mock('../services/user-analytics.service', () => ({
+const mockGetMyStats = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/user-analytics.service.js', () => ({
   userAnalyticsService: {
-    getMyStats: jest.fn(),
+    getMyStats: mockGetMyStats,
   },
 }));
 
-import { db } from '../database/connection.js';
-import { userAnalyticsService } from '../services/user-analytics.service.js';
-import { adminAnalyticsService, OrgAnalytics } from '../services/admin-analytics.service.js';
-
-const mockQuery = db.query as jest.MockedFunction<typeof db.query>;
-const mockGetMyStats = userAnalyticsService.getMyStats as jest.MockedFunction<typeof userAnalyticsService.getMyStats>;
+import type { OrgAnalytics } from '../services/admin-analytics.service.js';
+const { adminAnalyticsService } = await import('../services/admin-analytics.service.js');
 
 describe('AdminAnalyticsService', () => {
   beforeEach(() => {

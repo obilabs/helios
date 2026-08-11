@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock database
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -19,10 +19,10 @@ jest.mock('../utils/logger', () => ({
 }));
 
 // Mock lifecycle log service
-const mockLogSuccess = jest.fn();
-const mockLogFailure = jest.fn();
-const mockLogSkipped = jest.fn();
-jest.mock('../services/lifecycle-log.service', () => ({
+const mockLogSuccess = jest.fn<(...args: any[]) => Promise<any>>();
+const mockLogFailure = jest.fn<(...args: any[]) => Promise<any>>();
+const mockLogSkipped = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/lifecycle-log.service.js', () => ({
   lifecycleLogService: {
     logSuccess: mockLogSuccess,
     logFailure: mockLogFailure,
@@ -32,11 +32,11 @@ jest.mock('../services/lifecycle-log.service', () => ({
 }));
 
 // Mock Google APIs
-const mockUsersInsert = jest.fn();
-const mockUsersUpdate = jest.fn();
-const mockMembersInsert = jest.fn();
-const mockPermissionsCreate = jest.fn();
-jest.mock('googleapis', () => ({
+const mockUsersInsert = jest.fn<(...args: any[]) => Promise<any>>();
+const mockUsersUpdate = jest.fn<(...args: any[]) => Promise<any>>();
+const mockMembersInsert = jest.fn<(...args: any[]) => Promise<any>>();
+const mockPermissionsCreate = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('googleapis', () => ({
   google: {
     admin: jest.fn(() => ({
       users: {
@@ -56,20 +56,20 @@ jest.mock('googleapis', () => ({
 }));
 
 // Mock google-auth-library
-jest.mock('google-auth-library', () => ({
+jest.unstable_mockModule('google-auth-library', () => ({
   JWT: jest.fn().mockImplementation(() => ({
-    authorize: jest.fn().mockResolvedValue({}),
+    authorize: jest.fn(async () => ({})),
   })),
 }));
 
 // Mock bcrypt
-jest.mock('bcryptjs', () => ({
-  hash: jest.fn().mockResolvedValue('hashed-password'),
+jest.unstable_mockModule('bcryptjs', () => ({
+  hash: jest.fn(async () => 'hashed-password'),
 }));
 
 // Import after mocks
-import { userOnboardingService } from '../services/user-onboarding.service.js';
-import { OnboardingConfig, CreateOnboardingTemplateDTO } from '../types/user-lifecycle.js';
+import type { OnboardingConfig, CreateOnboardingTemplateDTO } from '../types/user-lifecycle.js';
+const { userOnboardingService } = await import('../services/user-onboarding.service.js');
 
 describe('UserOnboardingService', () => {
   const testOrgId = 'test-org-id';
@@ -96,16 +96,16 @@ describe('UserOnboardingService', () => {
             organization_id: testOrgId,
             name: 'Default Template',
             description: 'Standard onboarding',
-            department_id: null,
-            google_license_sku: null,
+            department_id: null as any,
+            google_license_sku: null as any,
             google_org_unit_path: '/',
             google_services: { gmail: true, drive: true },
             group_ids: ['group-1'],
             shared_drive_access: [],
             calendar_subscriptions: [],
-            signature_template_id: null,
-            default_job_title: null,
-            default_manager_id: null,
+            signature_template_id: null as any,
+            default_job_title: null as any,
+            default_manager_id: null as any,
             send_welcome_email: true,
             welcome_email_subject: 'Welcome!',
             welcome_email_body: 'Hello!',
@@ -581,13 +581,13 @@ describe('UserOnboardingService', () => {
           name: 'Engineering',
           description: 'For engineers',
           department_id: 'eng-dept',
-          google_license_sku: null,
+          google_license_sku: null as any,
           google_org_unit_path: '/Engineering',
           google_services: { gmail: true, drive: true },
           group_ids: ['eng-group'],
           shared_drive_access: [],
           calendar_subscriptions: [],
-          signature_template_id: null,
+          signature_template_id: null as any,
           default_job_title: 'Software Engineer',
           default_manager_id: 'manager-id',
           send_welcome_email: true,
