@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 // Mock the database connection
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock logger
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger.js', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -18,8 +18,9 @@ jest.mock('../utils/logger', () => ({
 }));
 
 // Import after mocking
-import { signatureTemplateService } from '../services/signature-template.service.js';
-import { SignatureTemplateStatus, MERGE_FIELDS } from '../types/signatures.js';
+import type { SignatureTemplateStatus } from '../types/signatures.js';
+import { MERGE_FIELDS } from '../types/signatures.js';
+const { signatureTemplateService } = await import('../services/signature-template.service.js');
 
 describe('SignatureTemplateService', () => {
   const testOrganizationId = '11111111-1111-1111-1111-111111111111';
@@ -442,15 +443,15 @@ describe('SignatureTemplateService', () => {
         email: 'john@example.com',
         first_name: 'John',
         last_name: 'Doe',
-        preferred_name: null,
-        pronouns: null,
+        preferred_name: null as any,
+        pronouns: null as any,
         job_title: 'Engineer',
-        work_phone: null,
-        mobile_phone: null,
+        work_phone: null as any,
+        mobile_phone: null as any,
         location: 'NYC',
-        linkedin_url: null,
-        twitter_url: null,
-        department_id: null,
+        linkedin_url: null as any,
+        twitter_url: null as any,
+        department_id: null as any,
         department_name: 'Engineering',
         manager_name: 'Jane Boss',
       };
@@ -500,17 +501,17 @@ describe('SignatureTemplateService', () => {
         email: 'jane@example.com',
         first_name: 'Jane',
         last_name: 'Smith',
-        preferred_name: null,
+        preferred_name: null as any,
         pronouns: 'she/her',
         job_title: 'Manager',
         work_phone: '+1 555-0101',
-        mobile_phone: null,
+        mobile_phone: null as any,
         location: 'SF',
         linkedin_url: 'https://linkedin.com/in/jane',
-        twitter_url: null,
+        twitter_url: null as any,
         department_id: 'dept-1',
         department_name: 'Sales',
-        manager_name: null,
+        manager_name: null as any,
       };
 
       const mockOrgData = {
@@ -518,8 +519,8 @@ describe('SignatureTemplateService', () => {
         name: 'Acme Inc',
         domain: 'acme.com',
         website_url: 'https://acme.com',
-        address: null,
-        phone: null,
+        address: null as any,
+        phone: null as any,
       };
 
       mockQuery
@@ -561,26 +562,26 @@ describe('SignatureTemplateService', () => {
         email: 'test@example.com',
         first_name: 'Test',
         last_name: 'User',
-        preferred_name: null,
-        pronouns: null,
+        preferred_name: null as any,
+        pronouns: null as any,
         job_title: 'Dev',
-        work_phone: null,
-        mobile_phone: null,
-        location: null,
-        linkedin_url: null,
-        twitter_url: null,
-        department_id: null,
+        work_phone: null as any,
+        mobile_phone: null as any,
+        location: null as any,
+        linkedin_url: null as any,
+        twitter_url: null as any,
+        department_id: null as any,
         department_name: 'Tech',
-        manager_name: null,
+        manager_name: null as any,
       };
 
       const mockOrgData = {
         id: testOrganizationId,
         name: 'Test',
-        domain: null,
-        website_url: null,
-        address: null,
-        phone: null,
+        domain: null as any,
+        website_url: null as any,
+        address: null as any,
+        phone: null as any,
       };
 
       mockQuery
@@ -610,17 +611,17 @@ describe('SignatureTemplateService', () => {
         email: 'test@example.com',
         first_name: 'Test',
         last_name: 'User',
-        preferred_name: null,
-        pronouns: null,
+        preferred_name: null as any,
+        pronouns: null as any,
         job_title: 'Dev',
-        work_phone: null,
-        mobile_phone: null,
-        location: null,
-        linkedin_url: null,
-        twitter_url: null,
-        department_id: null,
-        department_name: null,
-        manager_name: null,
+        work_phone: null as any,
+        mobile_phone: null as any,
+        location: null as any,
+        linkedin_url: null as any,
+        twitter_url: null as any,
+        department_id: null as any,
+        department_name: null as any,
+        manager_name: null as any,
       };
 
       mockQuery

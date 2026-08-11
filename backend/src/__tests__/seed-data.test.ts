@@ -3,15 +3,15 @@ import request from 'supertest';
 import express, { Express } from 'express';
 
 // Mock database with actual seed data expectations
-const mockQuery = jest.fn();
-jest.mock('../database/connection', () => ({
+const mockQuery = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../database/connection.js', () => ({
   db: {
     query: mockQuery,
   },
 }));
 
 // Mock authentication middleware
-jest.mock('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth.js', () => ({
   authenticateToken: (req: any, _res: any, next: any) => {
     req.user = {
       userId: 'admin-user-id',
@@ -24,7 +24,7 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 // Import routes after mocking
-import organizationRoutes from '../routes/organization.routes.js';
+const { default: organizationRoutes } = await import('../routes/organization.routes.js');
 
 describe('Seed Data Verification', () => {
   let app: Express;
