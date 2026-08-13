@@ -31,11 +31,16 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Ship the incremental SQL migrations into the image so the boot-time runner
+# (dist/database/migrate.js) can find them at /app/database/migrations. The base
+# schema_organization.sql is still bind-mounted here at runtime by docker-compose.
+COPY database ./database
+
 # Create logs directory — owned by the non-root `node` user that runs the process
 # (USER node below), otherwise winston's File transport silently fails to write.
 RUN mkdir -p /app/logs && chown -R node:node /app/logs
 
-# Create database directory for schema file
+# Ensure the database directory exists (schema file is mounted here at runtime)
 RUN mkdir -p /app/database
 
 EXPOSE 3001
