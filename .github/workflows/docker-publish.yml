@@ -9,7 +9,18 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/helios
+  # MUST stay under `ghcr.io/<owner>/<repo>/...`. GITHUB_TOKEN can only create a
+  # package that GitHub can associate with this repository by name, and that
+  # association is derived from the image path.
+  #
+  # This was `${{ github.repository_owner }}/helios` + a `-backend` / `-frontend`
+  # suffix, producing `ghcr.io/obilabs/helios-backend`. That is a sibling package
+  # to the repo, not a child of it, so every push since 2026-08-11 died with
+  # `403 Forbidden` on the blob HEAD and NO helios image was ever published —
+  # while the workflow's own build steps looked fine. Using ${{ github.repository }}
+  # yields `ghcr.io/obilabs/helios/backend`, which matches how obilabs-platform
+  # publishes web/mtp and aegis publishes its single image.
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -36,23 +47,25 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_PREFIX }}-backend
+          images: ${{ env.IMAGE_PREFIX }}/backend
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Extract metadata for frontend
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_PREFIX }}-frontend
+          images: ${{ env.IMAGE_PREFIX }}/frontend
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend
         uses: docker/build-push-action@v5
