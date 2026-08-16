@@ -27,6 +27,84 @@ jobs:
       - name: Test (includes route-auth-coverage + route-mount-coverage + relay engine)
         run: npm test
 
+  # Prove a FRESH install comes up complete from the seed alone.
+  #
+  # This job exists because it didn't. database/schema_organization.sql shipped a
+  # pre-typed `api_keys` (no `type`, no `permissions`, key_prefix VARCHAR(20))
+  # while the code required all of them, and backend/database/migrations/ was
+  # never applied at boot. Nothing failed at build time — it failed at RUNTIME,
+  # the first time anyone tried to pair Helios into MTP, and was unblocked by
+  # patching the running container by hand. That patch lived nowhere in the repo
+  # and died on the next `down -v`.
+  #
+  # So: apply the seed to a throwaway Postgres and assert the contract the code
+  # actually depends on. A column dropped from the seed now fails the PR instead
+  # of a customer's fresh install.
+  schema:
+    name: Seed Schema Contract
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: seedcheck
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply seed schema
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -q -f database/schema_organization.sql
+
+      - name: Assert typed-key + audit contract
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE missing text;
+          BEGIN
+            -- Columns the API-key create/renew/pairing paths write. Absent =
+            -- runtime failure on a fresh install, which is how this broke before.
+            SELECT string_agg(c, ', ') INTO missing
+              FROM unnest(ARRAY[
+                'type','permissions','pairing_window_expires_at','paired_at',
+                'paired_from_ip','paired_user_agent','revoked_at','revoked_by',
+                'service_config','vendor_config','ip_whitelist','rate_limit_config'
+              ]) AS c
+             WHERE NOT EXISTS (
+               SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'api_keys' AND column_name = c);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'seed schema is missing api_keys column(s): %', missing;
+            END IF;
+
+            -- generateApiKey() emits a 23-char prefix; VARCHAR(20) truncates and
+            -- the pairing INSERT dies with "value too long".
+            PERFORM 1 FROM information_schema.columns
+              WHERE table_name='api_keys' AND column_name='key_prefix'
+                AND character_maximum_length >= 23;
+            IF NOT FOUND THEN
+              RAISE EXCEPTION 'api_keys.key_prefix is too narrow for a 23-char key prefix';
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                            WHERE table_name = 'security_audit_logs') THEN
+              RAISE EXCEPTION 'seed schema is missing security_audit_logs';
+            END IF;
+
+            RAISE NOTICE 'Seed schema contract OK';
+          END $$;
+          SQL
+
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
