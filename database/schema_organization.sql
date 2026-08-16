@@ -542,7 +542,9 @@ CREATE TABLE public.api_keys (
     name character varying(255) NOT NULL,
     description text,
     key_hash character varying(255) NOT NULL,
-    key_prefix character varying(20) NOT NULL,
+    -- 50, not 20: generateApiKey() emits "helios_<env>_<20 chars>" = 23 chars,
+    -- so a 20-char column fails the pairing INSERT with "value too long".
+    key_prefix character varying(50) NOT NULL,
     scopes text[] DEFAULT '{}'::text[],
     is_active boolean DEFAULT true,
     expires_at timestamp with time zone,
@@ -551,7 +553,36 @@ CREATE TABLE public.api_keys (
     rate_limit_per_minute integer DEFAULT 60,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    -- ---------------------------------------------------------------------
+    -- Typed-key contract. This table used to ship pre-typed (the 15 columns
+    -- above), while the CODE required all of the below — so a FRESH install
+    -- could not issue any typed key, and MTP pairing failed outright. It was
+    -- unblocked on 2026-08-13 by patching the running container by hand, which
+    -- meant the fix existed nowhere in the repo and died on the next
+    -- `down -v`. These columns are that fix, made reproducible.
+    -- ---------------------------------------------------------------------
+    -- Key discriminator: service | vendor | helios-mtp-pairing
+    type character varying(20) DEFAULT 'service'::character varying NOT NULL,
+    -- JSONB scope array, read back via Array.isArray(row.permissions)
+    permissions jsonb DEFAULT '[]'::jsonb NOT NULL,
+    -- Pairing lifecycle (NULL for service/vendor keys). The handshake claims a
+    -- key exactly once via an atomic conditional UPDATE guarded on
+    -- `paired_at IS NULL AND pairing_window_expires_at > NOW()`.
+    pairing_window_expires_at timestamp with time zone,
+    paired_at timestamp with time zone,
+    paired_from_ip inet,
+    paired_user_agent text,
+    -- Authoritative revocation: a revoked pairing returns an explicit revoked
+    -- signal rather than a bare 401, so an outage is distinguishable from a
+    -- revocation.
+    revoked_at timestamp with time zone,
+    revoked_by uuid,
+    -- Generic typed-key config written by the create/renew routes.
+    service_config jsonb,
+    vendor_config jsonb,
+    ip_whitelist jsonb,
+    rate_limit_config jsonb
 );
 
 
@@ -5408,3 +5439,82 @@ ALTER TABLE ONLY public.workspaces
 
 
 
+
+
+--
+-- Typed-key constraints + indexes, and the security audit log.
+--
+-- These live at the end of the file because the seed is a pg_dump-shaped
+-- document: every table exists by this point, so constraints and FKs resolve.
+--
+-- WHY THIS IS HERE AND NOT IN A MIGRATION: pre-release, with no users and no
+-- deployed installs, a fresh database must come up COMPLETE from this file
+-- alone. Helios also never applied backend/database/migrations/ at boot (the
+-- runner pointed at a different directory and there was no tracking table), so
+-- "put it in a migration" is how the api_keys drift went unnoticed until MTP
+-- pairing failed and the running container had to be patched by hand.
+--
+
+ALTER TABLE ONLY public.api_keys
+    DROP CONSTRAINT IF EXISTS api_keys_type_check;
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_type_check
+    CHECK (type IN ('service', 'vendor', 'helios-mtp-pairing'));
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_revoked_by_fkey
+    FOREIGN KEY (revoked_by) REFERENCES public.organization_users(id) ON DELETE SET NULL;
+
+-- Fast lookup of an org's pairing keys (pairings list / revocation UI).
+CREATE INDEX IF NOT EXISTS idx_api_keys_mtp_pairing
+    ON public.api_keys (organization_id, created_at DESC)
+    WHERE type = 'helios-mtp-pairing';
+
+COMMENT ON COLUMN public.api_keys.pairing_window_expires_at IS 'helios-mtp-pairing only: handshake must complete before this instant (15-minute window from issuance)';
+COMMENT ON COLUMN public.api_keys.paired_at IS 'helios-mtp-pairing only: set exactly once by the first successful handshake (atomic single-use bind)';
+COMMENT ON COLUMN public.api_keys.paired_from_ip IS 'helios-mtp-pairing only: IP that completed the handshake (customer-visible for leak detection)';
+COMMENT ON COLUMN public.api_keys.revoked_at IS 'Authoritative revocation timestamp; /api/v1/mtp/* on a revoked pairing returns an explicit revoked signal';
+
+--
+-- security_audit_logs: append-only, hash-chained security audit trail.
+-- Absent from the seed entirely, so a fresh install had no audit table at all.
+--
+CREATE TABLE IF NOT EXISTS public.security_audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    "timestamp" timestamp with time zone DEFAULT now() NOT NULL,
+    actor_id uuid,
+    actor_type character varying(20) NOT NULL,
+    actor_email character varying(255),
+    actor_ip inet,
+    actor_user_agent text,
+    action character varying(100) NOT NULL,
+    action_category character varying(50) NOT NULL,
+    target_type character varying(50),
+    target_id uuid,
+    target_identifier character varying(255),
+    session_id uuid,
+    organization_id uuid NOT NULL,
+    request_id character varying(64),
+    ticket_reference character varying(100),
+    outcome character varying(20) NOT NULL,
+    error_code character varying(50),
+    error_message text,
+    changes_before jsonb,
+    changes_after jsonb,
+    risk_score smallint,
+    flagged boolean DEFAULT false,
+    reviewed_at timestamp with time zone,
+    reviewed_by uuid,
+    -- Tamper detection: each row chains to the previous row's hash.
+    previous_hash character varying(64),
+    record_hash character varying(64) NOT NULL,
+    CONSTRAINT security_audit_logs_pkey PRIMARY KEY (id),
+    CONSTRAINT valid_outcome CHECK (outcome IN ('success', 'failure', 'partial', 'blocked')),
+    CONSTRAINT valid_actor_type CHECK (actor_type IN ('user', 'service', 'mtp', 'system', 'anonymous')),
+    CONSTRAINT valid_action_category CHECK (action_category IN ('auth', 'admin', 'data', 'security', 'api', 'sync'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_audit_timestamp ON public.security_audit_logs ("timestamp" DESC);
+CREATE INDEX IF NOT EXISTS idx_security_audit_actor     ON public.security_audit_logs (actor_id, "timestamp" DESC);
+CREATE INDEX IF NOT EXISTS idx_security_audit_action    ON public.security_audit_logs (action, "timestamp" DESC);
+CREATE INDEX IF NOT EXISTS idx_security_audit_category  ON public.security_audit_logs (action_category, "timestamp" DESC);
