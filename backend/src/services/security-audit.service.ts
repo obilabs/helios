@@ -15,6 +15,7 @@
  */
 
 import { db } from '../database/connection.js';
+import { generateRecordHash, getLastHash } from '../lib/audit-hash.js';
 import { logger } from '../utils/logger.js';
 
 // Action categories for filtering
@@ -141,6 +142,22 @@ class SecurityAuditService {
     const actorType = entry.actorType || 'user';
 
     try {
+      // record_hash is NOT NULL. This path previously omitted it entirely, so
+      // every service-path audit write failed with 23502 while the docstring
+      // above promised "tamper-evident logs with hash chains". Same chain the
+      // middleware writes — shared helpers in lib/audit-hash.ts.
+      const previousHash = await getLastHash();
+      const recordHash = generateRecordHash({
+        actor_id: entry.actorId ?? null,
+        actor_type: actorType,
+        actor_email: entry.actorEmail ?? null,
+        action: entry.action,
+        action_category: actionCategory,
+        organization_id: entry.organizationId ?? null,
+        outcome: entry.outcome,
+        previous_hash: previousHash,
+      });
+
       const result = await db.query(`
         INSERT INTO security_audit_logs (
           actor_id, actor_type, actor_email, actor_ip, actor_user_agent,
@@ -149,7 +166,8 @@ class SecurityAuditService {
           session_id, organization_id, request_id, ticket_reference,
           outcome, error_code, error_message,
           changes_before, changes_after,
-          risk_score, flagged
+          risk_score, flagged,
+          previous_hash, record_hash
         ) VALUES (
           $1, $2, $3, $4, $5,
           $6, $7,
@@ -157,7 +175,8 @@ class SecurityAuditService {
           $11, $12, $13, $14,
           $15, $16, $17,
           $18, $19,
-          $20, $21
+          $20, $21,
+          $22, $23
         )
         RETURNING id
       `, [
@@ -182,6 +201,8 @@ class SecurityAuditService {
         entry.changesAfter ? JSON.stringify(entry.changesAfter) : null,
         entry.riskScore || null,
         entry.flagged || false,
+        previousHash,
+        recordHash,
       ]);
 
       return result.rows[0]?.id || null;
