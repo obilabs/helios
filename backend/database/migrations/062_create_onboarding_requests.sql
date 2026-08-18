@@ -1,5 +1,9 @@
 -- Migration 062: Create Onboarding Requests Table
 -- Purpose: Store HR requests for onboarding/offboarding for approval workflow
+--
+-- Idempotent (IF NOT EXISTS / CREATE OR REPLACE): the boot runner records this
+-- in schema_migrations and runs it once, but the first tracked run may land on a
+-- database that already has the table (e.g. one partially set up by hand).
 
 CREATE TABLE IF NOT EXISTS onboarding_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,13 +25,13 @@ CREATE TABLE IF NOT EXISTS onboarding_requests (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_onboarding_requests_org ON onboarding_requests(organization_id);
-CREATE INDEX idx_onboarding_requests_status ON onboarding_requests(status);
-CREATE INDEX idx_onboarding_requests_type ON onboarding_requests(type);
-CREATE INDEX idx_onboarding_requests_requester ON onboarding_requests(requester_id);
+CREATE INDEX IF NOT EXISTS idx_onboarding_requests_org ON onboarding_requests(organization_id);
+CREATE INDEX IF NOT EXISTS idx_onboarding_requests_status ON onboarding_requests(status);
+CREATE INDEX IF NOT EXISTS idx_onboarding_requests_type ON onboarding_requests(type);
+CREATE INDEX IF NOT EXISTS idx_onboarding_requests_requester ON onboarding_requests(requester_id);
 
--- Updated_at trigger
-CREATE TRIGGER onboarding_requests_updated_at
+-- Updated_at trigger (OR REPLACE keeps re-runs safe; PostgreSQL 14+)
+CREATE OR REPLACE TRIGGER onboarding_requests_updated_at
     BEFORE UPDATE ON onboarding_requests
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
