@@ -354,6 +354,11 @@ e.g., auth-valid-login-after-submit.png
 ## References
 
 - [OpenSpec AGENTS.md](../AGENTS.md) - AI assistant instructions
-- [TEST-CREDENTIALS.md](./TEST-CREDENTIALS.md) - Credential management
+- TEST-CREDENTIALS.md — **removed 2026-08-17.** It carried a test account's
+  email, its plaintext password and its bcrypt hash in one committed file, and
+  `**/TEST-CREDENTIALS.md` is now gitignored so the shape cannot return. Test
+  credentials should be GENERATED and printed by a seed script instead, so
+  nothing static exists to leak. Until that script lands, the account table
+  below is the reference — and it has the same problem in smaller form.
 - [project.md](../project.md) - Project conventions
 - [Playwright Docs](https://playwright.dev/docs/intro)

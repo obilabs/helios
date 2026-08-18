@@ -6,11 +6,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables
+# Environment variables.
+#
+# `.env.*` is a CATCH-ALL on purpose. The previous form enumerated three names
+# (.local/.production/.development), which meant any name nobody thought of —
+# .env.staging, .env.test, .env.e2e — was stageable by a plain `git add -A`
+# with nothing throwing. An allowlist of secret filenames is the wrong shape:
+# it fails open on every name you forget. The committed templates are the
+# explicit negations below.
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+!.env.example
+!env.example
 
 # Build outputs
 dist/
@@ -66,6 +73,19 @@ e2e/reference-screenshots/
 # Secrets
 .secrets/
 backend/.secrets/
+
+# Local-only notes. The `.local.md` suffix is the marker for a file that holds
+# working credentials / environment logins and must never be committed —
+# see LOCAL-TEST-ENV.local.md, which deliberately lives outside any repo.
+*.local.md
+
+# Static test credentials, at any depth. `openspec/testing/TEST-CREDENTIALS.md`
+# was committed on 2026-07-27 carrying an email, a plaintext password and its
+# bcrypt hash, and it is still present on every branch. The durable fix is a
+# seed script that GENERATES credentials and prints them, so no static file
+# exists to leak; this pattern stops the shape from coming back meanwhile.
+**/TEST-CREDENTIALS.md
+**/TEST_CREDENTIALS.md
 
 # Separate projects (have their own repos)
 projects/
