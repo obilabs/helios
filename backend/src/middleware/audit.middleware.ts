@@ -16,6 +16,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../database/connection.js';
+import { generateRecordHash, getLastHash } from '../lib/audit-hash.js';
 import crypto from 'crypto';
 
 // Routes that should NOT be logged (health checks, static assets, etc.)
@@ -154,22 +155,6 @@ function redactSensitiveData(obj: any, depth = 0): any {
   return redacted;
 }
 
-// Generate hash for tamper detection
-function generateRecordHash(data: object): string {
-  return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
-}
-
-// Get the last hash for chain integrity
-async function getLastHash(): Promise<string | null> {
-  try {
-    const result = await db.query(
-      'SELECT record_hash FROM security_audit_logs ORDER BY timestamp DESC LIMIT 1'
-    );
-    return result.rows[0]?.record_hash || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function auditMiddleware(req: Request, res: Response, next: NextFunction) {
   // Skip excluded routes
@@ -194,11 +179,19 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
   const action = getActionName(req.method, req.path);
   const actionCategory = getActionCategory(action);
 
-  // Get actor from authenticated user (set by auth middleware)
-  const user = (req as any).user;
-  const actorId = user?.id || user?.userId || null;
-  const actorType = actorId ? 'user' : (req.path.includes('/setup') ? 'system' : 'anonymous');
-  const actorIdentifier = user?.email || req.ip || 'unknown';
+  // NOTE: actor and organization are deliberately NOT read here.
+  //
+  // This middleware is mounted app-wide (index.ts, `app.use('/api/v1', ...)`)
+  // BEFORE the route routers that run authentication, so `req.user` is always
+  // undefined at this point. Reading it here captured `undefined` and closed
+  // over it, which is why every audit row was written with actor_type
+  // 'anonymous', actor_id NULL and organization_id NULL — and, because
+  // organization_id is NOT NULL, why every write then failed with 23502 and the
+  // audit log showed "no logs" while the app looked healthy.
+  //
+  // The DB write happens in res.on('finish'), by which point the route's auth
+  // middleware HAS populated req.user on this same request object. So the
+  // derivation belongs there. See resolveActor() below.
 
   // Prepare request metadata
   const isSensitiveRoute = SENSITIVE_BODY_ROUTES.some(route => req.path.includes(route));
@@ -208,8 +201,6 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
   const targetId = req.params.id || req.params.userId || req.body?.id || null;
   const targetType = req.path.split('/').filter(Boolean)[2] || null; // e.g., /api/v1/users -> users
 
-  // Get organization ID from user context or request
-  const organizationId = user?.organizationId || user?.organization_id || req.body?.organizationId || null;
 
   // Store original end function
   const originalEnd = res.end;
@@ -229,6 +220,15 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
 
   // Continue with request
   res.on('finish', async () => {
+    // Resolved HERE, not at middleware entry — req.user is populated by the
+    // route's auth middleware, which runs after this middleware is entered.
+    const user = (req as any).user;
+    const actorId = user?.id || user?.userId || null;
+    const actorType = actorId ? 'user' : (req.path.includes('/setup') ? 'system' : 'anonymous');
+    const actorIdentifier = user?.email || req.ip || 'unknown';
+    const organizationId =
+      user?.organizationId || user?.organization_id || req.body?.organizationId || null;
+
     const duration = Date.now() - startTime;
     const outcome = res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'failure';
     const errorMessage = outcome === 'failure' && responseBody?.error?.message
