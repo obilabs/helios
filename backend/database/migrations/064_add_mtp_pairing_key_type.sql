@@ -8,12 +8,26 @@
 --   * revoked_at / revoked_by — authoritative revocation (design D6); a
 --     revoked pairing returns an explicit "revoked" signal, not a bare 401
 --
--- NOTE: the migration runner re-executes every file on boot, so everything in
--- here must be idempotent (IF NOT EXISTS / DROP ... IF EXISTS then re-ADD).
+-- NOTE: the boot migration runner (src/database/migrate.ts) records applied
+-- files in `schema_migrations` and runs each exactly once. Even so, keep every
+-- statement idempotent (IF NOT EXISTS / DROP ... IF EXISTS then re-ADD): the
+-- FIRST tracked run may land on a database that was hand-patched or seeded from
+-- a dump that already has some of these objects.
 
 -- Defensive: some very old installs were initialized from a schema dump that
 -- predates the typed key system (018). The code requires `type`, so guard it.
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'service';
+
+-- issuePairing() (mtp-pairing.service.ts) also writes `permissions` (a JSONB
+-- scope array, read back via Array.isArray(row.permissions)) and a 23-char
+-- `key_prefix` (generateApiKey → "helios_<env>_<20 chars>..." = 23 chars). The
+-- pre-typed-key seed dump has neither the `permissions` column nor a wide-enough
+-- `key_prefix` (it was VARCHAR(20)), so guard both here — otherwise the pairing
+-- INSERT fails with `column "permissions" does not exist` / `value too long for
+-- type character varying(20)`. Keep 064 self-contained: everything a
+-- helios-mtp-pairing key needs is created by this one migration.
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE api_keys ALTER COLUMN key_prefix TYPE VARCHAR(50);
 
 -- Pairing lifecycle columns (NULL for service/vendor keys).
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS pairing_window_expires_at TIMESTAMPTZ;
