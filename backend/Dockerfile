@@ -30,6 +30,11 @@ COPY --chown=nodejs:nodejs tsconfig.json ./
 # Copy source code
 COPY --chown=nodejs:nodejs src ./src
 
+# Ship the incremental SQL migrations so the boot-time runner finds them at
+# /app/database/migrations. (docker-compose.dev.yml also bind-mounts
+# ./backend/database over this for live editing without a rebuild.)
+COPY --chown=nodejs:nodejs database ./database
+
 # Expose port
 EXPOSE 3001
 
