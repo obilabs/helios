@@ -40,6 +40,7 @@ import cookieParser from 'cookie-parser';
 import { logger } from './utils/logger.js';
 import { db } from './database/connection.js';
 import { dbInitializer } from './database/init.js';
+import { migrationRunner } from './database/migrate.js';
 import { errorHandler } from './middleware/errorHandler.js';
 // import { platformRoutes } from './routes/platform.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -799,6 +800,14 @@ async function startServer(): Promise<void> {
       logger.info('Database schema not found, initializing...');
       await dbInitializer.initializeDatabase();
     }
+
+    // Apply incremental migrations on top of the base schema. The seed dump
+    // (schema_organization.sql) lags the code, so this is what actually creates
+    // post-dump objects — e.g. the typed api_keys columns (type/permissions/
+    // pairing) that MTP pairing needs, and the security_audit_logs table.
+    // Idempotent + tracked in schema_migrations; a failure aborts boot rather
+    // than let the app serve traffic on a drifted schema.
+    await migrationRunner.runMigrations();
 
     // Seed default admin if configured via environment variables
     // This only runs ONCE if no organization exists yet

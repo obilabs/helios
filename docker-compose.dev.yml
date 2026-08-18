@@ -143,6 +143,9 @@ services:
       - ./backend/package.json:/app/package.json
       - ./backend/tsconfig.json:/app/tsconfig.json
       - ./database:/database
+      # Live-edit incremental migrations without an image rebuild. The boot
+      # migration runner reads /app/database/migrations (see src/database/migrate.ts).
+      - ./backend/database:/app/database
     command: npm run dev
 
   frontend:
