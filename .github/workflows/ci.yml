@@ -104,6 +104,79 @@ jobs:
           END $$;
           SQL
 
+      # The check above validates the SEED ONLY, which is exactly how the
+      # 2026-08-18 breakage survived: every object below lives in a migration,
+      # the migrations were never shipped into the image (the Dockerfile did not
+      # COPY database/), and nothing here ever applied them. Result: login 500d,
+      # no user could be created, and the audit log wrote zero rows -- while this
+      # job stayed green.
+      #
+      # So: apply seed + migrations, then assert what the code actually needs.
+      - name: Apply incremental migrations on top of the seed
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for f in $(ls backend/database/migrations/*.sql | sort); do
+            echo "applying $(basename "$f")"
+            psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Assert post-migration contract
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE missing text;
+          BEGIN
+            -- Tables the running code queries. Each was absent on 2026-08-18 and
+            -- produced 42P01 at runtime; two_factor 500d the security page on
+            -- every load.
+            SELECT string_agg(t, ', ') INTO missing
+              FROM unnest(ARRAY[
+                'two_factor','organization_domains','contacts','public_assets',
+                'onboarding_requests','relay_config','relay_rules'
+              ]) AS t
+             WHERE NOT EXISTS (
+               SELECT 1 FROM information_schema.tables WHERE table_name = t);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'post-migration schema is missing table(s): %', missing;
+            END IF;
+
+            -- Columns on organization_users. Without the first two, LOGIN itself
+            -- 500s (42703). Without the rest, creating any user 500s.
+            SELECT string_agg(c, ', ') INTO missing
+              FROM unnest(ARRAY[
+                'is_external_admin','default_view',
+                'alternate_email','password_setup_method',
+                'scheduled_creation_date','sync_to_google','sync_to_microsoft365'
+              ]) AS c
+             WHERE NOT EXISTS (
+               SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'organization_users' AND column_name = c);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'organization_users is missing column(s): %', missing;
+            END IF;
+
+            -- organization_id MUST stay nullable. Pre-setup events and failed
+            -- logins for unknown addresses genuinely have no organization; with
+            -- NOT NULL those writes died 23502, were swallowed, and the audit log
+            -- showed nothing. Restoring NOT NULL silently discards exactly the
+            -- security events most worth keeping.
+            PERFORM 1 FROM information_schema.columns
+              WHERE table_name = 'security_audit_logs'
+                AND column_name = 'organization_id'
+                AND is_nullable = 'YES';
+            IF NOT FOUND THEN
+              RAISE EXCEPTION 'security_audit_logs.organization_id must be NULLABLE';
+            END IF;
+
+            RAISE NOTICE 'Post-migration contract OK';
+          END $$;
+          SQL
+
 
   frontend:
     runs-on: ubuntu-latest
