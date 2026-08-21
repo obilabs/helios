@@ -247,7 +247,50 @@ export const auth = betterAuth({
       }
     }
 
-    return Array.from(origins);
+    // Loopback aliases. `localhost`, `127.0.0.1` and `[::1]` are the same
+    // machine; trusting one and refusing the others protects nothing and costs
+    // an afternoon. Whenever any loopback form is configured, accept all three.
+    //
+    // Ported from the same fix applied to aegis and the control plane on
+    // 2026-08-18. Helios was not covered then, and a UI survey on 2026-08-21
+    // found sign-in at http://localhost:8083 returning 403 INVALID_ORIGIN.
+    const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
+    for (const origin of Array.from(origins)) {
+      try {
+        const u = new URL(origin);
+        if (!LOOPBACK.includes(u.hostname) && u.hostname !== '::1') continue;
+        for (const host of LOOPBACK) {
+          origins.add(`${u.protocol}//${host}${u.port ? `:${u.port}` : ''}`);
+        }
+      } catch {
+        // Not a parseable URL — leave it exactly as configured.
+      }
+    }
+
+    const list = Array.from(origins);
+
+    // Say WHICH origins are trusted, at boot.
+    //
+    // Better Auth rejects an unlisted Origin with a bare 403
+    // {"code":"INVALID_ORIGIN"}; the UI renders "Invalid origin" and nothing
+    // else. In a test environment that is a nuisance. In production, if the
+    // deployed hostname is not on this list then NOBODY can sign in — including
+    // the person who would fix it — and there is no recovery path through the
+    // UI. This line is the only warning an operator gets.
+    //
+    // It also exposes the failure that caused the survey finding: FRONTEND_URL
+    // is commonly the INTERNAL url (http://localhost:80) while users reach the
+    // app on the published port (http://localhost:8083). The internal value is
+    // trusted; the browser's actual Origin is not.
+    // eslint-disable-next-line no-console
+    console.info(`[auth] helios trusted origins: ${list.join(', ')}`);
+    // eslint-disable-next-line no-console
+    console.info(
+      '[auth] Sign-in from any other origin returns 403 "Invalid origin". ' +
+        'Add more with TRUSTED_ORIGINS (comma-separated) and restart.'
+    );
+
+    return list;
   })(),
 
 });
