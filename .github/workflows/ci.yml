@@ -173,6 +173,51 @@ jobs:
               RAISE EXCEPTION 'security_audit_logs.organization_id must be NULLABLE';
             END IF;
 
+            -- Added 2026-08-21. The contract above asserted the objects known
+            -- when it was written, and a UI survey then found `column
+            -- st.thumbnail_asset_id does not exist` rendered raw in the
+            -- signatures admin — an object this check did not know to look for.
+            -- Sweeping every deprecated root/archived migration against the live
+            -- schema found 30+ missing columns across 7 tables, which between
+            -- them broke the profile page, signatures, audit logs, security
+            -- events and the view-preference call that fires on every page load.
+            --
+            -- A check is only as good as its list. These are the columns whose
+            -- absence produced a user-visible 500.
+            SELECT string_agg(t || '.' || c, ', ') INTO missing
+              FROM (VALUES
+                ('signature_templates','thumbnail_asset_id'),
+                ('signature_templates','template_type'),
+                ('signature_templates','is_active'),
+                ('activity_logs','actor_type'),
+                ('activity_logs','vendor_technician_email'),
+                ('activity_logs','result'),
+                ('organization_users','email_domain'),
+                ('organization_users','pronouns'),
+                ('organization_users','current_status'),
+                ('organization_users','profile_completeness'),
+                ('organization_users','user_preferences'),
+                ('security_events','user_email'),
+                ('security_events','acknowledged'),
+                ('user_fun_facts','emoji'),
+                ('user_fun_facts','content'),
+                ('user_fun_facts','display_order'),
+                ('user_expertise_topics','skill_level'),
+                ('user_media','organization_id'),
+                ('user_media','transcription_status')
+              ) AS v(t,c)
+             WHERE NOT EXISTS (
+               SELECT 1 FROM information_schema.columns
+                WHERE table_name = v.t AND column_name = v.c);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'post-migration schema is missing column(s): %', missing;
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                            WHERE table_name = 'user_signatures') THEN
+              RAISE EXCEPTION 'post-migration schema is missing table user_signatures';
+            END IF;
+
             RAISE NOTICE 'Post-migration contract OK';
           END $$;
           SQL
