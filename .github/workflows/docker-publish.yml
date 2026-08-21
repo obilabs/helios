@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   release:
     types: [published]
+  # Build any branch on demand, matching aegis (build-aegis.yml) and both
+  # obilabs-platform workflows. Without this, a Helios branch could not be built
+  # into an image at all, so a change could only be verified AFTER merging to
+  # main — the one product where "merge and hope" was the only option.
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -52,8 +57,20 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
+            # `sha-` prefix, matching aegis and obilabs-platform. Helios emitted a
+            # BARE sha, so `sha-<commit>` (the tag every runbook and compose file
+            # in the other repos uses) simply did not exist here — a pull that
+            # should have been muscle memory failed instead.
+            type=sha,prefix=sha-
+            # edge on main, latest ONLY on a v* tag.
+            #
+            # This previously published `latest` from every merge to main, which
+            # contradicts the release policy in obilabs-platform/CLAUDE.md: main
+            # is not a release channel, and a tag that moves is not a version.
+            # Pinning `latest` for a deployment therefore tracked main under a
+            # stable-looking name.
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Extract metadata for frontend
         id: meta-frontend
@@ -64,8 +81,20 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
+            # `sha-` prefix, matching aegis and obilabs-platform. Helios emitted a
+            # BARE sha, so `sha-<commit>` (the tag every runbook and compose file
+            # in the other repos uses) simply did not exist here — a pull that
+            # should have been muscle memory failed instead.
+            type=sha,prefix=sha-
+            # edge on main, latest ONLY on a v* tag.
+            #
+            # This previously published `latest` from every merge to main, which
+            # contradicts the release policy in obilabs-platform/CLAUDE.md: main
+            # is not a release channel, and a tag that moves is not a version.
+            # Pinning `latest` for a deployment therefore tracked main under a
+            # stable-looking name.
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Build and push backend
         uses: docker/build-push-action@v5
