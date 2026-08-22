@@ -276,6 +276,46 @@ enum UserRole {
 3. Workflow automation
 4. Mobile app
 
+## 🐳 Docker Testing — two build paths
+
+The **tag tells you which path produced an image**. Full rationale lives in
+`obilabs-platform/CLAUDE.md`; the rules are identical across all four repos.
+
+**Inner loop — build from source.** Costs nothing and does not depend on GitHub
+Actions being up (on 2026-08-21 it was not — the account hit its billing limit
+and every build in every repo failed for hours).
+
+```bash
+V=local-$(git rev-parse --short HEAD)
+HELIOS_VERSION=$V docker compose build backend frontend
+HELIOS_VERSION=$V docker compose up -d
+docker compose logs -f backend
+```
+
+The `local-` prefix is deliberate: an untagged local build takes the compose
+default and silently shadows the CI image of that name in your daemon, so you
+test one artifact and ship another. Never `docker push` a `local-*` tag.
+
+**Testing a CI build.** Helios's tagging currently DIFFERS from the other repos,
+and it is the odd one out:
+
+| | helios today | aegis / mtp / control-plane |
+|---|---|---|
+| per-commit tag | `1b94cc0` (bare, no prefix) | `sha-1840629` |
+| `latest` | **moves** — tracks tip of main | frozen at the last `v*` (none exist) |
+| `edge` | **does not exist** | tip of main |
+
+So on Helios `HELIOS_VERSION=latest` currently means "tip of main", while the
+same string on Aegis means "a frozen image from 2026-08-17". Do not carry an
+assumption from one repo to the other. PR #59 aligns Helios with the rest
+(`sha-` prefix, `edge` on main, `latest` reserved for `v*` releases).
+
+**Ordering note:** the compose default moves from `latest` to `edge` in PR #60,
+but `edge` is not published until **#59 merges and a build runs**. Merging #60
+first makes `docker compose pull` fail with `manifest unknown`. That is a loud
+failure rather than a silent stale pull, but the order still matters: #59 →
+build → #60.
+
 ## 🛠️ Development Commands
 
 ```bash
