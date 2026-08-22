@@ -94,7 +94,18 @@ services:
     # Without an image ref there is nothing to pull and every host has to build
     # locally — which also hid the fact that CI had not published a Helios image
     # since 2026-08-11 (the ghcr push was 403ing on a bad image path).
-    image: ghcr.io/obilabs/helios/backend:${HELIOS_VERSION:-latest}
+    # Default is `edge` — the tip of main — because Helios HAS NO RELEASES.
+    # There are zero v* tags, so `latest` and every version tag are frozen or
+    # absent. The previous default was `latest`, which the workflow republished
+    # on every merge to main; once `latest` correctly became release-only, that
+    # default would have silently pinned an image that never moves again.
+    #
+    # This is the same trap the aegis/mtp/control-plane composes still have with
+    # `:-0.1.0`: the pull SUCCEEDS and you test stale code.
+    #
+    # For anything you actually depend on, pin sha-<commit>. `edge` is honest
+    # about being the development tip; it is not a release.
+    image: ghcr.io/obilabs/helios/backend:${HELIOS_VERSION:-edge}
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -173,7 +184,7 @@ services:
 
   frontend:
     # See the note on `backend` — pullable image ref with a local build fallback.
-    image: ghcr.io/obilabs/helios/frontend:${HELIOS_VERSION:-latest}
+    image: ghcr.io/obilabs/helios/frontend:${HELIOS_VERSION:-edge}
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
