@@ -94,3 +94,6 @@ projects/
 .rd_log/
 
 
+
+# Generated test reports/screenshots (build output — never commit)
+openspec/testing/reports/
