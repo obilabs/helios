@@ -1,6 +1,6 @@
 {
   "name": "helios",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Helios Client Portal - Single Organization Management System",
   "main": "index.js",
   "scripts": {
