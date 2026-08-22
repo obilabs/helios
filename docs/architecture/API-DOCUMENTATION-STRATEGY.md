@@ -72,7 +72,7 @@ curl -X POST https://helios.company.com/api/google/admin/directory/v1/users \
       "givenName": "New",
       "familyName": "User"
     },
-    "password": "TempPassword123!",
+    "password": "CHANGE_ME",
     "orgUnitPath": "/Engineering"
   }'
 ```

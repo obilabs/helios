@@ -484,7 +484,7 @@ test('Proxies Google user creation', async () => {
     body: JSON.stringify({
       primaryEmail: 'test@domain.com',
       name: { givenName: 'Test', familyName: 'User' },
-      password: 'TempPass123!'
+      password: 'CHANGE_ME'
     })
   });
 
@@ -573,7 +573,7 @@ curl -X POST https://helios.company.com/api/google/admin/directory/v1/users \
       "givenName": "New",
       "familyName": "User"
     },
-    "password": "TempPassword123!",
+    "password": "CHANGE_ME",
     "orgUnitPath": "/Engineering/Backend"
   }'
 

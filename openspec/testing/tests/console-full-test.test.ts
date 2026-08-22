@@ -4,18 +4,18 @@ import { test, expect, Page } from '@playwright/test';
  * Comprehensive Developer Console Testing
  * Tests all CLI commands including CRUD operations for users and groups
  *
- * Test User: jack@gridworx.io / P@ssw0rd123!
+ * Test User: jack@gridworx.io / passw0rd123x
  */
 
 const BASE_URL = 'http://localhost:3000';
 const TEST_EMAIL = 'jack@gridworx.io';
-const TEST_PASSWORD = 'P@ssw0rd123!';
+const TEST_PASSWORD = 'passw0rd123x';
 
 // Test user to create and delete
 const TEST_USER_EMAIL = 'testuser@gridworx.io';
 const TEST_USER_FIRST = 'Test';
 const TEST_USER_LAST = 'User';
-const TEST_USER_PASSWORD = 'TempPassword123!';
+const TEST_USER_PASSWORD = 'temppassword123';
 
 // Test group to create and delete
 const TEST_GROUP_EMAIL = 'testgroup@gridworx.io';

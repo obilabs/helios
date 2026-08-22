@@ -34,7 +34,7 @@ export class AuthHelper {
       // Default test users
       this.users.set('admin', {
         email: 'admin@test.helios.local',
-        password: 'AdminTest123!',
+        password: 'admintest123',
         firstName: 'Admin',
         lastName: 'User',
         role: 'admin'
@@ -42,7 +42,7 @@ export class AuthHelper {
 
       this.users.set('user', {
         email: 'user@test.helios.local',
-        password: 'UserTest123!',
+        password: 'usertest123',
         firstName: 'Regular',
         lastName: 'User',
         role: 'user'
@@ -50,7 +50,7 @@ export class AuthHelper {
 
       this.users.set('manager', {
         email: 'manager@test.helios.local',
-        password: 'ManagerTest123!',
+        password: 'managertest123',
         firstName: 'Manager',
         lastName: 'User',
         role: 'manager'

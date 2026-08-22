@@ -409,6 +409,6 @@ List any UX improvements:
 
 If testing with existing data:
 - **Email:** jack@gridworx.io
-- **Password:** P@ssw0rd123!
+- **Password:** CHANGE_ME
 
 For fresh setup, create new admin during onboarding.

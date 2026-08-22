@@ -91,7 +91,7 @@ test.describe('Simple Login Test', () => {
 
       // Fill in the form
       await emailInput.fill('test@example.com');
-      await passwordInput.fill('TestPassword123!');
+      await passwordInput.fill('testpassword123');
 
       // Take screenshot before submit
       await page.screenshot({ path: 'openspec/testing/reports/screenshots/form-filled.png' });

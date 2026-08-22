@@ -207,7 +207,7 @@ Transparent Proxy Middleware
 helios gw users list
 
 # Create a user
-helios gw users create john@company.com --firstName="John" --lastName="Doe" --password="TempPass123!"
+helios gw users create john@company.com --firstName="John" --lastName="Doe" --password="CHANGE_ME"
 
 # Suspend a user
 helios gw users suspend john@company.com

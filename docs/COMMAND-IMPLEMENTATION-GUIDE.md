@@ -26,7 +26,7 @@ For each command, define:
 
 **GAM Equivalent:**
 ```bash
-gam create user john.smith@example.com firstname John lastname Smith password "TempPass123!"
+gam create user john.smith@example.com firstname John lastname Smith password "CHANGE_ME"
 ```
 
 **Helios Implementation:**
@@ -42,7 +42,7 @@ POST /api/google-workspace/users
   "email": "john.smith@example.com",
   "firstName": "John",
   "lastName": "Smith",
-  "password": "TempPass123!",
+  "password": "CHANGE_ME",
   "organizationUnit": "/Engineering",
   "changePasswordAtNextLogin": true,
   "suspended": false

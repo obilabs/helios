@@ -55,7 +55,7 @@ This session focused on fixing bugs in the Developer Console CLI and creating au
 
 **Jack's Account:**
 - Email: `jack@gridwrx.io`
-- Password: `P@ssw0rd123!`
+- Password: `CHANGE_ME`
 - Role: `admin`
 - Password Hash: `$2a$12$gPcC9quhbEbVTccijeS30.FtSBnod9zUvTfXGxlAvsnZH5WMZ1B0C`
 

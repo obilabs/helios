@@ -276,7 +276,7 @@ Login and test commands:
 ```bash
 # Login at http://localhost:3000
 # User: jack@gridwrx.io
-# Password: P@ssw0rd123!
+# Password: CHANGE_ME
 
 # Open Developer Console (click user menu → Developer Console)
 
@@ -289,7 +289,7 @@ helios gw users get mike@gridworx.io
 helios gw groups get all-staff@gridworx.io
 
 # Test CREATE operations
-helios gw users create testuser@gridworx.io --firstName=Test --lastName=User --password=TempPass123!
+helios gw users create testuser@gridworx.io --firstName=Test --lastName=User --password=CHANGE_ME
 helios gw groups create testgroup@gridworx.io --name="Test Group" --description="Testing"
 
 # Test DELETE operations

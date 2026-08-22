@@ -297,7 +297,7 @@ After restart, test the new formatting:
 
 ```bash
 # Login at http://localhost:3000
-# User: jack@gridwrx.io, Password: P@ssw0rd123!
+# User: jack@gridwrx.io, Password: CHANGE_ME
 
 # Open Developer Console (user menu → Developer Console)
 

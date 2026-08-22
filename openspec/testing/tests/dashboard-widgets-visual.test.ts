@@ -13,7 +13,7 @@ test('Dashboard widgets visual test', async ({ page }) => {
 
   console.log('\n=== Step 2: Login ===');
   await page.fill('input[type="email"]', 'jack@gridworx.io');
-  await page.fill('input[type="password"]', 'P@ssw0rd123!');
+  await page.fill('input[type="password"]', 'passw0rd123x');
   await page.click('button[type="submit"]');
 
   // Wait for login to complete

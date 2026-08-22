@@ -21,7 +21,7 @@ This plan addresses the current state of GUI testing in Helios and provides a pa
 
 2. **Credential Inconsistencies**
    - `test-helpers.ts`: `jack@gridwrx.io` / `TestPassword123!`
-   - `TEST-CREDENTIALS.md`: `jack@gridwrx.io` / `P@ssw0rd123!`
+   - `TEST-CREDENTIALS.md`: `jack@gridwrx.io` / `CHANGE_ME`
    - `login-jack.test.ts`: `jack@gridworx.io` / `Jack123` (different domain!)
 
 3. **Test File Sprawl**
@@ -58,7 +58,7 @@ WHERE email = 'jack@gridwrx.io';
 #### 1.2 Standardize Test Credentials
 All test files should use:
 - **Email:** `jack@gridwrx.io`
-- **Password:** `P@ssw0rd123!`
+- **Password:** `CHANGE_ME`
 - **Source:** `TEST_CONFIG` from `test-helpers.ts`
 
 Update `test-helpers.ts`:
@@ -67,7 +67,7 @@ export const TEST_CONFIG = {
   baseUrl: 'http://localhost:3000',
   apiUrl: 'http://localhost:3001',
   testEmail: 'jack@gridwrx.io',
-  testPassword: 'P@ssw0rd123!',
+  testPassword: 'CHANGE_ME',
 };
 ```
 
@@ -339,7 +339,7 @@ e.g., auth-valid-login-after-submit.png
 
 ### Primary Test Account (Admin)
 - Email: `jack@gridwrx.io`
-- Password: `P@ssw0rd123!`
+- Password: `CHANGE_ME`
 - Role: `admin`
 
 ### Additional Test Users (To Be Created)

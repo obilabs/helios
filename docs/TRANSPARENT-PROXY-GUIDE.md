@@ -19,7 +19,7 @@ Direct access to ANY Google Workspace API through Helios proxy.
 **Example:**
 ```bash
 # Call Google Admin Directory API directly
-helios api POST /api/google/admin/directory/v1/users '{"primaryEmail":"user@company.com","name":{"givenName":"John","familyName":"Doe"},"password":"TempPass123!"}'
+helios api POST /api/google/admin/directory/v1/users '{"primaryEmail":"user@company.com","name":{"givenName":"John","familyName":"Doe"},"password":"CHANGE_ME"}'
 
 # Get user details
 helios api GET /api/google/admin/directory/v1/users/user@company.com
@@ -86,7 +86,7 @@ helios api POST /api/google/admin/directory/v1/users '{
     "givenName": "John",
     "familyName": "Doe"
   },
-  "password": "TempPass123!",
+  "password": "CHANGE_ME",
   "orgUnitPath": "/Staff",
   "changePasswordAtNextLogin": true
 }'

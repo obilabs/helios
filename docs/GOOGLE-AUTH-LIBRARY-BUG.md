@@ -140,7 +140,7 @@ const authClient = await googleAuth.getClient();
 
 2. **Login to console:**
    - Navigate to http://localhost:3000
-   - Login as: jack@gridwrx.io / P@ssw0rd123!
+   - Login as: jack@gridwrx.io / CHANGE_ME
    - Click user menu (JD) → Developer Console
 
 3. **Run the failing command:**
