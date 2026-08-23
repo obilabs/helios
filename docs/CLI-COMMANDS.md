@@ -198,7 +198,7 @@ Access ANY Google Workspace API directly through Helios proxy (with audit loggin
 
 ```bash
 # Create user via proxy
-helios api POST /api/google/admin/directory/v1/users '{"primaryEmail":"user@company.com","name":{"givenName":"John","familyName":"Doe"},"password":"***REMOVED-CREDENTIAL***"}'
+helios api POST /api/google/admin/directory/v1/users '{"primaryEmail":"user@company.com","name":{"givenName":"John","familyName":"Doe"},"password":"CHANGE_ME"}'
 
 # List calendar resources
 helios api GET /api/google/admin/directory/v1/customer/my_customer/resources/calendars

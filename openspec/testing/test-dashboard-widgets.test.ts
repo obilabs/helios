@@ -51,7 +51,7 @@ test.describe('Dashboard Widget Loading Test', () => {
       // Step 2: Login
       console.log('Step 2: Logging in as jack@obilabs.dev...');
       await page.fill('input[type="email"], input[name="email"]', 'jack@obilabs.dev');
-      await page.fill('input[type="password"], input[name="password"]', '***REMOVED-CREDENTIAL***');
+      await page.fill('input[type="password"], input[name="password"]', 'passw0rd123x');
 
       // Take screenshot before login
       await page.screenshot({ path: './openspec/testing/reports/screenshots/widget-test-01-login-form.png' });

@@ -276,7 +276,7 @@ Login and test commands:
 ```bash
 # Login at http://localhost:3000
 # User: jack@obilabs.dev
-# Password: ***REMOVED-CREDENTIAL***
+# Password: CHANGE_ME
 
 # Open Developer Console (click user menu → Developer Console)
 
@@ -289,7 +289,7 @@ helios gw users get mike@obilabs.dev
 helios gw groups get all-staff@obilabs.dev
 
 # Test CREATE operations
-helios gw users create testuser@obilabs.dev --firstName=Test --lastName=User --password=***REMOVED-CREDENTIAL***
+helios gw users create testuser@obilabs.dev --firstName=Test --lastName=User --password=CHANGE_ME
 helios gw groups create testgroup@obilabs.dev --name="Test Group" --description="Testing"
 
 # Test DELETE operations

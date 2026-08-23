@@ -140,7 +140,7 @@ const authClient = await googleAuth.getClient();
 
 2. **Login to console:**
    - Navigate to http://localhost:3000
-   - Login as: jack@obilabs.dev / ***REMOVED-CREDENTIAL***
+   - Login as: jack@obilabs.dev / CHANGE_ME
    - Click user menu (JD) → Developer Console
 
 3. **Run the failing command:**
