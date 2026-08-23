@@ -7,7 +7,7 @@ test.describe('Simple Dashboard Test', () => {
     await page.waitForSelector('input[type="email"]', { timeout: 10000 });
 
     await page.fill('input[type="email"]', 'jack@obilabs.dev');
-    await page.fill('input[type="password"]', '***REMOVED-CREDENTIAL***');
+    await page.fill('input[type="password"]', 'passw0rd123x');
     await page.click('button[type="submit"]');
 
     // Wait for dashboard to load

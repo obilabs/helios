@@ -4,7 +4,7 @@ test('Take dashboard screenshot', async ({ page }) => {
   // Login
   await page.goto('http://localhost:3000');
   await page.fill('input[type="email"]', 'jack@obilabs.dev');
-  await page.fill('input[type="password"]', '***REMOVED-CREDENTIAL***');
+  await page.fill('input[type="password"]', 'passw0rd123x');
   await page.click('button[type="submit"]');
 
   // Wait for dashboard to load

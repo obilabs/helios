@@ -47,7 +47,7 @@ test.describe('Developer Console CLI Tests', () => {
 
     if (isLoginPage) {
       await page.fill('input[type="email"]', 'jack@obilabs.dev');
-      await page.fill('input[type="password"]', '***REMOVED-CREDENTIAL***');
+      await page.fill('input[type="password"]', 'passw0rd123x');
       await page.click('button[type="submit"]');
       await page.waitForLoadState('networkidle');
     }
@@ -344,7 +344,7 @@ test.describe('Developer Console Error Handling', () => {
 
     if (isLoginPage) {
       await page.fill('input[type="email"]', 'jack@obilabs.dev');
-      await page.fill('input[type="password"]', '***REMOVED-CREDENTIAL***');
+      await page.fill('input[type="password"]', 'passw0rd123x');
       await page.click('button[type="submit"]');
       await page.waitForLoadState('networkidle');
     }
@@ -403,7 +403,7 @@ test.describe('Developer Console UI/UX', () => {
 
     if (isLoginPage) {
       await page.fill('input[type="email"]', 'jack@obilabs.dev');
-      await page.fill('input[type="password"]', '***REMOVED-CREDENTIAL***');
+      await page.fill('input[type="password"]', 'passw0rd123x');
       await page.click('button[type="submit"]');
       await page.waitForLoadState('networkidle');
     }

@@ -6623,7 +6623,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
               <div className="example-section">
                 <h4>Create a new user</h4>
-                <code className="example-code">gw users create john.doe@company.com --firstName="John" --lastName="Doe" --password="***REMOVED-CREDENTIAL***" --ou="/Staff"</code>
+                <code className="example-code">gw users create john.doe@company.com --firstName="John" --lastName="Doe" --password="CHANGE_ME" --ou="/Staff"</code>
               </div>
 
               <div className="example-section">
@@ -6683,7 +6683,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
               <div className="example-section">
                 <h4>Create a Microsoft 365 user</h4>
-                <code className="example-code">m365 users create jane.smith@company.com --displayName="Jane Smith" --password="***REMOVED-CREDENTIAL***"</code>
+                <code className="example-code">m365 users create jane.smith@company.com --displayName="Jane Smith" --password="CHANGE_ME"</code>
               </div>
 
               <div className="example-section">

@@ -67,7 +67,7 @@ Authorization: Bearer helios_token_abc123
 {
   "primaryEmail": "newuser@company.com",
   "name": { "givenName": "New", "familyName": "User" },
-  "password": "***REMOVED-CREDENTIAL***",
+  "password": "CHANGE_ME",
   "orgUnitPath": "/Engineering"
 }
 

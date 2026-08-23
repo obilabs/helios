@@ -6,7 +6,7 @@ test.describe('Login Test with Error Handling', () => {
     const baseUrl = 'http://localhost:3000';
     const apiUrl = 'http://localhost:3001';
     const testEmail = 'test@example.com';
-    const testPassword = '***REMOVED-CREDENTIAL***';
+    const testPassword = 'testpassword123';
 
     console.log('🔧 Test Configuration:');
     console.log(`   Frontend: ${baseUrl}`);
@@ -171,7 +171,7 @@ test.describe('Login Test with Error Handling', () => {
     const response = await request.post('http://localhost:3001/api/auth/login', {
       data: {
         email: 'test@example.com',
-        password: '***REMOVED-CREDENTIAL***'
+        password: 'testpassword123'
       }
     });
 

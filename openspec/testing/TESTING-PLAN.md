@@ -21,7 +21,7 @@ This plan addresses the current state of GUI testing in Helios and provides a pa
 
 2. **Credential Inconsistencies**
    - `test-helpers.ts`: `jack@obilabs.dev` / `***REMOVED-CREDENTIAL***`
-   - `TEST-CREDENTIALS.md`: `jack@obilabs.dev` / `***REMOVED-CREDENTIAL***`
+   - `TEST-CREDENTIALS.md`: `jack@obilabs.dev` / `CHANGE_ME`
    - `login-jack.test.ts`: `jack@obilabs.dev` / `***REMOVED-CREDENTIAL***` (different domain!)
 
 3. **Test File Sprawl**
@@ -58,7 +58,7 @@ WHERE email = 'jack@obilabs.dev';
 #### 1.2 Standardize Test Credentials
 All test files should use:
 - **Email:** `jack@obilabs.dev`
-- **Password:** `***REMOVED-CREDENTIAL***`
+- **Password:** `CHANGE_ME`
 - **Source:** `TEST_CONFIG` from `test-helpers.ts`
 
 Update `test-helpers.ts`:
@@ -67,7 +67,7 @@ export const TEST_CONFIG = {
   baseUrl: 'http://localhost:3000',
   apiUrl: 'http://localhost:3001',
   testEmail: 'jack@obilabs.dev',
-  testPassword: '***REMOVED-CREDENTIAL***',
+  testPassword: 'CHANGE_ME',
 };
 ```
 
@@ -339,7 +339,7 @@ e.g., auth-valid-login-after-submit.png
 
 ### Primary Test Account (Admin)
 - Email: `jack@obilabs.dev`
-- Password: `***REMOVED-CREDENTIAL***`
+- Password: `CHANGE_ME`
 - Role: `admin`
 
 ### Additional Test Users (To Be Created)

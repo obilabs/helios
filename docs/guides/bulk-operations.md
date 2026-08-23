@@ -58,7 +58,7 @@ jane.smith@company.com,Jane,Smith,Marketing,Marketing Manager,/Marketing
 
 ```csv
 email,firstName,lastName,password,department,jobTitle
-newuser1@company.com,New,User1,***REMOVED-CREDENTIAL***,Engineering,Developer
+newuser1@company.com,New,User1,CHANGE_ME,Engineering,Developer
 newuser2@company.com,New,User2,TempPass456!,Sales,Sales Rep
 ```
 
