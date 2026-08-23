@@ -97,19 +97,19 @@ export class DatabaseHelper {
       '00000000-0000-0000-0000-000000000002',
       '00000000-0000-0000-0000-000000000001',
       'admin@test.helios.local',
-      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // ***REMOVED-CREDENTIAL***
+      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // admintest123
       'Admin',
       'User',
       'admin',
       '00000000-0000-0000-0000-000000000003',
       'user@test.helios.local',
-      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // ***REMOVED-CREDENTIAL***
+      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // usertest123
       'Regular',
       'User',
       'user',
       '00000000-0000-0000-0000-000000000004',
       'manager@test.helios.local',
-      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // ***REMOVED-CREDENTIAL***
+      '$2b$12$YTw5wH.tVfQK.mCFLHYcH.9rg7hFhIhqg2RM4nYmJD3oNCjmVqFxm', // managertest123
       'Manager',
       'User',
       'manager'

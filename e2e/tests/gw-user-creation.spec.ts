@@ -57,8 +57,8 @@ async function fillBasicUserForm(page: Page, email: string): Promise<void> {
   await manualPasswordLabel.click();
 
   // Fill password fields
-  await page.fill('.quick-add-panel input[placeholder="Min 8 characters"]', '***REMOVED-CREDENTIAL***');
-  await page.fill('.quick-add-panel input[placeholder="Confirm password"]', '***REMOVED-CREDENTIAL***');
+  await page.fill('.quick-add-panel input[placeholder="Min 8 characters"]', 'testpassword123');
+  await page.fill('.quick-add-panel input[placeholder="Confirm password"]', 'testpassword123');
 }
 
 test.describe('Google Workspace User Creation', () => {

@@ -80,7 +80,7 @@ export class TestDataHelper {
       email: randomEmail(firstName, lastName),
       firstName,
       lastName,
-      password: '***REMOVED-CREDENTIAL***',
+      password: 'testpass123',
       role: pick(staticData.roles),
       department: pick(staticData.departments),
       jobTitle: pick(staticData.jobTitles),
@@ -187,7 +187,7 @@ export class TestDataHelper {
       adminEmail: randomEmail(firstName, lastName),
       adminFirstName: firstName,
       adminLastName: lastName,
-      adminPassword: '***REMOVED-CREDENTIAL***',
+      adminPassword: 'admintest123',
       industry: pick(staticData.buzzPhrases),
       size: pick(staticData.sizes),
       ...overrides

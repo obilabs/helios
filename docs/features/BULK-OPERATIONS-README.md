@@ -62,7 +62,7 @@ jane.smith@company.com,Jane,Smith,Marketing,Marketing Manager,/Marketing
 
 ```csv
 email,firstName,lastName,password,department,title,organizationalUnit
-newuser@company.com,New,User,***REMOVED-CREDENTIAL***,Engineering,Developer,/Engineering
+newuser@company.com,New,User,CHANGE_ME,Engineering,Developer,/Engineering
 ```
 
 **Required Fields:**

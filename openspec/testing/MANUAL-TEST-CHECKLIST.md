@@ -409,6 +409,6 @@ List any UX improvements:
 
 If testing with existing data:
 - **Email:** jack@obilabs.dev
-- **Password:** ***REMOVED-CREDENTIAL***
+- **Password:** CHANGE_ME
 
 For fresh setup, create new admin during onboarding.

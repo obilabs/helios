@@ -355,7 +355,7 @@ helios api POST /admin/directory/v1/customer/my_customer/devices/chromeos/comman
 helios gw users create john@company.com \
   --firstName "John" \
   --lastName "Doe" \
-  --password "***REMOVED-CREDENTIAL***" \
+  --password "CHANGE_ME" \
   --ou "/Staff/Engineering"
 
 ✅ User created: john@company.com
