@@ -214,7 +214,7 @@ class GAMParityTester {
             givenName: 'Delete',
             familyName: 'Test'
           },
-          password: '***REMOVED-CREDENTIAL***'
+          password: 'temppassword123'
         }
       });
 
@@ -306,7 +306,7 @@ class GAMParityTester {
         requestBody: {
           primaryEmail: testEmail,
           name: { givenName: 'Suspend', familyName: 'Test' },
-          password: '***REMOVED-CREDENTIAL***'
+          password: 'temppassword123'
         }
       });
 

@@ -65,7 +65,7 @@ describe('Transparent Proxy - User Creation', () => {
             givenName: 'Proxy',
             familyName: 'Test'
           },
-          password: '***REMOVED-CREDENTIAL***'
+          password: 'CHANGE_ME'
         })
       }
     );
@@ -101,7 +101,7 @@ test('Proxies Google user.delete() API', async () => {
     requestBody: {
       primaryEmail: 'deletetest@domain.com',
       name: { givenName: 'Delete', familyName: 'Test' },
-      password: '***REMOVED-CREDENTIAL***'
+      password: 'CHANGE_ME'
     }
   });
 
@@ -240,7 +240,7 @@ test('Auto-syncs created user to Helios database', async () => {
       body: JSON.stringify({
         primaryEmail: 'synctest@domain.com',
         name: { givenName: 'Sync', familyName: 'Test' },
-        password: '***REMOVED-CREDENTIAL***'
+        password: 'CHANGE_ME'
       })
     }
   );
@@ -272,7 +272,7 @@ test('Auto-syncs deleted user to Helios database', async () => {
     requestBody: {
       primaryEmail: 'deletesync@domain.com',
       name: { givenName: 'Delete', familyName: 'Sync' },
-      password: '***REMOVED-CREDENTIAL***'
+      password: 'CHANGE_ME'
     }
   });
 
@@ -410,7 +410,7 @@ test('Service API key requests show service name as actor', async () => {
     body: JSON.stringify({
       primaryEmail: 'servicetest@domain.com',
       name: { givenName: 'Service', familyName: 'Test' },
-      password: '***REMOVED-CREDENTIAL***'
+      password: 'CHANGE_ME'
     })
   });
 
@@ -453,7 +453,7 @@ test('Vendor API key requests require X-Actor-Name and X-Actor-Email', async () 
       body: JSON.stringify({
         primaryEmail: 'vendortest@domain.com',
         name: { givenName: 'Vendor', familyName: 'Test' },
-        password: '***REMOVED-CREDENTIAL***'
+        password: 'CHANGE_ME'
       })
     }
   );
@@ -477,7 +477,7 @@ test('Vendor API key requests require X-Actor-Name and X-Actor-Email', async () 
       body: JSON.stringify({
         primaryEmail: 'vendortest2@domain.com',
         name: { givenName: 'Vendor', familyName: 'Test2' },
-        password: '***REMOVED-CREDENTIAL***'
+        password: 'CHANGE_ME'
       })
     }
   );
