@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Check, CheckCircle, FileUp, AlertTriangle, Copy, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, CheckCircle, FileUp, AlertTriangle, Copy, ExternalLink, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
 import { authFetch } from '../../config/api';
+import { HelpWidget } from '../ai/HelpWidget';
 import './GoogleWorkspaceWizard.css';
 
 interface DelegationInfo {
@@ -44,6 +45,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
   const [delegationInfo, setDelegationInfo] = useState<DelegationInfo | null>(null);
   const [scopesExpanded, setScopesExpanded] = useState(false);
   const [scopesCopied, setScopesCopied] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Load the canonical scope list from the backend so the setup screen always
   // shows exactly what the code requests (see backend config/google-scopes.ts).
@@ -353,7 +355,19 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
 
               {delegationInfo && (
                 <div className="gw-wizard-info">
-                  <h4>Authorize API scopes</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <h4 style={{ margin: 0 }}>Authorize API scopes</h4>
+                    <button
+                      type="button"
+                      onClick={() => setHelpOpen(true)}
+                      title="Help with authorizing API scopes"
+                      aria-label="Help with authorizing API scopes"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, color: '#8b5cf6', cursor: 'pointer', fontSize: 12 }}
+                    >
+                      <HelpCircle size={14} />
+                      Help
+                    </button>
+                  </div>
                   <p style={{ margin: '0 0 12px', fontSize: 13, color: '#4b5563' }}>
                     Authorize this service account for the {delegationInfo.requiredScopes.length} scopes Helios uses.
                     Authorizing fewer will make some features silently fail.
@@ -537,6 +551,14 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
           </button>
         </div>
       </div>
+
+      <HelpWidget
+        currentPage="settings"
+        subContext="google-workspace"
+        hideFloatingButton
+        externalOpen={helpOpen}
+        onExternalClose={() => setHelpOpen(false)}
+      />
     </div>
   );
 };
