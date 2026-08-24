@@ -80,6 +80,23 @@ const HELP_CONTENT: HelpArticle[] = [
     keywords: ['getting started', 'setup', 'first time', 'initial', 'configure', 'connect', 'google workspace', 'microsoft 365']
   },
   {
+    id: 'setup-gw-key-blocked',
+    title: 'Service Account Key Creation Blocked by Org Policy',
+    category: 'setup',
+    content: `If "Create key" is greyed out or fails when you generate the service account JSON key, your Google Cloud organization enforces the iam.disableServiceAccountKeyCreation org policy ("Secure by Default", common on newer orgs).
+
+An Organization Policy Administrator (roles/orgpolicy.policyAdmin) must add an exception:
+1. Google Cloud Console > IAM & Admin > Organization Policies
+2. Search "Disable service account key creation" (iam.disableServiceAccountKeyCreation)
+3. Manage policy > Override parent's policy > Add a rule > set Enforcement: Off (the console requires at least one rule — you can't leave it empty)
+4. Set policy, wait about a minute for it to propagate
+5. Return to the service account > Keys > Add key > Create new key > JSON (not P12)
+6. Re-tighten the policy afterward, or scope the exception to just this project
+
+To authorize Domain-Wide Delegation, use the connect wizard's "Copy scopes" button and its pre-filled delegation link to add the exact Client ID and all required scopes in one step. If the link doesn't open, your browser blocked the pop-up (open it directly); Google may ask you to re-enter your password; delegation changes take a few minutes to propagate, so retry Test Connection if it fails right after.`,
+    keywords: ['service account', 'json key', 'org policy', 'organization policy', 'iam.disableServiceAccountKeyCreation', 'key creation disabled', 'secure by default', 'blocked', 'create key', 'domain-wide delegation', 'deep-link', 'unauthorized_client', 'google workspace', 'gcp']
+  },
+  {
     id: 'setup-google-workspace',
     title: 'Connecting Google Workspace',
     category: 'setup',
