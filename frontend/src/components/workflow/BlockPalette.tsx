@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { getBlockCategories } from './blockDefinitions';
+import { getBlockIcon } from './blockIcons';
 import { BLOCK_CATEGORIES, type BlockCategory, type BlockDefinition } from './types';
 
 // Icon mapping
@@ -52,6 +53,8 @@ function DraggableBlock({ block }: DraggableBlockProps) {
       }
     : undefined;
 
+  const Icon = getBlockIcon(block.type);
+
   return (
     <div
       ref={setNodeRef}
@@ -64,9 +67,7 @@ function DraggableBlock({ block }: DraggableBlockProps) {
         className="palette-block-icon"
         style={{ backgroundColor: `${block.color}15`, color: block.color }}
       >
-        <span className="palette-block-icon-emoji">
-          {getBlockEmoji(block.type)}
-        </span>
+        <Icon size={16} />
       </div>
       <div className="palette-block-info">
         <span className="palette-block-name">{block.name}</span>
@@ -74,43 +75,6 @@ function DraggableBlock({ block }: DraggableBlockProps) {
       </div>
     </div>
   );
-}
-
-// Simple emoji mapping for blocks
-function getBlockEmoji(type: string): string {
-  const emojiMap: Record<string, string> = {
-    create_user: '👤',
-    update_user: '✏️',
-    suspend_user: '🚫',
-    delete_user: '🗑️',
-    reset_password: '🔑',
-    add_to_group: '➕',
-    remove_from_group: '➖',
-    create_group: '👥',
-    send_email: '✉️',
-    set_signature: '✍️',
-    set_vacation_responder: '🏖️',
-    remove_vacation_responder: '🔙',
-    create_calendar_event: '📅',
-    decline_future_meetings: '❌',
-    transfer_calendar: '📆',
-    grant_drive_access: '📁',
-    revoke_drive_access: '🚷',
-    transfer_drive_ownership: '📤',
-    revoke_oauth_tokens: '🔐',
-    sign_out_sessions: '🚪',
-    wipe_mobile_device: '📱',
-    notify_manager: '📣',
-    notify_hr: '📢',
-    notify_it: '🔔',
-    send_notification: '📬',
-    assign_training: '🎓',
-    create_task: '✅',
-    if_condition: '🔀',
-    wait: '⏳',
-    comment: '💬',
-  };
-  return emojiMap[type] || '⚡';
 }
 
 export function BlockPalette() {
