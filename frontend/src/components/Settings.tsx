@@ -29,6 +29,8 @@ interface SettingsProps {
 
 interface ModuleStatus {
   isEnabled: boolean;
+  hasCredentials?: boolean;
+  isConfigured?: boolean;
   userCount: number;
   lastSync: string | null;
   configuration: any;
@@ -103,6 +105,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
   const [newApiKeyData, setNewApiKeyData] = useState<any>(null);
   const [showModuleMenu, setShowModuleMenu] = useState(false);
   const [showDisableGoogleConfirm, setShowDisableGoogleConfirm] = useState(false);
+  const [enablingGoogle, setEnablingGoogle] = useState(false);
 
   // Fetch module status on component mount
   useEffect(() => {
@@ -132,6 +135,34 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
       console.error('Failed to fetch module status:', error);
     } finally {
       setIsLoadingStatus(false);
+    }
+  };
+
+  // Enable Google Workspace using credentials that are ALREADY stored, without
+  // re-opening the full setup wizard (which would demand the service-account key
+  // again). Used when the module is disabled but configuration exists.
+  const enableGoogleWorkspaceFromStoredCredentials = async () => {
+    try {
+      setEnablingGoogle(true);
+      const response = await authFetch('/api/v1/google-workspace/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId })
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchModuleStatus();
+      } else if (response.status === 400) {
+        // Credentials turned out to be missing — fall back to the setup wizard.
+        setConfiguringModule('google-workspace');
+        setShowModuleConfig(true);
+      } else {
+        alert(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Failed to enable Google Workspace: ${error.message}`);
+    } finally {
+      setEnablingGoogle(false);
     }
   };
 
@@ -319,15 +350,40 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                             </span>
                           </div>
                           {!googleWorkspaceStatus.isEnabled && (
-                            <button
-                              className="enable-btn"
-                              onClick={() => {
-                                setConfiguringModule('google-workspace');
-                                setShowModuleConfig(true);
-                              }}
-                            >
-                              Enable
-                            </button>
+                            googleWorkspaceStatus.hasCredentials ? (
+                              // Credentials already exist — enable in place and
+                              // offer reconfigure, rather than re-running setup.
+                              <div className="module-actions">
+                                <button
+                                  className="enable-btn"
+                                  disabled={enablingGoogle}
+                                  onClick={enableGoogleWorkspaceFromStoredCredentials}
+                                  title="Enable using your existing Google Workspace credentials"
+                                >
+                                  {enablingGoogle ? 'Enabling…' : 'Enable'}
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => {
+                                    setConfiguringModule('google-workspace');
+                                    setShowModuleConfig(true);
+                                  }}
+                                  title="Upload a new service-account key and reconfigure"
+                                >
+                                  <SettingsIcon size={14} /> Reconfigure
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="enable-btn"
+                                onClick={() => {
+                                  setConfiguringModule('google-workspace');
+                                  setShowModuleConfig(true);
+                                }}
+                              >
+                                Enable
+                              </button>
+                            )
                           )}
                           {googleWorkspaceStatus.isEnabled && (
                             <div className="module-actions">
