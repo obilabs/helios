@@ -46,6 +46,10 @@ const PAGE_HELP_MAPPING: Record<string, { searchTerms: string[]; category?: stri
     searchTerms: ['settings', 'configuration', 'setup'],
     category: 'setup'
   },
+  'settings-google-workspace': {
+    searchTerms: ['google workspace', 'domain-wide delegation', 'service account', 'scopes', 'oauth'],
+    category: 'setup'
+  },
   signatures: {
     searchTerms: ['signatures', 'email signatures', 'templates'],
     category: 'signatures'
