@@ -11,6 +11,7 @@ import { db } from '../database/connection.js';
 import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
+import { assertNotProtectedAdmin } from './admin-protection.js';
 import {
   OffboardingTemplate,
   OffboardingConfig,
@@ -320,6 +321,30 @@ class UserOffboardingService {
     let stepOrder = 0;
 
     try {
+      // Self-lockout guard: never offboard the Google Workspace admin Helios
+      // impersonates — it would sever Helios's own auth and can lock the operator
+      // out of Workspace. Runs before any offboarding step touches the account.
+      const protectedAdminEmail = await this.getAdminEmail(organizationId);
+      try {
+        await assertNotProtectedAdmin(
+          null,
+          config.userEmail || config.userId,
+          protectedAdminEmail,
+          'offboard'
+        );
+      } catch (guardErr: any) {
+        result.success = false;
+        result.errors.push(guardErr.message);
+        await lifecycleLogService.logFailure(
+          organizationId,
+          'offboard',
+          'admin_protection_guard',
+          guardErr.message,
+          { ...logOptions, stepOrder: 0, durationMs: 0 }
+        );
+        return result;
+      }
+
       // Step 1: Validate configuration
       stepOrder++;
       const validateStart = Date.now();

@@ -345,6 +345,7 @@ function formatPageName(page: string): string {
     contacts: 'Contacts',
     groups: 'Groups',
     settings: 'Settings',
+    'settings-google-workspace': 'Google Workspace Setup',
     signatures: 'Signatures',
     'audit-logs': 'Audit Logs',
     'security-events': 'Security Events',

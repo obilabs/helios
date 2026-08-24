@@ -33,11 +33,19 @@ Each organization MUST use their own service account for:
 
 ### 1.3 Enable Required APIs
 1. Go to **"APIs & Services"** > **"Library"**
-2. Search and enable these APIs:
-   - **Admin SDK API** (required)
-   - **Google Workspace Admin Reports API** (optional, for audit logs)
-   - **Enterprise License Manager API** (optional, for license management)
+2. Search and enable **all** of these APIs. Each backs one or more of the scopes
+   in Step 3.3 — if an API is disabled, the features that use its scopes fail at
+   runtime even though the scope was authorized:
+   - **Admin SDK API** — directory, reports (audit), data-transfer, and device scopes
+   - **Enterprise License Manager API** — `apps.licensing` (license assignment)
+   - **Gmail API** — `gmail.settings.basic` / `gmail.settings.sharing` (signatures, delegation, forwarding)
+   - **Google Drive API** — `drive`, `drive.file`, `drive.readonly` (external-sharing audit, file access)
+   - **Google Calendar API** — `calendar` (calendar resource management and hand-off)
 3. Click **"Enable"** for each API
+
+> **Note:** the Admin Reports and Data Transfer capabilities are part of the
+> **Admin SDK API** — enabling Admin SDK covers `admin.reports.*` and
+> `admin.datatransfer`; there is no separate API to enable for those.
 
 ## Step 2: Create Service Account
 
@@ -83,15 +91,34 @@ Each organization MUST use their own service account for:
 1. Click **"Add new"**
 2. Enter details:
    - **Client ID:** Paste the Unique ID from Step 2.5
-   - **OAuth Scopes:** Add these scopes (one per line):
+   - **OAuth Scopes:** Add **all 17** of these scopes (one per line). You must
+     authorize every scope Helios requests — Domain-Wide Delegation requires an
+     exact match, so omitting any one causes an `unauthorized_client` failure at
+     runtime on the features that need it (Gmail settings, Drive, Calendar,
+     licensing, mobile-device wipe, data transfer):
      ```
      https://www.googleapis.com/auth/admin.directory.user
+     https://www.googleapis.com/auth/admin.directory.user.security
      https://www.googleapis.com/auth/admin.directory.group
+     https://www.googleapis.com/auth/admin.directory.group.member
      https://www.googleapis.com/auth/admin.directory.orgunit
-     https://www.googleapis.com/auth/admin.directory.domain.readonly
+     https://www.googleapis.com/auth/admin.directory.domain
+     https://www.googleapis.com/auth/admin.directory.device.mobile
      https://www.googleapis.com/auth/admin.reports.audit.readonly
+     https://www.googleapis.com/auth/admin.reports.usage.readonly
+     https://www.googleapis.com/auth/admin.datatransfer
      https://www.googleapis.com/auth/apps.licensing
+     https://www.googleapis.com/auth/calendar
+     https://www.googleapis.com/auth/drive
+     https://www.googleapis.com/auth/drive.file
+     https://www.googleapis.com/auth/drive.readonly
+     https://www.googleapis.com/auth/gmail.settings.basic
+     https://www.googleapis.com/auth/gmail.settings.sharing
      ```
+     > **Source of truth:** this list mirrors `REQUIRED_SCOPES` in
+     > [`backend/src/config/google-scopes.ts`](../../backend/src/config/google-scopes.ts),
+     > where each scope is annotated with the reason Helios needs it. If that file
+     > changes, update this list to match.
 3. Click **"Authorize"**
 
 ## Step 4: Configure in Helios
@@ -152,7 +179,10 @@ Each organization MUST use their own service account for:
 **Solution:**
 1. Go back to Google Admin Console
 2. Edit the Domain-Wide Delegation entry
-3. Ensure all 6 scopes are present
+3. Ensure **all 17 scopes** from Step 3.3 are present — a partial list (e.g. only
+   the directory/reports scopes) authorizes user/group sync but still throws
+   `unauthorized_client` on Gmail settings, Drive, Calendar, licensing,
+   device-wipe, and data-transfer actions
 4. Re-authorize
 
 #### ❌ "Connection failed" Error
@@ -225,7 +255,7 @@ Before marking setup as complete, verify:
 - [ ] Service account created with JSON key downloaded
 - [ ] Admin SDK API enabled
 - [ ] Domain-Wide Delegation configured with Client ID
-- [ ] All 6 OAuth scopes added and authorized
+- [ ] All 17 OAuth scopes added and authorized
 - [ ] Service account uploaded to Helios
 - [ ] Test connection successful
 - [ ] Initial sync completed

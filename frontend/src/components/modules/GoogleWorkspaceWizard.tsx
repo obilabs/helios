@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Check, CheckCircle, FileUp, AlertTriangle } from 'lucide-react';
+import { Check, CheckCircle, FileUp, AlertTriangle, Copy, ExternalLink, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
 import { authFetch } from '../../config/api';
+import { HelpWidget } from '../ai/HelpWidget';
 import './GoogleWorkspaceWizard.css';
+
+interface DelegationInfo {
+  requiredScopes: string[];
+  requiredScopesCsv: string;
+  scopeDetails: { scope: string; reason: string }[];
+}
 
 interface ServiceAccountData {
   type: string;
@@ -35,6 +42,38 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [existingConfig, setExistingConfig] = useState<boolean>(false);
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [delegationInfo, setDelegationInfo] = useState<DelegationInfo | null>(null);
+  const [scopesExpanded, setScopesExpanded] = useState(false);
+  const [scopesCopied, setScopesCopied] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // Load the canonical scope list from the backend so the setup screen always
+  // shows exactly what the code requests (see backend config/google-scopes.ts).
+  useEffect(() => {
+    authFetch('/api/google-workspace/delegation-info')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.requiredScopes && d?.requiredScopesCsv) {
+          setDelegationInfo({
+            requiredScopes: d.requiredScopes,
+            requiredScopesCsv: d.requiredScopesCsv,
+            scopeDetails: d.scopeDetails || [],
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleCopyScopes = async () => {
+    if (!delegationInfo) return;
+    try {
+      await navigator.clipboard.writeText(delegationInfo.requiredScopesCsv);
+      setScopesCopied(true);
+      setTimeout(() => setScopesCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — the scopes are still shown below to copy manually */
+    }
+  };
 
   // Check if configuration already exists and pre-populate domain
   useEffect(() => {
@@ -313,6 +352,69 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
                   <li>Required API scopes must be authorized in Google Workspace Admin</li>
                 </ul>
               </div>
+
+              {delegationInfo && (
+                <div className="gw-wizard-info">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <h4 style={{ margin: 0 }}>Authorize API scopes</h4>
+                    <button
+                      type="button"
+                      onClick={() => setHelpOpen(true)}
+                      title="Help with authorizing API scopes"
+                      aria-label="Help with authorizing API scopes"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, color: '#8b5cf6', cursor: 'pointer', fontSize: 12 }}
+                    >
+                      <HelpCircle size={14} />
+                      Help
+                    </button>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, color: '#4b5563' }}>
+                    Authorize this service account for the {delegationInfo.requiredScopes.length} scopes Helios uses.
+                    Authorizing fewer will make some features silently fail.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <button
+                      type="button"
+                      onClick={handleCopyScopes}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', color: '#374151', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      {scopesCopied ? <Check size={15} /> : <Copy size={15} />}
+                      {scopesCopied ? 'Copied' : 'Copy scopes'}
+                    </button>
+                    {serviceAccountData?.client_id && (
+                      <a
+                        href={`https://admin.google.com/ac/owl/domainwidedelegation?clientIdToAdd=${encodeURIComponent(serviceAccountData.client_id)}&clientScopeToAdd=${encodeURIComponent(delegationInfo.requiredScopesCsv)}&overwriteClientId=false`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #8b5cf6', borderRadius: 6, background: '#8b5cf6', color: '#fff', textDecoration: 'none', fontSize: 13 }}
+                      >
+                        <ExternalLink size={15} />
+                        Open pre-filled authorization
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScopesExpanded((v) => !v)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0, fontSize: 13 }}
+                  >
+                    {scopesExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {scopesExpanded ? 'Hide' : 'Show'} the {delegationInfo.requiredScopes.length} scopes and why each is needed
+                  </button>
+                  {scopesExpanded && (
+                    <ul style={{ margin: '10px 0 0', padding: 0, listStyle: 'none' }}>
+                      {delegationInfo.scopeDetails.map((s) => (
+                        <li key={s.scope} style={{ marginBottom: 10 }}>
+                          <code style={{ fontSize: 11, color: '#374151', wordBreak: 'break-all' }}>
+                            {s.scope.replace('https://www.googleapis.com/auth/', '')}
+                          </code>
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{s.reason}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -449,6 +551,14 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
           </button>
         </div>
       </div>
+
+      <HelpWidget
+        currentPage="settings"
+        subContext="google-workspace"
+        hideFloatingButton
+        externalOpen={helpOpen}
+        onExternalClose={() => setHelpOpen(false)}
+      />
     </div>
   );
 };

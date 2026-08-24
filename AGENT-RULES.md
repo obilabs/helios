@@ -66,14 +66,33 @@ scopes: [
 
 ### Required Scopes for Helios
 
-The minimum scopes needed for full functionality:
+**Canonical source:** `backend/src/config/google-scopes.ts` (`REQUIRED_SCOPES`).
+That file is the single source of truth — each scope is annotated with the reason
+Helios needs it. The list below is a copy for reference; if the two ever disagree,
+the code file wins and this list must be corrected.
+
+Production code mints Domain-Wide Delegation JWTs for **all 17** of these scopes.
+An admin who authorizes only a subset gets `unauthorized_client` failures at
+runtime on the features whose scope was omitted (Gmail settings, Drive, Calendar,
+licensing, mobile-device wipe, data transfer):
 ```
 https://www.googleapis.com/auth/admin.directory.user
+https://www.googleapis.com/auth/admin.directory.user.security
 https://www.googleapis.com/auth/admin.directory.group
+https://www.googleapis.com/auth/admin.directory.group.member
 https://www.googleapis.com/auth/admin.directory.orgunit
 https://www.googleapis.com/auth/admin.directory.domain
+https://www.googleapis.com/auth/admin.directory.device.mobile
 https://www.googleapis.com/auth/admin.reports.audit.readonly
 https://www.googleapis.com/auth/admin.reports.usage.readonly
+https://www.googleapis.com/auth/admin.datatransfer
+https://www.googleapis.com/auth/apps.licensing
+https://www.googleapis.com/auth/calendar
+https://www.googleapis.com/auth/drive
+https://www.googleapis.com/auth/drive.file
+https://www.googleapis.com/auth/drive.readonly
+https://www.googleapis.com/auth/gmail.settings.basic
+https://www.googleapis.com/auth/gmail.settings.sharing
 ```
 
 ## Test Environment
