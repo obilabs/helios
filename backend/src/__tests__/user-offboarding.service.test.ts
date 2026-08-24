@@ -410,12 +410,40 @@ describe('UserOffboardingService', () => {
       });
     });
 
+    describe('admin self-lockout guard', () => {
+      it('refuses to offboard the Google Workspace admin Helios impersonates, before any step runs', async () => {
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          userEmail: 'admin@obilabs.dev', // same as the impersonation admin below
+          accountAction: 'suspend_immediately',
+          removeFromAllGroups: true,
+        };
+
+        // The guard reads the admin email: target === admin, so it must refuse.
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.success).toBe(false);
+        expect(result.errors.join(' ')).toMatch(/lock Helios out|Refusing to offboard/i);
+        // Nothing destructive should have run — the guard short-circuits everything.
+        expect(result.stepsCompleted).toHaveLength(0);
+      });
+    });
+
     describe('removeFromAllGroups', () => {
       it('should remove user from all groups when enabled', async () => {
         const config: OffboardingConfig = {
           ...baseConfig,
           removeFromAllGroups: true,
         };
+
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
 
         // Mock GW credentials
         mockQuery.mockResolvedValueOnce({
@@ -475,6 +503,11 @@ describe('UserOffboardingService', () => {
           revokeOauthTokens: true,
         };
 
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
+
         // Mock GW credentials
         mockQuery.mockResolvedValueOnce({
           rows: [{
@@ -518,6 +551,11 @@ describe('UserOffboardingService', () => {
           signOutAllDevices: true,
         };
 
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
+
         // Mock GW credentials
         mockQuery.mockResolvedValueOnce({
           rows: [{
@@ -552,6 +590,11 @@ describe('UserOffboardingService', () => {
           ...baseConfig,
           resetPassword: true,
         };
+
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
 
         // Mock GW credentials
         mockQuery.mockResolvedValueOnce({
@@ -591,6 +634,11 @@ describe('UserOffboardingService', () => {
           ...baseConfig,
           accountAction: 'suspend_immediately',
         };
+
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
 
         // Mock GW credentials
         mockQuery.mockResolvedValueOnce({
