@@ -169,6 +169,14 @@ Create a handoff document for each client:
 
 ### Remote Troubleshooting Techniques
 
+#### For Blocked Key Download ("Create key" disabled)
+The client's Google Cloud organization enforces the
+`iam.disableServiceAccountKeyCreation` policy (common on newer orgs), so the JSON
+key can't be created. An **Organization Policy Administrator** must add a one-time
+exception — see [GOOGLE-WORKSPACE-SETUP-GUIDE.md](GOOGLE-WORKSPACE-SETUP-GUIDE.md)
+→ Troubleshooting → "Service account key creation is disabled". Providers guiding
+clients remotely often hit this first, so raise it proactively.
+
 #### For "Invalid Grant" Errors
 **Ask client to verify:**
 1. Screenshot of Domain-Wide Delegation page
