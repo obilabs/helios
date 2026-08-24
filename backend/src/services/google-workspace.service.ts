@@ -3,6 +3,8 @@ import { JWT } from 'google-auth-library';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
+import { assertNotProtectedAdmin } from './admin-protection.js';
+import { REQUIRED_SCOPES, SCOPE_DETAILS } from '../config/google-scopes.js';
 
 export interface ServiceAccountCredentials {
   type: string;
@@ -498,20 +500,21 @@ export class GoogleWorkspaceService {
     clientId: string | null;
     serviceAccountEmail: string | null;
     requiredScopes: string[];
+    requiredScopesCsv: string;
+    scopeDetails: { scope: string; reason: string }[];
     setupInstructions: string[];
   } {
-    const requiredScopes = [
-      'https://www.googleapis.com/auth/admin.directory.user',
-      'https://www.googleapis.com/auth/admin.directory.group',
-      'https://www.googleapis.com/auth/admin.directory.orgunit',
-      'https://www.googleapis.com/auth/admin.directory.domain',
-      'https://www.googleapis.com/auth/admin.reports.audit.readonly'
-    ];
+    // Single source of truth: config/google-scopes.ts. The previous inline list
+    // advertised only 5 of the 17 scopes the code actually requests, so admins
+    // authorised a partial set and every unlisted feature silently 403'd.
+    const requiredScopes = REQUIRED_SCOPES;
 
     return {
       clientId: process.env.GOOGLE_CLIENT_ID || null,
       serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null,
       requiredScopes,
+      requiredScopesCsv: requiredScopes.join(','),
+      scopeDetails: SCOPE_DETAILS,
       setupInstructions: [
         'Create a service account in Google Cloud Console',
         'Download the service account JSON file',
@@ -1276,6 +1279,9 @@ export class GoogleWorkspaceService {
 
       const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
 
+      // Self-lockout guard: never suspend the admin Helios impersonates.
+      await assertNotProtectedAdmin(admin, googleWorkspaceId, adminEmail, 'suspend');
+
       // Suspend the user
       await admin.users.update({
         userKey: googleWorkspaceId,
@@ -1322,6 +1328,9 @@ export class GoogleWorkspaceService {
       });
 
       const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+
+      // Self-lockout guard: never delete the admin Helios impersonates.
+      await assertNotProtectedAdmin(admin, googleWorkspaceId, adminEmail, 'delete');
 
       // Permanently delete the user
       await admin.users.delete({

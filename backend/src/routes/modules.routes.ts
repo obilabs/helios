@@ -5,6 +5,7 @@ import { googleWorkspaceService } from '../services/google-workspace.service.js'
 import { googleWorkspaceSyncService } from '../services/google-workspace-sync.service.js';
 import { logger } from '../utils/logger.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from '../services/gw-credentials.js';
+import { REQUIRED_SCOPES } from '../config/google-scopes.js';
 
 const router = Router();
 
@@ -523,13 +524,11 @@ router.post('/google-workspace/configure', requirePermission('admin'), async (re
       encryptedKey,
       adminEmail,
       domain,
-      [
-        'https://www.googleapis.com/auth/admin.directory.user',
-        'https://www.googleapis.com/auth/admin.directory.group',
-        'https://www.googleapis.com/auth/admin.directory.orgunit',
-        'https://www.googleapis.com/auth/admin.directory.domain',
-        'https://www.googleapis.com/auth/admin.reports.audit.readonly'
-      ]
+      // Record the exact scope set Helios requests via DWD. Sourced from the
+      // canonical list (config/google-scopes.ts) rather than an inline copy —
+      // this column previously hardcoded only 5 of the 17 scopes, drifting from
+      // what the runtime clients actually mint JWTs for.
+      REQUIRED_SCOPES
     ]);
 
     // Mark module as configured

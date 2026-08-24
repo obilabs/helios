@@ -57,13 +57,30 @@ This is not optional. Sharing service accounts between clients is a critical sec
 
 ## Required OAuth Scopes
 
-Each client must authorize these scopes for their service account:
+Each client must authorize **all 17** of these scopes for their service account.
+The canonical list lives in `backend/src/config/google-scopes.ts`
+(`REQUIRED_SCOPES`), where each scope is annotated with the reason Helios needs
+it; keep this copy in sync with that file. Authorizing only a subset causes
+`unauthorized_client` failures at runtime on the omitted features (Gmail
+settings, Drive, Calendar, licensing, mobile-device wipe, data transfer):
 ```
 https://www.googleapis.com/auth/admin.directory.user
+https://www.googleapis.com/auth/admin.directory.user.security
 https://www.googleapis.com/auth/admin.directory.group
+https://www.googleapis.com/auth/admin.directory.group.member
 https://www.googleapis.com/auth/admin.directory.orgunit
-https://www.googleapis.com/auth/admin.directory.domain.readonly
+https://www.googleapis.com/auth/admin.directory.domain
+https://www.googleapis.com/auth/admin.directory.device.mobile
 https://www.googleapis.com/auth/admin.reports.audit.readonly
+https://www.googleapis.com/auth/admin.reports.usage.readonly
+https://www.googleapis.com/auth/admin.datatransfer
+https://www.googleapis.com/auth/apps.licensing
+https://www.googleapis.com/auth/calendar
+https://www.googleapis.com/auth/drive
+https://www.googleapis.com/auth/drive.file
+https://www.googleapis.com/auth/drive.readonly
+https://www.googleapis.com/auth/gmail.settings.basic
+https://www.googleapis.com/auth/gmail.settings.sharing
 ```
 
 ## Security Implementation in Helios

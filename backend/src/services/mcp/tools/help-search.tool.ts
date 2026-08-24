@@ -99,10 +99,29 @@ const HELP_CONTENT: HelpArticle[] = [
 3. **Authorize in Google Admin**:
    - Go to admin.google.com
    - Navigate to Security > API Controls > Domain-wide Delegation
-   - Add the Client ID with required scopes:
+   - Add the Client ID with ALL of the required scopes. The exact, always-current
+     list is shown on the Google Workspace connect screen (Settings > Modules >
+     Google Workspace) and returned by the /api/google-workspace/delegation-info
+     endpoint. Authorizing only a subset causes "unauthorized_client" errors on
+     the features whose scope was omitted (Gmail, Drive, Calendar, licensing,
+     device wipe, data transfer). The full set is:
      - https://www.googleapis.com/auth/admin.directory.user
+     - https://www.googleapis.com/auth/admin.directory.user.security
      - https://www.googleapis.com/auth/admin.directory.group
+     - https://www.googleapis.com/auth/admin.directory.group.member
      - https://www.googleapis.com/auth/admin.directory.orgunit
+     - https://www.googleapis.com/auth/admin.directory.domain
+     - https://www.googleapis.com/auth/admin.directory.device.mobile
+     - https://www.googleapis.com/auth/admin.reports.audit.readonly
+     - https://www.googleapis.com/auth/admin.reports.usage.readonly
+     - https://www.googleapis.com/auth/admin.datatransfer
+     - https://www.googleapis.com/auth/apps.licensing
+     - https://www.googleapis.com/auth/calendar
+     - https://www.googleapis.com/auth/drive
+     - https://www.googleapis.com/auth/drive.file
+     - https://www.googleapis.com/auth/drive.readonly
+     - https://www.googleapis.com/auth/gmail.settings.basic
+     - https://www.googleapis.com/auth/gmail.settings.sharing
 
 4. **Configure in Helios**:
    - Go to Settings > Modules > Google Workspace
