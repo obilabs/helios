@@ -1,0 +1,50 @@
+# Isolation override for the auth-flows E2E stack.
+#
+# Full isolation for the disposable E2E stack. Three things in the base compose
+# defeat the `-p helios-e2e` project prefix and would otherwise make this stack
+# collide with — and mount the DATA of — a developer's running dev/live stack:
+#
+#   1. `container_name:` is absolute (ignores `-p`)          -> renamed below.
+#   2. `volumes.*.name:` is explicit (ignores `-p`)          -> renamed below.
+#   3. `networks.helios_network.name:` is explicit (ignores  -> renamed below.
+#      `-p`), and both stacks give postgres the service alias
+#      `postgres`, so on a SHARED network `DB_HOST=postgres`
+#      can resolve to the WRONG stack's database.
+#
+# Without (2) and (3), the E2E stack reuses `helios_postgres_data` and the live
+# network — so the setup wizard writes to, and the DB reset TRUNCATEs, the live
+# database. Renaming all three makes the stack genuinely disposable: every
+# `helios_e2e_*` name is unique to this project and `down -v` only ever destroys
+# E2E data.
+#
+# Usage (see run-auth-flows.sh):
+#   docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml \
+#     -p helios-e2e --env-file e2e/e2e-stack.env up -d --build --wait
+#
+# The DB-reset helper targets `helios_e2e_postgres` by default (db-reset.ts).
+
+services:
+  nginx:
+    container_name: helios_e2e_nginx
+  postgres:
+    container_name: helios_e2e_postgres
+  redis:
+    container_name: helios_e2e_redis
+  minio:
+    container_name: helios_e2e_minio
+  backend:
+    container_name: helios_e2e_backend
+  frontend:
+    container_name: helios_e2e_frontend
+
+# Override the explicit names from the base compose so these are NOT shared with
+# the `helios` project. (Same compose keys, different `name:`.)
+volumes:
+  postgres_data:
+    name: helios_e2e_postgres_data
+  minio_data:
+    name: helios_e2e_minio_data
+
+networks:
+  helios_network:
+    name: helios_e2e_network

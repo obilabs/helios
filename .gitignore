@@ -66,6 +66,8 @@ test-results/
 playwright-report/
 **/test-results/
 **/playwright-report/
+# auth-flows E2E HTML report (CI reporter output)
+e2e/playwright-report-auth-flows/
 
 # Reference screenshots (for design discussions)
 e2e/reference-screenshots/
