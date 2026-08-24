@@ -307,9 +307,9 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                                   width: '10px',
                                   height: '10px',
                                   borderRadius: '50%',
-                                  backgroundColor: googleWorkspaceStatus.configuration ? '#4CAF50' : '#ff9800',
+                                  backgroundColor: googleWorkspaceStatus.configuration ? 'var(--color-success)' : 'var(--color-warning)',
                                   animation: googleWorkspaceStatus.configuration ? 'none' : 'pulse 2s infinite',
-                                  boxShadow: googleWorkspaceStatus.configuration ? '0 0 5px rgba(76,175,80,0.5)' : '0 0 5px rgba(255,152,0,0.5)'
+                                  boxShadow: googleWorkspaceStatus.configuration ? '0 0 5px rgba(16, 185, 129,0.5)' : '0 0 5px rgba(245, 158, 11,0.5)'
                                 }}
                                 title={googleWorkspaceStatus.configuration ? 'Connected' : 'Not configured'}
                               />
@@ -477,8 +477,8 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                                   width: '10px',
                                   height: '10px',
                                   borderRadius: '50%',
-                                  backgroundColor: microsoftStatus.isActive ? '#4CAF50' : '#ff9800',
-                                  boxShadow: microsoftStatus.isActive ? '0 0 5px rgba(76,175,80,0.5)' : '0 0 5px rgba(255,152,0,0.5)'
+                                  backgroundColor: microsoftStatus.isActive ? 'var(--color-success)' : 'var(--color-warning)',
+                                  boxShadow: microsoftStatus.isActive ? '0 0 5px rgba(16, 185, 129,0.5)' : '0 0 5px rgba(245, 158, 11,0.5)'
                                 }}
                                 title={microsoftStatus.isActive ? 'Connected' : 'Inactive'}
                               />

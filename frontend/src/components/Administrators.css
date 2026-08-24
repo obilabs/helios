@@ -134,7 +134,7 @@
 
 .current-badge {
   padding: 2px 8px;
-  background: #4caf50;
+  background: var(--color-success);
   color: white;
   border-radius: 12px;
   font-size: 11px;

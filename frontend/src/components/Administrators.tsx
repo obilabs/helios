@@ -184,7 +184,7 @@ export function Administrators() {
 
           return (
             <div key={admin.id} className="admin-card">
-              <div className="admin-avatar" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+              <div className="admin-avatar" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)' }}>
                 {initials}
               </div>
               <div className="admin-info">
