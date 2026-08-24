@@ -497,7 +497,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
                   zIndex: 1000,
                   maxWidth: '400px'
                 }}>
-                  <h3 style={{ marginTop: 0, color: '#ff9800' }}>⚠️ Configuration Already Exists</h3>
+                  <h3 style={{ marginTop: 0, color: '#ff9800', display: 'flex', alignItems: 'center', gap: '8px' }}><AlertTriangle size={20} /> Configuration Already Exists</h3>
                   <p>Google Workspace is already configured for this organization. Do you want to overwrite the existing configuration?</p>
                   <p style={{ fontSize: '0.9em', color: '#666' }}>This will replace your current service account and settings.</p>
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>

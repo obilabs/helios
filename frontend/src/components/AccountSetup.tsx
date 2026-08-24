@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Palette } from 'lucide-react';
+import { Check, Palette, AlertTriangle } from 'lucide-react';
 import { themeService, availableThemes, type ThemeName } from '../services/theme.service';
 import './AccountSetup.css';
 
@@ -114,7 +114,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
     <div className="account-setup-container">
       <div className="account-setup-card">
         <div className="account-setup-header">
-          <h1>🚀 Welcome to Helios Admin Portal</h1>
+          <h1>Welcome to Helios Admin Portal</h1>
           <p>Set up your organization and admin account</p>
         </div>
 
@@ -137,7 +137,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
 
         <div className="account-setup-body">
           {error && (
-            <div className="setup-error">⚠️ {error}</div>
+            <div className="setup-error"><AlertTriangle size={16} /> <span>{error}</span></div>
           )}
 
           {step === 1 && (
@@ -172,7 +172,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
               </div>
 
               <div className="info-box">
-                <strong>📋 What's Next?</strong>
+                <strong>What's Next?</strong>
                 <p>
                   After setup, you'll be able to enable Google Workspace integration
                   to sync users, groups, and organizational units from your dashboard settings.
@@ -241,7 +241,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
               </div>
 
               <div className="info-box">
-                <strong>🔒 Admin Privileges</strong>
+                <strong>Admin Privileges</strong>
                 <p>
                   This account will have full access to manage modules, users, and settings.
                   You can invite additional users with different permission levels later.

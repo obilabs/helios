@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { getBlockDefinition } from './blockDefinitions';
+import { getBlockIcon } from './blockIcons';
 import { VariableDropdown } from './VariableDropdown';
 import { BLOCK_CATEGORIES, type WorkflowBlock, WORKFLOW_VARIABLES } from './types';
 import { authFetch } from '../../config/api';
@@ -92,6 +93,7 @@ export function BlockConfig({ block, onUpdate, onClose, readOnly }: BlockConfigP
   }
 
   const categoryInfo = BLOCK_CATEGORIES[definition.category];
+  const Icon = getBlockIcon(block.type);
 
   const handleInputChange = (key: string, value: string | number | boolean) => {
     onUpdate({
@@ -111,7 +113,7 @@ export function BlockConfig({ block, onUpdate, onClose, readOnly }: BlockConfigP
             className="block-config-icon"
             style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
           >
-            {getBlockEmoji(block.type)}
+            <Icon size={20} />
           </span>
           <div>
             <h4>{definition.name}</h4>
@@ -321,43 +323,6 @@ export function BlockConfig({ block, onUpdate, onClose, readOnly }: BlockConfigP
       </div>
     </div>
   );
-}
-
-// Simple emoji mapping
-function getBlockEmoji(type: string): string {
-  const emojiMap: Record<string, string> = {
-    create_user: '👤',
-    update_user: '✏️',
-    suspend_user: '🚫',
-    delete_user: '🗑️',
-    reset_password: '🔑',
-    add_to_group: '➕',
-    remove_from_group: '➖',
-    create_group: '👥',
-    send_email: '✉️',
-    set_signature: '✍️',
-    set_vacation_responder: '🏖️',
-    remove_vacation_responder: '🔙',
-    create_calendar_event: '📅',
-    decline_future_meetings: '❌',
-    transfer_calendar: '📆',
-    grant_drive_access: '📁',
-    revoke_drive_access: '🚷',
-    transfer_drive_ownership: '📤',
-    revoke_oauth_tokens: '🔐',
-    sign_out_sessions: '🚪',
-    wipe_mobile_device: '📱',
-    notify_manager: '📣',
-    notify_hr: '📢',
-    notify_it: '🔔',
-    send_notification: '📬',
-    assign_training: '🎓',
-    create_task: '✅',
-    if_condition: '🔀',
-    wait: '⏳',
-    comment: '💬',
-  };
-  return emojiMap[type] || '⚡';
 }
 
 export default BlockConfig;

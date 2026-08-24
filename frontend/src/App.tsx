@@ -66,7 +66,7 @@ import { EmailEngagementWidget } from './components/widgets/EmailEngagementWidge
 import { LoginMapWidget } from './components/widgets/LoginMapWidget'
 import { getWidgetData } from './utils/widget-data'
 import { getEnabledWidgets, type WidgetId } from './config/widgets'
-import { UserPlus, Upload, Download, RefreshCw, AlertCircle, Info, Edit3, Bell, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon } from 'lucide-react'
+import { UserPlus, Upload, Download, RefreshCw, AlertCircle, Info, Edit3, Bell, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon, ShieldCheck, Zap, BarChart3 } from 'lucide-react'
 
 // Loading fallback for lazy-loaded components
 const PageLoader = () => (
@@ -824,7 +824,7 @@ function AppContent() {
         <div className="welcome-container">
           <div className="welcome-card">
             <div className="welcome-header">
-              <h1>🚀 Helios Admin Portal</h1>
+              <h1>Helios Admin Portal</h1>
               <p className="tagline">Unified SaaS Administration Platform</p>
             </div>
 
@@ -836,17 +836,17 @@ function AppContent() {
                   <p>Centrally manage users across Google Workspace and other SaaS platforms</p>
                 </div>
                 <div className="feature-card">
-                  <div className="feature-icon">🔐</div>
+                  <div className="feature-icon"><ShieldCheck size={24} /></div>
                   <h3>Secure Integration</h3>
                   <p>Domain-Wide Delegation and OAuth for enterprise-grade security</p>
                 </div>
                 <div className="feature-card">
-                  <div className="feature-icon">⚡</div>
+                  <div className="feature-icon"><Zap size={24} /></div>
                   <h3>Automation & Workflows</h3>
                   <p>Automate user lifecycle, provisioning, and cross-platform operations</p>
                 </div>
                 <div className="feature-card">
-                  <div className="feature-icon">📊</div>
+                  <div className="feature-icon"><BarChart3 size={24} /></div>
                   <h3>Unified Analytics</h3>
                   <p>Cross-platform reporting and compliance monitoring</p>
                 </div>
@@ -860,12 +860,12 @@ function AppContent() {
                   Get Started →
                 </button>
                 <p className="opensource-badge">
-                  ⭐ Open Source (MIT) • Self-Host Free • Hosting from $49/mo
+                  Open Source (MIT) • Self-Host Free • Hosting from $49/mo
                 </p>
               </div>
 
               <div className="info-banner">
-                <strong>🎉 Welcome to Helios Admin Portal!</strong>
+                <strong>Welcome to Helios Admin Portal!</strong>
                 <p>
                   Self-hosted administration platform for Google Workspace.
                   Sync users, groups, and organizational units with ease.
@@ -1704,11 +1704,11 @@ function AppContent() {
         <p>Helios Admin Portal v1.0.0</p>
         <p>
           <a href="https://api.obilabs.dev/docs" target="_blank" rel="noopener noreferrer">
-            📚 Documentation
+            Documentation
           </a>
           {' • '}
           <a href="https://api.obilabs.dev/support" target="_blank" rel="noopener noreferrer">
-            🆘 Support
+            Support
           </a>
           {' • '}
           Powered by <a href="https://api.obilabs.dev" target="_blank" rel="noopener noreferrer">Helios</a>
