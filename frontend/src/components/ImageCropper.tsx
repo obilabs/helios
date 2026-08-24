@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { Camera } from 'lucide-react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import './ImageCropper.css';
@@ -162,7 +163,7 @@ export function ImageCropper({
                 id="photo-upload"
               />
               <label htmlFor="photo-upload" className="upload-label">
-                <div className="upload-icon">📸</div>
+                <div className="upload-icon"><Camera size={40} /></div>
                 <div className="upload-text">
                   <strong>Click to upload</strong> or drag and drop
                 </div>
@@ -236,7 +237,7 @@ export function ImageCropper({
               onClick={handleCropComplete}
               disabled={isProcessing || !completedCrop}
             >
-              {isProcessing ? '⏳ Processing...' : '✅ Upload Photo'}
+              {isProcessing ? 'Processing...' : 'Upload Photo'}
             </button>
           </div>
         )}

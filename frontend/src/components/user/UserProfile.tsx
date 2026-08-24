@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CheckCircle, Smartphone, Monitor } from 'lucide-react';
 import { authFetch } from '../../config/api';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import './UserProfile.css';
@@ -472,7 +473,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId: _userId }) => {
               {userData.twoFactorEnabled ? (
                 <div className="tfa-enabled">
                   <p className="tfa-status success">
-                    ✅ Two-factor authentication is enabled
+                    <CheckCircle size={16} /> <span>Two-factor authentication is enabled</span>
                   </p>
                   <button
                     className="btn-danger"
@@ -561,7 +562,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId: _userId }) => {
                 <div key={session.id} className="session-item">
                   <div className="session-info">
                     <div className="session-device">
-                      {session.userAgent.includes('Mobile') ? '📱' : '💻'}
+                      {session.userAgent.includes('Mobile') ? <Smartphone size={20} /> : <Monitor size={20} />}
                       <div>
                         <strong>{session.userAgent.split('(')[0]}</strong>
                         <p>{session.ipAddress}</p>

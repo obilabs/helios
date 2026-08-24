@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Info } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import './Administrators.css';
@@ -163,7 +164,7 @@ export function Administrators() {
 
       <div className="administrators-info">
         <div className="info-card">
-          <span className="info-icon">ℹ️</span>
+          <span className="info-icon"><Info size={20} /></span>
           <div>
             <strong>Administrator Privileges:</strong>
             <ul>

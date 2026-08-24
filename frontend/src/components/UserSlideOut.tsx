@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useTabPersistence } from '../hooks/useTabPersistence';
-import { ClipboardList, Users, BarChart3, Settings, Trash2, CheckCircle, AlertTriangle, FileText, PenTool, Link2, Lock, Mail, Forward, UserPlus, X, Loader2, ShieldCheck, AppWindow, Fingerprint } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, Settings, Trash2, CheckCircle, AlertTriangle, FileText, PenTool, Link2, Lock, Mail, Forward, UserPlus, X, Loader2, ShieldCheck, AppWindow, Fingerprint, Info } from 'lucide-react';
 import { UserSignatureStatus } from './signatures';
 import { useToast } from '../contexts/ToastContext';
 import { authFetch } from '../config/api';
@@ -1754,7 +1754,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                           </div>
                         )}
                         <div className="sync-notice" style={{ marginTop: '12px' }}>
-                          <span className="notice-icon">ℹ️</span>
+                          <span className="notice-icon"><Info size={16} /></span>
                           <div>
                             <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
                               This user is synced with Google Workspace. Changes made here will be pushed to Google.
