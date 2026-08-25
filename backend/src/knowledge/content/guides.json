@@ -25,7 +25,7 @@
       "keywords": ["google workspace", "google", "service account", "domain-wide delegation", "oauth", "connect", "api", "scopes", "gcp", "cloud console", "unauthorized_client"],
       "aliases": ["setup google", "connect gws", "google integration", "gw setup"],
       "examples": [],
-      "relatedIds": ["guide-getting-started", "guide-sync-settings"],
+      "relatedIds": ["guide-getting-started", "guide-sync-settings", "guide-gw-service-account-key-policy", "guide-gw-dwd-deeplink"],
       "lastUpdated": "2026-08-24T00:00:00Z"
     },
     {
@@ -172,6 +172,34 @@
       "examples": [],
       "relatedIds": ["guide-roles-permissions", "guide-audit-logs"],
       "lastUpdated": "2025-12-21T00:00:00Z"
+    },
+    {
+      "id": "guide-gw-service-account-key-policy",
+      "type": "guide",
+      "title": "Service Account Key Creation Blocked by Org Policy",
+      "category": "setup",
+      "subcategory": "google-workspace",
+      "summary": "If Create Key fails, override the iam.disableServiceAccountKeyCreation org policy, then generate the JSON key",
+      "content": "If **Create key** is greyed out or fails when you try to generate the service account JSON key, your Google Cloud organization enforces the **iam.disableServiceAccountKeyCreation** org policy (Google's \"Secure by Default\" posture on newer organizations). Key creation is denied at the organization level until you add an exception.\n\nYou need the **Organization Policy Administrator** role (roles/orgpolicy.policyAdmin) to change this:\n\n1. Google Cloud Console > IAM & Admin > Organization Policies\n2. Search for 'Disable service account key creation' (constraints/iam.disableServiceAccountKeyCreation)\n3. Click Manage policy\n4. Choose 'Override parent's policy', click 'Add a rule', and set Enforcement to Off. (The console rejects an empty override with 'At least one rule is required', so you must add a rule, not just toggle the top switch.)\n5. Click 'Set policy' and wait about a minute for it to propagate\n6. Go back to the service account > Keys > Add key > Create new key > JSON\n7. For security, re-tighten the policy afterward, or scope the exception to only the project that holds this service account.\n\nUse a JSON key (not P12) — Helios consumes the JSON service-account key.",
+      "keywords": ["service account", "json key", "org policy", "organization policy", "constraint", "iam.disableServiceAccountKeyCreation", "disableServiceAccountKeyCreation", "secure by default", "blocked", "create key", "key creation disabled", "google workspace", "gcp"],
+      "aliases": ["cannot create service account key", "key creation disabled", "org policy blocks key", "create key greyed out", "service account key creation is disabled"],
+      "examples": [],
+      "relatedIds": ["guide-google-workspace-setup", "guide-gw-dwd-deeplink", "guide-getting-started"],
+      "lastUpdated": "2026-08-24T00:00:00Z"
+    },
+    {
+      "id": "guide-gw-dwd-deeplink",
+      "type": "guide",
+      "title": "Using the Domain-Wide Delegation Deep-Link",
+      "category": "setup",
+      "subcategory": "google-workspace",
+      "summary": "Authorize the client ID and all required scopes in one step with the wizard's pre-filled Domain-Wide Delegation link",
+      "content": "The Google Workspace connect wizard (Settings > Modules > Google Workspace) gives you a **pre-filled Domain-Wide Delegation link** and a **Copy scopes** button, so you authorize the exact Client ID and all required scopes in one step. Authorizing only a partial scope set causes unauthorized_client errors later on Gmail settings, Drive, Calendar, licensing, device, and data-transfer actions.\n\n1. In the wizard's 'Authorize API scopes' step, click 'Open pre-filled authorization' (or use Copy scopes for the manual path in the Admin console)\n2. It opens admin.google.com's Domain-Wide Delegation page with the Client ID and the full scope list already filled in\n3. Sign in as a Super Admin and click Authorize\n\nGotchas seen in the field:\n- If nothing opens, your browser blocked the pop-up. Copy the link and open it directly in the same tab.\n- Google may ask you to re-enter your admin password before it lets you authorize.\n- Delegation changes take a few minutes to propagate. If Test Connection fails immediately after authorizing, wait a minute and retry.",
+      "keywords": ["domain-wide delegation", "dwd", "deep-link", "deeplink", "wizard", "pre-filled", "client id", "scopes", "authorize", "google admin", "unauthorized_client", "copy scopes"],
+      "aliases": ["delegation deep link", "dwd link", "pre-filled delegation link", "authorize delegation", "unauthorized_client"],
+      "examples": [],
+      "relatedIds": ["guide-google-workspace-setup", "guide-gw-service-account-key-policy"],
+      "lastUpdated": "2026-08-24T00:00:00Z"
     }
   ]
 }
