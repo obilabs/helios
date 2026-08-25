@@ -63,7 +63,7 @@ export function Workspaces({ organizationId }: WorkspacesProps) {
             <p>Enable Google Workspace integration in Settings to sync {labels.plural.toLowerCase()}.</p>
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container responsive-table">
             <table className="data-table">
               <thead>
                 <tr>
@@ -76,7 +76,7 @@ export function Workspaces({ organizationId }: WorkspacesProps) {
               <tbody>
                 {workspaces.map(workspace => (
                   <tr key={workspace.id}>
-                    <td>
+                    <td data-label={`${labels.singular} Name`}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Users size={16} />
                         <strong>{workspace.name}</strong>
@@ -87,9 +87,9 @@ export function Workspaces({ organizationId }: WorkspacesProps) {
                         </div>
                       )}
                     </td>
-                    <td>{workspace.platform}</td>
-                    <td>{workspace.memberCount || 0}</td>
-                    <td>
+                    <td data-label="Platform">{workspace.platform}</td>
+                    <td data-label="Members">{workspace.memberCount || 0}</td>
+                    <td data-label="Actions">
                       <button className="btn-icon" title="View details">
                         <Users size={16} />
                       </button>
