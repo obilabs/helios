@@ -75,7 +75,9 @@ export class EmailService {
     try {
       // Get SMTP settings for this organization
       const result = await db.query(
-        `SELECT host, port, secure, username, password_encrypted, from_email, from_name
+        // Canonical column is use_tls; aliased to secure to preserve the
+        // nodemailer transport option consumed below.
+        `SELECT host, port, use_tls AS secure, username, password_encrypted, from_email, from_name
          FROM smtp_settings
          WHERE organization_id = $1 AND is_active = true
          LIMIT 1`,
@@ -203,23 +205,27 @@ export class EmailService {
       );
       const organizationName = orgResult.rows[0]?.name || 'Helios';
 
-      // Get email template
+      // Get email template. The canonical email_templates shape is
+      // (template_key, subject, body_html, is_active); an org-specific row
+      // overrides the built-in fallback below. body_html is already rendered
+      // HTML so it is sent as-is, whereas the plain-text fallback is run
+      // through textToHtml.
       const templateResult = await db.query(
-        `SELECT subject, body FROM email_templates
-         WHERE (organization_id = $1 OR organization_id IS NULL)
-         AND template_type = 'password_setup'
-         AND is_default = true
-         ORDER BY organization_id NULLS LAST
+        `SELECT subject, body_html FROM email_templates
+         WHERE organization_id = $1
+           AND template_key = 'password_setup'
+           AND is_active = true
          LIMIT 1`,
         [this.organizationId]
       );
 
       let subject = 'Set up your {organizationName} account';
-      let body = `Hi {firstName},\n\nYour account has been created. Click the link below to set your password:\n\n{setupLink}\n\nThis link will expire in {expiryHours} hours.\n\nBest regards,\n{organizationName} Team`;
+      const fallbackBody = `Hi {firstName},\n\nYour account has been created. Click the link below to set your password:\n\n{setupLink}\n\nThis link will expire in {expiryHours} hours.\n\nBest regards,\n{organizationName} Team`;
+      let templateBodyHtml: string | null = null;
 
       if (templateResult.rows.length > 0) {
         subject = templateResult.rows[0].subject;
-        body = templateResult.rows[0].body;
+        templateBodyHtml = templateResult.rows[0].body_html;
       }
 
       // Replace template variables
@@ -231,7 +237,9 @@ export class EmailService {
       };
 
       subject = this.replaceVariables(subject, variables);
-      const htmlBody = this.textToHtml(this.replaceVariables(body, variables));
+      const htmlBody = templateBodyHtml
+        ? this.replaceVariables(templateBodyHtml, variables)
+        : this.textToHtml(this.replaceVariables(fallbackBody, variables));
 
       // Send email
       return await this.sendEmail({
