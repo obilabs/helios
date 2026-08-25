@@ -155,7 +155,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
 
       <div className="page-controls">
         <div className="search-box">
-          <Search className="search-icon" size={18} />
+          <Search className="search-icon" size={16} />
           <input
             type="text"
             placeholder="Search groups..."

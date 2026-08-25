@@ -287,7 +287,7 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
                     {/* Success/Error Message */}
                     {submitResult && (
                         <div className={`result-message ${submitResult.success ? 'success' : 'error'}`}>
-                            {submitResult.success ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                            {submitResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                             <span>{submitResult.message}</span>
                         </div>
                     )}

@@ -131,18 +131,18 @@ ${keyData.type === 'vendor' ? `
             <div className="key-container">
               <code className="key-value">{keyData.key}</code>
               <button className="copy-button" onClick={handleCopy} title="Copy to clipboard">
-                {copied ? <Check size={18} /> : <Copy size={18} />}
+                {copied ? <Check size={16} /> : <Copy size={16} />}
               </button>
             </div>
           </div>
 
           <div className="show-once-actions">
             <button className="action-button download" onClick={handleDownload}>
-              <Download size={18} />
+              <Download size={16} />
               Download .txt file
             </button>
             <button className="action-button copy" onClick={handleCopy}>
-              {copied ? <Check size={18} /> : <Copy size={18} />}
+              {copied ? <Check size={16} /> : <Copy size={16} />}
               {copied ? 'Copied!' : 'Copy to clipboard'}
             </button>
           </div>

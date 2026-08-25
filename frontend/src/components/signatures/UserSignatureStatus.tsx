@@ -219,7 +219,7 @@ const UserSignatureStatus: React.FC<UserSignatureStatusProps> = ({
       {userName && (
         <div className="status-header">
           <div className="user-info">
-            <Mail size={18} />
+            <Mail size={16} />
             <div>
               <span className="user-name">{userName}</span>
               {userEmail && <span className="user-email">{userEmail}</span>}

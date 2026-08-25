@@ -357,12 +357,12 @@ export function LoginPage({ onLoginSuccess, organizationDomain: _organizationDom
                 >
                   {passkeyLoading ? (
                     <>
-                      <Loader2 size={18} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin" />
                       Authenticating...
                     </>
                   ) : (
                     <>
-                      <Fingerprint size={18} />
+                      <Fingerprint size={16} />
                       Sign in with Passkey
                     </>
                   )}

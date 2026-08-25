@@ -97,10 +97,10 @@ interface CampaignEditorProps {
 }
 
 const STEPS = [
-  { id: 'details', title: 'Campaign Details', icon: <FileText size={18} /> },
-  { id: 'template', title: 'Template & Banner', icon: <Image size={18} /> },
-  { id: 'audience', title: 'Audience', icon: <Users size={18} /> },
-  { id: 'review', title: 'Review & Launch', icon: <Target size={18} /> },
+  { id: 'details', title: 'Campaign Details', icon: <FileText size={16} /> },
+  { id: 'template', title: 'Template & Banner', icon: <Image size={16} /> },
+  { id: 'audience', title: 'Audience', icon: <Users size={16} /> },
+  { id: 'review', title: 'Review & Launch', icon: <Target size={16} /> },
 ];
 
 const ASSIGNMENT_TYPES = [
@@ -108,37 +108,37 @@ const ASSIGNMENT_TYPES = [
     type: 'user' as AssignmentType,
     label: 'Individual Users',
     description: 'Target specific users by name',
-    icon: <UserCircle size={18} />,
+    icon: <UserCircle size={16} />,
   },
   {
     type: 'group' as AssignmentType,
     label: 'Groups',
     description: 'Target members of specific groups',
-    icon: <Users size={18} />,
+    icon: <Users size={16} />,
   },
   {
     type: 'dynamic_group' as AssignmentType,
     label: 'Dynamic Groups',
     description: 'Target rule-based group membership',
-    icon: <Sparkles size={18} />,
+    icon: <Sparkles size={16} />,
   },
   {
     type: 'department' as AssignmentType,
     label: 'Departments',
     description: 'Target all users in a department',
-    icon: <Building2 size={18} />,
+    icon: <Building2 size={16} />,
   },
   {
     type: 'ou' as AssignmentType,
     label: 'Organizational Units',
     description: 'Target Google Workspace OUs',
-    icon: <FolderTree size={18} />,
+    icon: <FolderTree size={16} />,
   },
   {
     type: 'organization' as AssignmentType,
     label: 'Entire Organization',
     description: 'Apply to all users',
-    icon: <Globe size={18} />,
+    icon: <Globe size={16} />,
   },
 ];
 
