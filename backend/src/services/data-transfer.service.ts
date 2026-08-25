@@ -1,4 +1,8 @@
 import { logger } from '../utils/logger.js';
+import {
+  DATA_TRANSFER_APPLICATION_IDS,
+  type DataTransferApplication,
+} from '../config/google-application-ids.js';
 
 interface DataTransferConfig {
   enabled: boolean;
@@ -6,12 +10,10 @@ interface DataTransferConfig {
   items: string[];  // ['drive', 'calendar', 'sites', 'groups']
 }
 
-const APPLICATION_IDS: Record<string, string> = {
-  drive: '435070579839',
-  calendar: '55656082996',
-  sites: '529327477839',
-  groups: '588034504559'
-};
+// FIX: this file previously kept its OWN application-ID map with `drive` and
+// `calendar` SWAPPED (drive was '435070579839', calendar '55656082996'), so a
+// Drive transfer silently moved Calendar data and vice-versa. Import the shared
+// single source of truth instead — see config/google-application-ids.ts.
 
 export async function initiateDataTransfer(
   user: any,
@@ -20,7 +22,7 @@ export async function initiateDataTransfer(
 ): Promise<{ success: boolean; transferId?: string; error?: string }> {
   try {
     const applicationDataTransfers = config.items.map(item => ({
-      applicationId: APPLICATION_IDS[item],
+      applicationId: DATA_TRANSFER_APPLICATION_IDS[item as DataTransferApplication],
       applicationTransferParams: [] as any[]
     }));
 
