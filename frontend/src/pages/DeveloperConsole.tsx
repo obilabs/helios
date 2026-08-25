@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { HelpCircle, BookOpen, Trash2, X, PanelLeftOpen, PanelRightOpen, ExternalLink, Minimize2, Copy, Download, Check } from 'lucide-react';
 import { ConsoleHelpPanel } from '../components/ConsoleHelpPanel';
 import { authFetch } from '../config/api';
+import * as google from '../lib/googleApiRequests';
 import './DeveloperConsole.css';
 
 interface ConsoleOutput {
@@ -298,6 +299,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
     return data;
   };
+
+  // Execute a Google API request built by ../lib/googleApiRequests.
+  // Centralizing method/path/body construction there keeps the correct-request
+  // logic pure and unit-testable (googleApiRequests.test.ts).
+  const runGoogle = (req: google.GoogleApiRequest): Promise<any> =>
+    apiRequest(req.method, req.path, req.body);
 
   // Log command execution to audit log (fire-and-forget)
   const logCommandToAudit = async (
@@ -2646,12 +2653,6 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `[OFFBOARD]Starting offboarding for ${email}...`);
         addOutput('info', '');
 
-        const APPLICATION_IDS: Record<string, string> = {
-          drive: '435070579839',
-          calendar: '55656082996',
-          sites: '529327477839'
-        };
-
         let stepNum = 0;
         const results: { step: string; success: boolean; message: string }[] = [];
 
@@ -2661,11 +2662,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             stepNum++;
             addOutput('info', `[STEP]Step ${stepNum}: Setting vacation responder...`);
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, {
+              await runGoogle(google.gmailUpdateVacation(email, {
                 enableAutoReply: true,
                 responseBodyPlainText: params.vacation,
                 responseBodyHtml: `<p>${params.vacation.replace(/\n/g, '<br>')}</p>`
-              });
+              }));
               results.push({ step: 'Vacation responder', success: true, message: 'Enabled' });
               addOutput('success', `   Vacation responder set`);
             } catch (e: any) {
@@ -2680,15 +2681,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             stepNum++;
             addOutput('info', `[STEP]Step ${stepNum}: Initiating data transfer to ${transferTo}...`);
             try {
-              const transferResponse = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+              const transferResponse = await runGoogle(google.dataTransferInsert({
                 oldOwnerUserId: email,
                 newOwnerUserId: transferTo,
-                applicationDataTransfers: [
-                  { applicationId: APPLICATION_IDS.drive, applicationTransferParams: [] },
-                  { applicationId: APPLICATION_IDS.calendar, applicationTransferParams: [] },
-                  { applicationId: APPLICATION_IDS.sites, applicationTransferParams: [] }
+                applicationIds: [
+                  google.DATA_TRANSFER_APPLICATION_IDS.drive,
+                  google.DATA_TRANSFER_APPLICATION_IDS.calendar,
+                  google.DATA_TRANSFER_APPLICATION_IDS.sites
                 ]
-              });
+              }));
               results.push({ step: 'Data transfer', success: true, message: `Transfer ID: ${transferResponse.id}` });
               addOutput('success', `   Transfer initiated (ID: ${transferResponse.id})`);
             } catch (e: any) {
@@ -2705,19 +2706,17 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             try {
               // Add forwarding address first
               try {
-                await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/forwardingAddresses`, {
-                  forwardingEmail: forwardTo
-                });
+                await runGoogle(google.gmailCreateForwardingAddress(email, forwardTo));
               } catch {
                 // May already exist, ignore
               }
 
               // Enable auto-forwarding
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
+              await runGoogle(google.gmailUpdateAutoForwarding(email, {
                 enabled: true,
                 emailAddress: forwardTo,
                 disposition: 'leaveInInbox'
-              });
+              }));
               results.push({ step: 'Email forwarding', success: true, message: `Forwarding to ${forwardTo}` });
               addOutput('success', `   Forwarding enabled`);
             } catch (e: any) {
@@ -3425,7 +3424,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           return;
         }
         const userEmail = args[0];
-        const data = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/delegates`);
+        const data = await runGoogle(google.gmailListDelegates(userEmail));
         if (data.delegates) {
           const delegates = data.delegates.map((d: any) => d.delegateEmail).join('\n');
           addOutput('success', `\nDelegates for ${userEmail}:\n${delegates}`);
@@ -3486,9 +3485,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/delegates`, {
-                delegateEmail: delegateEmail
-              });
+              await runGoogle(google.gmailAddDelegate(email, delegateEmail));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -3515,11 +3512,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
         const delegateEmail = args[1];
 
-        const body = {
-          delegateEmail: delegateEmail
-        };
-
-        await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/delegates`, body);
+        await runGoogle(google.gmailAddDelegate(userEmail, delegateEmail));
         addOutput('success', `Added delegate ${delegateEmail} for ${userEmail}`);
         break;
       }
@@ -3579,7 +3572,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('DELETE', `/api/google/gmail/v1/users/${email}/settings/delegates/${delegateEmail}`);
+              await runGoogle(google.gmailRemoveDelegate(email, delegateEmail));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -3601,7 +3594,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
         const delegateEmail = args[1];
 
-        await apiRequest('DELETE', `/api/google/gmail/v1/users/${userEmail}/settings/delegates/${delegateEmail}`);
+        await runGoogle(google.gmailRemoveDelegate(userEmail, delegateEmail));
         addOutput('success', `Removed delegate ${delegateEmail} from ${userEmail}`);
         break;
       }
@@ -3718,11 +3711,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         try {
           // Step 1: Get all files owned by fromEmail
           addOutput('info', '[STEP]Step 1/2: Finding files...');
-          const files = await apiRequest('GET', '/api/google/drive/v3/files', {
+          const files = await runGoogle(google.driveListFiles({
             q: `'${fromEmail}' in owners and trashed=false`,
             fields: 'files(id,name,owners)',
             pageSize: 1000
-          });
+          }));
 
           if (!files.files || files.files.length === 0) {
             addOutput('info', `[OK]No files found owned by ${fromEmail}`);
@@ -3739,12 +3732,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
           for (const file of files.files) {
             try {
-              await apiRequest('POST', `/api/google/drive/v3/files/${file.id}/permissions`, {
-                role: 'owner',
-                type: 'user',
-                emailAddress: toEmail,
-                transferOwnership: true
-              });
+              await runGoogle(google.driveTransferFileOwnership(file.id, toEmail));
               transferred++;
 
               if (transferred % 10 === 0) {
@@ -3788,10 +3776,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         // Generate unique request ID
         const requestId = `helios-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-        const data = await apiRequest('POST', '/api/google/drive/v3/drives', {
-          requestId: requestId,
-          name: params.name
-        });
+        const data = await runGoogle(google.driveCreateSharedDrive(requestId, params.name));
 
         addOutput('success', `[OK]Created shared drive: ${params.name}`);
         addOutput('info', `   Drive ID: ${data.id}`);
@@ -3799,9 +3784,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       }
 
       case 'list': {
-        const data = await apiRequest('GET', '/api/google/drive/v3/drives', {
-          pageSize: 100
-        });
+        const data = await runGoogle(google.driveListSharedDrives(100));
 
         if (data.drives && data.drives.length > 0) {
           const drives = data.drives.map((d: any) => {
@@ -3824,7 +3807,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        const data = await apiRequest('GET', `/api/google/drive/v3/drives/${driveId}`);
+        const data = await runGoogle(google.driveGetSharedDrive(driveId));
         addOutput('success', JSON.stringify(data, null, 2));
         break;
       }
@@ -3840,12 +3823,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const params = parseArgs(args.slice(2));
         const role = params.role || 'writer';
 
-        await apiRequest('POST', `/api/google/drive/v3/files/${driveId}/permissions`, {
+        await runGoogle(google.driveAddPermission(driveId, {
           role: role,
           type: 'user',
-          emailAddress: email,
-          supportsAllDrives: true
-        });
+          emailAddress: email
+        }));
 
         addOutput('success', `[OK]Added ${email} to shared drive as ${role}`);
         break;
@@ -3859,10 +3841,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        const data = await apiRequest('GET', `/api/google/drive/v3/files/${driveId}/permissions`, {
-          supportsAllDrives: true,
-          fields: 'permissions(emailAddress,displayName,role,type)'
-        });
+        const data = await runGoogle(google.driveListPermissions(driveId));
 
         if (data.permissions && data.permissions.length > 0) {
           const perms = data.permissions.map((p: any) => {
@@ -3887,7 +3866,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        await apiRequest('DELETE', `/api/google/drive/v3/drives/${driveId}`);
+        await runGoogle(google.driveDeleteSharedDrive(driveId));
         addOutput('success', `[OK]Shared drive deleted: ${driveId}`);
         addOutput('info', '[WARN]All files in the shared drive have been permanently deleted');
         break;
@@ -3900,13 +3879,8 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
   // ----- Google Workspace: Data Transfer -----
   const handleGWTransfer = async (action: string, args: string[]) => {
-    // Application IDs for Google Data Transfer API
-    const APPLICATION_IDS: Record<string, string> = {
-      drive: '435070579839',
-      calendar: '55656082996',
-      sites: '529327477839',
-      groups: '588034504559'
-    };
+    // Canonical Google application IDs (see lib/googleApiRequests).
+    const APPLICATION_IDS = google.DATA_TRANSFER_APPLICATION_IDS;
 
     switch (action) {
       case 'drive': {
@@ -3930,14 +3904,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // Use Google Data Transfer API via transparent proxy
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [{
-              applicationId: APPLICATION_IDS.drive,
-              applicationTransferParams: []
-            }]
-          });
+            applicationIds: [APPLICATION_IDS.drive]
+          }));
 
           addOutput('success', `[OK]Drive transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -3970,14 +3941,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `   To: ${toEmail}`);
 
         try {
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [{
-              applicationId: APPLICATION_IDS.calendar,
-              applicationTransferParams: []
-            }]
-          });
+            applicationIds: [APPLICATION_IDS.calendar]
+          }));
 
           addOutput('success', `[OK]Calendar transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -4009,15 +3977,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `   Applications: Drive, Calendar, Sites`);
 
         try {
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [
-              { applicationId: APPLICATION_IDS.drive, applicationTransferParams: [] },
-              { applicationId: APPLICATION_IDS.calendar, applicationTransferParams: [] },
-              { applicationId: APPLICATION_IDS.sites, applicationTransferParams: [] }
+            applicationIds: [
+              APPLICATION_IDS.drive,
+              APPLICATION_IDS.calendar,
+              APPLICATION_IDS.sites
             ]
-          });
+          }));
 
           addOutput('success', `[OK]Full data transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -4037,7 +4005,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const transferId = args[0];
 
         try {
-          const response = await apiRequest('GET', `/api/google/admin/datatransfer/v1/transfers/${transferId}`);
+          const response = await runGoogle(google.dataTransferGet(transferId));
 
           const formatField = (label: string, value: any) => {
             return value ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4074,7 +4042,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', '[SYNC]Fetching recent data transfers...');
 
         try {
-          const response = await apiRequest('GET', '/api/google/admin/datatransfer/v1/transfers?maxResults=20');
+          const response = await runGoogle(google.dataTransferList(20));
 
           if (response.dataTransfers && response.dataTransfers.length > 0) {
             addOutput('success', '\nRecent Data Transfers:');
@@ -4147,7 +4115,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // Get auto-forwarding settings
-          const settings = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`);
+          const settings = await runGoogle(google.gmailGetAutoForwarding(userEmail));
 
           const formatField = (label: string, value: any) => {
             return value !== undefined ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4226,9 +4194,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             try {
               // Add forwarding address
               try {
-                await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/forwardingAddresses`, {
-                  forwardingEmail: forwardTo
-                });
+                await runGoogle(google.gmailCreateForwardingAddress(email, forwardTo));
               } catch (e: any) {
                 // May already exist, which is fine
                 if (!e.message?.includes('already exists') && !e.message?.includes('409')) {
@@ -4237,11 +4203,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               }
 
               // Enable forwarding
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
+              await runGoogle(google.gmailUpdateAutoForwarding(email, {
                 enabled: true,
                 emailAddress: forwardTo,
                 disposition: disposition
-              });
+              }));
 
               addOutput('success', `  ✓ ${email}`);
               successCount++;
@@ -4267,9 +4233,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           addOutput('info', `[STEP]Step 1/2: Adding forwarding address ${forwardTo}...`);
 
           try {
-            await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/forwardingAddresses`, {
-              forwardingEmail: forwardTo
-            });
+            await runGoogle(google.gmailCreateForwardingAddress(userEmail, forwardTo));
             addOutput('success', `   Forwarding address added`);
           } catch (e: any) {
             // May already exist, which is fine
@@ -4283,11 +4247,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           // Then enable auto-forwarding
           addOutput('info', `[STEP]Step 2/2: Enabling auto-forwarding...`);
 
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`, {
+          await runGoogle(google.gmailUpdateAutoForwarding(userEmail, {
             enabled: true,
             emailAddress: forwardTo,
             disposition: disposition
-          });
+          }));
 
           addOutput('success', `[OK]Forwarding enabled for ${userEmail}`);
           addOutput('info', `   Forward to: ${forwardTo}`);
@@ -4338,9 +4302,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
-                enabled: false
-              });
+              await runGoogle(google.gmailUpdateAutoForwarding(email, { enabled: false }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4362,9 +4324,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`, {
-            enabled: false
-          });
+          await runGoogle(google.gmailUpdateAutoForwarding(userEmail, { enabled: false }));
 
           addOutput('success', `[OK]Forwarding disabled for ${userEmail}`);
         } catch (error: any) {
@@ -4422,7 +4382,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const settings = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`);
+          const settings = await runGoogle(google.gmailGetVacation(userEmail));
 
           const formatField = (label: string, value: any) => {
             return value !== undefined ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4510,7 +4470,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, body);
+              await runGoogle(google.gmailUpdateVacation(email, body));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4531,7 +4491,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`, buildBody());
+          await runGoogle(google.gmailUpdateVacation(userEmail, buildBody()));
 
           addOutput('success', `[OK]Vacation responder enabled for ${userEmail}`);
           if (params.subject) addOutput('info', `   Subject: ${params.subject}`);
@@ -4576,9 +4536,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, {
-                enableAutoReply: false
-              });
+              await runGoogle(google.gmailUpdateVacation(email, { enableAutoReply: false }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4600,9 +4558,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`, {
-            enableAutoReply: false
-          });
+          await runGoogle(google.gmailUpdateVacation(userEmail, { enableAutoReply: false }));
 
           addOutput('success', `[OK]Vacation responder disabled for ${userEmail}`);
         } catch (error: any) {
@@ -4660,7 +4616,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const sendAsData = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`);
+          const sendAsData = await runGoogle(google.gmailGetSendAs(userEmail, userEmail));
 
           addOutput('success', `\nSignature for ${userEmail}:`);
           addOutput('info', '='.repeat(60));
@@ -4725,9 +4681,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PATCH', `/api/google/gmail/v1/users/${email}/settings/sendAs/${email}`, {
-                signature: signature
-              });
+              await runGoogle(google.gmailPatchSendAs(email, email, { signature }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4748,9 +4702,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PATCH', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`, {
-            signature: signature
-          });
+          await runGoogle(google.gmailPatchSendAs(userEmail, userEmail, { signature }));
 
           addOutput('success', `[OK]Signature updated for ${userEmail}`);
         } catch (error: any) {
@@ -4791,9 +4743,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PATCH', `/api/google/gmail/v1/users/${email}/settings/sendAs/${email}`, {
-                signature: ''
-              });
+              await runGoogle(google.gmailPatchSendAs(email, email, { signature: '' }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4814,9 +4764,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PATCH', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`, {
-            signature: ''
-          });
+          await runGoogle(google.gmailPatchSendAs(userEmail, userEmail, { signature: '' }));
 
           addOutput('success', `[OK]Signature cleared for ${userEmail}`);
         } catch (error: any) {
@@ -4842,7 +4790,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs`);
+          const data = await runGoogle(google.gmailListSendAs(userEmail));
 
           addOutput('success', `\nSend-As Addresses for ${userEmail}:`);
           addOutput('info', '='.repeat(70));
@@ -4876,10 +4824,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const displayName = params.name || sendAsEmail.split('@')[0];
 
         try {
-          await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs`, {
+          await runGoogle(google.gmailCreateSendAs(userEmail, {
             sendAsEmail: sendAsEmail,
             displayName: displayName
-          });
+          }));
 
           addOutput('success', `[OK]Added send-as address ${sendAsEmail} for ${userEmail}`);
           addOutput('info', `   Display name: ${displayName}`);
@@ -4900,7 +4848,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const sendAsEmail = args[1];
 
         try {
-          await apiRequest('DELETE', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${sendAsEmail}`);
+          await runGoogle(google.gmailDeleteSendAs(userEmail, sendAsEmail));
 
           addOutput('success', `[OK]Removed send-as address ${sendAsEmail} from ${userEmail}`);
         } catch (error: any) {
@@ -4926,7 +4874,9 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/calendar/v3/users/${userEmail}/calendarList`);
+          // Calendar API exposes only the authenticated user's list under the
+          // literal `me`; the target user is selected by proxy impersonation.
+          const data = await runGoogle(google.calendarListCalendars());
 
           addOutput('success', `\nCalendars for ${userEmail}:`);
           addOutput('info', '='.repeat(80));
@@ -4958,7 +4908,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const calendarId = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl`);
+          const data = await runGoogle(google.calendarListAcl(calendarId));
 
           addOutput('success', `\nCalendar ACL for ${calendarId}:`);
           addOutput('info', '='.repeat(70));
@@ -4994,13 +4944,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const role = params.role || 'reader';
 
         try {
-          await apiRequest('POST', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl`, {
+          await runGoogle(google.calendarInsertAcl(calendarId, {
             role: role,
             scope: {
               type: 'user',
               value: shareWith
             }
-          });
+          }));
 
           addOutput('success', `[OK]Shared calendar with ${shareWith} as ${role}`);
         } catch (error: any) {
@@ -5020,8 +4970,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // ACL rule ID format is typically "user:email"
-          const ruleId = `user:${removeUser}`;
-          await apiRequest('DELETE', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl/${encodeURIComponent(ruleId)}`);
+          await runGoogle(google.calendarDeleteAcl(calendarId, google.calendarUserRuleId(removeUser)));
 
           addOutput('success', `[OK]Removed ${removeUser} from calendar`);
         } catch (error: any) {
