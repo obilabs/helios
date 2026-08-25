@@ -39,5 +39,8 @@
     "playwright": "^1.57.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "shell-quote": "^1.8.4"
   }
 }
