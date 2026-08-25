@@ -341,6 +341,10 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+  /* As the flexible middle grid column, allow this pane to shrink below its
+     content's intrinsic width so the toolbar and asset grid reflow instead of
+     being clipped by the overflow:hidden on narrow (~800px) viewports. */
+  min-width: 0;
 }
 
 .assets-toolbar {
@@ -349,10 +353,14 @@
   gap: 12px;
   padding: 16px;
   border-bottom: 1px solid #e5e7eb;
+  /* Let the search box and Refresh button stack when space is tight rather
+     than pushing the Refresh button out of the clipped pane. */
+  flex-wrap: wrap;
 }
 
 .assets-toolbar .search-box {
-  flex: 1;
+  flex: 1 1 200px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -369,6 +377,7 @@
 
 .assets-toolbar .search-box input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   font-size: 13px;
