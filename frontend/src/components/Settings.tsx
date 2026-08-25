@@ -29,6 +29,8 @@ interface SettingsProps {
 
 interface ModuleStatus {
   isEnabled: boolean;
+  hasCredentials?: boolean;
+  isConfigured?: boolean;
   userCount: number;
   lastSync: string | null;
   configuration: any;
@@ -103,6 +105,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
   const [newApiKeyData, setNewApiKeyData] = useState<any>(null);
   const [showModuleMenu, setShowModuleMenu] = useState(false);
   const [showDisableGoogleConfirm, setShowDisableGoogleConfirm] = useState(false);
+  const [enablingGoogle, setEnablingGoogle] = useState(false);
 
   // Fetch module status on component mount
   useEffect(() => {
@@ -132,6 +135,34 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
       console.error('Failed to fetch module status:', error);
     } finally {
       setIsLoadingStatus(false);
+    }
+  };
+
+  // Enable Google Workspace using credentials that are ALREADY stored, without
+  // re-opening the full setup wizard (which would demand the service-account key
+  // again). Used when the module is disabled but configuration exists.
+  const enableGoogleWorkspaceFromStoredCredentials = async () => {
+    try {
+      setEnablingGoogle(true);
+      const response = await authFetch('/api/v1/google-workspace/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId })
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchModuleStatus();
+      } else if (response.status === 400) {
+        // Credentials turned out to be missing — fall back to the setup wizard.
+        setConfiguringModule('google-workspace');
+        setShowModuleConfig(true);
+      } else {
+        alert(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Failed to enable Google Workspace: ${error.message}`);
+    } finally {
+      setEnablingGoogle(false);
     }
   };
 
@@ -307,9 +338,9 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                                   width: '10px',
                                   height: '10px',
                                   borderRadius: '50%',
-                                  backgroundColor: googleWorkspaceStatus.configuration ? '#4CAF50' : '#ff9800',
+                                  backgroundColor: googleWorkspaceStatus.configuration ? 'var(--color-success)' : 'var(--color-warning)',
                                   animation: googleWorkspaceStatus.configuration ? 'none' : 'pulse 2s infinite',
-                                  boxShadow: googleWorkspaceStatus.configuration ? '0 0 5px rgba(76,175,80,0.5)' : '0 0 5px rgba(255,152,0,0.5)'
+                                  boxShadow: googleWorkspaceStatus.configuration ? '0 0 5px rgba(16, 185, 129,0.5)' : '0 0 5px rgba(245, 158, 11,0.5)'
                                 }}
                                 title={googleWorkspaceStatus.configuration ? 'Connected' : 'Not configured'}
                               />
@@ -319,15 +350,40 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                             </span>
                           </div>
                           {!googleWorkspaceStatus.isEnabled && (
-                            <button
-                              className="enable-btn"
-                              onClick={() => {
-                                setConfiguringModule('google-workspace');
-                                setShowModuleConfig(true);
-                              }}
-                            >
-                              Enable
-                            </button>
+                            googleWorkspaceStatus.hasCredentials ? (
+                              // Credentials already exist — enable in place and
+                              // offer reconfigure, rather than re-running setup.
+                              <div className="module-actions">
+                                <button
+                                  className="enable-btn"
+                                  disabled={enablingGoogle}
+                                  onClick={enableGoogleWorkspaceFromStoredCredentials}
+                                  title="Enable using your existing Google Workspace credentials"
+                                >
+                                  {enablingGoogle ? 'Enabling…' : 'Enable'}
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => {
+                                    setConfiguringModule('google-workspace');
+                                    setShowModuleConfig(true);
+                                  }}
+                                  title="Upload a new service-account key and reconfigure"
+                                >
+                                  <SettingsIcon size={14} /> Reconfigure
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="enable-btn"
+                                onClick={() => {
+                                  setConfiguringModule('google-workspace');
+                                  setShowModuleConfig(true);
+                                }}
+                              >
+                                Enable
+                              </button>
+                            )
                           )}
                           {googleWorkspaceStatus.isEnabled && (
                             <div className="module-actions">
@@ -477,8 +533,8 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                                   width: '10px',
                                   height: '10px',
                                   borderRadius: '50%',
-                                  backgroundColor: microsoftStatus.isActive ? '#4CAF50' : '#ff9800',
-                                  boxShadow: microsoftStatus.isActive ? '0 0 5px rgba(76,175,80,0.5)' : '0 0 5px rgba(255,152,0,0.5)'
+                                  backgroundColor: microsoftStatus.isActive ? 'var(--color-success)' : 'var(--color-warning)',
+                                  boxShadow: microsoftStatus.isActive ? '0 0 5px rgba(16, 185, 129,0.5)' : '0 0 5px rgba(245, 158, 11,0.5)'
                                 }}
                                 title={microsoftStatus.isActive ? 'Connected' : 'Inactive'}
                               />
@@ -642,7 +698,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
               <div className="security-section">
                 <div className="security-card">
-                  <h3><Lock size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Password Policy</h3>
+                  <h3><Lock size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Password Policy</h3>
                   <p>Set password requirements for all users in your organization</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -694,7 +750,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Account Lockout</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Account Lockout</h3>
                   <p>Configure account lockout settings after failed login attempts</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -720,7 +776,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Key size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Session Settings</h3>
+                  <h3><Key size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Session Settings</h3>
                   <p>Control session timeout and concurrent login policies</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -747,7 +803,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Authentication Requirements</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Authentication Requirements</h3>
                   <p>Enforce authentication methods for all users</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -767,7 +823,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Single Sign-On (SSO)</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Single Sign-On (SSO)</h3>
                   <p>Configure SAML or OAuth for your organization</p>
                   <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px', color: '#6b7280', fontSize: '13px' }}>
                     SSO configuration requires enterprise setup. Contact support for assistance.
@@ -790,7 +846,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                   <ThemeSelector />
                 ) : (
                   <div className="customization-card">
-                    <h3><Palette size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Theme Settings</h3>
+                    <h3><Palette size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Theme Settings</h3>
                     <p>Theme customization is restricted to administrators</p>
                     <div className="info-box">
                       <Info size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
@@ -807,7 +863,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 {/* Branding & Support Settings - Admin Only */}
                 {currentUser?.role === 'admin' && (
                   <div className="customization-card">
-                    <h3><Link size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Branding & Support</h3>
+                    <h3><Link size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Branding & Support</h3>
                     <p>Configure navigation and support links</p>
                     <div className="branding-settings">
                       <div className="setting-row">
@@ -914,7 +970,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
               <div className="advanced-section">
                 <div className="advanced-card">
-                  <h3><BarChart3 size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Data Synchronization</h3>
+                  <h3><BarChart3 size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Data Synchronization</h3>
                   <p>Configure how data syncs between Helios and connected platforms</p>
 
                   <div className="sync-settings">

@@ -214,7 +214,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           </button>
         )}
 
-        <ChevronRight size={18} className="chevron" />
+        <ChevronRight size={16} className="chevron" />
       </div>
     </div>
   );

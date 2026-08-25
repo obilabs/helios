@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useTabPersistence } from '../hooks/useTabPersistence';
-import { ClipboardList, Users, BarChart3, Settings, Trash2, CheckCircle, AlertTriangle, FileText, PenTool, Link2, Lock, Mail, Forward, UserPlus, X, Loader2, ShieldCheck, AppWindow, Fingerprint } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, Settings, Trash2, CheckCircle, AlertTriangle, FileText, PenTool, Link2, Lock, Mail, Forward, UserPlus, X, Loader2, ShieldCheck, AppWindow, Fingerprint, Info } from 'lucide-react';
 import { UserSignatureStatus } from './signatures';
 import { useToast } from '../contexts/ToastContext';
 import { authFetch } from '../config/api';
@@ -1372,14 +1372,14 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     }}>
                       {securityData.twoFactor.anyEnrolled ? (
                         <>
-                          <CheckCircle size={18} style={{ color: '#22c55e' }} />
+                          <CheckCircle size={16} style={{ color: '#22c55e' }} />
                           <span style={{ color: '#15803d', fontWeight: 500 }}>
                             {securityData.twoFactor.allEnrolled ? 'Enrolled in all sources' : 'Enrolled in some sources'}
                           </span>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                          <AlertTriangle size={16} style={{ color: '#ef4444' }} />
                           <span style={{ color: '#dc2626', fontWeight: 500 }}>Not enrolled in any 2FA</span>
                         </>
                       )}
@@ -1754,7 +1754,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                           </div>
                         )}
                         <div className="sync-notice" style={{ marginTop: '12px' }}>
-                          <span className="notice-icon">ℹ️</span>
+                          <span className="notice-icon"><Info size={16} /></span>
                           <div>
                             <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
                               This user is synced with Google Workspace. Changes made here will be pushed to Google.

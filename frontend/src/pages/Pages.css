@@ -82,12 +82,19 @@
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  /* This 6-column table is too wide to fit narrow (~800px) viewports. Rather
+     than clip columns (the previous overflow:hidden did), let the whole table
+     scroll horizontally as one unit — matching the DataTable/HRDashboard
+     pattern. The header and body share this scroll container so they stay
+     aligned; vertical scrolling stays inside .grid-body. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .grid-header {
   display: grid;
   grid-template-columns: 2fr 1fr 100px 100px 1.5fr 120px;
+  min-width: 820px;
   padding: 0 16px;
   height: 40px;
   background: #fafbfc;
@@ -104,11 +111,16 @@
 .grid-body {
   max-height: 600px;
   overflow-y: auto;
+  /* Match the header's scroll width so the two panes stay aligned while the
+     parent scrolls horizontally; the body never scrolls sideways on its own. */
+  overflow-x: hidden;
+  min-width: 820px;
 }
 
 .grid-row {
   display: grid;
   grid-template-columns: 2fr 1fr 100px 100px 1.5fr 120px;
+  min-width: 820px;
   padding: 0 16px;
   height: 48px;
   min-height: 48px;
@@ -124,9 +136,12 @@
 }
 
 /* Column Sizes */
-.col-wide { flex: 2; }
-.col-medium { flex: 1.5; }
-.col-small { flex: 1; }
+/* min-width:0 lets a column shrink below its content's intrinsic width so the
+   inner text-overflow:ellipsis engages; overflow:hidden clips any long unbroken
+   token at the cell edge instead of letting it bleed into the next column. */
+.col-wide { flex: 2; min-width: 0; overflow: hidden; }
+.col-medium { flex: 1.5; min-width: 0; overflow: hidden; }
+.col-small { flex: 1; min-width: 0; overflow: hidden; }
 
 /* Item Styles */
 .item-info {
@@ -147,7 +162,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -402,18 +417,10 @@
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
-  .grid-header,
-  .grid-row {
-    grid-template-columns: 2fr 1fr 80px 120px;
-  }
-
-  .col-small:nth-child(4),
-  .col-medium:nth-child(5) {
-    display: none;
-  }
-}
-
+/* The .data-grid table keeps all its columns at every width and scrolls
+   horizontally (see .data-grid above), so the old column-dropping overrides —
+   which assumed a specific consumer's column order and left AssetManagement's
+   6 columns wrapping and clipping — are intentionally gone. */
 @media (max-width: 768px) {
   .page-controls {
     flex-wrap: wrap;
@@ -422,16 +429,6 @@
   .search-box {
     max-width: none;
     width: 100%;
-  }
-
-  .grid-header,
-  .grid-row {
-    grid-template-columns: 1fr auto;
-  }
-
-  .col-medium,
-  .col-small {
-    display: none;
   }
 
   .org-unit-stats {

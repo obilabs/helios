@@ -167,7 +167,7 @@ Your instance talks to Google Workspace using your own service account. Optional
 |---------|--------|-----------------|-----------|
 | Data Location | Your Infrastructure | SaaS Cloud | Local Machine |
 | Interface | Modern Web UI | Modern Web UI | Command Line |
-| API Access | Full + Audited | Limited | Full |
+| API Access | Full + Logged | Limited | Full |
 | Audit Trail | Every Action Logged | Varies | Manual |
 | Cost Model | Free or Fixed | $30-60/user/year | Free |
 | Setup | Docker Compose | SaaS Signup | Complex Auth |
