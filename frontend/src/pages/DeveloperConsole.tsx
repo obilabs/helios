@@ -1907,7 +1907,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const handleGoogleWorkspaceCommand = async (args: string[]) => {
     if (args.length === 0) {
       addOutput('error', 'Usage: helios gw <resource> <action> [options]');
-      addOutput('info', 'Resources: users, groups, orgunits, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
+      addOutput('info', 'Resources: users, groups, orgunits, schemas, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
       return;
     }
 
@@ -1924,6 +1924,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       case 'orgunits':
         await handleGWOrgUnits(action, restArgs);
+        break;
+      case 'schemas':
+      case 'schema':
+        await handleGWSchemas(action, restArgs);
         break;
       case 'delegates':
         await handleGWDelegates(action, restArgs);
@@ -2494,9 +2498,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const alias = args[1];
 
-        await apiRequest('POST', `/api/google/admin/directory/v1/users/${email}/aliases`, {
-          alias: alias
-        });
+        await runGoogle(google.userAliasesInsert(email, alias));
 
         addOutput('success', `[OK]Added alias ${alias} to ${email}`);
         break;
@@ -2510,7 +2512,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const alias = args[1];
 
-        await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${email}/aliases/${alias}`);
+        await runGoogle(google.userAliasesDelete(email, alias));
 
         addOutput('success', `[OK]Removed alias ${alias} from ${email}`);
         break;
@@ -2820,8 +2822,94 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       }
 
+      case 'undelete': {
+        // Restore a user DELETED within Google's ~20-day recovery window.
+        // NOTE: undelete needs the immutable user ID, not the primary email
+        // (the email stops resolving once the account is deleted).
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users undelete <userId> [--ou=</Path>]');
+          addOutput('info', 'Restores a recently-deleted user. Use the immutable 21-digit user ID (not the email).');
+          addOutput('info', 'Find deleted-user IDs with: helios api GET /api/google/admin/directory/v1/users?customer=my_customer&showDeleted=true');
+          return;
+        }
+        const userId = args[0];
+        const params = parseArgs(args.slice(1));
+        await runGoogle(google.usersUndelete(userId, params.ou || '/'));
+        addOutput('success', `User undeleted into ${params.ou || '/'}: ${userId}`);
+        break;
+      }
+
+      case 'list-aliases':
+      case 'aliases': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users list-aliases <email>');
+          return;
+        }
+        const email = args[0];
+        const data = await runGoogle(google.userAliasesList(email));
+        const aliases = (data?.aliases || []).map((a: any) => `  ${a.alias || a}`);
+        if (aliases.length === 0) {
+          addOutput('info', `No aliases for ${email}`);
+        } else {
+          addOutput('success', `Aliases for ${email}:\n${aliases.join('\n')}`);
+        }
+        break;
+      }
+
+      case 'get-schema':
+      case 'schemas': {
+        // Read a user's custom-schema (custom attribute) values. A plain
+        // "gw users get" omits them (projection=basic); this uses projection
+        // full/custom so the customSchemas block comes back.
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users get-schema <email> [schemaName]');
+          addOutput('info', 'Omit schemaName to return every custom schema on the user.');
+          return;
+        }
+        const email = args[0];
+        const schemaName = args[1] && !args[1].startsWith('--') ? args[1] : undefined;
+        const data = await runGoogle(google.usersGetCustomSchemas(email, schemaName));
+        if (data?.customSchemas) {
+          addOutput('success', `Custom schemas for ${email}:\n${JSON.stringify(data.customSchemas, null, 2)}`);
+        } else {
+          addOutput('info', `No custom schema values set on ${email}${schemaName ? ` for schema "${schemaName}"` : ''}`);
+        }
+        break;
+      }
+
+      case 'set-schema': {
+        // helios gw users set-schema <email> <schemaName> <field=value> [<field=value>...]
+        if (args.length < 3 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users set-schema <email> <schemaName> <field=value> [<field=value> ...]');
+          addOutput('info', 'Example: helios gw users set-schema john@company.com HR employeeId=E-1042 costCenter=RD');
+          addOutput('info', 'Values that look like true/false or a number are coerced; everything else is sent as text.');
+          return;
+        }
+        const email = args[0];
+        const schemaName = args[1];
+        const fields: Record<string, unknown> = {};
+        for (const pair of args.slice(2)) {
+          if (pair.startsWith('--')) continue;
+          const eq = pair.indexOf('=');
+          if (eq === -1) {
+            addOutput('error', `Invalid field (expected field=value): ${pair}`);
+            return;
+          }
+          const key = pair.substring(0, eq);
+          const raw = pair.substring(eq + 1);
+          let value: unknown = raw;
+          if (raw === 'true') value = true;
+          else if (raw === 'false') value = false;
+          else if (raw !== '' && !isNaN(Number(raw))) value = Number(raw);
+          fields[key] = value;
+        }
+        await runGoogle(google.usersSetCustomSchema(email, schemaName, fields));
+        addOutput('success', `Set ${Object.keys(fields).length} field(s) on schema "${schemaName}" for ${email}`);
+        break;
+      }
+
       default:
-        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, suspend, restore, delete, move, groups, reset-password, add-alias, remove-alias, make-admin, offboard`);
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, suspend, restore, undelete, delete, move, groups, reset-password, add-alias, remove-alias, list-aliases, get-schema, set-schema, make-admin, offboard`);
     }
   };
 
@@ -3309,8 +3397,74 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       }
 
+      case 'list-aliases':
+      case 'aliases': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw groups list-aliases <group-email>');
+          return;
+        }
+        const groupEmail = args[0];
+        const data = await runGoogle(google.groupAliasesList(groupEmail));
+        const aliases = (data?.aliases || []).map((a: any) => `  ${a.alias || a}`);
+        if (aliases.length === 0) {
+          addOutput('info', `No aliases for ${groupEmail}`);
+        } else {
+          addOutput('success', `Aliases for ${groupEmail}:\n${aliases.join('\n')}`);
+        }
+        break;
+      }
+
+      case 'add-alias': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups add-alias <group-email> <alias>');
+          return;
+        }
+        const groupEmail = args[0];
+        const alias = args[1];
+        await runGoogle(google.groupAliasesInsert(groupEmail, alias));
+        addOutput('success', `[OK]Added alias ${alias} to group ${groupEmail}`);
+        break;
+      }
+
+      case 'remove-alias': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups remove-alias <group-email> <alias>');
+          return;
+        }
+        const groupEmail = args[0];
+        const alias = args[1];
+        await runGoogle(google.groupAliasesDelete(groupEmail, alias));
+        addOutput('success', `[OK]Removed alias ${alias} from group ${groupEmail}`);
+        break;
+      }
+
+      case 'get-member': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups get-member <group-email> <member-email>');
+          return;
+        }
+        const groupEmail = args[0];
+        const memberEmail = args[1];
+        const data = await runGoogle(google.groupMembersGet(groupEmail, memberEmail));
+        addOutput('success', JSON.stringify(data, null, 2));
+        break;
+      }
+
+      case 'set-member-role': {
+        if (args.length < 3) {
+          addOutput('error', 'Usage: helios gw groups set-member-role <group-email> <member-email> <MEMBER|MANAGER|OWNER>');
+          return;
+        }
+        const groupEmail = args[0];
+        const memberEmail = args[1];
+        const role = args[2].toUpperCase();
+        await runGoogle(google.groupMembersSetRole(groupEmail, memberEmail, role));
+        addOutput('success', `Set ${memberEmail} role to ${role} in ${groupEmail}`);
+        break;
+      }
+
       default:
-        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete, members, add-member, remove-member`);
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete, members, add-member, remove-member, get-member, set-member-role, add-alias, remove-alias, list-aliases`);
     }
   };
 
@@ -3388,6 +3542,104 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const ouPath = args[0];
         await apiRequest('DELETE', `/api/google/admin/directory/v1/customer/my_customer/orgunits${ouPath}`);
         addOutput('success', `OU deleted: ${ouPath}`);
+        break;
+      }
+
+      default:
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete`);
+    }
+  };
+
+  // ----- Google Workspace: Custom Schemas (custom attributes) -----
+  const handleGWSchemas = async (action: string, args: string[]) => {
+    switch (action) {
+      case 'list': {
+        const data = await runGoogle(google.schemasList());
+        const schemas = data?.schemas || [];
+        if (schemas.length === 0) {
+          addOutput('info', 'No custom schemas defined');
+          break;
+        }
+        const rows = schemas.map((s: any) => {
+          const name = (s.schemaName || '').padEnd(25);
+          const display = (s.displayName || '').padEnd(25);
+          const fields = (s.fields || []).map((f: any) => f.fieldName).join(', ');
+          return `${name} ${display} ${fields}`;
+        }).join('\n');
+        addOutput('success', `\nSCHEMA${' '.repeat(19)}DISPLAY${' '.repeat(18)}FIELDS\n${'='.repeat(80)}\n${rows}`);
+        break;
+      }
+
+      case 'get': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw schemas get <schemaName>');
+          return;
+        }
+        const data = await runGoogle(google.schemasGet(args[0]));
+        addOutput('success', JSON.stringify(data, null, 2));
+        break;
+      }
+
+      case 'create': {
+        // helios gw schemas create <schemaName> <field:type> [<field:type> ...]
+        //   type in STRING|INT64|BOOL|DATE|DOUBLE|EMAIL|PHONE (default STRING)
+        //   append ":multi" to a field to make it multi-valued, e.g. certs:STRING:multi
+        if (args.length < 2 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw schemas create <schemaName> <field:type> [<field:type> ...]');
+          addOutput('info', 'Types: STRING (default), INT64, BOOL, DATE, DOUBLE, EMAIL, PHONE');
+          addOutput('info', 'Append ":multi" for a multi-valued field, e.g. certifications:STRING:multi');
+          addOutput('info', 'Example: helios gw schemas create HR employeeId:STRING costCenter:STRING startDate:DATE');
+          return;
+        }
+        const params = parseArgs(args.slice(1));
+        const positional = args.slice(1).filter((a) => !a.startsWith('--'));
+        const schemaName = positional[0];
+        const fields = positional.slice(1).map((spec) => {
+          const [fieldName, type, multi] = spec.split(':');
+          return {
+            fieldName,
+            fieldType: (type || 'STRING').toUpperCase(),
+            ...(multi === 'multi' ? { multiValued: true } : {}),
+          };
+        });
+        if (fields.length === 0) {
+          addOutput('error', 'At least one <field:type> is required');
+          return;
+        }
+        await runGoogle(google.schemasInsert({
+          schemaName,
+          displayName: params.display || schemaName,
+          fields,
+        }));
+        addOutput('success', `Schema created: ${schemaName} (${fields.length} field(s))`);
+        break;
+      }
+
+      case 'update':
+      case 'rename': {
+        // Merge-patch a schema's display name (schemas.patch is a merge patch,
+        // so sending only displayName leaves the fields untouched).
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw schemas update <schemaName> --display="New Display Name"');
+          return;
+        }
+        const params = parseArgs(args.slice(1));
+        if (!params.display) {
+          addOutput('error', 'Provide --display="New Display Name"');
+          return;
+        }
+        await runGoogle(google.schemasPatch(args[0], { displayName: params.display }));
+        addOutput('success', `Schema updated: ${args[0]}`);
+        break;
+      }
+
+      case 'delete': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw schemas delete <schemaName>');
+          return;
+        }
+        await runGoogle(google.schemasDelete(args[0]));
+        addOutput('success', `Schema deleted: ${args[0]}`);
         break;
       }
 
@@ -6091,6 +6343,30 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                       <td className="command-desc">List all groups that this user belongs to</td>
                     </tr>
                     <tr>
+                      <td className="command-name">gw users undelete &lt;userId&gt; [--ou=/Path]</td>
+                      <td className="command-desc">Restore a recently-deleted user (needs the immutable user ID, not the email)</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users list-aliases &lt;email&gt;</td>
+                      <td className="command-desc">List a user's email aliases</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users add-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Add an email alias to a user</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users remove-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Remove an email alias from a user</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users get-schema &lt;email&gt; [schemaName]</td>
+                      <td className="command-desc">Read a user's custom-schema (custom attribute) values</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users set-schema &lt;email&gt; &lt;schema&gt; &lt;field=value&gt; ...</td>
+                      <td className="command-desc">Set custom-attribute values on a user for a given schema</td>
+                    </tr>
+                    <tr>
                       <td className="command-name">gw users initial-password &lt;email&gt;</td>
                       <td className="command-desc">Reveal the auto-generated initial password for a newly created user</td>
                     </tr>
@@ -6158,6 +6434,55 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                     <tr>
                       <td className="command-name">gw groups remove-member &lt;group&gt; --filter="..." [--confirm]</td>
                       <td className="command-desc">Batch remove members matching filter from a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups get-member &lt;group&gt; &lt;member&gt;</td>
+                      <td className="command-desc">Get a single group member's role and status</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups set-member-role &lt;group&gt; &lt;member&gt; &lt;MEMBER|MANAGER|OWNER&gt;</td>
+                      <td className="command-desc">Change an existing member's role in a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups list-aliases &lt;email&gt;</td>
+                      <td className="command-desc">List a group's email aliases</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups add-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Add an email alias to a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups remove-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Remove an email alias from a group</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Custom Schemas */}
+              <div className="help-section">
+                <h3>Custom Schemas (custom attributes)</h3>
+                <table className="command-table">
+                  <tbody>
+                    <tr>
+                      <td className="command-name">gw schemas list</td>
+                      <td className="command-desc">List all custom schemas defined for the organization</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas get &lt;schemaName&gt;</td>
+                      <td className="command-desc">Get a custom schema's fields and metadata</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas create &lt;schemaName&gt; &lt;field:type&gt; ...</td>
+                      <td className="command-desc">Create a schema. Types: STRING, INT64, BOOL, DATE, DOUBLE, EMAIL, PHONE. Append :multi for multi-valued.</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas update &lt;schemaName&gt; --display="New Name"</td>
+                      <td className="command-desc">Rename a schema's display name</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas delete &lt;schemaName&gt;</td>
+                      <td className="command-desc">Delete a custom schema</td>
                     </tr>
                   </tbody>
                 </table>
