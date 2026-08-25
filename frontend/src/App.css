@@ -300,13 +300,16 @@
   border-bottom: 1px solid var(--color-border);
   padding: 0.75rem 2rem;
   display: grid;
-  grid-template-columns: 300px 1fr auto;
+  /* minmax(0, …) lets the branding and search columns shrink on narrow
+     viewports instead of forcing the header wider than the screen. */
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr) auto;
   gap: 2rem;
   align-items: center;
   min-height: 60px;
 }
 
 .header-left {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -322,6 +325,7 @@
   padding: 4px;
   margin: -4px;
   transition: background-color 0.15s ease;
+  min-width: 0;
 }
 
 .org-branding-link:hover {
@@ -342,6 +346,7 @@
 .org-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .org-name {
@@ -349,6 +354,9 @@
   color: var(--color-text-primary);
   font-weight: 600;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .platform-name {
@@ -361,6 +369,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  min-width: 0;
 }
 
 .search-container {
@@ -870,6 +879,13 @@
 }
 
 @media (max-width: 768px) {
+  /* Tighten the header's generous desktop gap/padding so the branding, search,
+     and action controls always fit the viewport on small screens. */
+  .client-header {
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+  }
+
   .client-layout {
     flex-direction: column;
   }
