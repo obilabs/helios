@@ -174,7 +174,7 @@ router.get('/', async (req: Request, res: Response) => {
         u.email as actor_email,
         u.first_name as actor_first_name,
         u.last_name as actor_last_name
-      FROM activity_logs al
+      FROM audit_logs_unified al
       LEFT JOIN organization_users u ON al.actor_id = u.id
       WHERE al.organization_id = $1
     `;
@@ -329,7 +329,7 @@ router.get('/export', async (req: Request, res: Response) => {
         al.api_key_name,
         al.service_name,
         al.result
-      FROM activity_logs al
+      FROM audit_logs_unified al
       LEFT JOIN organization_users u ON al.actor_id = u.id
       WHERE al.organization_id = $1
     `;

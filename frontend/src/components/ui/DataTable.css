@@ -339,3 +339,60 @@
     gap: 12px;
   }
 }
+
+/* ============================================================
+   Mobile card reflow (<= 768px): each row becomes a stacked card
+   of label:value pairs. Label comes from data-label stamped on
+   each <td> in DataTable.tsx. !important overrides table-layout:
+   fixed + the inline per-column widths.
+   ============================================================ */
+@media (max-width: 768px) {
+  .data-table-container { overflow: visible !important; max-height: none !important; }
+  .data-table { table-layout: auto !important; }
+  .data-table-header { display: none !important; }
+  .data-table-body { height: auto !important; }
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td { display: block !important; }
+
+  .data-table-row {
+    position: static !important;
+    transform: none !important;
+    height: auto !important;
+    width: auto !important;
+    margin: 0 0 12px 0;
+    padding: 4px 0;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    background: var(--color-bg-card, #fff);
+  }
+
+  .data-table-td {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    white-space: normal;
+    text-align: right;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border-light, #f3f4f6);
+  }
+  .data-table-td:last-child { border-bottom: none; }
+
+  .data-table-td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted, #6b7280);
+    text-align: left;
+    flex: 0 0 40%;
+  }
+  /* select / actions columns have no header text -> no pseudo-label */
+  .data-table-td[data-label=""]::before { content: none; }
+}

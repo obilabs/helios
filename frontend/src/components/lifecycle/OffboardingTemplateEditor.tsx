@@ -382,10 +382,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('basic')}
           >
             <div className="section-title">
-              <Info size={18} />
+              <Info size={16} />
               <span>Basic Information</span>
             </div>
-            {expandedSections.basic ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.basic ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.basic && (
@@ -441,10 +441,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('drive')}
           >
             <div className="section-title">
-              <HardDrive size={18} />
+              <HardDrive size={16} />
               <span>Drive Data Handling</span>
             </div>
-            {expandedSections.drive ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.drive ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.drive && (
@@ -513,10 +513,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('email')}
           >
             <div className="section-title">
-              <Mail size={18} />
+              <Mail size={16} />
               <span>Email Handling</span>
             </div>
-            {expandedSections.email ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.email ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.email && (
@@ -613,10 +613,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('calendar')}
           >
             <div className="section-title">
-              <Calendar size={18} />
+              <Calendar size={16} />
               <span>Calendar Handling</span>
             </div>
-            {expandedSections.calendar ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.calendar ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.calendar && (
@@ -687,7 +687,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('access')}
           >
             <div className="section-title">
-              <Shield size={18} />
+              <Shield size={16} />
               <span>Access Revocation</span>
               <span className="badge">
                 {[
@@ -700,7 +700,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                 ].filter(Boolean).length}
               </span>
             </div>
-            {expandedSections.access ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.access ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.access && (
@@ -770,10 +770,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('signature')}
           >
             <div className="section-title">
-              <FileSignature size={18} />
+              <FileSignature size={16} />
               <span>Email Signature</span>
             </div>
-            {expandedSections.signature ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.signature ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.signature && (
@@ -820,10 +820,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('mobile')}
           >
             <div className="section-title">
-              <Smartphone size={18} />
+              <Smartphone size={16} />
               <span>Mobile Devices</span>
             </div>
-            {expandedSections.mobile ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.mobile ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.mobile && (
@@ -866,10 +866,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('account')}
           >
             <div className="section-title">
-              <UserX size={18} />
+              <UserX size={16} />
               <span>Account & License</span>
             </div>
-            {expandedSections.account ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.account && (
@@ -952,10 +952,10 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('notifications')}
           >
             <div className="section-title">
-              <Bell size={18} />
+              <Bell size={16} />
               <span>Notifications</span>
             </div>
-            {expandedSections.notifications ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.notifications ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.notifications && (
@@ -1068,13 +1068,13 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('timeline')}
           >
             <div className="section-title">
-              <Clock size={18} />
+              <Clock size={16} />
               <span>Timeline Actions</span>
               {template.timeline.length > 0 && (
                 <span className="badge">{template.timeline.length}</span>
               )}
             </div>
-            {expandedSections.timeline ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.timeline ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.timeline && (

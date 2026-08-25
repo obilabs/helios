@@ -130,7 +130,7 @@ export function LoginMapWidget() {
     <div className="login-map-widget">
       <div className="login-map-header">
         <div className="login-map-title">
-          <Globe size={18} />
+          <Globe size={16} />
           <span>Login Locations</span>
           {hasSuspicious && (
             <span className="suspicious-badge">

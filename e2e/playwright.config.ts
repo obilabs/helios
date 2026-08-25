@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  // The first-run auth-flow suite RESETS the database (wiping the seeded admin
+  // these specs rely on), so it must never run as part of the default suite.
+  // It has its own config: playwright.auth-flows.config.ts.
+  testIgnore: ['**/setup-and-login.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

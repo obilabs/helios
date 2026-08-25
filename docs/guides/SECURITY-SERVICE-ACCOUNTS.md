@@ -55,6 +55,13 @@ This is not optional. Sharing service accounts between clients is a critical sec
 4. Original JSON file should be deleted after upload
 ```
 
+> **If the client can't download the JSON key** (the "Create key" button is blocked
+> or errors), their Google Cloud organization enforces the
+> `iam.disableServiceAccountKeyCreation` policy. See
+> [GOOGLE-WORKSPACE-SETUP-GUIDE.md](GOOGLE-WORKSPACE-SETUP-GUIDE.md) →
+> Troubleshooting → "Service account key creation is disabled" for the one-time
+> org-policy override.
+
 ## Required OAuth Scopes
 
 Each client must authorize **all 17** of these scopes for their service account.
