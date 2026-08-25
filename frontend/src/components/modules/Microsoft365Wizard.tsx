@@ -285,7 +285,7 @@ const Microsoft365Wizard: React.FC<Microsoft365WizardProps> = ({
                         color: '#6b7280'
                       }}
                     >
-                      {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                   <small>
@@ -324,7 +324,7 @@ const Microsoft365Wizard: React.FC<Microsoft365WizardProps> = ({
 
                 {testStatus === 'success' && testDetails && (
                   <div className="gw-wizard-test-success">
-                    <h4><CheckCircle size={18} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
+                    <h4><CheckCircle size={16} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
                     <p>Successfully connected to Microsoft 365</p>
                     {testDetails.displayName && <p>Organization: {testDetails.displayName}</p>}
                     <p>Tenant ID: {tenantId}</p>

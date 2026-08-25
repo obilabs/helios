@@ -1013,10 +1013,10 @@ function AppContent() {
             title={aiEnabled ? "AI Assistant (Chat)" : "AI Assistant (Not configured)"}
             onClick={() => setShowChatPanel(true)}
           >
-            <MessageSquare size={18} />
+            <MessageSquare size={16} />
           </button>
-          <button className="icon-btn" title="Help" onClick={() => setShowHelpWidget(!showHelpWidget)}><HelpCircle size={18} /></button>
-          <button className="icon-btn" title="Notifications"><Bell size={18} /></button>
+          <button className="icon-btn" title="Help" onClick={() => setShowHelpWidget(!showHelpWidget)}><HelpCircle size={16} /></button>
+          <button className="icon-btn" title="Notifications"><Bell size={16} /></button>
           <ClientUserMenu
             userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'User'}
             userEmail={currentUser?.email || 'user@domain.com'}
@@ -1190,15 +1190,15 @@ function AppContent() {
                 <h2 className="section-title">Quick Actions</h2>
                 <div className="quick-actions-grid">
                   <button className="quick-action-btn primary" onClick={() => navigate('/add-user')}>
-                    <UserPlus size={18} />
+                    <UserPlus size={16} />
                     Add User
                   </button>
                   <button className="quick-action-btn" onClick={() => setCurrentPage('users')}>
-                    <Upload size={18} />
+                    <Upload size={16} />
                     Import CSV
                   </button>
                   <button className="quick-action-btn" onClick={() => setCurrentPage('users')}>
-                    <Download size={18} />
+                    <Download size={16} />
                     Export Report
                   </button>
                 </div>
@@ -1355,19 +1355,19 @@ function AppContent() {
                 <h2 className="section-title">Quick Actions</h2>
                 <div className="quick-actions-grid">
                   <button className="quick-action-btn primary" onClick={() => setCurrentPage('my-profile')}>
-                    <User size={18} />
+                    <User size={16} />
                     My Profile
                   </button>
                   <button className="quick-action-btn" onClick={() => setCurrentPage('people')}>
-                    <UsersIcon size={18} />
+                    <UsersIcon size={16} />
                     People Directory
                   </button>
                   <button className="quick-action-btn" onClick={() => setCurrentPage('my-team')}>
-                    <Building2 size={18} />
+                    <Building2 size={16} />
                     My Team
                   </button>
                   <button className="quick-action-btn" onClick={() => setCurrentPage('my-groups')}>
-                    <UsersIcon size={18} />
+                    <UsersIcon size={16} />
                     My Groups
                   </button>
                 </div>

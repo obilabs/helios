@@ -505,7 +505,7 @@ const ScheduledActions: React.FC<ScheduledActionsProps> = ({ organizationId: _or
                 className="close-btn"
                 onClick={() => setSelectedAction(null)}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 

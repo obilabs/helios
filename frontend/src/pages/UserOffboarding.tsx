@@ -507,7 +507,7 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
             <p className="step-description">Search for and select the user you want to offboard.</p>
 
             <div className="search-box">
-              <Search size={18} />
+              <Search size={16} />
               <input
                 type="text"
                 placeholder="Search by name, email, or department..."

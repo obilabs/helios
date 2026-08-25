@@ -651,14 +651,14 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
             className={`slideout-tab ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <Info size={18} className="tab-icon" />
+            <Info size={16} className="tab-icon" />
             <span className="tab-label">Overview</span>
           </button>
           <button
             className={`slideout-tab ${activeTab === 'members' ? 'active' : ''}`}
             onClick={() => setActiveTab('members')}
           >
-            <Users size={18} className="tab-icon" />
+            <Users size={16} className="tab-icon" />
             <span className="tab-label">Members</span>
           </button>
           {(group.membership_type === 'dynamic' || group.platform === 'manual') && (
@@ -666,7 +666,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
               className={`slideout-tab ${activeTab === 'rules' ? 'active' : ''}`}
               onClick={() => setActiveTab('rules')}
             >
-              <Zap size={18} className="tab-icon" />
+              <Zap size={16} className="tab-icon" />
               <span className="tab-label">Rules</span>
             </button>
           )}
@@ -674,21 +674,21 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
             className={`slideout-tab ${activeTab === 'sync' ? 'active' : ''}`}
             onClick={() => setActiveTab('sync')}
           >
-            <RefreshCw size={18} className="tab-icon" />
+            <RefreshCw size={16} className="tab-icon" />
             <span className="tab-label">Sync</span>
           </button>
           <button
             className={`slideout-tab ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <Settings size={18} className="tab-icon" />
+            <Settings size={16} className="tab-icon" />
             <span className="tab-label">Settings</span>
           </button>
           <button
             className={`slideout-tab ${activeTab === 'danger' ? 'active' : ''}`}
             onClick={() => setActiveTab('danger')}
           >
-            <Shield size={18} className="tab-icon" />
+            <Shield size={16} className="tab-icon" />
             <span className="tab-label">Danger</span>
           </button>
         </div>
@@ -1190,7 +1190,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
               </div>
               <div className="modal-body">
                 <div className="search-input-wrapper">
-                  <Search size={18} className="search-icon" />
+                  <Search size={16} className="search-icon" />
                   <input
                     type="text"
                     placeholder="Search users by name or email..."
