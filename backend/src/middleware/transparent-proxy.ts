@@ -20,6 +20,7 @@ import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
 import axios from 'axios';
 import { telemetryService } from '../services/telemetry.service.js';
+import { REQUIRED_SCOPES } from '../config/google-scopes.js';
 import {
   enforceRelayAuthorization,
   type RelayAuditRecord,
@@ -375,16 +376,22 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
 }
 
 /**
- * LEGACY broad scopes — what the proxy has always minted when the relay
- * feature flag is off. Under enforcement these are never used; the verdict's
- * per-capability minimal scopes are minted instead.
+ * Map a Google API request PATH (e.g. "gmail/v1/users/me/settings/forwarding")
+ * to the correct Google API HOST. Google splits its APIs across hostnames:
+ * Admin SDK (directory / datatransfer / reports) on admin.googleapis.com, Gmail
+ * on gmail.googleapis.com, Calendar & Drive on www.googleapis.com, Licensing on
+ * licensing.googleapis.com. The proxy is otherwise generic — no per-endpoint
+ * code — so routing the host by path is what lets every API family work.
  */
-const LEGACY_BROAD_SCOPES = [
-  'https://www.googleapis.com/auth/admin.directory.user',
-  'https://www.googleapis.com/auth/admin.directory.group',
-  'https://www.googleapis.com/auth/admin.directory.orgunit',
-  'https://www.googleapis.com/auth/admin.directory.domain'
-];
+function googleHostForPath(path: string): string {
+  const p = String(path || '').replace(/^\/+/, '');
+  if (p.startsWith('gmail/')) return 'https://gmail.googleapis.com';
+  if (p.startsWith('calendar/')) return 'https://www.googleapis.com';
+  if (p.startsWith('drive/')) return 'https://www.googleapis.com';
+  if (p.startsWith('apps/licensing/') || p.startsWith('licensing/')) return 'https://licensing.googleapis.com';
+  // admin/directory, admin/datatransfer, admin/reports, and anything else
+  return 'https://admin.googleapis.com';
+}
 
 /**
  * Proxy request to Google Admin SDK
@@ -405,7 +412,7 @@ async function proxyToGoogle(
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
     iss: credentials.client_email,
-    scope: (scopes ?? LEGACY_BROAD_SCOPES).join(' '),
+    scope: (scopes ?? REQUIRED_SCOPES).join(' '),
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
@@ -438,11 +445,12 @@ async function proxyToGoogle(
     expiresIn: tokenResponse.data.expires_in
   });
 
-  // Build URL for Google Admin API
-  const baseUrl = 'https://admin.googleapis.com';
+  // Build URL — route to the correct Google API host by path (see googleHostForPath)
+  const baseUrl = googleHostForPath(proxyRequest.path);
   const url = `${baseUrl}/${proxyRequest.path}`;
 
-  logger.info('Proxying to Google Admin API', {
+  logger.info('Proxying to Google API', {
+    host: baseUrl,
     method: proxyRequest.method,
     url,
     hasBody: !!proxyRequest.body,
