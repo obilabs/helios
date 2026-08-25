@@ -433,7 +433,7 @@ export const ExternalSharingManager: React.FC = () => {
           </div>
 
           {/* Table */}
-          <div className="results-table-container">
+          <div className="results-table-container responsive-table">
             <table className="results-table">
               <thead>
                 <tr>
@@ -470,14 +470,14 @@ export const ExternalSharingManager: React.FC = () => {
               <tbody>
                 {filteredShares.map(share => (
                   <tr key={`${share.fileId}-${share.permissionId}`}>
-                    <td className="checkbox-col">
+                    <td className="checkbox-col" data-label="">
                       <input
                         type="checkbox"
                         checked={selectedShares.has(`${share.fileId}-${share.permissionId}`)}
                         onChange={() => toggleShare(share)}
                       />
                     </td>
-                    <td className="file-name-cell">
+                    <td className="file-name-cell" data-label="File Name">
                       <div className="file-name">
                         {share.fileName}
                         {share.webViewLink && (
@@ -494,7 +494,7 @@ export const ExternalSharingManager: React.FC = () => {
                       </div>
                       <div className="file-type">{share.fileType}</div>
                     </td>
-                    <td>
+                    <td data-label="Shared With">
                       <div className="shared-with">
                         {share.sharedWith}
                         {share.isPersonalAccount && (
@@ -504,21 +504,21 @@ export const ExternalSharingManager: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Type">
                       <span className="share-type">
                         {getShareTypeIcon(share.shareType)}
                         {share.shareType}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Risk">
                       <span className={getRiskBadgeClass(share.riskLevel)}>
                         {share.riskLevel}
                       </span>
                     </td>
-                    <td className="owner-cell">
+                    <td className="owner-cell" data-label="Owner">
                       {share.sharedByEmail || 'Unknown'}
                     </td>
-                    <td className="actions-cell">
+                    <td className="actions-cell" data-label="Actions">
                       <button
                         className="btn btn-sm btn-icon"
                         title="Revoke access"
