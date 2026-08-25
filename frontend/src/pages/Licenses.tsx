@@ -200,7 +200,7 @@ const Licenses: React.FC = () => {
         </div>
       ) : (
         /* License Table */
-        <div className="licenses-table-container">
+        <div className="licenses-table-container responsive-table">
           <table className="licenses-table">
             <thead>
               <tr>
@@ -215,7 +215,7 @@ const Licenses: React.FC = () => {
             <tbody>
               {filteredLicenses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="empty-state">
+                  <td colSpan={6} className="empty-state" data-label="">
                     <Key size={32} />
                     <p>No licenses found</p>
                     <span>Configure Google Workspace or Microsoft 365 to see licenses</span>
@@ -230,7 +230,7 @@ const Licenses: React.FC = () => {
                       className={selectedLicense?.id === license.id ? 'selected' : ''}
                       onClick={() => setSelectedLicense(license)}
                     >
-                      <td>
+                      <td data-label="License">
                         <div className="license-name">
                           <strong>{license.displayName}</strong>
                           {license.description && (
@@ -238,18 +238,18 @@ const Licenses: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Provider">
                         <span className={`provider-badge ${license.provider}`}>
                           {license.provider === 'google' ? 'Google' : 'Microsoft'}
                         </span>
                       </td>
-                      <td className="count-cell">
+                      <td className="count-cell" data-label="Assigned">
                         {formatCount(license.consumedUnits)}
                       </td>
-                      <td className="count-cell">
+                      <td className="count-cell" data-label="Total">
                         {formatCount(license.totalUnits)}
                       </td>
-                      <td>
+                      <td data-label="Usage">
                         {percentage !== null ? (
                           <div className="usage-bar-container">
                             <div
@@ -267,7 +267,7 @@ const Licenses: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="">
                         <ChevronRight size={16} className="row-chevron" />
                       </td>
                     </tr>
