@@ -1,0 +1,59 @@
+name: E2E Auth Flows
+
+# Browser coverage for the two first-run screens the headless/API tests skip:
+# the setup wizard and the login form. This is heavier than the other CI jobs
+# (it builds and boots the whole docker stack + a real browser), so it is
+# path-gated to the auth/first-run surface and always available via manual
+# dispatch. Widen the `paths:` list if you want it on every PR.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/src/components/AccountSetup.tsx'
+      - 'frontend/src/pages/LoginPage.tsx'
+      - 'frontend/src/lib/auth-client.ts'
+      - 'frontend/src/App.tsx'
+      - 'backend/src/lib/auth.ts'
+      - 'backend/src/routes/organization.routes.ts'
+      - 'backend/src/database/init.ts'
+      - 'e2e/**'
+      - 'docker-compose.yml'
+      - 'nginx/**'
+      - '.github/workflows/e2e-auth-flows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/src/components/AccountSetup.tsx'
+      - 'frontend/src/pages/LoginPage.tsx'
+      - 'frontend/src/lib/auth-client.ts'
+      - 'backend/src/lib/auth.ts'
+      - 'backend/src/routes/organization.routes.ts'
+      - 'e2e/**'
+
+jobs:
+  auth-flows:
+    name: Setup wizard + login (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Brings up a fresh, isolated, disposable stack (no DEFAULT_ADMIN -> setup
+      # wizard is served), waits for health, runs the Playwright auth-flows
+      # config, then tears the stack down with `down -v`. Same script as local.
+      - name: Run auth-flows E2E
+        run: bash e2e/run-auth-flows.sh
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-flows-playwright-report
+          path: e2e/playwright-report-auth-flows
+          if-no-files-found: ignore
+          retention-days: 7
