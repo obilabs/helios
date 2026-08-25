@@ -488,7 +488,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
 
       <div className="ai-settings-section">
         <div className="section-title">
-          <Server size={18} />
+          <Server size={16} />
           <span>Primary Model</span>
           <span className="required-badge">Required</span>
         </div>
@@ -694,7 +694,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
 
       <div className="ai-settings-section">
         <div className="section-title">
-          <Zap size={18} />
+          <Zap size={16} />
           <span>Fallback Model</span>
           <span className="optional-badge">Optional</span>
         </div>
@@ -789,7 +789,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
       {/* Tool Call Model Section */}
       <div className="ai-settings-section">
         <div className="section-title">
-          <Zap size={18} />
+          <Zap size={16} />
           <span>Tool Call Model</span>
           <span className="optional-badge">Optional</span>
         </div>
@@ -833,7 +833,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
       {/* MCP Server Configuration */}
       <div className="ai-settings-section">
         <div className="section-title">
-          <Wrench size={18} />
+          <Wrench size={16} />
           <span>MCP Server & Tools</span>
           <span className="optional-badge">Optional</span>
         </div>
@@ -918,7 +918,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
       {enableMcp && (
         <div className="ai-settings-section">
           <div className="section-title">
-            <Shield size={18} />
+            <Shield size={16} />
             <span>AI Role & Permissions</span>
           </div>
           <p className="section-description">
@@ -1013,7 +1013,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
       {/* System Prompt Configuration */}
       <div className="ai-settings-section">
         <div className="section-title">
-          <MessageSquare size={18} />
+          <MessageSquare size={16} />
           <span>System Prompt</span>
           <span className="optional-badge">Optional</span>
         </div>
@@ -1051,7 +1051,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
 
       <div className="ai-settings-section">
         <div className="section-title">
-          <Activity size={18} />
+          <Activity size={16} />
           <span>Usage Limits</span>
         </div>
 
@@ -1108,7 +1108,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
       {usageStats && usageStats.totalRequests > 0 && (
         <div className="ai-settings-section">
           <div className="section-title">
-            <Activity size={18} />
+            <Activity size={16} />
             <span>Usage (Last 30 Days)</span>
             {onViewUsage && (
               <button className="view-usage-btn" onClick={onViewUsage}>

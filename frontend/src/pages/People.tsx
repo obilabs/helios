@@ -139,7 +139,7 @@ export function People({ organizationId: _organizationId }: PeopleProps) {
         <div className="new-joiners-section">
           <div className="section-header">
             <h2>
-              <Sparkles size={18} />
+              <Sparkles size={16} />
               New Joiners
             </h2>
             <span className="section-subtitle">Recently joined the team</span>

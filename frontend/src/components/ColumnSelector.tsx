@@ -128,7 +128,7 @@ export function ColumnSelector({
             Reset
           </button>
           <button className="btn-close-selector" onClick={onClose}>
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
       </div>

@@ -175,7 +175,7 @@ const UserSyncStatusTable: React.FC<UserSyncStatusTableProps> = ({
     <div className="user-sync-table">
       <div className="table-header">
         <div className="header-title">
-          <Users size={18} />
+          <Users size={16} />
           <h3>User Sync Status</h3>
           <span className="user-count">{total} users</span>
         </div>

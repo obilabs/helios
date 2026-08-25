@@ -96,7 +96,7 @@
 }
 
 .upload-icon {
-  font-size: 48px;
+  color: #9ca3af;
   margin-bottom: 12px;
 }
 
@@ -243,9 +243,5 @@
 
   .upload-area {
     padding: 30px 15px;
-  }
-
-  .upload-icon {
-    font-size: 36px;
   }
 }

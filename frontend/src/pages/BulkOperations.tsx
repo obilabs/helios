@@ -865,11 +865,11 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                           title={allPageRowsSelected ? 'Deselect all on page' : 'Select all on page'}
                         >
                           {allPageRowsSelected ? (
-                            <CheckSquare size={18} />
+                            <CheckSquare size={16} />
                           ) : somePageRowsSelected ? (
-                            <MinusSquare size={18} />
+                            <MinusSquare size={16} />
                           ) : (
-                            <Square size={18} />
+                            <Square size={16} />
                           )}
                         </button>
                       </th>
@@ -898,7 +898,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                               className="checkbox-btn"
                               onClick={() => handleSelectRow(absoluteIndex)}
                             >
-                              {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                              {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                             </button>
                           </td>
                           <td className="row-number-column">{absoluteIndex + 1}</td>
@@ -994,7 +994,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                       disabled={currentPage === 1}
                       title="First page"
                     >
-                      <ChevronsLeft size={18} />
+                      <ChevronsLeft size={16} />
                     </button>
                     <button
                       className="btn-icon"
@@ -1002,7 +1002,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                       disabled={currentPage === 1}
                       title="Previous page"
                     >
-                      <ChevronLeft size={18} />
+                      <ChevronLeft size={16} />
                     </button>
 
                     <span className="page-indicator">
@@ -1015,7 +1015,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                       disabled={currentPage >= totalPages}
                       title="Next page"
                     >
-                      <ChevronRight size={18} />
+                      <ChevronRight size={16} />
                     </button>
                     <button
                       className="btn-icon"
@@ -1023,7 +1023,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                       disabled={currentPage >= totalPages}
                       title="Last page"
                     >
-                      <ChevronsRight size={18} />
+                      <ChevronsRight size={16} />
                     </button>
                   </div>
                 </div>
