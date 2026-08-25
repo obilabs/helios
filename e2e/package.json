@@ -7,7 +7,9 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:auth-flows": "playwright test --config=playwright.auth-flows.config.ts",
+    "e2e:auth-flows": "bash run-auth-flows.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
