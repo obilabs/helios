@@ -423,17 +423,25 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Keep a long category label from pushing the bar/percentage columns out. */
+  min-width: 0;
 }
 
 .bottleneck-category {
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottleneck-stats {
   font-size: 11px;
   color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottleneck-bar-container {

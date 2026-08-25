@@ -14,24 +14,29 @@ export function PersonCard({ person, onClick, viewMode = 'grid' }: PersonCardPro
   if (viewMode === 'list') {
     return (
       <div className="person-card-list" onClick={() => onClick(person.id)}>
-        <div className="person-avatar-wrapper">
-          {person.avatarUrl ? (
-            <img src={person.avatarUrl} alt={person.fullName} className="person-avatar" />
-          ) : (
-            <div className="person-avatar-placeholder">
-              {initials || <User size={20} />}
-            </div>
-          )}
-          {person.isNewJoiner && (
-            <span className="new-badge" title="New Joiner">
-              <Sparkles size={10} />
-            </span>
-          )}
-        </div>
+        {/* Avatar + name/title form a single "Name" cell so the row's four
+            cells line up with the four column headers (Name/Department/
+            Location/Info) instead of spilling onto a second line. */}
+        <div className="person-name-cell">
+          <div className="person-avatar-wrapper">
+            {person.avatarUrl ? (
+              <img src={person.avatarUrl} alt={person.fullName} className="person-avatar" />
+            ) : (
+              <div className="person-avatar-placeholder">
+                {initials || <User size={20} />}
+              </div>
+            )}
+            {person.isNewJoiner && (
+              <span className="new-badge" title="New Joiner">
+                <Sparkles size={10} />
+              </span>
+            )}
+          </div>
 
-        <div className="person-info">
-          <div className="person-name">{person.fullName}</div>
-          {person.jobTitle && <div className="person-title">{person.jobTitle}</div>}
+          <div className="person-info">
+            <div className="person-name">{person.fullName}</div>
+            {person.jobTitle && <div className="person-title">{person.jobTitle}</div>}
+          </div>
         </div>
 
         <div className="person-department">{person.department || '-'}</div>
