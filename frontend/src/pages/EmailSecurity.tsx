@@ -210,7 +210,7 @@ export const EmailSecurity: React.FC = () => {
               <h2>Found {searchResults.length} matching messages</h2>
             </div>
 
-            <div className="results-table">
+            <div className="results-table responsive-table">
               <table>
                 <thead>
                   <tr>
@@ -224,11 +224,11 @@ export const EmailSecurity: React.FC = () => {
                 <tbody>
                   {searchResults.map((msg) => (
                     <tr key={msg.messageId}>
-                      <td><code>{msg.messageId}</code></td>
-                      <td>{msg.from}</td>
-                      <td>{msg.subject}</td>
-                      <td>{new Date(msg.date).toLocaleString()}</td>
-                      <td>
+                      <td data-label="Message ID"><code>{msg.messageId}</code></td>
+                      <td data-label="From">{msg.from}</td>
+                      <td data-label="Subject">{msg.subject}</td>
+                      <td data-label="Date">{new Date(msg.date).toLocaleString()}</td>
+                      <td data-label="Recipients">
                         <span className="recipients-badge">
                           <User size={14} />
                           {msg.recipients}
