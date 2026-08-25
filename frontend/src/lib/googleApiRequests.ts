@@ -1,0 +1,390 @@
+/**
+ * Google API request builders (pure, side-effect free).
+ *
+ * The Helios "transparent proxy" (backend/src/middleware/transparent-proxy.ts on
+ * feat/helios-proxy-generic-host-scopes) is now GENERIC: it strips the
+ * `/api/google/` prefix and routes the remaining path to the correct Google host
+ * by prefix (`googleHostForPath`):
+ *
+ *   gmail/...                    -> https://gmail.googleapis.com
+ *   calendar/...                 -> https://www.googleapis.com   (Calendar API)
+ *   drive/...                    -> https://www.googleapis.com   (Drive API)
+ *   apps/licensing/ | licensing/ -> https://licensing.googleapis.com
+ *   everything else              -> https://admin.googleapis.com (Directory, DataTransfer)
+ *
+ * Because the proxy is generic, correctness now lives entirely in how the
+ * FRONTEND builds each request: the HTTP method, the URL path (including query
+ * string), and the JSON body must match Google's published REST API exactly.
+ * The proxy forwards `req.query` to Google as query params and forwards the JSON
+ * body only for POST/PUT/PATCH — so anything Google expects as a query parameter
+ * MUST be encoded into the path here, never passed as a body (a GET with a body
+ * is rejected by `fetch`, and Google ignores stray body fields on writes).
+ *
+ * These builders are the single source of truth used by DeveloperConsole.tsx and
+ * are unit-tested in googleApiRequests.test.ts.
+ */
+
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export interface GoogleApiRequest {
+  method: HttpMethod;
+  /** Relative path passed straight to authFetch, e.g. `/api/google/gmail/v1/...`. Includes query string for GETs. */
+  path: string;
+  /** JSON body for POST/PUT/PATCH. Omitted for GET/DELETE. */
+  body?: unknown;
+}
+
+type QueryValue = string | number | boolean | undefined | null;
+
+/** Append an encoded query string, skipping undefined/null values and preserving insertion order. */
+function withQuery(path: string, query?: Record<string, QueryValue>): string {
+  if (!query) return path;
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue;
+    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+  }
+  return parts.length > 0 ? `${path}?${parts.join('&')}` : path;
+}
+
+/** Encode a single URL path segment (email addresses contain `@`, `+`, `.`). */
+function seg(value: string): string {
+  return encodeURIComponent(value);
+}
+
+const GMAIL_BASE = '/api/google/gmail/v1';
+const CALENDAR_BASE = '/api/google/calendar/v3';
+const DRIVE_BASE = '/api/google/drive/v3';
+const DATATRANSFER_BASE = '/api/google/admin/datatransfer/v1';
+
+// ===========================================================================
+// Gmail  (gmail.googleapis.com / gmail/v1)
+// userId accepts an email address or the literal `me` (Gmail API supports both).
+// ===========================================================================
+
+/** Gmail: users.settings.delegates.list — GET /gmail/v1/users/{userId}/settings/delegates */
+export function gmailListDelegates(userId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates` };
+}
+
+/** Gmail: users.settings.delegates.create — POST /gmail/v1/users/{userId}/settings/delegates */
+export function gmailAddDelegate(userId: string, delegateEmail: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates`,
+    body: { delegateEmail },
+  };
+}
+
+/** Gmail: users.settings.delegates.delete — DELETE /gmail/v1/users/{userId}/settings/delegates/{delegateEmail} */
+export function gmailRemoveDelegate(userId: string, delegateEmail: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates/${seg(delegateEmail)}`,
+  };
+}
+
+/** Gmail: users.settings.getAutoForwarding — GET /gmail/v1/users/{userId}/settings/autoForwarding */
+export function gmailGetAutoForwarding(userId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/autoForwarding` };
+}
+
+/** Gmail: users.settings.forwardingAddresses.create — POST /gmail/v1/users/{userId}/settings/forwardingAddresses */
+export function gmailCreateForwardingAddress(userId: string, forwardingEmail: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/forwardingAddresses`,
+    body: { forwardingEmail },
+  };
+}
+
+export interface AutoForwardingSettings {
+  enabled: boolean;
+  emailAddress?: string;
+  /** leaveInInbox | archive | trash | markRead */
+  disposition?: string;
+}
+
+/** Gmail: users.settings.updateAutoForwarding — PUT /gmail/v1/users/{userId}/settings/autoForwarding */
+export function gmailUpdateAutoForwarding(userId: string, settings: AutoForwardingSettings): GoogleApiRequest {
+  return {
+    method: 'PUT',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/autoForwarding`,
+    body: settings,
+  };
+}
+
+/** Gmail: users.settings.getVacation — GET /gmail/v1/users/{userId}/settings/vacation */
+export function gmailGetVacation(userId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/vacation` };
+}
+
+export interface VacationSettings {
+  enableAutoReply: boolean;
+  responseSubject?: string;
+  responseBodyPlainText?: string;
+  responseBodyHtml?: string;
+  restrictToContacts?: boolean;
+  restrictToDomain?: boolean;
+  /** epoch millis as a string, per Gmail API */
+  startTime?: string;
+  endTime?: string;
+}
+
+/** Gmail: users.settings.updateVacation — PUT /gmail/v1/users/{userId}/settings/vacation */
+export function gmailUpdateVacation(userId: string, settings: VacationSettings): GoogleApiRequest {
+  return {
+    method: 'PUT',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/vacation`,
+    body: settings,
+  };
+}
+
+/** Gmail: users.settings.sendAs.get — GET /gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail} */
+export function gmailGetSendAs(userId: string, sendAsEmail: string): GoogleApiRequest {
+  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}` };
+}
+
+/** Gmail: users.settings.sendAs.list — GET /gmail/v1/users/{userId}/settings/sendAs */
+export function gmailListSendAs(userId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs` };
+}
+
+/**
+ * Gmail: users.settings.sendAs.patch — PATCH /gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail}
+ * Used for reading/writing the signature (and other SendAs fields).
+ */
+export function gmailPatchSendAs(
+  userId: string,
+  sendAsEmail: string,
+  patch: Record<string, unknown>,
+): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}`,
+    body: patch,
+  };
+}
+
+/** Gmail: users.settings.sendAs.create — POST /gmail/v1/users/{userId}/settings/sendAs */
+export function gmailCreateSendAs(
+  userId: string,
+  sendAs: { sendAsEmail: string; displayName?: string },
+): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs`,
+    body: sendAs,
+  };
+}
+
+/** Gmail: users.settings.sendAs.delete — DELETE /gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail} */
+export function gmailDeleteSendAs(userId: string, sendAsEmail: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}`,
+  };
+}
+
+// ===========================================================================
+// Calendar  (www.googleapis.com / calendar/v3)
+// ===========================================================================
+
+/**
+ * Calendar: calendarList.list — GET /calendar/v3/users/me/calendarList
+ *
+ * The Calendar API only exposes the *authenticated* user's calendar list under
+ * the fixed literal `me`; there is no `/users/{email}/calendarList` form (an
+ * email there returns 404). Listing another user's calendars requires the proxy
+ * to impersonate that user (domain-wide delegation `sub`), not a different path.
+ */
+export function calendarListCalendars(): GoogleApiRequest {
+  return { method: 'GET', path: `${CALENDAR_BASE}/users/me/calendarList` };
+}
+
+/** Calendar: acl.list — GET /calendar/v3/calendars/{calendarId}/acl */
+export function calendarListAcl(calendarId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl` };
+}
+
+export interface CalendarAclScope {
+  /** default | user | group | domain */
+  type: string;
+  value?: string;
+}
+
+/** Calendar: acl.insert — POST /calendar/v3/calendars/{calendarId}/acl */
+export function calendarInsertAcl(
+  calendarId: string,
+  rule: { role: string; scope: CalendarAclScope },
+): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl`,
+    body: rule,
+  };
+}
+
+/**
+ * Calendar: acl.delete — DELETE /calendar/v3/calendars/{calendarId}/acl/{ruleId}
+ * ACL rule id for a user is `user:{email}` (built by the caller / helper below).
+ */
+export function calendarDeleteAcl(calendarId: string, ruleId: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl/${seg(ruleId)}`,
+  };
+}
+
+/** Build the Calendar ACL rule id for a user scope: `user:{email}`. */
+export function calendarUserRuleId(email: string): string {
+  return `user:${email}`;
+}
+
+// ===========================================================================
+// Drive  (www.googleapis.com / drive/v3)
+// NOTE: Drive puts almost every non-resource option in the QUERY STRING, not the
+// body. The previous code passed these as a JSON body, which (a) makes `fetch`
+// throw on GET requests and (b) is silently ignored by Google on writes.
+// ===========================================================================
+
+/** Drive: files.list — GET /drive/v3/files?{q,fields,pageSize,...} */
+export function driveListFiles(params: {
+  q?: string;
+  fields?: string;
+  pageSize?: number;
+  supportsAllDrives?: boolean;
+  includeItemsFromAllDrives?: boolean;
+  corpora?: string;
+}): GoogleApiRequest {
+  return { method: 'GET', path: withQuery(`${DRIVE_BASE}/files`, params) };
+}
+
+/**
+ * Drive: permissions.create with ownership transfer —
+ * POST /drive/v3/files/{fileId}/permissions?transferOwnership=true
+ * Body is the Permission resource; `transferOwnership` is a QUERY param.
+ */
+export function driveTransferFileOwnership(fileId: string, newOwnerEmail: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: withQuery(`${DRIVE_BASE}/files/${seg(fileId)}/permissions`, { transferOwnership: true }),
+    body: { role: 'owner', type: 'user', emailAddress: newOwnerEmail },
+  };
+}
+
+/**
+ * Drive: drives.create — POST /drive/v3/drives?requestId={requestId}
+ * `requestId` is a REQUIRED query param; body is the Drive resource `{name}`.
+ */
+export function driveCreateSharedDrive(requestId: string, name: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: withQuery(`${DRIVE_BASE}/drives`, { requestId }),
+    body: { name },
+  };
+}
+
+/** Drive: drives.list — GET /drive/v3/drives?pageSize={n} */
+export function driveListSharedDrives(pageSize = 100): GoogleApiRequest {
+  return { method: 'GET', path: withQuery(`${DRIVE_BASE}/drives`, { pageSize }) };
+}
+
+/** Drive: drives.get — GET /drive/v3/drives/{driveId} */
+export function driveGetSharedDrive(driveId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DRIVE_BASE}/drives/${seg(driveId)}` };
+}
+
+/**
+ * Drive: permissions.create on a shared drive —
+ * POST /drive/v3/files/{fileId}/permissions?supportsAllDrives=true
+ * `supportsAllDrives` is a QUERY param; body is the Permission resource.
+ */
+export function driveAddPermission(
+  fileId: string,
+  permission: { role: string; type: string; emailAddress: string },
+): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: withQuery(`${DRIVE_BASE}/files/${seg(fileId)}/permissions`, { supportsAllDrives: true }),
+    body: permission,
+  };
+}
+
+/**
+ * Drive: permissions.list on a shared drive —
+ * GET /drive/v3/files/{fileId}/permissions?supportsAllDrives=true&fields=...
+ */
+export function driveListPermissions(
+  fileId: string,
+  fields = 'permissions(emailAddress,displayName,role,type)',
+): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: withQuery(`${DRIVE_BASE}/files/${seg(fileId)}/permissions`, {
+      supportsAllDrives: true,
+      fields,
+    }),
+  };
+}
+
+/** Drive: drives.delete — DELETE /drive/v3/drives/{driveId} */
+export function driveDeleteSharedDrive(driveId: string): GoogleApiRequest {
+  return { method: 'DELETE', path: `${DRIVE_BASE}/drives/${seg(driveId)}` };
+}
+
+// ===========================================================================
+// Admin SDK Data Transfer  (admin.googleapis.com / admin/datatransfer/v1)
+// ===========================================================================
+
+/**
+ * Canonical Google application IDs for the Data Transfer API.
+ *
+ * FIX: `drive` and `calendar` were previously swapped in DeveloperConsole.tsx
+ * (and are still swapped in backend/src/services/data-transfer.service.ts).
+ * The authoritative in-repo reference — google-workspace.service.ts:2482 —
+ * documents `55656082996` as the Google Drive application ID, which matches
+ * Google's published value. Calendar is `435070579839`. A swap made
+ * `gw transfer drive` actually move Calendar data and vice-versa.
+ */
+export const DATA_TRANSFER_APPLICATION_IDS = {
+  drive: '55656082996',
+  calendar: '435070579839',
+  sites: '529327477839',
+  groups: '588034504559',
+} as const;
+
+export interface DataTransferInsertParams {
+  /** Google user ID or email of the current owner. */
+  oldOwnerUserId: string;
+  /** Google user ID or email of the new owner. */
+  newOwnerUserId: string;
+  /** Application IDs to transfer (see DATA_TRANSFER_APPLICATION_IDS). */
+  applicationIds: string[];
+}
+
+/** DataTransfer: transfers.insert — POST /admin/datatransfer/v1/transfers */
+export function dataTransferInsert(params: DataTransferInsertParams): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${DATATRANSFER_BASE}/transfers`,
+    body: {
+      oldOwnerUserId: params.oldOwnerUserId,
+      newOwnerUserId: params.newOwnerUserId,
+      applicationDataTransfers: params.applicationIds.map((applicationId) => ({
+        applicationId,
+        applicationTransferParams: [],
+      })),
+    },
+  };
+}
+
+/** DataTransfer: transfers.get — GET /admin/datatransfer/v1/transfers/{transferId} */
+export function dataTransferGet(transferId: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DATATRANSFER_BASE}/transfers/${seg(transferId)}` };
+}
+
+/** DataTransfer: transfers.list — GET /admin/datatransfer/v1/transfers?maxResults={n} */
+export function dataTransferList(maxResults = 20): GoogleApiRequest {
+  return { method: 'GET', path: withQuery(`${DATATRANSFER_BASE}/transfers`, { maxResults }) };
+}
