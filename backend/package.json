@@ -22,7 +22,7 @@
     "@aws-sdk/client-s3": "^3.515.0",
     "@aws-sdk/s3-request-presigner": "^3.515.0",
     "@azure/identity": "^4.13.0",
-    "@better-auth/passkey": "^1.4.9",
+    "@better-auth/passkey": "~1.6.30",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "@obilabs/licensing": "^0.1.2",
@@ -32,7 +32,7 @@
     "@types/uuid": "^10.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
-    "better-auth": "^1.4.7",
+    "better-auth": "~1.6.22",
     "bull": "^4.16.5",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -45,7 +45,7 @@
     "express-validator": "^7.0.1",
     "google-auth-library": "^10.3.0",
     "googleapis": "^160.0.0",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.9",
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
     "json-rules-engine": "^7.3.1",
@@ -94,5 +94,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "fast-xml-parser": "^5.3.5"
   }
 }
