@@ -437,7 +437,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
 
                 {testStatus === 'success' && (
                   <div className="gw-wizard-test-success">
-                    <h4><CheckCircle size={18} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
+                    <h4><CheckCircle size={16} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
                     <p>Successfully connected to Google Workspace domain: {domain}</p>
                     <p>Service Account: {serviceAccountData?.client_email}</p>
                     <p>Admin Email: {adminEmail}</p>

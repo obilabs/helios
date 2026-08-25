@@ -367,7 +367,7 @@ const CampaignAnalytics: React.FC<CampaignAnalyticsProps> = ({
         <div className="chart-card opens-chart">
           <div className="chart-header">
             <h3>
-              <BarChart3 size={18} />
+              <BarChart3 size={16} />
               Opens Over Time
             </h3>
           </div>
@@ -423,7 +423,7 @@ const CampaignAnalytics: React.FC<CampaignAnalyticsProps> = ({
         <div className="chart-card device-chart">
           <div className="chart-header">
             <h3>
-              <Monitor size={18} />
+              <Monitor size={16} />
               Device Breakdown
             </h3>
           </div>
@@ -431,28 +431,28 @@ const CampaignAnalytics: React.FC<CampaignAnalyticsProps> = ({
             {stats?.deviceBreakdown && (stats.deviceBreakdown.desktop + stats.deviceBreakdown.mobile + stats.deviceBreakdown.tablet + stats.deviceBreakdown.unknown) > 0 ? (
               <div className="device-breakdown">
                 <DeviceBar
-                  icon={<Monitor size={18} />}
+                  icon={<Monitor size={16} />}
                   label="Desktop"
                   value={stats.deviceBreakdown.desktop}
                   total={stats.totalOpens}
                   color="#3b82f6"
                 />
                 <DeviceBar
-                  icon={<Smartphone size={18} />}
+                  icon={<Smartphone size={16} />}
                   label="Mobile"
                   value={stats.deviceBreakdown.mobile}
                   total={stats.totalOpens}
                   color="#22c55e"
                 />
                 <DeviceBar
-                  icon={<Tablet size={18} />}
+                  icon={<Tablet size={16} />}
                   label="Tablet"
                   value={stats.deviceBreakdown.tablet}
                   total={stats.totalOpens}
                   color="#f59e0b"
                 />
                 <DeviceBar
-                  icon={<HelpCircle size={18} />}
+                  icon={<HelpCircle size={16} />}
                   label="Unknown"
                   value={stats.deviceBreakdown.unknown}
                   total={stats.totalOpens}
@@ -473,7 +473,7 @@ const CampaignAnalytics: React.FC<CampaignAnalyticsProps> = ({
       <div className="chart-card geo-chart">
         <div className="chart-header">
           <h3>
-            <Globe size={18} />
+            <Globe size={16} />
             Geographic Distribution
           </h3>
         </div>
