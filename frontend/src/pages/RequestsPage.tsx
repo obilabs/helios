@@ -224,7 +224,7 @@ export const RequestsPage = () => {
 
       {/* Summary Cards */}
       {counts && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <SummaryCard
             label="Pending"
             count={counts.pending}
@@ -262,7 +262,7 @@ export const RequestsPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-200 flex gap-4">
+        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -298,6 +298,7 @@ export const RequestsPage = () => {
             <p className="text-sm">Create a new request to get started</p>
           </div>
         ) : (
+          <div className="responsive-table">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -324,7 +325,7 @@ export const RequestsPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {requests.map((request) => (
                 <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" data-label="Person">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-medium">
                         {request.first_name[0]}{request.last_name[0]}
@@ -337,13 +338,13 @@ export const RequestsPage = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" data-label="Type">
                     <TypeBadge type={request.request_type} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" data-label="Status">
                     <StatusBadge status={request.status} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-label="Date">
                     <div className="flex items-center gap-1">
                       <Calendar size={14} />
                       {request.start_date
@@ -356,7 +357,7 @@ export const RequestsPage = () => {
                       Requested: {new Date(request.created_at).toLocaleDateString()}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" data-label="Progress">
                     {request.tasks_total > 0 ? (
                       <div className="w-32">
                         <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -374,7 +375,7 @@ export const RequestsPage = () => {
                       <span className="text-sm text-gray-400">No tasks</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" data-label="">
                     <div className="flex items-center justify-end gap-2">
                       {request.status === 'pending' && (
                         <>
@@ -412,6 +413,7 @@ export const RequestsPage = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -645,7 +647,7 @@ const NewRequestModal = ({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
               <input
@@ -850,7 +852,7 @@ const RequestDetailModal = ({
 
         <div className="p-6 space-y-6">
           {/* Request Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-500 uppercase">Type</label>
               <div className="mt-1"><TypeBadge type={request.request_type} /></div>
