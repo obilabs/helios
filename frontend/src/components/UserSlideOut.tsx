@@ -1372,14 +1372,14 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     }}>
                       {securityData.twoFactor.anyEnrolled ? (
                         <>
-                          <CheckCircle size={18} style={{ color: '#22c55e' }} />
+                          <CheckCircle size={16} style={{ color: '#22c55e' }} />
                           <span style={{ color: '#15803d', fontWeight: 500 }}>
                             {securityData.twoFactor.allEnrolled ? 'Enrolled in all sources' : 'Enrolled in some sources'}
                           </span>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                          <AlertTriangle size={16} style={{ color: '#ef4444' }} />
                           <span style={{ color: '#dc2626', fontWeight: 500 }}>Not enrolled in any 2FA</span>
                         </>
                       )}

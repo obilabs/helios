@@ -79,7 +79,7 @@ export function FilterPanel({
             </button>
           )}
           <button className="btn-close-panel" onClick={onClose}>
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
       </div>

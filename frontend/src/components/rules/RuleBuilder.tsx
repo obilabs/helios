@@ -652,12 +652,12 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   // Get the action icon for the current rule type
   const getActionIcon = () => {
     switch (ruleType) {
-      case 'dynamic_group': return <Users size={18} />;
-      case 'template_match': return <FileText size={18} />;
-      case 'training_assign': return <GraduationCap size={18} />;
-      case 'notification': return <Bell size={18} />;
-      case 'workflow': return <GitBranch size={18} />;
-      default: return <ArrowRight size={18} />;
+      case 'dynamic_group': return <Users size={16} />;
+      case 'template_match': return <FileText size={16} />;
+      case 'training_assign': return <GraduationCap size={16} />;
+      case 'notification': return <Bell size={16} />;
+      case 'workflow': return <GitBranch size={16} />;
+      default: return <ArrowRight size={16} />;
     }
   };
 

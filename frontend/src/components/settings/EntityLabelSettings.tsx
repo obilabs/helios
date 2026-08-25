@@ -151,7 +151,7 @@ export function EntityLabelSettings({ isAdmin }: EntityLabelSettingsProps) {
       <div className="settings-header">
         <div className="header-content">
           <h3>
-            <Tag size={18} />
+            <Tag size={16} />
             Entity Labels
           </h3>
           <p>Customize how entities are named throughout the application</p>

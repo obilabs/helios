@@ -28,15 +28,15 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <CheckCircle size={18} />;
+        return <CheckCircle size={16} />;
       case 'error':
-        return <XCircle size={18} />;
+        return <XCircle size={16} />;
       case 'warning':
-        return <AlertTriangle size={18} />;
+        return <AlertTriangle size={16} />;
       case 'info':
-        return <Info size={18} />;
+        return <Info size={16} />;
       default:
-        return <Info size={18} />;
+        return <Info size={16} />;
     }
   };
 
