@@ -32,6 +32,7 @@
   border-radius: 8px;
   padding: 1.5rem 0;
   height: fit-content;
+  min-width: 0;
 }
 
 .settings-nav {
@@ -76,6 +77,9 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   min-height: 600px;
+  /* Allow the grid column to shrink below its content's intrinsic width
+     instead of overflowing the viewport (the classic min-width:auto trap). */
+  min-width: 0;
 }
 
 .settings-section {
@@ -103,6 +107,9 @@
 /* Modules Grid */
 .modules-grid {
   display: grid;
+  /* minmax(0, 1fr) keeps a single stacked column that can shrink below its
+     content width, so cards never push the page into horizontal scroll. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
 }
 
@@ -111,6 +118,8 @@
   border-radius: 8px;
   padding: 1.5rem;
   transition: all 0.2s;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .module-card:hover {
@@ -122,6 +131,10 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 1rem;
+  /* Let the status/action block drop below the title when space is tight
+     instead of overflowing the card to the right. */
+  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
@@ -129,6 +142,8 @@
   display: flex;
   gap: 1rem;
   align-items: flex-start;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .module-icon {
@@ -143,11 +158,16 @@
   flex-shrink: 0;
 }
 
+.module-details {
+  min-width: 0;
+}
+
 .module-details h3 {
   font-size: 1.25rem;
   color: #1f2937;
   font-weight: 600;
   margin-bottom: 0.25rem;
+  overflow-wrap: anywhere;
 }
 
 .module-details p {
@@ -160,6 +180,8 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .status-badge {
@@ -223,11 +245,19 @@
 .module-description {
   color: #374151;
   line-height: 1.6;
+  min-width: 0;
 }
 
 .module-description p {
   margin-bottom: 1rem;
   font-size: 0.9375rem;
+}
+
+/* Long, unbroken tokens (service-account emails, project IDs) must wrap
+   rather than widen the card past the viewport. */
+.module-description code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .module-features {
@@ -701,17 +731,48 @@
     gap: 1rem;
   }
 
+  /* Keep the tab strip ABOVE the panel content. The old `order: 2` pushed
+     the nav below the module cards; here it stays on top as a plain strip. */
   .settings-sidebar {
-    order: 2;
+    order: 0;
+    padding: 0;
+    height: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
   }
 
+  .settings-content {
+    order: 1;
+  }
+
+  /* A proper horizontally-scrollable tab bar, framed as its own strip. */
   .settings-nav {
     flex-direction: row;
+    gap: 0.25rem;
     overflow-x: auto;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0 0.5rem;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
 
   .settings-nav-item {
+    flex: 0 0 auto;
     white-space: nowrap;
+    /* Swap the left-border active marker for an underline tab indicator. */
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.875rem 1rem;
+  }
+
+  .settings-nav-item.active {
+    background: transparent;
+    border-left-color: transparent;
+    border-bottom-color: var(--theme-primary);
   }
 }
 
@@ -721,6 +782,9 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  /* Clamp to the status column so buttons wrap instead of overflowing. */
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .module-actions .btn {
