@@ -107,6 +107,7 @@ import loginActivityRoutes from './routes/login-activity.routes.js';
 import initialPasswordsRoutes from './routes/initial-passwords.routes.js';
 import securityRoutes from './routes/security.routes.js';
 import mtpRoutes from './routes/mtp.routes.js';
+import relayRoutes from './routes/relay.routes.js';
 import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.js';
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
@@ -720,6 +721,11 @@ registerRoute('/initial-passwords', initialPasswordsRoutes);
 
 // Feature Flags
 registerRoute('/organization/feature-flags', featureFlagsRoutes);
+
+// API Relay Authorization — admin authoring surface for the least-privilege
+// gate (config toggles + allow/deny rules). Enforcement itself lives in the
+// transparent proxy behind the `api_relay` feature flag.
+registerRoute('/organization/relay', relayRoutes);
 
 // Transparent Proxy for Google Workspace APIs (must be before catch-all)
 app.use(transparentProxyRouter);
