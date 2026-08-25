@@ -1150,7 +1150,7 @@ export function AddUser() {
         </div>
       ) : (
         <>
-          <div className="bulk-table-container">
+          <div className="bulk-table-container responsive-table">
             <table className="bulk-table">
               <thead>
                 <tr>
@@ -1167,7 +1167,7 @@ export function AddUser() {
               <tbody>
                 {bulkUsers.map((user) => (
                   <tr key={user.id} className={user.isValid ? '' : 'invalid-row'}>
-                    <td>
+                    <td data-label="Email">
                       <input
                         type="email"
                         value={user.email}
@@ -1176,7 +1176,7 @@ export function AddUser() {
                         className={user.errors.some(e => e.includes('email') || e.includes('Email')) ? 'input-error' : ''}
                       />
                     </td>
-                    <td>
+                    <td data-label="First Name">
                       <input
                         type="text"
                         value={user.firstName}
@@ -1185,7 +1185,7 @@ export function AddUser() {
                         className={user.errors.some(e => e.includes('First')) ? 'input-error' : ''}
                       />
                     </td>
-                    <td>
+                    <td data-label="Last Name">
                       <input
                         type="text"
                         value={user.lastName}
@@ -1194,7 +1194,7 @@ export function AddUser() {
                         className={user.errors.some(e => e.includes('Last')) ? 'input-error' : ''}
                       />
                     </td>
-                    <td>
+                    <td data-label="Role">
                       <select
                         value={user.role}
                         onChange={(e) => updateBulkRow(user.id, 'role', e.target.value)}
@@ -1204,7 +1204,7 @@ export function AddUser() {
                         <option value="admin">Admin</option>
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Department">
                       <input
                         type="text"
                         value={user.department}
@@ -1212,7 +1212,7 @@ export function AddUser() {
                         placeholder="Department"
                       />
                     </td>
-                    <td>
+                    <td data-label="Job Title">
                       <input
                         type="text"
                         value={user.jobTitle}
@@ -1220,7 +1220,7 @@ export function AddUser() {
                         placeholder="Job Title"
                       />
                     </td>
-                    <td className="status-cell">
+                    <td className="status-cell" data-label="Status">
                       {user.isValid ? (
                         <span className="status-valid"><CheckCircle size={16} /> Valid</span>
                       ) : (
@@ -1229,7 +1229,7 @@ export function AddUser() {
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="">
                       <button
                         className="btn-remove-row"
                         onClick={() => removeBulkRow(user.id)}
@@ -1347,7 +1347,7 @@ export function AddUser() {
       {csvFile && csvParsedData.length > 0 && (
         <div className="csv-preview">
           <h4>Preview ({csvParsedData.length} users found)</h4>
-          <div className="preview-table-container">
+          <div className="preview-table-container responsive-table">
             <table className="preview-table">
               <thead>
                 <tr>
@@ -1362,12 +1362,12 @@ export function AddUser() {
               <tbody>
                 {csvParsedData.slice(0, 5).map((user) => (
                   <tr key={user.id} className={user.isValid ? '' : 'invalid-row'}>
-                    <td>{user.email}</td>
-                    <td>{user.firstName}</td>
-                    <td>{user.lastName}</td>
-                    <td>{user.role}</td>
-                    <td>{user.department || '-'}</td>
-                    <td>
+                    <td data-label="Email">{user.email}</td>
+                    <td data-label="First Name">{user.firstName}</td>
+                    <td data-label="Last Name">{user.lastName}</td>
+                    <td data-label="Role">{user.role}</td>
+                    <td data-label="Department">{user.department || '-'}</td>
+                    <td data-label="Status">
                       {user.isValid ? (
                         <span className="status-valid"><CheckCircle size={14} /></span>
                       ) : (
