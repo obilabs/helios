@@ -253,8 +253,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     return organizationId;
   };
 
-  const apiRequest = async (method: string, path: string, body?: any): Promise<any> => {
-    const headers: Record<string, string> = {};
+  const apiRequest = async (
+    method: string,
+    path: string,
+    body?: any,
+    extraHeaders?: Record<string, string>
+  ): Promise<any> => {
+    const headers: Record<string, string> = { ...(extraHeaders || {}) };
     if (body) {
       headers['Content-Type'] = 'application/json';
     }
@@ -303,8 +308,18 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   // Execute a Google API request built by ../lib/googleApiRequests.
   // Centralizing method/path/body construction there keeps the correct-request
   // logic pure and unit-testable (googleApiRequests.test.ts).
+  //
+  // When the builder marked the request with an impersonation target (per-user
+  // Gmail/Calendar settings for user X), forward it as X-Impersonate-User so the
+  // proxy acts AS that user via domain-wide delegation. The backend validates
+  // the target is in the org's own domain before minting anything.
   const runGoogle = (req: google.GoogleApiRequest): Promise<any> =>
-    apiRequest(req.method, req.path, req.body);
+    apiRequest(
+      req.method,
+      req.path,
+      req.body,
+      req.impersonate ? { 'X-Impersonate-User': req.impersonate } : undefined
+    );
 
   // Log command execution to audit log (fire-and-forget)
   const logCommandToAudit = async (
@@ -4875,8 +4890,9 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // Calendar API exposes only the authenticated user's list under the
-          // literal `me`; the target user is selected by proxy impersonation.
-          const data = await runGoogle(google.calendarListCalendars());
+          // literal `me`; the target user is selected by proxy impersonation
+          // (X-Impersonate-User), so pass userEmail as the impersonation target.
+          const data = await runGoogle(google.calendarListCalendars(userEmail));
 
           addOutput('success', `\nCalendars for ${userEmail}:`);
           addOutput('info', '='.repeat(80));
