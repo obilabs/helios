@@ -705,6 +705,7 @@
 
 .client-main {
   flex: 1;
+  min-width: 0; /* allow the content column to shrink instead of overflowing the flex row */
   padding: 2rem;
   overflow-y: auto;
   height: 100%;
@@ -867,6 +868,20 @@
   .sidebar {
     width: 200px;
   }
+
+  /* Header: drop the fixed 300px left track and let the search shrink so the
+     right-hand cluster (user menu, avatar) can't push past the viewport. */
+  .client-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  /* The "Welcome, X" + quick-stats block is the most expendable header content
+     at narrow widths — hide it before anything essential clips. */
+  .welcome-stats {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -880,9 +895,27 @@
     border-bottom: 1px solid var(--color-gray-200);
   }
 
+  /* Hide the universal search on phones — it's non-essential and its 400px
+     max-width otherwise fights the header for space. */
+  .header-center {
+    display: none;
+  }
+
   .nav {
     flex-direction: row;
     overflow-x: auto;
+  }
+
+  /* The horizontal-row nav was written for flat .nav-item children, but the
+     real children are .nav-section wrappers (each a vertical stack), which
+     rendered as squashed side-by-side columns. `display: contents` dissolves
+     the wrappers so the .nav-items themselves form one flat scrollable row. */
+  .nav-section {
+    display: contents;
+  }
+
+  .nav-section-title {
+    display: none;
   }
 
   .nav-item {
