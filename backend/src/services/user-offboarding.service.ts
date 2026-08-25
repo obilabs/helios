@@ -12,6 +12,7 @@ import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
+import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
 import {
   OffboardingTemplate,
   OffboardingConfig,
@@ -374,7 +375,7 @@ class UserOffboardingService {
         stepOrder++;
         const driveStart = Date.now();
         try {
-          await this.handleDriveTransfer(organizationId, config);
+          const driveDetails = await this.handleDriveTransfer(organizationId, config);
           await lifecycleLogService.logSuccess(
             organizationId,
             'offboard',
@@ -383,7 +384,7 @@ class UserOffboardingService {
               ...logOptions,
               stepOrder,
               durationMs: Date.now() - driveStart,
-              details: { action: config.driveAction },
+              details: driveDetails,
             }
           );
           result.stepsCompleted.push('transfer_drive_files');
@@ -407,7 +408,7 @@ class UserOffboardingService {
         stepOrder++;
         const emailStart = Date.now();
         try {
-          await this.setupEmailForwarding(organizationId, config);
+          const forwardingDetails = await this.setupEmailForwarding(organizationId, config);
           await lifecycleLogService.logSuccess(
             organizationId,
             'offboard',
@@ -416,6 +417,7 @@ class UserOffboardingService {
               ...logOptions,
               stepOrder,
               durationMs: Date.now() - emailStart,
+              details: forwardingDetails,
             }
           );
           result.stepsCompleted.push('setup_email_forwarding');
@@ -432,6 +434,53 @@ class UserOffboardingService {
         }
       } else {
         result.stepsSkipped.push('setup_email_forwarding');
+      }
+
+      // Step 3b: Delegate the departing user's mailbox to the forward target
+      //
+      // When mail is being forwarded to a manager/successor, that same person
+      // is also granted Gmail *delegate* access so they can read and reply to
+      // the departing user's historical mail (forwarding only covers NEW mail).
+      // Independent of forwarding: its own try/catch so a delegation failure
+      // never rolls back the forwarding that already succeeded, and vice-versa.
+      if (config.emailAction === 'forward_manager' || config.emailAction === 'forward_user') {
+        stepOrder++;
+        const delegateStart = Date.now();
+        try {
+          const delegateEmail = await this.resolveForwardTarget(config);
+          if (!delegateEmail) {
+            throw new Error('No delegate address available (manager or forward user email missing)');
+          }
+          const delegationDetails = await this.setupMailboxDelegation(
+            organizationId,
+            config,
+            delegateEmail
+          );
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'setup_mailbox_delegation',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - delegateStart,
+              details: delegationDetails,
+            }
+          );
+          result.stepsCompleted.push('setup_mailbox_delegation');
+        } catch (error: any) {
+          result.errors.push(`Failed to delegate mailbox: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'setup_mailbox_delegation',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - delegateStart }
+          );
+          result.stepsFailed.push('setup_mailbox_delegation');
+        }
+      } else {
+        result.stepsSkipped.push('setup_mailbox_delegation');
       }
 
       // Step 4: Set auto-reply
@@ -795,59 +844,205 @@ class UserOffboardingService {
     return errors;
   }
 
+  /**
+   * Transfer a departing user's Drive (and, when calendar-ownership transfer is
+   * requested, Calendar) data to a new owner via the Admin SDK Data Transfer
+   * API (`POST admin/datatransfer/v1/transfers`).
+   *
+   * Only the `transfer_manager` / `transfer_user` actions map to a Data
+   * Transfer. `archive` / `delete` are not (yet) implemented via this API, so
+   * they are logged and skipped rather than throwing (a throw would mark the
+   * whole drive step failed).
+   *
+   * Correctness notes:
+   *  - The Data Transfer API keys owners by the user's IMMUTABLE numeric ID, not
+   *    their email, so both emails are first resolved via directory `users.get`.
+   *  - Application IDs come from the shared single source of truth
+   *    (config/google-application-ids.ts): Drive = 55656082996,
+   *    Calendar = 435070579839. These were historically swapped in
+   *    data-transfer.service.ts.
+   */
   private async handleDriveTransfer(
     organizationId: string,
     config: OffboardingConfig
-  ): Promise<void> {
-    // Note: Full Drive transfer requires the Data Transfer API
-    // For now, we'll log the intended action
-    logger.info('Drive transfer would be executed', {
-      action: config.driveAction,
-      userEmail: config.userEmail,
-      transferTo: config.driveTransferToUserId || 'manager',
-    });
+  ): Promise<Record<string, unknown>> {
+    if (config.driveAction !== 'transfer_manager' && config.driveAction !== 'transfer_user') {
+      // 'archive' / 'delete' reach here (the step only runs for driveAction !==
+      // 'keep') but have no Data Transfer mapping. Don't fail the step for them.
+      logger.info('Drive action has no Data Transfer mapping; skipping transfer', {
+        action: config.driveAction,
+        userEmail: config.userEmail,
+      });
+      return { action: config.driveAction, transferred: false, reason: 'unsupported_action' };
+    }
 
-    // TODO: Implement actual Drive transfer using Data Transfer API
-    // This requires additional Google API scopes and is complex
-  }
-
-  private async setupEmailForwarding(
-    organizationId: string,
-    config: OffboardingConfig
-  ): Promise<void> {
     const credentials = await this.getCredentials(organizationId);
     if (!credentials) throw new Error('Google Workspace not configured');
 
     const adminEmail = await this.getAdminEmail(organizationId);
     if (!adminEmail) throw new Error('Admin email not configured');
 
-    const jwtClient = new JWT({
-      email: credentials.client_email,
-      key: credentials.private_key,
-      scopes: ['https://www.googleapis.com/auth/gmail.settings.basic'],
-      subject: adminEmail,
+    const newOwnerEmail =
+      config.driveAction === 'transfer_user' && config.driveTransferToUserId
+        ? await this.getUserEmail(config.driveTransferToUserId)
+        : config.managerEmail;
+
+    if (!newOwnerEmail) {
+      throw new Error('No Drive transfer target available (manager or transfer user email missing)');
+    }
+
+    const { directory, datatransfer } = this.createDataTransferClients(credentials, adminEmail);
+
+    // Data Transfer needs the immutable numeric user IDs, not emails.
+    const [fromUser, toUser] = await Promise.all([
+      directory.users.get({ userKey: config.userEmail }),
+      directory.users.get({ userKey: newOwnerEmail }),
+    ]);
+
+    const oldOwnerUserId = fromUser.data.id;
+    const newOwnerUserId = toUser.data.id;
+    if (!oldOwnerUserId || !newOwnerUserId) {
+      throw new Error('Could not resolve Google user IDs for Drive transfer');
+    }
+
+    const applicationDataTransfers: Array<{
+      applicationId: string;
+      applicationTransferParams: Array<{ key: string; value: string[] }>;
+    }> = [
+      {
+        applicationId: DATA_TRANSFER_APPLICATION_IDS.drive,
+        applicationTransferParams: [{ key: 'PRIVACY_LEVEL', value: ['PRIVATE', 'SHARED'] }],
+      },
+    ];
+
+    // Fold Calendar into the same transfer when calendar-ownership transfer is
+    // requested, so both Drive and Calendar data move to the same successor.
+    if (config.calendarTransferMeetingOwnership) {
+      applicationDataTransfers.push({
+        applicationId: DATA_TRANSFER_APPLICATION_IDS.calendar,
+        applicationTransferParams: [],
+      });
+    }
+
+    const transferResponse = await datatransfer.transfers.insert({
+      requestBody: {
+        oldOwnerUserId,
+        newOwnerUserId,
+        applicationDataTransfers,
+      },
     });
 
-    const gmail = google.gmail({ version: 'v1', auth: jwtClient });
+    const applicationIds = applicationDataTransfers.map((a) => a.applicationId);
+    logger.info('Data transfer initiated', {
+      from: config.userEmail,
+      to: newOwnerEmail,
+      transferId: transferResponse.data.id,
+      applicationIds,
+    });
 
-    const forwardTo = config.emailForwardToUserId
-      ? await this.getUserEmail(config.emailForwardToUserId)
-      : config.managerEmail;
+    return {
+      action: config.driveAction,
+      transferred: true,
+      newOwnerEmail,
+      transferId: transferResponse.data.id ?? null,
+      applicationIds,
+    };
+  }
 
+  /**
+   * Configure Gmail auto-forwarding for the departing user's mailbox.
+   *
+   * Gmail settings are PER-MAILBOX, so domain-wide delegation must impersonate
+   * the departing user (`subject = config.userEmail`) — impersonating the admin
+   * (as the old stub did) cannot change another user's forwarding. Two calls:
+   *   1. forwardingAddresses.create — register the target (auto-verified for a
+   *      domain user via DWD).
+   *   2. updateAutoForwarding — enable forwarding to it, keeping a copy in the
+   *      inbox (disposition `leaveInInbox`).
+   */
+  private async setupEmailForwarding(
+    organizationId: string,
+    config: OffboardingConfig
+  ): Promise<Record<string, unknown>> {
+    const credentials = await this.getCredentials(organizationId);
+    if (!credentials) throw new Error('Google Workspace not configured');
+
+    const forwardTo = await this.resolveForwardTarget(config);
     if (!forwardTo) {
       throw new Error('No forwarding address available');
     }
 
-    // Note: This requires the user's consent or using the Gmail API with proper delegation
-    // For now, log the intended action
-    logger.info('Email forwarding would be setup', {
-      from: config.userEmail,
-      to: forwardTo,
-      duration: config.emailForwardDurationDays,
+    const gmail = this.createGmailClient(credentials, config.userEmail);
+
+    // 1. Register the forwarding address on the departing user's mailbox.
+    await gmail.users.settings.forwardingAddresses.create({
+      userId: config.userEmail,
+      requestBody: { forwardingEmail: forwardTo },
     });
 
-    // TODO: Implement actual email forwarding
-    // Requires user delegation or admin API
+    // 2. Enable auto-forwarding to it (leave a copy in the inbox).
+    await gmail.users.settings.updateAutoForwarding({
+      userId: config.userEmail,
+      requestBody: {
+        enabled: true,
+        emailAddress: forwardTo,
+        disposition: 'leaveInInbox',
+      },
+    });
+
+    logger.info('Email forwarding configured', {
+      from: config.userEmail,
+      to: forwardTo,
+      durationDays: config.emailForwardDurationDays,
+    });
+
+    return {
+      from: config.userEmail,
+      forwardTo,
+      durationDays: config.emailForwardDurationDays,
+    };
+  }
+
+  /**
+   * Grant `delegateEmail` Gmail delegate access to the departing user's mailbox
+   * (`users.settings.delegates.create`). Like forwarding, this operates on the
+   * mailbox owner, so DWD impersonates the departing user; unlike forwarding it
+   * needs the `gmail.settings.sharing` scope (both are minted by
+   * `createGmailClient`).
+   */
+  private async setupMailboxDelegation(
+    organizationId: string,
+    config: OffboardingConfig,
+    delegateEmail: string
+  ): Promise<Record<string, unknown>> {
+    const credentials = await this.getCredentials(organizationId);
+    if (!credentials) throw new Error('Google Workspace not configured');
+
+    const gmail = this.createGmailClient(credentials, config.userEmail);
+
+    await gmail.users.settings.delegates.create({
+      userId: config.userEmail,
+      requestBody: { delegateEmail },
+    });
+
+    logger.info('Mailbox delegation configured', {
+      mailbox: config.userEmail,
+      delegate: delegateEmail,
+    });
+
+    return { mailbox: config.userEmail, delegate: delegateEmail };
+  }
+
+  /**
+   * Resolve the email the departing user's mail is forwarded/delegated to:
+   * the explicit `emailForwardToUserId` (looked up) for `forward_user`, else
+   * the manager's email.
+   */
+  private async resolveForwardTarget(config: OffboardingConfig): Promise<string | null> {
+    if (config.emailForwardToUserId) {
+      return this.getUserEmail(config.emailForwardToUserId);
+    }
+    return config.managerEmail ?? null;
   }
 
   private async setAutoReply(
@@ -1092,6 +1287,48 @@ class UserOffboardingService {
     });
 
     return google.admin({ version: 'directory_v1', auth: jwtClient });
+  }
+
+  /**
+   * Gmail client bound to a specific mailbox owner (impersonated via DWD).
+   * Mints BOTH gmail settings scopes: `.basic` (forwarding / vacation) and
+   * `.sharing` (delegation), so one client serves forwarding + delegation.
+   */
+  private createGmailClient(credentials: ServiceAccountCredentials, subjectEmail: string) {
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: [
+        'https://www.googleapis.com/auth/gmail.settings.basic',
+        'https://www.googleapis.com/auth/gmail.settings.sharing',
+      ],
+      subject: subjectEmail,
+    });
+
+    return google.gmail({ version: 'v1', auth: jwtClient });
+  }
+
+  /**
+   * Directory + Data Transfer clients for the offboarding data transfer, sharing
+   * one admin-impersonated JWT. The token carries both the directory scope (to
+   * resolve owner emails → immutable user IDs) and the datatransfer scope (to
+   * create the transfer).
+   */
+  private createDataTransferClients(credentials: ServiceAccountCredentials, adminEmail: string) {
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: [
+        'https://www.googleapis.com/auth/admin.datatransfer',
+        'https://www.googleapis.com/auth/admin.directory.user',
+      ],
+      subject: adminEmail,
+    });
+
+    return {
+      directory: google.admin({ version: 'directory_v1', auth: jwtClient }),
+      datatransfer: google.admin({ version: 'datatransfer_v1', auth: jwtClient }),
+    };
   }
 
   // ==========================================
