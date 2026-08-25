@@ -396,14 +396,14 @@ export const RequestsPage = () => {
                         onClick={() => viewRequest(request)}
                         className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
                       >
-                        <Eye size={18} />
+                        <Eye size={16} />
                       </button>
                       {!['completed', 'cancelled', 'rejected'].includes(request.status) && (
                         <button
                           onClick={() => handleCancel(request.id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       )}
                     </div>
@@ -934,11 +934,11 @@ const RequestDetailModal = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {task.status === 'completed' ? (
-                          <CheckCircle className="text-green-500" size={18} />
+                          <CheckCircle className="text-green-500" size={16} />
                         ) : task.status === 'skipped' ? (
-                          <XCircle className="text-gray-400" size={18} />
+                          <XCircle className="text-gray-400" size={16} />
                         ) : (
-                          <Clock className="text-gray-400" size={18} />
+                          <Clock className="text-gray-400" size={16} />
                         )}
                         <div>
                           <div className="text-sm font-medium text-gray-900">{task.title}</div>

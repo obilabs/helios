@@ -642,7 +642,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
               <div className="security-section">
                 <div className="security-card">
-                  <h3><Lock size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Password Policy</h3>
+                  <h3><Lock size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Password Policy</h3>
                   <p>Set password requirements for all users in your organization</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -694,7 +694,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Account Lockout</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Account Lockout</h3>
                   <p>Configure account lockout settings after failed login attempts</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -720,7 +720,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Key size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Session Settings</h3>
+                  <h3><Key size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Session Settings</h3>
                   <p>Control session timeout and concurrent login policies</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -747,7 +747,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Authentication Requirements</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Authentication Requirements</h3>
                   <p>Enforce authentication methods for all users</p>
                   <div className="policy-settings">
                     <div className="policy-row">
@@ -767,7 +767,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
 
                 <div className="security-card">
-                  <h3><Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Single Sign-On (SSO)</h3>
+                  <h3><Shield size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Single Sign-On (SSO)</h3>
                   <p>Configure SAML or OAuth for your organization</p>
                   <div style={{ padding: '16px', background: '#f9fafb', borderRadius: '8px', color: '#6b7280', fontSize: '13px' }}>
                     SSO configuration requires enterprise setup. Contact support for assistance.
@@ -790,7 +790,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                   <ThemeSelector />
                 ) : (
                   <div className="customization-card">
-                    <h3><Palette size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Theme Settings</h3>
+                    <h3><Palette size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Theme Settings</h3>
                     <p>Theme customization is restricted to administrators</p>
                     <div className="info-box">
                       <Info size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
@@ -807,7 +807,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 {/* Branding & Support Settings - Admin Only */}
                 {currentUser?.role === 'admin' && (
                   <div className="customization-card">
-                    <h3><Link size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Branding & Support</h3>
+                    <h3><Link size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Branding & Support</h3>
                     <p>Configure navigation and support links</p>
                     <div className="branding-settings">
                       <div className="setting-row">
@@ -914,7 +914,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
               <div className="advanced-section">
                 <div className="advanced-card">
-                  <h3><BarChart3 size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Data Synchronization</h3>
+                  <h3><BarChart3 size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Data Synchronization</h3>
                   <p>Configure how data syncs between Helios and connected platforms</p>
 
                   <div className="sync-settings">

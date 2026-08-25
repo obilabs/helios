@@ -575,7 +575,7 @@ const RulesEnginePage: React.FC = () => {
             <div className="modal-header">
               <h2>Test Rule: {testRule.name}</h2>
               <button className="btn-icon" onClick={() => setShowTestModal(false)}>
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
             <div className="modal-body">
@@ -637,7 +637,7 @@ const RulesEnginePage: React.FC = () => {
                 }
               </h2>
               <button className="btn-icon" onClick={() => setShowEditor(false)}>
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
             <div className="modal-body">
