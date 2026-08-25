@@ -461,3 +461,222 @@ export function dataTransferGet(transferId: string): GoogleApiRequest {
 export function dataTransferList(maxResults = 20): GoogleApiRequest {
   return { method: 'GET', path: withQuery(`${DATATRANSFER_BASE}/transfers`, { maxResults }) };
 }
+
+// ===========================================================================
+// Admin SDK Directory  (admin.googleapis.com / admin/directory/v1)
+//
+// These builders cover the directory + lifecycle operations that GAM/PSGSuite
+// expose but Helios's DeveloperConsole was previously missing: undeleting a
+// recently-deleted user, custom-schema (custom-attribute) CRUD and reading /
+// writing a user's schema values, listing user aliases, group aliases, and the
+// group-member operations (get + change role) that had no wrapper.
+//
+// All of these run in the ADMIN context — the Directory API is a domain-admin
+// surface — so they never set `impersonate` (no X-Impersonate-User header),
+// matching the Drive / Data-Transfer builders above.
+// ===========================================================================
+
+const DIRECTORY_BASE = '/api/google/admin/directory/v1';
+/** The Directory API accepts the literal `my_customer` for the caller's own account. */
+const MY_CUSTOMER = 'my_customer';
+
+// ----- Users: lifecycle -----
+
+/**
+ * Directory: users.undelete — POST /admin/directory/v1/users/{userKey}/undelete
+ *
+ * Restores a user deleted within Google's ~20-day recovery window. This is NOT
+ * the same as un-suspending (`{suspended:false}` via users.update): undelete
+ * brings back a *deleted* account, and `userKey` must be the user's immutable
+ * 21-char ID (the primary email no longer resolves once deleted). The body is a
+ * UserUndelete resource whose only field is the OU to restore the user into.
+ * GAM equivalent: `gam undelete user <id> [ou </Path>]`.
+ */
+export function usersUndelete(userKey: string, orgUnitPath = '/'): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${DIRECTORY_BASE}/users/${seg(userKey)}/undelete`,
+    body: { orgUnitPath },
+  };
+}
+
+/**
+ * Directory: users.get with custom schema values —
+ * GET /admin/directory/v1/users/{userKey}?projection=full
+ *   (or `?projection=custom&customFieldMask={schema}` for a single schema)
+ *
+ * A plain users.get returns `projection=basic`, which OMITS custom schema
+ * values entirely, so reading a custom attribute needs an explicit projection.
+ * Google only allows `customFieldMask` when `projection=custom`; passing a mask
+ * with `projection=full` is rejected — so this picks the projection from whether
+ * a mask was supplied. GAM equivalent: `gam info user <email> schemas`.
+ */
+export function usersGetCustomSchemas(userKey: string, customFieldMask?: string): GoogleApiRequest {
+  const projection = customFieldMask ? 'custom' : 'full';
+  return {
+    method: 'GET',
+    path: withQuery(`${DIRECTORY_BASE}/users/${seg(userKey)}`, { projection, customFieldMask }),
+  };
+}
+
+/**
+ * Directory: users.update (custom attributes) —
+ * PATCH /admin/directory/v1/users/{userKey}  body {customSchemas:{[schema]:{...}}}
+ *
+ * Sets one custom schema's field values on a user. `fields` is the map of
+ * fieldName -> value inside the named schema (single-valued fields take a
+ * scalar; multi-valued fields take an array of `{value, type?}` per Google).
+ * GAM equivalent: `gam update user <email> schema <schema>.<field> <value>`.
+ */
+export function usersSetCustomSchema(
+  userKey: string,
+  schemaName: string,
+  fields: Record<string, unknown>,
+): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${DIRECTORY_BASE}/users/${seg(userKey)}`,
+    body: { customSchemas: { [schemaName]: fields } },
+  };
+}
+
+// ----- Users: aliases -----
+
+/** Directory: users.aliases.list — GET /admin/directory/v1/users/{userKey}/aliases */
+export function userAliasesList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/aliases` };
+}
+
+/** Directory: users.aliases.insert — POST /admin/directory/v1/users/{userKey}/aliases  body {alias} */
+export function userAliasesInsert(userKey: string, alias: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${DIRECTORY_BASE}/users/${seg(userKey)}/aliases`,
+    body: { alias },
+  };
+}
+
+/** Directory: users.aliases.delete — DELETE /admin/directory/v1/users/{userKey}/aliases/{alias} */
+export function userAliasesDelete(userKey: string, alias: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${DIRECTORY_BASE}/users/${seg(userKey)}/aliases/${seg(alias)}`,
+  };
+}
+
+// ----- Groups: aliases -----
+
+/** Directory: groups.aliases.list — GET /admin/directory/v1/groups/{groupKey}/aliases */
+export function groupAliasesList(groupKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/groups/${seg(groupKey)}/aliases` };
+}
+
+/** Directory: groups.aliases.insert — POST /admin/directory/v1/groups/{groupKey}/aliases  body {alias} */
+export function groupAliasesInsert(groupKey: string, alias: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${DIRECTORY_BASE}/groups/${seg(groupKey)}/aliases`,
+    body: { alias },
+  };
+}
+
+/** Directory: groups.aliases.delete — DELETE /admin/directory/v1/groups/{groupKey}/aliases/{alias} */
+export function groupAliasesDelete(groupKey: string, alias: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${DIRECTORY_BASE}/groups/${seg(groupKey)}/aliases/${seg(alias)}`,
+  };
+}
+
+// ----- Groups: members (the ops missing a wrapper) -----
+
+/** Directory: members.get — GET /admin/directory/v1/groups/{groupKey}/members/{memberKey} */
+export function groupMembersGet(groupKey: string, memberKey: string): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: `${DIRECTORY_BASE}/groups/${seg(groupKey)}/members/${seg(memberKey)}`,
+  };
+}
+
+/**
+ * Directory: members.patch (change role) —
+ * PATCH /admin/directory/v1/groups/{groupKey}/members/{memberKey}  body {role}
+ * `role` is one of MEMBER | MANAGER | OWNER. GAM equivalent:
+ * `gam update group <group> update <role> <member>`.
+ */
+export function groupMembersSetRole(
+  groupKey: string,
+  memberKey: string,
+  role: string,
+): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${DIRECTORY_BASE}/groups/${seg(groupKey)}/members/${seg(memberKey)}`,
+    body: { role },
+  };
+}
+
+// ----- Custom schemas (custom attributes) — customer level -----
+
+export interface SchemaFieldSpec {
+  fieldName: string;
+  /** STRING | INT64 | BOOL | DATE | DOUBLE | EMAIL | PHONE */
+  fieldType: string;
+  multiValued?: boolean;
+  indexed?: boolean;
+  /** ADMINS_AND_SELF | ALL_DOMAIN_USERS */
+  readAccessType?: string;
+}
+
+export interface SchemaResource {
+  schemaName: string;
+  displayName?: string;
+  fields: SchemaFieldSpec[];
+}
+
+/** Directory: schemas.list — GET /admin/directory/v1/customer/my_customer/schemas */
+export function schemasList(): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/customer/${MY_CUSTOMER}/schemas` };
+}
+
+/** Directory: schemas.get — GET /admin/directory/v1/customer/my_customer/schemas/{schemaKey} */
+export function schemasGet(schemaKey: string): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: `${DIRECTORY_BASE}/customer/${MY_CUSTOMER}/schemas/${seg(schemaKey)}`,
+  };
+}
+
+/**
+ * Directory: schemas.insert — POST /admin/directory/v1/customer/my_customer/schemas
+ * Body is the Schema resource (schemaName + displayName + fields[]). GAM
+ * equivalent: `gam create schema <name> field <field> type <type> ...`.
+ */
+export function schemasInsert(schema: SchemaResource): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: `${DIRECTORY_BASE}/customer/${MY_CUSTOMER}/schemas`,
+    body: {
+      schemaName: schema.schemaName,
+      displayName: schema.displayName ?? schema.schemaName,
+      fields: schema.fields,
+    },
+  };
+}
+
+/** Directory: schemas.patch — PATCH /admin/directory/v1/customer/my_customer/schemas/{schemaKey} */
+export function schemasPatch(schemaKey: string, patch: Record<string, unknown>): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${DIRECTORY_BASE}/customer/${MY_CUSTOMER}/schemas/${seg(schemaKey)}`,
+    body: patch,
+  };
+}
+
+/** Directory: schemas.delete — DELETE /admin/directory/v1/customer/my_customer/schemas/{schemaKey} */
+export function schemasDelete(schemaKey: string): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${DIRECTORY_BASE}/customer/${MY_CUSTOMER}/schemas/${seg(schemaKey)}`,
+  };
+}

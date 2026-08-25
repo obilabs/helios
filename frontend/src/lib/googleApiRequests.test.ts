@@ -357,6 +357,223 @@ describe('Data Transfer', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Admin SDK Directory — user lifecycle + custom schemas + aliases + members.
+// These are admin-context (Directory API) calls: they must NEVER carry an
+// `impersonate` field, and query options must live in the path, not a body.
+// ---------------------------------------------------------------------------
+const GROUP = 'team@corp.com';
+const GROUP_ENC = 'team%40corp.com';
+
+describe('Directory — user lifecycle', () => {
+  it('undelete -> POST users/{userKey}/undelete with {orgUnitPath}', () => {
+    expect(g.usersUndelete('112233445566778899', '/Staff')).toEqual({
+      method: 'POST',
+      path: '/api/google/admin/directory/v1/users/112233445566778899/undelete',
+      body: { orgUnitPath: '/Staff' },
+    });
+  });
+
+  it('undelete defaults orgUnitPath to root and never impersonates', () => {
+    const req = g.usersUndelete('112233445566778899');
+    expect(req.body).toEqual({ orgUnitPath: '/' });
+    expect(req.impersonate).toBeUndefined();
+  });
+
+  it('getCustomSchemas without a mask -> GET users/{key}?projection=full (no body)', () => {
+    const req = g.usersGetCustomSchemas(USER);
+    expect(req.method).toBe('GET');
+    expect(req.body).toBeUndefined();
+    expect(req.path).toBe(`/api/google/admin/directory/v1/users/${USER_ENC}?projection=full`);
+    expect(req.impersonate).toBeUndefined();
+  });
+
+  it('getCustomSchemas WITH a mask -> projection=custom&customFieldMask (Google rejects a mask on full)', () => {
+    expect(g.usersGetCustomSchemas(USER, 'HR').path).toBe(
+      `/api/google/admin/directory/v1/users/${USER_ENC}?projection=custom&customFieldMask=HR`,
+    );
+  });
+
+  it('setCustomSchema -> PATCH users/{key} with nested {customSchemas:{[schema]:fields}}', () => {
+    expect(g.usersSetCustomSchema(USER, 'HR', { employeeId: 'E-1042', level: 3 })).toEqual({
+      method: 'PATCH',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}`,
+      body: { customSchemas: { HR: { employeeId: 'E-1042', level: 3 } } },
+    });
+  });
+});
+
+describe('Directory — user aliases', () => {
+  it('list -> GET users/{key}/aliases (no body)', () => {
+    const req = g.userAliasesList(USER);
+    expect(req).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/aliases`,
+    });
+    expect(req.body).toBeUndefined();
+  });
+
+  it('insert -> POST users/{key}/aliases with {alias}', () => {
+    expect(g.userAliasesInsert(USER, 'johnny@corp.com')).toEqual({
+      method: 'POST',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/aliases`,
+      body: { alias: 'johnny@corp.com' },
+    });
+  });
+
+  it('delete -> DELETE users/{key}/aliases/{alias} (encoded)', () => {
+    expect(g.userAliasesDelete(USER, 'johnny@corp.com')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/aliases/johnny%40corp.com`,
+    });
+  });
+});
+
+describe('Directory — group aliases', () => {
+  it('list -> GET groups/{key}/aliases', () => {
+    expect(g.groupAliasesList(GROUP)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/groups/${GROUP_ENC}/aliases`,
+    });
+  });
+
+  it('insert -> POST groups/{key}/aliases with {alias}', () => {
+    expect(g.groupAliasesInsert(GROUP, 'crew@corp.com')).toEqual({
+      method: 'POST',
+      path: `/api/google/admin/directory/v1/groups/${GROUP_ENC}/aliases`,
+      body: { alias: 'crew@corp.com' },
+    });
+  });
+
+  it('delete -> DELETE groups/{key}/aliases/{alias} (encoded)', () => {
+    expect(g.groupAliasesDelete(GROUP, 'crew@corp.com')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/groups/${GROUP_ENC}/aliases/crew%40corp.com`,
+    });
+  });
+});
+
+describe('Directory — group members (get + role change)', () => {
+  it('get -> GET groups/{key}/members/{memberKey}', () => {
+    expect(g.groupMembersGet(GROUP, USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/groups/${GROUP_ENC}/members/${USER_ENC}`,
+    });
+  });
+
+  it('setRole -> PATCH groups/{key}/members/{memberKey} with {role}', () => {
+    expect(g.groupMembersSetRole(GROUP, USER, 'MANAGER')).toEqual({
+      method: 'PATCH',
+      path: `/api/google/admin/directory/v1/groups/${GROUP_ENC}/members/${USER_ENC}`,
+      body: { role: 'MANAGER' },
+    });
+  });
+});
+
+describe('Directory — custom schemas (customer)', () => {
+  it('list -> GET customer/my_customer/schemas', () => {
+    expect(g.schemasList()).toEqual({
+      method: 'GET',
+      path: '/api/google/admin/directory/v1/customer/my_customer/schemas',
+    });
+  });
+
+  it('get -> GET customer/my_customer/schemas/{schemaKey}', () => {
+    expect(g.schemasGet('HR')).toEqual({
+      method: 'GET',
+      path: '/api/google/admin/directory/v1/customer/my_customer/schemas/HR',
+    });
+  });
+
+  it('insert -> POST schemas with schemaName + fields; displayName defaults to schemaName', () => {
+    expect(
+      g.schemasInsert({ schemaName: 'HR', fields: [{ fieldName: 'employeeId', fieldType: 'STRING' }] }),
+    ).toEqual({
+      method: 'POST',
+      path: '/api/google/admin/directory/v1/customer/my_customer/schemas',
+      body: {
+        schemaName: 'HR',
+        displayName: 'HR',
+        fields: [{ fieldName: 'employeeId', fieldType: 'STRING' }],
+      },
+    });
+  });
+
+  it('insert passes an explicit displayName + multi-valued field through unchanged', () => {
+    const req = g.schemasInsert({
+      schemaName: 'HR',
+      displayName: 'Human Resources',
+      fields: [{ fieldName: 'certifications', fieldType: 'STRING', multiValued: true }],
+    });
+    expect(req.body).toEqual({
+      schemaName: 'HR',
+      displayName: 'Human Resources',
+      fields: [{ fieldName: 'certifications', fieldType: 'STRING', multiValued: true }],
+    });
+  });
+
+  it('patch -> PATCH schemas/{schemaKey} (merge patch body passed through)', () => {
+    expect(g.schemasPatch('HR', { displayName: 'People Ops' })).toEqual({
+      method: 'PATCH',
+      path: '/api/google/admin/directory/v1/customer/my_customer/schemas/HR',
+      body: { displayName: 'People Ops' },
+    });
+  });
+
+  it('delete -> DELETE schemas/{schemaKey}', () => {
+    expect(g.schemasDelete('HR')).toEqual({
+      method: 'DELETE',
+      path: '/api/google/admin/directory/v1/customer/my_customer/schemas/HR',
+    });
+  });
+});
+
+describe('Directory — admin-context invariants', () => {
+  it('no Directory builder sets an impersonation target', () => {
+    const adminContext: g.GoogleApiRequest[] = [
+      g.usersUndelete('id'),
+      g.usersGetCustomSchemas(USER),
+      g.usersGetCustomSchemas(USER, 'HR'),
+      g.usersSetCustomSchema(USER, 'HR', { a: 1 }),
+      g.userAliasesList(USER),
+      g.userAliasesInsert(USER, 'x@corp.com'),
+      g.userAliasesDelete(USER, 'x@corp.com'),
+      g.groupAliasesList(GROUP),
+      g.groupAliasesInsert(GROUP, 'x@corp.com'),
+      g.groupAliasesDelete(GROUP, 'x@corp.com'),
+      g.groupMembersGet(GROUP, USER),
+      g.groupMembersSetRole(GROUP, USER, 'OWNER'),
+      g.schemasList(),
+      g.schemasGet('HR'),
+      g.schemasInsert({ schemaName: 'HR', fields: [{ fieldName: 'f', fieldType: 'STRING' }] }),
+      g.schemasPatch('HR', { displayName: 'x' }),
+      g.schemasDelete('HR'),
+    ];
+    for (const req of adminContext) {
+      expect(req.impersonate).toBeUndefined();
+      expect(req.path.startsWith('/api/google/admin/directory/v1/')).toBe(true);
+    }
+  });
+
+  it('Directory GET/DELETE builders carry no body', () => {
+    const noBody: g.GoogleApiRequest[] = [
+      g.usersGetCustomSchemas(USER),
+      g.userAliasesList(USER),
+      g.userAliasesDelete(USER, 'x@corp.com'),
+      g.groupAliasesList(GROUP),
+      g.groupAliasesDelete(GROUP, 'x@corp.com'),
+      g.groupMembersGet(GROUP, USER),
+      g.schemasList(),
+      g.schemasGet('HR'),
+      g.schemasDelete('HR'),
+    ];
+    for (const req of noBody) {
+      expect(req.method === 'GET' || req.method === 'DELETE').toBe(true);
+      expect(req.body).toBeUndefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Impersonation targeting (X-Impersonate-User)
 // ---------------------------------------------------------------------------
 describe('impersonation targeting', () => {
