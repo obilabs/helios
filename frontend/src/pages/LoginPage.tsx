@@ -372,7 +372,7 @@ export function LoginPage({ onLoginSuccess, organizationDomain: _organizationDom
 
             <div className="login-footer">
               <div className="security-note">
-                Self-hosted. Fully audited. Complete control.
+                Self-hosted. Full audit trail. Complete control.
               </div>
             </div>
           </form>
