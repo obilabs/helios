@@ -525,12 +525,15 @@ export class LifecycleNotificationService {
    */
   private async getEmailTemplate(templateType: string): Promise<{ subject: string; body: string }> {
     try {
+      // Canonical email_templates shape is (template_key, subject, body_html,
+      // is_active); body_html is aliased to body to preserve this method's
+      // {subject, body} contract. Falls back to getDefaultTemplate when no
+      // org-specific row exists.
       const result = await db.query(
-        `SELECT subject, body FROM email_templates
-         WHERE (organization_id = $1 OR organization_id IS NULL)
-           AND template_type = $2
-           AND is_default = true
-         ORDER BY organization_id NULLS LAST
+        `SELECT subject, body_html AS body FROM email_templates
+         WHERE organization_id = $1
+           AND template_key = $2
+           AND is_active = true
          LIMIT 1`,
         [this.organizationId, templateType]
       );

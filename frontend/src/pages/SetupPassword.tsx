@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AlertTriangle, KeyRound } from 'lucide-react';
 import './SetupPassword.css';
 
 interface VerificationResult {
@@ -136,7 +137,7 @@ export function SetupPassword() {
       <div className="setup-password-container">
         <div className="setup-password-card">
           <div className="error-state">
-            <div className="error-icon">⚠️</div>
+            <div className="error-icon"><AlertTriangle size={48} /></div>
             <h2>Invalid Setup Link</h2>
             <p className="error-message">{tokenError}</p>
             <p className="error-help">
@@ -159,7 +160,7 @@ export function SetupPassword() {
     <div className="setup-password-container">
       <div className="setup-password-card">
         <div className="setup-header">
-          <div className="setup-logo">🔐</div>
+          <div className="setup-logo"><KeyRound size={48} /></div>
           <h1>Set Up Your Password</h1>
           <p className="setup-subtitle">
             Welcome, {userInfo?.firstName}! Please create a password for your account.
@@ -201,7 +202,7 @@ export function SetupPassword() {
 
           {error && (
             <div className="error-message">
-              ⚠️ {error}
+              <AlertTriangle size={16} /> <span>{error}</span>
             </div>
           )}
 

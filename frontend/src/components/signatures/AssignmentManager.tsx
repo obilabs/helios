@@ -73,42 +73,42 @@ const ASSIGNMENT_TYPE_CONFIG: {
     type: 'user',
     label: 'Individual Users',
     description: 'Assign to specific users (highest priority)',
-    icon: <UserCircle size={18} />,
+    icon: <UserCircle size={16} />,
     priority: 10,
   },
   {
     type: 'dynamic_group',
     label: 'Dynamic Groups',
     description: 'Assign based on rule-based group membership',
-    icon: <Sparkles size={18} />,
+    icon: <Sparkles size={16} />,
     priority: 20,
   },
   {
     type: 'group',
     label: 'Static Groups',
     description: 'Assign to static access groups',
-    icon: <Users size={18} />,
+    icon: <Users size={16} />,
     priority: 30,
   },
   {
     type: 'department',
     label: 'Departments',
     description: 'Assign to all users in a department',
-    icon: <Building2 size={18} />,
+    icon: <Building2 size={16} />,
     priority: 40,
   },
   {
     type: 'ou',
     label: 'Organizational Units',
     description: 'Assign based on Google Workspace OU',
-    icon: <FolderTree size={18} />,
+    icon: <FolderTree size={16} />,
     priority: 50,
   },
   {
     type: 'organization',
     label: 'Organization Default',
     description: 'Apply to all users (lowest priority)',
-    icon: <Globe size={18} />,
+    icon: <Globe size={16} />,
     priority: 100,
   },
 ];
@@ -317,7 +317,7 @@ const AssignmentManager: React.FC<AssignmentManagerProps> = ({
 
   const getTypeIcon = (type: AssignmentType) => {
     const config = ASSIGNMENT_TYPE_CONFIG.find(t => t.type === type);
-    return config?.icon || <Users size={18} />;
+    return config?.icon || <Users size={16} />;
   };
 
   const getTypeLabel = (type: AssignmentType) => {
@@ -345,7 +345,7 @@ const AssignmentManager: React.FC<AssignmentManagerProps> = ({
           )}
           {onClose && (
             <button className="btn-icon" onClick={onClose}>
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
         </div>

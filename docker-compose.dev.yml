@@ -180,13 +180,14 @@ services:
       - ./frontend/vite.config.ts:/app/vite.config.ts
     command: npm run dev -- --host 0.0.0.0
 
+# No explicit `name:` — see docker-compose.yml for the rationale. An explicit
+# name ignores the `-p` project prefix and shares volumes/network across every
+# stack; project-scoped names keep the default `helios` project's resource names
+# unchanged while isolating any parallel stack.
 volumes:
   postgres_data:
-    name: helios_postgres_data
   minio_data:
-    name: helios_minio_data
 
 networks:
   helios_network:
-    name: helios_network
     driver: bridge

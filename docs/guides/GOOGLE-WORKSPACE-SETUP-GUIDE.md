@@ -72,12 +72,34 @@ Each organization MUST use their own service account for:
 5. Click **"Create"**
 6. **SAVE THE DOWNLOADED FILE** - You'll need this for Helios
 
+> **Use JSON, not P12** — Helios consumes the JSON service-account key.
+>
+> ⚠️ **If "Create key" is greyed out or fails with a policy error,** your Google
+> Cloud organization blocks key creation by default under the **"Secure by
+> Default"** org policy `iam.disableServiceAccountKeyCreation`. This is common on
+> newer organizations. See **Troubleshooting → "Service account key creation is
+> disabled"** below for the one-time override, then return here and create the key.
+
 ### 2.5 Note the Client ID
 1. Go back to the **"Details"** tab
 2. Copy the **"Unique ID"** (this is your Client ID)
 3. You'll need this for Domain-Wide Delegation setup
 
 ## Step 3: Configure Domain-Wide Delegation
+
+> **Fastest path — use the Helios wizard's pre-filled link.** When you reach the
+> connect wizard (Step 4), its **"Authorize API scopes"** step has a **Copy
+> scopes** button and an **"Open pre-filled authorization"** link that opens the
+> Admin console's Domain-Wide Delegation page with your Client ID **and all 17
+> scopes already filled in** — you just click **Authorize**. The manual steps
+> below are the fallback (or use them if you prefer to authorize before opening
+> Helios).
+>
+> Field gotchas with the pre-filled link: if nothing opens, your browser blocked
+> the pop-up — copy the link and open it directly. Google may prompt you to
+> re-enter your admin password first. Delegation changes take a few minutes to
+> propagate, so if **Test Connection** fails right after authorizing, wait a
+> minute and retry. (See Troubleshooting below.)
 
 ### 3.1 Access Google Admin Console
 1. Go to [Google Admin Console](https://admin.google.com)
@@ -198,6 +220,36 @@ Each organization MUST use their own service account for:
 1. Verify Domain-Wide Delegation is authorized
 2. Check admin email belongs to the correct domain
 3. Ensure Admin SDK API is enabled in Google Cloud
+
+#### ❌ "Service account key creation is disabled" (can't download the JSON key)
+**Cause:** Your Google Cloud **organization** enforces the org policy
+`iam.disableServiceAccountKeyCreation` (Google's **"Secure by Default"** posture),
+which blocks service-account key creation org-wide. Newer Google organizations
+have this enabled by default, so **Step 2.4** fails before you ever reach Helios.
+**Solution:** an **Organization Policy Administrator** (`roles/orgpolicy.policyAdmin`)
+adds a one-time exception:
+1. Google Cloud Console → **IAM & Admin** → **Organization Policies**
+2. Search **"Disable service account key creation"**
+   (`constraints/iam.disableServiceAccountKeyCreation`)
+3. **Manage policy** → **Override parent's policy**
+4. **Add a rule** → set **Enforcement: Off**
+   *(the console rejects an empty override with "At least one rule is required" —
+   you must add a rule, not just flip the top toggle)*
+5. **Set policy**, then wait ~1 minute for it to propagate
+6. Return to the service account → **Keys** → **Add key** → **Create new key** →
+   **JSON**
+7. For security, re-tighten the policy afterward — or scope the exception to only
+   the project that holds this service account, rather than the whole org.
+
+#### ❌ Pre-filled Domain-Wide Delegation link won't open or won't authorize
+**Cause:** browser pop-up blocking, a password re-check, or propagation delay.
+**Solution:**
+- **Nothing opened:** your browser blocked the pop-up — copy the link and paste it
+  into the address bar of the same tab.
+- **Asked for your password:** Google re-verifies your identity before authorizing
+  delegation. Re-enter your admin password and continue.
+- **Authorized, but Test Connection still fails:** delegation changes take a few
+  minutes to propagate. Wait a minute and click **Test Connection** again.
 
 ## Security Best Practices
 

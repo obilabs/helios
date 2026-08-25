@@ -330,10 +330,6 @@
   flex-shrink: 0;
 }
 
-.palette-block-icon-emoji {
-  font-size: 16px;
-}
-
 .palette-block-info {
   flex: 1;
   min-width: 0;
@@ -557,10 +553,6 @@
   flex-shrink: 0;
 }
 
-.block-emoji {
-  font-size: 20px;
-}
-
 .block-content {
   flex: 1;
   min-width: 0;
@@ -670,7 +662,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 18px;
 }
 
 .block-config-title h4 {
