@@ -64,12 +64,12 @@ interface OnboardingProgress {
 }
 
 const CONTENT_TYPE_ICONS: Record<string, React.ReactNode> = {
-  video: <Video size={18} />,
-  document: <FileText size={18} />,
-  terms: <ClipboardCheck size={18} />,
-  quiz: <CheckSquare size={18} />,
-  link: <Link2 size={18} />,
-  checklist: <CheckSquare size={18} />,
+  video: <Video size={16} />,
+  document: <FileText size={16} />,
+  terms: <ClipboardCheck size={16} />,
+  quiz: <CheckSquare size={16} />,
+  link: <Link2 size={16} />,
+  checklist: <CheckSquare size={16} />,
 };
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
@@ -327,7 +327,7 @@ const UserOnboardingPortal: React.FC = () => {
                 {getPendingTasks().slice(0, 3).map(task => (
                   <div key={task.id} className="next-up-item">
                     <div className="item-icon task">
-                      <Circle size={18} />
+                      <Circle size={16} />
                     </div>
                     <div className="item-content">
                       <span className="item-title">{task.title}</span>
@@ -344,7 +344,7 @@ const UserOnboardingPortal: React.FC = () => {
                       className="btn-complete"
                       onClick={() => handleCompleteTask(task.id)}
                     >
-                      <CheckCircle2 size={18} />
+                      <CheckCircle2 size={16} />
                     </button>
                   </div>
                 ))}
@@ -392,7 +392,7 @@ const UserOnboardingPortal: React.FC = () => {
                     .slice(0, 5)
                     .map(task => (
                       <div key={task.id} className="completed-item">
-                        <CheckCircle2 size={18} className="check-icon" />
+                        <CheckCircle2 size={16} className="check-icon" />
                         <span>{task.title}</span>
                       </div>
                     ))}
@@ -401,7 +401,7 @@ const UserOnboardingPortal: React.FC = () => {
                     .slice(0, 5)
                     .map(item => (
                       <div key={item.id} className="completed-item">
-                        <CheckCircle2 size={18} className="check-icon" />
+                        <CheckCircle2 size={16} className="check-icon" />
                         <span>{item.title}</span>
                         {item.score !== undefined && (
                           <span className="score">{item.score}%</span>
@@ -470,7 +470,7 @@ const UserOnboardingPortal: React.FC = () => {
                           </div>
                         </div>
                         {task.status !== 'completed' && (
-                          <ChevronRight size={18} className="chevron" />
+                          <ChevronRight size={16} className="chevron" />
                         )}
                       </div>
                     ))}

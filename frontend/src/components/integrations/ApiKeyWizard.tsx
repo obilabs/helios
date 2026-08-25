@@ -410,7 +410,7 @@ export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSucce
                       <div className="permission-description">{permission.description}</div>
                     </div>
                     {config.permissions.includes(permission.value) && (
-                      <CheckCircle size={18} className="permission-check" />
+                      <CheckCircle size={16} className="permission-check" />
                     )}
                   </label>
                 ))}

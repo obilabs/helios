@@ -380,9 +380,9 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate: _onNavigate }) =>
                   <div key={item.id} className={`attention-item ${item.severity}`}>
                     <div className="attention-icon">
                       {item.severity === 'critical' ? (
-                        <AlertCircle size={18} />
+                        <AlertCircle size={16} />
                       ) : (
-                        <AlertTriangle size={18} />
+                        <AlertTriangle size={16} />
                       )}
                     </div>
                     <div className="attention-info">

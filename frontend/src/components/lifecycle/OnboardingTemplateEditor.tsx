@@ -313,10 +313,10 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('basic')}
           >
             <div className="section-title">
-              <Info size={18} />
+              <Info size={16} />
               <span>Basic Information</span>
             </div>
-            {expandedSections.basic ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.basic ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.basic && (
@@ -401,10 +401,10 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('google')}
           >
             <div className="section-title">
-              <Building2 size={18} />
+              <Building2 size={16} />
               <span>Google Workspace Settings</span>
             </div>
-            {expandedSections.google ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.google ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.google && (
@@ -473,13 +473,13 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('groups')}
           >
             <div className="section-title">
-              <Users size={18} />
+              <Users size={16} />
               <span>Group Memberships</span>
               {template.groupIds.length > 0 && (
                 <span className="badge">{template.groupIds.length}</span>
               )}
             </div>
-            {expandedSections.groups ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.groups ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.groups && (
@@ -517,10 +517,10 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('email')}
           >
             <div className="section-title">
-              <Mail size={18} />
+              <Mail size={16} />
               <span>Welcome Email</span>
             </div>
-            {expandedSections.email ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.email ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.email && (
@@ -581,13 +581,13 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
             onClick={() => toggleSection('timeline')}
           >
             <div className="section-title">
-              <Clock size={18} />
+              <Clock size={16} />
               <span>Timeline Actions</span>
               {template.timeline.length > 0 && (
                 <span className="badge">{template.timeline.length}</span>
               )}
             </div>
-            {expandedSections.timeline ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expandedSections.timeline ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
 
           {expandedSections.timeline && (

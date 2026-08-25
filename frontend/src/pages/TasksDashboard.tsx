@@ -322,7 +322,7 @@ const TasksDashboard: React.FC = () => {
             {groupedTasks.overdue.length > 0 && filter !== 'completed' && (
               <div className="task-section">
                 <h2 className="section-title overdue">
-                  <AlertTriangle size={18} />
+                  <AlertTriangle size={16} />
                   Overdue ({groupedTasks.overdue.length})
                 </h2>
                 <div className="task-list">
@@ -343,7 +343,7 @@ const TasksDashboard: React.FC = () => {
             {groupedTasks.today.length > 0 && filter !== 'completed' && (
               <div className="task-section">
                 <h2 className="section-title today">
-                  <Calendar size={18} />
+                  <Calendar size={16} />
                   Due Today ({groupedTasks.today.length})
                 </h2>
                 <div className="task-list">
@@ -364,7 +364,7 @@ const TasksDashboard: React.FC = () => {
             {groupedTasks.upcoming.length > 0 && filter !== 'completed' && (
               <div className="task-section">
                 <h2 className="section-title upcoming">
-                  <Clock size={18} />
+                  <Clock size={16} />
                   Upcoming ({groupedTasks.upcoming.length})
                 </h2>
                 <div className="task-list">
@@ -385,7 +385,7 @@ const TasksDashboard: React.FC = () => {
             {groupedTasks.noDueDate.length > 0 && filter !== 'completed' && (
               <div className="task-section">
                 <h2 className="section-title">
-                  <Clock size={18} />
+                  <Clock size={16} />
                   No Due Date ({groupedTasks.noDueDate.length})
                 </h2>
                 <div className="task-list">
@@ -406,7 +406,7 @@ const TasksDashboard: React.FC = () => {
             {groupedTasks.completed.length > 0 && filter === 'completed' && (
               <div className="task-section">
                 <h2 className="section-title completed">
-                  <CheckCircle2 size={18} />
+                  <CheckCircle2 size={16} />
                   Completed ({groupedTasks.completed.length})
                 </h2>
                 <div className="task-list">

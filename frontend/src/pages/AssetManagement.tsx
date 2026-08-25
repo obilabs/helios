@@ -81,12 +81,12 @@ export function AssetManagement({ organizationId: _organizationId }: AssetManage
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      'Active': '#4caf50',
-      'Inactive': '#f44336',
-      'Maintenance': '#ff9800',
-      'Retired': '#9e9e9e'
+      'Active': 'var(--color-success)',
+      'Inactive': 'var(--color-error)',
+      'Maintenance': 'var(--color-warning)',
+      'Retired': 'var(--color-gray-400)'
     };
-    return colors[status] || '#9e9e9e';
+    return colors[status] || 'var(--color-gray-400)';
   };
 
   const filteredAssets = assets.filter((asset: Asset) => {
