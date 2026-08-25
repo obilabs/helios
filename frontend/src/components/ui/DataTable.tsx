@@ -265,6 +265,7 @@ export function DataTable<T>({
                         <td
                           key={cell.id}
                           className="data-table-td"
+                          data-label={typeof cell.column.columnDef.header === 'string' ? cell.column.columnDef.header : ''}
                           style={{
                             width: `calc(var(--col-${cell.column.id}-size) * 1px)`,
                             minWidth: cell.column.columnDef.minSize,
@@ -288,6 +289,7 @@ export function DataTable<T>({
                       <td
                         key={cell.id}
                         className="data-table-td"
+                        data-label={typeof cell.column.columnDef.header === 'string' ? cell.column.columnDef.header : ''}
                         style={{
                           width: `calc(var(--col-${cell.column.id}-size) * 1px)`,
                           minWidth: cell.column.columnDef.minSize,
