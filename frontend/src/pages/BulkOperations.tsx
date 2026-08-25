@@ -854,7 +854,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                 </div>
               )}
 
-              <div className="preview-table-container">
+              <div className="preview-table-container responsive-table">
                 <table className="preview-table bulk-editor-table">
                   <thead>
                     <tr>
@@ -893,7 +893,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                             ${columns.some(col => hasPendingEdit(absoluteIndex, col)) ? 'row-has-edits' : ''}
                           `}
                         >
-                          <td className="checkbox-column">
+                          <td className="checkbox-column" data-label="">
                             <button
                               className="checkbox-btn"
                               onClick={() => handleSelectRow(absoluteIndex)}
@@ -901,7 +901,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                               {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                             </button>
                           </td>
-                          <td className="row-number-column">{absoluteIndex + 1}</td>
+                          <td className="row-number-column" data-label="#">{absoluteIndex + 1}</td>
                           {columns.map((column) => {
                             const originalValue = item[column];
                             const displayValue = getCellValue(absoluteIndex, column, originalValue);
@@ -911,6 +911,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
                             return (
                               <td
                                 key={column}
+                                data-label={column}
                                 className={`
                                   editable-cell
                                   ${isPendingEdit ? 'cell-pending-edit' : ''}
