@@ -17,12 +17,15 @@ const USER_ENC = 'jane%40corp.com';
 
 // ---------------------------------------------------------------------------
 // Gmail — delegates
+// Per-user Gmail requests carry `impersonate: <mailbox owner>` so runGoogle
+// sends X-Impersonate-User and the proxy acts AS that user (not the admin).
 // ---------------------------------------------------------------------------
 describe('Gmail delegates', () => {
   it('list -> GET settings/delegates', () => {
     expect(g.gmailListDelegates(USER)).toEqual({
       method: 'GET',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/delegates`,
+      impersonate: USER,
     });
   });
 
@@ -31,6 +34,7 @@ describe('Gmail delegates', () => {
       method: 'POST',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/delegates`,
       body: { delegateEmail: 'boss@corp.com' },
+      impersonate: USER,
     });
   });
 
@@ -38,6 +42,7 @@ describe('Gmail delegates', () => {
     expect(g.gmailRemoveDelegate(USER, 'boss@corp.com')).toEqual({
       method: 'DELETE',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/delegates/boss%40corp.com`,
+      impersonate: USER,
     });
   });
 });
@@ -50,6 +55,7 @@ describe('Gmail forwarding', () => {
     expect(g.gmailGetAutoForwarding(USER)).toEqual({
       method: 'GET',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/autoForwarding`,
+      impersonate: USER,
     });
   });
 
@@ -58,6 +64,7 @@ describe('Gmail forwarding', () => {
       method: 'POST',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/forwardingAddresses`,
       body: { forwardingEmail: 'fwd@corp.com' },
+      impersonate: USER,
     });
   });
 
@@ -72,6 +79,7 @@ describe('Gmail forwarding', () => {
       method: 'PUT',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/autoForwarding`,
       body: { enabled: true, emailAddress: 'fwd@corp.com', disposition: 'leaveInInbox' },
+      impersonate: USER,
     });
   });
 
@@ -80,6 +88,7 @@ describe('Gmail forwarding', () => {
       method: 'PUT',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/autoForwarding`,
       body: { enabled: false },
+      impersonate: USER,
     });
   });
 });
@@ -92,6 +101,7 @@ describe('Gmail vacation', () => {
     expect(g.gmailGetVacation(USER)).toEqual({
       method: 'GET',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/vacation`,
+      impersonate: USER,
     });
   });
 
@@ -108,6 +118,7 @@ describe('Gmail vacation', () => {
       method: 'PUT',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/vacation`,
       body,
+      impersonate: USER,
     });
   });
 });
@@ -120,6 +131,7 @@ describe('Gmail sendAs and signature', () => {
     expect(g.gmailGetSendAs(USER, USER)).toEqual({
       method: 'GET',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/sendAs/${USER_ENC}`,
+      impersonate: USER,
     });
   });
 
@@ -127,6 +139,7 @@ describe('Gmail sendAs and signature', () => {
     expect(g.gmailListSendAs(USER)).toEqual({
       method: 'GET',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/sendAs`,
+      impersonate: USER,
     });
   });
 
@@ -135,6 +148,7 @@ describe('Gmail sendAs and signature', () => {
       method: 'PATCH',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/sendAs/${USER_ENC}`,
       body: { signature: '<b>Jane</b>' },
+      impersonate: USER,
     });
   });
 
@@ -143,6 +157,7 @@ describe('Gmail sendAs and signature', () => {
       method: 'POST',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/sendAs`,
       body: { sendAsEmail: 'alias@corp.com', displayName: 'Alias' },
+      impersonate: USER,
     });
   });
 
@@ -150,6 +165,7 @@ describe('Gmail sendAs and signature', () => {
     expect(g.gmailDeleteSendAs(USER, 'alias@corp.com')).toEqual({
       method: 'DELETE',
       path: `/api/google/gmail/v1/users/${USER_ENC}/settings/sendAs/alias%40corp.com`,
+      impersonate: USER,
     });
   });
 });
@@ -158,21 +174,28 @@ describe('Gmail sendAs and signature', () => {
 // Calendar
 // ---------------------------------------------------------------------------
 describe('Calendar', () => {
-  it('list uses the fixed literal `me`, never an email path', () => {
-    const req = g.calendarListCalendars();
+  it('list uses the fixed literal `me`, never an email path; impersonates the target', () => {
+    const req = g.calendarListCalendars(USER);
     expect(req).toEqual({
       method: 'GET',
       path: '/api/google/calendar/v3/users/me/calendarList',
+      impersonate: USER,
     });
-    // Regression: the old path `/users/{email}/calendarList` returns 404.
+    // Regression: the old path `/users/{email}/calendarList` returns 404 — the
+    // target is selected via impersonation (`sub`), never a path segment.
     expect(req.path).not.toContain('@');
     expect(req.path).toContain('/users/me/calendarList');
   });
 
-  it('listAcl -> GET calendars/{calendarId}/acl', () => {
+  it('list with no target sends no impersonation header (impersonate undefined)', () => {
+    expect(g.calendarListCalendars().impersonate).toBeUndefined();
+  });
+
+  it('listAcl -> GET calendars/{calendarId}/acl; impersonates the calendar owner', () => {
     expect(g.calendarListAcl(USER)).toEqual({
       method: 'GET',
       path: `/api/google/calendar/v3/calendars/${USER_ENC}/acl`,
+      impersonate: USER,
     });
   });
 
@@ -183,6 +206,7 @@ describe('Calendar', () => {
       method: 'POST',
       path: `/api/google/calendar/v3/calendars/${USER_ENC}/acl`,
       body: { role: 'reader', scope: { type: 'user', value: 'bob@corp.com' } },
+      impersonate: USER,
     });
   });
 
@@ -193,7 +217,18 @@ describe('Calendar', () => {
       method: 'DELETE',
       // `user:bob@corp.com` fully encoded -> user%3Abob%40corp.com
       path: `/api/google/calendar/v3/calendars/${USER_ENC}/acl/user%3Abob%40corp.com`,
+      impersonate: USER,
     });
+  });
+
+  it('ACL builders accept an explicit impersonation override (group/resource calendars)', () => {
+    const calId = 'room-42@resource.calendar.google.com';
+    expect(g.calendarListAcl(calId, USER).impersonate).toBe(USER);
+    expect(
+      g.calendarInsertAcl(calId, { role: 'reader', scope: { type: 'user', value: 'x@corp.com' } }, USER)
+        .impersonate,
+    ).toBe(USER);
+    expect(g.calendarDeleteAcl(calId, 'user:x@corp.com', USER).impersonate).toBe(USER);
   });
 });
 
@@ -318,6 +353,50 @@ describe('Data Transfer', () => {
       method: 'GET',
       path: '/api/google/admin/datatransfer/v1/transfers?maxResults=20',
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Impersonation targeting (X-Impersonate-User)
+// ---------------------------------------------------------------------------
+describe('impersonation targeting', () => {
+  it('admin-context builders never set an impersonation target', () => {
+    // Directory / Data Transfer / Drive run as the admin, not as a user, so
+    // they must NOT carry an `impersonate` field (no X-Impersonate-User header).
+    const adminContext: g.GoogleApiRequest[] = [
+      g.driveListFiles({ q: 'x' }),
+      g.driveTransferFileOwnership('F1', 'new@corp.com'),
+      g.driveCreateSharedDrive('r', 'n'),
+      g.driveListSharedDrives(),
+      g.driveGetSharedDrive('D1'),
+      g.driveAddPermission('D1', { role: 'writer', type: 'user', emailAddress: 'u@corp.com' }),
+      g.driveListPermissions('D1'),
+      g.driveDeleteSharedDrive('D1'),
+      g.dataTransferInsert({ oldOwnerUserId: 'a@corp.com', newOwnerUserId: 'b@corp.com', applicationIds: ['55656082996'] }),
+      g.dataTransferGet('T1'),
+      g.dataTransferList(),
+    ];
+    for (const req of adminContext) {
+      expect(req.impersonate).toBeUndefined();
+    }
+  });
+
+  it('the Gmail literal `me` yields no impersonation target', () => {
+    // Impersonating "me" is meaningless (and would fail the backend domain
+    // check); the builder must leave `impersonate` unset for `me`.
+    expect(g.gmailListDelegates('me').impersonate).toBeUndefined();
+    expect(g.gmailGetVacation('me').impersonate).toBeUndefined();
+    expect(g.gmailListSendAs('me').impersonate).toBeUndefined();
+  });
+
+  it('a non-email userId yields no impersonation target', () => {
+    expect(g.gmailListDelegates('not-an-email').impersonate).toBeUndefined();
+  });
+
+  it('per-user Gmail builders impersonate the mailbox owner', () => {
+    expect(g.gmailGetVacation(USER).impersonate).toBe(USER);
+    expect(g.gmailPatchSendAs(USER, USER, { signature: 'x' }).impersonate).toBe(USER);
+    expect(g.gmailAddDelegate(USER, 'boss@corp.com').impersonate).toBe(USER);
   });
 });
 

@@ -32,6 +32,26 @@ export interface GoogleApiRequest {
   path: string;
   /** JSON body for POST/PUT/PATCH. Omitted for GET/DELETE. */
   body?: unknown;
+  /**
+   * The user the proxy should act AS via domain-wide delegation (sent as the
+   * `X-Impersonate-User` request header). Per-user Gmail/Calendar settings for
+   * user X (forwarding, vacation, signature, delegates, calendar sharing) only
+   * work when the proxy impersonates X rather than the admin. Populated by the
+   * per-user builders below from the target they already carry; omitted (and no
+   * header sent) for admin-context calls (Directory, Data Transfer, Drive).
+   */
+  impersonate?: string;
+}
+
+/**
+ * Normalize a builder's target into an impersonation subject: a real email is
+ * returned as-is; the Gmail literal `me` and any non-email value yield
+ * `undefined` (no impersonation header). The backend independently rejects any
+ * target outside the org's domain, so this is only about WHEN to send a header.
+ */
+function impersonationSubject(userId?: string): string | undefined {
+  if (!userId || userId === 'me') return undefined;
+  return userId.includes('@') ? userId : undefined;
 }
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -64,7 +84,11 @@ const DATATRANSFER_BASE = '/api/google/admin/datatransfer/v1';
 
 /** Gmail: users.settings.delegates.list — GET /gmail/v1/users/{userId}/settings/delegates */
 export function gmailListDelegates(userId: string): GoogleApiRequest {
-  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates` };
+  return {
+    method: 'GET',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates`,
+    impersonate: impersonationSubject(userId),
+  };
 }
 
 /** Gmail: users.settings.delegates.create — POST /gmail/v1/users/{userId}/settings/delegates */
@@ -73,6 +97,7 @@ export function gmailAddDelegate(userId: string, delegateEmail: string): GoogleA
     method: 'POST',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates`,
     body: { delegateEmail },
+    impersonate: impersonationSubject(userId),
   };
 }
 
@@ -81,12 +106,17 @@ export function gmailRemoveDelegate(userId: string, delegateEmail: string): Goog
   return {
     method: 'DELETE',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/delegates/${seg(delegateEmail)}`,
+    impersonate: impersonationSubject(userId),
   };
 }
 
 /** Gmail: users.settings.getAutoForwarding — GET /gmail/v1/users/{userId}/settings/autoForwarding */
 export function gmailGetAutoForwarding(userId: string): GoogleApiRequest {
-  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/autoForwarding` };
+  return {
+    method: 'GET',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/autoForwarding`,
+    impersonate: impersonationSubject(userId),
+  };
 }
 
 /** Gmail: users.settings.forwardingAddresses.create — POST /gmail/v1/users/{userId}/settings/forwardingAddresses */
@@ -95,6 +125,7 @@ export function gmailCreateForwardingAddress(userId: string, forwardingEmail: st
     method: 'POST',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/forwardingAddresses`,
     body: { forwardingEmail },
+    impersonate: impersonationSubject(userId),
   };
 }
 
@@ -111,12 +142,17 @@ export function gmailUpdateAutoForwarding(userId: string, settings: AutoForwardi
     method: 'PUT',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/autoForwarding`,
     body: settings,
+    impersonate: impersonationSubject(userId),
   };
 }
 
 /** Gmail: users.settings.getVacation — GET /gmail/v1/users/{userId}/settings/vacation */
 export function gmailGetVacation(userId: string): GoogleApiRequest {
-  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/vacation` };
+  return {
+    method: 'GET',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/vacation`,
+    impersonate: impersonationSubject(userId),
+  };
 }
 
 export interface VacationSettings {
@@ -137,17 +173,26 @@ export function gmailUpdateVacation(userId: string, settings: VacationSettings):
     method: 'PUT',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/vacation`,
     body: settings,
+    impersonate: impersonationSubject(userId),
   };
 }
 
 /** Gmail: users.settings.sendAs.get — GET /gmail/v1/users/{userId}/settings/sendAs/{sendAsEmail} */
 export function gmailGetSendAs(userId: string, sendAsEmail: string): GoogleApiRequest {
-  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}` };
+  return {
+    method: 'GET',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}`,
+    impersonate: impersonationSubject(userId),
+  };
 }
 
 /** Gmail: users.settings.sendAs.list — GET /gmail/v1/users/{userId}/settings/sendAs */
 export function gmailListSendAs(userId: string): GoogleApiRequest {
-  return { method: 'GET', path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs` };
+  return {
+    method: 'GET',
+    path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs`,
+    impersonate: impersonationSubject(userId),
+  };
 }
 
 /**
@@ -163,6 +208,7 @@ export function gmailPatchSendAs(
     method: 'PATCH',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}`,
     body: patch,
+    impersonate: impersonationSubject(userId),
   };
 }
 
@@ -175,6 +221,7 @@ export function gmailCreateSendAs(
     method: 'POST',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs`,
     body: sendAs,
+    impersonate: impersonationSubject(userId),
   };
 }
 
@@ -183,6 +230,7 @@ export function gmailDeleteSendAs(userId: string, sendAsEmail: string): GoogleAp
   return {
     method: 'DELETE',
     path: `${GMAIL_BASE}/users/${seg(userId)}/settings/sendAs/${seg(sendAsEmail)}`,
+    impersonate: impersonationSubject(userId),
   };
 }
 
@@ -196,15 +244,29 @@ export function gmailDeleteSendAs(userId: string, sendAsEmail: string): GoogleAp
  * The Calendar API only exposes the *authenticated* user's calendar list under
  * the fixed literal `me`; there is no `/users/{email}/calendarList` form (an
  * email there returns 404). Listing another user's calendars requires the proxy
- * to impersonate that user (domain-wide delegation `sub`), not a different path.
+ * to impersonate that user (domain-wide delegation `sub`), not a different path —
+ * so the target is passed as `impersonateUser` rather than in the path.
  */
-export function calendarListCalendars(): GoogleApiRequest {
-  return { method: 'GET', path: `${CALENDAR_BASE}/users/me/calendarList` };
+export function calendarListCalendars(impersonateUser?: string): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: `${CALENDAR_BASE}/users/me/calendarList`,
+    impersonate: impersonationSubject(impersonateUser),
+  };
 }
 
-/** Calendar: acl.list — GET /calendar/v3/calendars/{calendarId}/acl */
-export function calendarListAcl(calendarId: string): GoogleApiRequest {
-  return { method: 'GET', path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl` };
+/**
+ * Calendar: acl.list — GET /calendar/v3/calendars/{calendarId}/acl
+ * ACL operations run in the calendar owner's context, so the proxy impersonates
+ * that owner. `calendarId` is usually the owner's email (their primary
+ * calendar); pass `impersonateUser` to override for group/resource calendars.
+ */
+export function calendarListAcl(calendarId: string, impersonateUser?: string): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl`,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
 }
 
 export interface CalendarAclScope {
@@ -213,26 +275,37 @@ export interface CalendarAclScope {
   value?: string;
 }
 
-/** Calendar: acl.insert — POST /calendar/v3/calendars/{calendarId}/acl */
+/**
+ * Calendar: acl.insert — POST /calendar/v3/calendars/{calendarId}/acl
+ * Runs in the calendar owner's context (impersonate `calendarId`, or override).
+ */
 export function calendarInsertAcl(
   calendarId: string,
   rule: { role: string; scope: CalendarAclScope },
+  impersonateUser?: string,
 ): GoogleApiRequest {
   return {
     method: 'POST',
     path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl`,
     body: rule,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
   };
 }
 
 /**
  * Calendar: acl.delete — DELETE /calendar/v3/calendars/{calendarId}/acl/{ruleId}
  * ACL rule id for a user is `user:{email}` (built by the caller / helper below).
+ * Runs in the calendar owner's context (impersonate `calendarId`, or override).
  */
-export function calendarDeleteAcl(calendarId: string, ruleId: string): GoogleApiRequest {
+export function calendarDeleteAcl(
+  calendarId: string,
+  ruleId: string,
+  impersonateUser?: string,
+): GoogleApiRequest {
   return {
     method: 'DELETE',
     path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/acl/${seg(ruleId)}`,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
   };
 }
 
