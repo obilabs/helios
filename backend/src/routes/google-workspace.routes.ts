@@ -460,35 +460,34 @@ router.get('/module-status/:organizationId', async (req: Request, res: Response)
   try {
     const { organizationId } = req.params;
 
-    // Try to get module status from organization_modules table
+    // Module enable-state (may be absent if the module was never enabled). Note
+    // the canonical slug is 'google_workspace' (underscore) — the value seeded
+    // into `modules` and used by every other read/write path.
     const result = await db.query(`
       SELECT
         om.is_enabled,
+        om.is_configured,
         om.config,
         om.updated_at,
         om.last_sync_at,
-        m.name as name,
-        m.slug as slug
+        om.sync_status
       FROM organization_modules om
       JOIN modules m ON m.id = om.module_id
-      WHERE om.organization_id = $1 AND m.slug = 'google-workspace'
+      WHERE om.organization_id = $1 AND m.slug = 'google_workspace'
     `, [organizationId]);
+    const moduleRow = result.rows[0] || null;
 
-    if (result.rows.length === 0) {
-      // Module not configured yet
-      return res.json({
-        success: true,
-        data: {
-          isEnabled: false,
-          userCount: 0,
-          lastSync: null,
-          configuration: null
-        }
-      });
-    }
-
-    const module = result.rows[0];
-    const config = module.config || {};
+    // Stored credentials are the source of truth for "is Google Workspace
+    // configured". They can exist even when the enable-row does not (e.g. a
+    // legacy install where the enable-write was skipped), so the frontend can
+    // offer a one-click enable / re-sync instead of forcing a full re-upload of
+    // the service-account key.
+    const credentialsResult = await db.query(
+      'SELECT service_account_key, admin_email, domain, is_valid FROM gw_credentials WHERE organization_id = $1',
+      [organizationId]
+    );
+    const credRow = credentialsResult.rows[0] || null;
+    const hasCredentials = !!(credRow && credRow.is_valid);
 
     // Get actual user count from gw_synced_users
     const userCountResult = await db.query(
@@ -497,36 +496,35 @@ router.get('/module-status/:organizationId', async (req: Request, res: Response)
     );
     const userCount = parseInt(userCountResult.rows[0]?.count || '0');
 
-    // Get Google Workspace credentials to show configuration details
-    const credentialsResult = await db.query(
-      'SELECT service_account_key, admin_email FROM gw_credentials WHERE organization_id = $1',
-      [organizationId]
-    );
-
-    let configurationDetails = config;
-    if (credentialsResult.rows.length > 0) {
+    // Build configuration details, preferring the decoded service account.
+    let configuration: any = moduleRow?.config || null;
+    if (credRow) {
       try {
-        const serviceAccount = decodeServiceAccountKey(credentialsResult.rows[0].service_account_key);
-        configurationDetails = {
-          ...config,
+        const serviceAccount = decodeServiceAccountKey(credRow.service_account_key);
+        configuration = {
+          ...(moduleRow?.config || {}),
+          domain: credRow.domain,
           projectId: serviceAccount.project_id,
           clientEmail: serviceAccount.client_email,
-          adminEmail: credentialsResult.rows[0].admin_email
+          adminEmail: credRow.admin_email
         };
       } catch (error) {
-        // If parsing fails, just use existing config
-        configurationDetails = config;
+        // If parsing fails, fall back to whatever config the module row holds.
+        configuration = moduleRow?.config || null;
       }
     }
 
     res.json({
       success: true,
       data: {
-        isEnabled: module.is_enabled,
+        isEnabled: moduleRow?.is_enabled === true,
+        isConfigured: moduleRow?.is_configured === true || hasCredentials,
+        hasCredentials,
         userCount: userCount,
-        lastSync: module.last_sync_at || null,
-        configuration: configurationDetails,
-        updatedAt: module.updated_at
+        lastSync: moduleRow?.last_sync_at || null,
+        syncStatus: moduleRow?.sync_status || null,
+        configuration,
+        updatedAt: moduleRow?.updated_at || null
       }
     });
   } catch (error: any) {
@@ -756,9 +754,9 @@ router.post('/disable/:organizationId', requireAdmin, async (req: Request, res: 
 
     logger.info('Disabling Google Workspace module', { organizationId });
 
-    // Get Google Workspace module ID
+    // Get Google Workspace module ID (canonical slug: underscore).
     const moduleResult = await db.query(
-      `SELECT id FROM modules WHERE slug = 'google-workspace' LIMIT 1`
+      `SELECT id FROM modules WHERE slug = 'google_workspace' LIMIT 1`
     );
 
     if (moduleResult.rows.length === 0) {
@@ -789,6 +787,61 @@ router.post('/disable/:organizationId', requireAdmin, async (req: Request, res: 
     res.status(500).json({
       success: false,
       error: 'Failed to disable Google Workspace module'
+    });
+  }
+});
+
+/**
+ * POST /api/google-workspace/enable
+ * Re-enable the Google Workspace module for an organization that ALREADY has
+ * valid stored credentials — without forcing a re-upload of the service-account
+ * key. Backs the Settings "Enable" action when credentials already exist, so
+ * enabling a previously-configured module never re-opens the full setup wizard.
+ */
+router.post('/enable', requireAdmin, [
+  body('organizationId').notEmpty().withMessage('Organization ID is required'),
+], validateRequest, async (req: Request, res: Response) => {
+  try {
+    const { organizationId } = req.body;
+
+    const credResult = await db.query(
+      'SELECT domain, admin_email, is_valid FROM gw_credentials WHERE organization_id = $1',
+      [organizationId]
+    );
+
+    if (credResult.rows.length === 0) {
+      // No stored credentials — the caller must run the full setup wizard.
+      return res.status(400).json({
+        success: false,
+        error: 'No stored Google Workspace credentials. Run setup first.'
+      });
+    }
+
+    const cred = credResult.rows[0];
+
+    await googleWorkspaceService.markModuleEnabled(
+      organizationId,
+      { domain: cred.domain, adminEmail: cred.admin_email },
+      'syncing'
+    );
+
+    logger.info('Google Workspace module enabled from stored credentials', { organizationId });
+
+    // Refresh the directory in the background (best-effort, do not block).
+    syncScheduler.manualSync(organizationId).catch((err) => {
+      logger.error('Re-enable sync error', { organizationId, error: err.message });
+    });
+
+    return res.json({
+      success: true,
+      message: 'Google Workspace module enabled',
+      syncTriggered: true
+    });
+  } catch (error: any) {
+    logger.error('Failed to enable Google Workspace module', { error: error.message });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to enable Google Workspace module'
     });
   }
 });

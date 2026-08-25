@@ -148,9 +148,9 @@ const SortableEntry: React.FC<SortableEntryProps> = ({
             <Trash2 size={16} />
           </button>
           {isExpanded ? (
-            <ChevronUp size={18} />
+            <ChevronUp size={16} />
           ) : (
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           )}
         </div>
       </div>

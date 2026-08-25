@@ -46,6 +46,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
   const [scopesExpanded, setScopesExpanded] = useState(false);
   const [scopesCopied, setScopesCopied] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   // Load the canonical scope list from the backend so the setup screen always
   // shows exactly what the code requests (see backend config/google-scopes.ts).
@@ -92,7 +93,9 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
           const response = await authFetch(`/api/v1/google-workspace/module-status/${organizationId}`);
           const result = await response.json();
 
-          if (result.success && result.data.isEnabled && result.data.configuration) {
+          // Stored credentials (even for a disabled module) mean saving will
+          // overwrite an existing configuration — warn before doing so.
+          if (result.success && (result.data.hasCredentials || (result.data.isEnabled && result.data.configuration))) {
             setExistingConfig(true);
           }
         }
@@ -210,7 +213,10 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
       const result = await response.json();
 
       if (result.success) {
-        onSuccess();
+        // Show an explicit success screen instead of silently closing the
+        // modal, so the admin gets confirmation that the module is now enabled
+        // and the initial sync has started.
+        setSetupComplete(true);
       } else {
         setError(result.error || 'Failed to save configuration');
       }
@@ -241,9 +247,28 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
       <div className="gw-wizard-container">
         <div className="gw-wizard-header">
           <h2>Google Workspace Setup</h2>
-          <button className="gw-wizard-close" onClick={onClose}>×</button>
+          <button className="gw-wizard-close" onClick={setupComplete ? onSuccess : onClose}>×</button>
         </div>
 
+        {setupComplete ? (
+          <div className="gw-wizard-content">
+            <div className="gw-wizard-step-content gw-wizard-success">
+              <CheckCircle size={56} style={{ color: '#10b981', display: 'block', margin: '8px auto 16px' }} />
+              <h3 style={{ textAlign: 'center', margin: '0 0 8px' }}>Module enabled</h3>
+              <p style={{ textAlign: 'center', color: '#4b5563', maxWidth: 460, margin: '0 auto 8px' }}>
+                Google Workspace is now active. The initial sync has started — your
+                team members will appear in the Directory in a few minutes.
+              </p>
+              <p style={{ textAlign: 'center', color: '#6b7280', fontSize: 13, maxWidth: 460, margin: '0 auto 24px' }}>
+                Domain <strong>{domain}</strong>{adminEmail ? <> · Admin <strong>{adminEmail}</strong></> : null}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button className="gw-wizard-save-button" onClick={onSuccess}>Go to Modules</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="gw-wizard-progress">
           {steps.map((step, _index) => (
             <div
@@ -437,7 +462,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
 
                 {testStatus === 'success' && (
                   <div className="gw-wizard-test-success">
-                    <h4><CheckCircle size={18} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
+                    <h4><CheckCircle size={16} style={{ color: '#10b981', verticalAlign: 'middle', marginRight: 6 }} /> Connection Verified!</h4>
                     <p>Successfully connected to Google Workspace domain: {domain}</p>
                     <p>Service Account: {serviceAccountData?.client_email}</p>
                     <p>Admin Email: {adminEmail}</p>
@@ -490,14 +515,14 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                   background: 'white',
-                  border: '2px solid #ff9800',
+                  border: '2px solid var(--color-warning)',
                   borderRadius: '8px',
                   padding: '20px',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
                   zIndex: 1000,
                   maxWidth: '400px'
                 }}>
-                  <h3 style={{ marginTop: 0, color: '#ff9800' }}>⚠️ Configuration Already Exists</h3>
+                  <h3 style={{ marginTop: 0, color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '8px' }}><AlertTriangle size={20} /> Configuration Already Exists</h3>
                   <p>Google Workspace is already configured for this organization. Do you want to overwrite the existing configuration?</p>
                   <p style={{ fontSize: '0.9em', color: '#666' }}>This will replace your current service account and settings.</p>
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
@@ -519,7 +544,7 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
                         padding: '8px 16px',
                         border: 'none',
                         borderRadius: '4px',
-                        background: '#ff9800',
+                        background: 'var(--color-warning)',
                         color: 'white',
                         cursor: 'pointer',
                         fontWeight: 'bold'
@@ -550,6 +575,8 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
             Next
           </button>
         </div>
+        </>
+        )}
       </div>
 
       <HelpWidget

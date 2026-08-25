@@ -337,6 +337,10 @@
 .gw-wizard-summary dd {
   margin: 0;
   color: #6b7280;
+  /* Long unbroken values (service-account emails, project IDs) must wrap and
+     let the 1fr column shrink rather than widen the summary past the modal. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .gw-wizard-final-actions {

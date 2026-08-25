@@ -184,30 +184,14 @@ export class GoogleWorkspaceService {
         clientEmail: credentials.client_email
       });
 
-      // Get the Google Workspace module ID
-      const moduleResult = await db.query(
-        `SELECT id FROM modules WHERE slug = 'google-workspace' LIMIT 1`
+      // Mark the Google Workspace module enabled + configured for this org so
+      // Settings > Modules reflects "Active". The initial sync is kicked off by
+      // the caller immediately after this returns, hence sync_status 'syncing'.
+      await this.markModuleEnabled(
+        organizationId,
+        { domain, adminEmail: adminEmailToUse },
+        'syncing'
       );
-
-      if (moduleResult.rows.length > 0) {
-        const moduleId = moduleResult.rows[0].id;
-
-        // Mark the module as enabled and configured for this organization
-        await db.query(`
-          INSERT INTO organization_modules (organization_id, module_id, is_enabled, is_configured, config, updated_at)
-          VALUES ($1, $2, true, true, $3, NOW())
-          ON CONFLICT (organization_id, module_id)
-          DO UPDATE SET
-            is_enabled = true,
-            is_configured = true,
-            config = $3,
-            updated_at = NOW()
-        `, [
-          organizationId,
-          moduleId,
-          JSON.stringify({ domain, adminEmail: adminEmailToUse })
-        ]);
-      }
 
       return {
         success: true,
@@ -226,6 +210,61 @@ export class GoogleWorkspaceService {
         message: `Failed to store credentials: ${error.message}`
       };
     }
+  }
+
+  /**
+   * Mark the Google Workspace module enabled + configured for an organization.
+   *
+   * This is the single writer of the `organization_modules` enable-row for
+   * Google Workspace. It is deliberately self-healing:
+   *
+   *  1. It UPSERTs the canonical module row (slug `google_workspace`) so it works
+   *     even on a database where the `modules` table was never seeded (the
+   *     setup-wizard onboarding path does not run `seedDefaultAdmin`, which is
+   *     the only place that seeds modules).
+   *  2. It then UPSERTs the `organization_modules` row.
+   *
+   * Historically the setup path looked up the module by the slug
+   * `google-workspace` (hyphen) while it is seeded as `google_workspace`
+   * (underscore). The lookup returned no rows, the enable-write was silently
+   * skipped, and Settings > Modules stayed on "Disabled" even though credentials
+   * were saved and the initial sync ran. Every read path
+   * (google-workspace.routes.ts module-status/disable, modules.routes.ts,
+   * assets.routes.ts) uses the underscore slug, so that is the canonical value.
+   */
+  async markModuleEnabled(
+    organizationId: string,
+    config: { domain: string; adminEmail: string },
+    syncStatus: string = 'syncing'
+  ): Promise<void> {
+    // Ensure the canonical Google Workspace module row exists.
+    const moduleResult = await db.query(
+      `INSERT INTO modules (name, slug, description, version, config_schema)
+       VALUES ('Google Workspace', 'google_workspace',
+               'Sync users and groups from Google Workspace', '1.0.0', '{}'::jsonb)
+       ON CONFLICT (slug) DO UPDATE SET updated_at = NOW()
+       RETURNING id`
+    );
+    const moduleId = moduleResult.rows[0].id;
+
+    await db.query(
+      `INSERT INTO organization_modules
+         (organization_id, module_id, is_enabled, is_configured, config, sync_status, updated_at)
+       VALUES ($1, $2, true, true, $3, $4, NOW())
+       ON CONFLICT (organization_id, module_id)
+       DO UPDATE SET
+         is_enabled = true,
+         is_configured = true,
+         config = $3,
+         sync_status = $4,
+         updated_at = NOW()`,
+      [organizationId, moduleId, JSON.stringify(config), syncStatus]
+    );
+
+    logger.info('Google Workspace module marked enabled + configured', {
+      organizationId,
+      moduleId
+    });
   }
 
   /**

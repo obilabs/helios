@@ -3223,18 +3223,16 @@ router.post('/users/:userId/transfer', authenticateToken, async (req: Request, r
     await db.query(`
       INSERT INTO activity_logs (
         organization_id,
-        actor_user_id,
-        actor_email,
+        actor_id,
         action,
         resource_type,
         resource_id,
         description,
         metadata
-      ) VALUES ($1, $2, $3, 'data_transfer_initiated', 'user', $4, $5, $6)
+      ) VALUES ($1, $2, 'data_transfer_initiated', 'user', $3, $4, $5)
     `, [
       organizationId,
       req.user?.userId,
-      req.user?.email,
       userId,
       `Data transfer initiated from ${sourceUser.email} to ${targetEmail}`,
       JSON.stringify({
@@ -3417,18 +3415,16 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
     await db.query(`
       INSERT INTO activity_logs (
         organization_id,
-        actor_user_id,
-        actor_email,
+        actor_id,
         action,
         resource_type,
         resource_id,
         description,
         metadata
-      ) VALUES ($1, $2, $3, 'direct_reports_reassigned', 'user', $4, $5, $6)
+      ) VALUES ($1, $2, 'direct_reports_reassigned', 'user', $3, $4, $5)
     `, [
       organizationId,
       req.user?.userId,
-      req.user?.email,
       userId,
       `Reassigned ${reassignedCount} direct reports`,
       JSON.stringify({
@@ -3706,18 +3702,16 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
     await db.query(`
       INSERT INTO activity_logs (
         organization_id,
-        actor_user_id,
-        actor_email,
+        actor_id,
         action,
         resource_type,
         resource_id,
         description,
         metadata
-      ) VALUES ($1, $2, $3, 'email_settings_updated', 'user', $4, $5, $6)
+      ) VALUES ($1, $2, 'email_settings_updated', 'user', $3, $4, $5)
     `, [
       organizationId,
       req.user?.userId,
-      req.user?.email,
       userId,
       `Updated email settings for ${user.email}`,
       JSON.stringify({

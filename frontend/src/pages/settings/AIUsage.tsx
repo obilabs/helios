@@ -286,7 +286,7 @@ export function AIUsage({ organizationId: _organizationId }: AIUsageProps) {
         {/* Daily Usage Chart */}
         <div className="chart-card">
           <h3>
-            <Calendar size={18} />
+            <Calendar size={16} />
             Daily Usage
           </h3>
           <div className="bar-chart">
@@ -314,7 +314,7 @@ export function AIUsage({ organizationId: _organizationId }: AIUsageProps) {
         {/* Model Breakdown */}
         <div className="chart-card">
           <h3>
-            <Server size={18} />
+            <Server size={16} />
             By Model
           </h3>
           <div className="breakdown-list">
@@ -352,7 +352,7 @@ export function AIUsage({ organizationId: _organizationId }: AIUsageProps) {
       {stats.byTool && stats.byTool.length > 0 && (
         <div className="tools-section">
           <h3>
-            <Zap size={18} />
+            <Zap size={16} />
             Tool Invocations
           </h3>
           <div className="tools-grid">
@@ -369,7 +369,7 @@ export function AIUsage({ organizationId: _organizationId }: AIUsageProps) {
       {/* Recent Activity Table */}
       <div className="activity-section">
         <h3>
-          <Activity size={18} />
+          <Activity size={16} />
           Daily Breakdown
         </h3>
         <div className="activity-table-wrapper">
