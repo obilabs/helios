@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Copy, ToggleLeft, ToggleRight } from 'lucide-react';
 import { getBlockDefinition } from './blockDefinitions';
+import { getBlockIcon } from './blockIcons';
 import { BLOCK_CATEGORIES, type WorkflowBlock } from './types';
 
 interface BlockItemProps {
@@ -13,43 +14,6 @@ interface BlockItemProps {
   onDuplicate?: () => void;
   onToggle?: () => void;
   readOnly?: boolean;
-}
-
-// Simple emoji mapping for blocks
-function getBlockEmoji(type: string): string {
-  const emojiMap: Record<string, string> = {
-    create_user: '👤',
-    update_user: '✏️',
-    suspend_user: '🚫',
-    delete_user: '🗑️',
-    reset_password: '🔑',
-    add_to_group: '➕',
-    remove_from_group: '➖',
-    create_group: '👥',
-    send_email: '✉️',
-    set_signature: '✍️',
-    set_vacation_responder: '🏖️',
-    remove_vacation_responder: '🔙',
-    create_calendar_event: '📅',
-    decline_future_meetings: '❌',
-    transfer_calendar: '📆',
-    grant_drive_access: '📁',
-    revoke_drive_access: '🚷',
-    transfer_drive_ownership: '📤',
-    revoke_oauth_tokens: '🔐',
-    sign_out_sessions: '🚪',
-    wipe_mobile_device: '📱',
-    notify_manager: '📣',
-    notify_hr: '📢',
-    notify_it: '🔔',
-    send_notification: '📬',
-    assign_training: '🎓',
-    create_task: '✅',
-    if_condition: '🔀',
-    wait: '⏳',
-    comment: '💬',
-  };
-  return emojiMap[type] || '⚡';
 }
 
 export function BlockItem({
@@ -64,6 +28,7 @@ export function BlockItem({
 }: BlockItemProps) {
   const definition = getBlockDefinition(block.type);
   const categoryInfo = definition ? BLOCK_CATEGORIES[definition.category] : null;
+  const Icon = getBlockIcon(block.type);
 
   const {
     attributes,
@@ -131,7 +96,7 @@ export function BlockItem({
           borderColor: `${definition.color}30`,
         }}
       >
-        <span className="block-emoji">{getBlockEmoji(block.type)}</span>
+        <Icon size={20} />
       </div>
 
       {/* Block content */}

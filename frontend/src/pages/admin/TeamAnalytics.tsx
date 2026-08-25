@@ -266,7 +266,7 @@ export const TeamAnalytics: React.FC = () => {
           {deviceStats && deviceStats.total > 0 ? (
             <div className="device-breakdown">
               <div className="device-item">
-                <Monitor size={18} />
+                <Monitor size={16} />
                 <div className="device-bar">
                   <div
                     className="device-bar-fill desktop"
@@ -277,7 +277,7 @@ export const TeamAnalytics: React.FC = () => {
                 <span className="device-value">{getDevicePercentage('desktop')}%</span>
               </div>
               <div className="device-item">
-                <Smartphone size={18} />
+                <Smartphone size={16} />
                 <div className="device-bar">
                   <div
                     className="device-bar-fill mobile"
@@ -288,7 +288,7 @@ export const TeamAnalytics: React.FC = () => {
                 <span className="device-value">{getDevicePercentage('mobile')}%</span>
               </div>
               <div className="device-item">
-                <Tablet size={18} />
+                <Tablet size={16} />
                 <div className="device-bar">
                   <div
                     className="device-bar-fill tablet"

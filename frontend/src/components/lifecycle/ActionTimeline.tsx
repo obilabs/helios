@@ -92,19 +92,19 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   const getStatusIcon = (status: TimelineStep['status']) => {
     switch (status) {
       case 'success':
-        return <CheckCircle size={18} className="status-icon success" />;
+        return <CheckCircle size={16} className="status-icon success" />;
       case 'failed':
-        return <XCircle size={18} className="status-icon failed" />;
+        return <XCircle size={16} className="status-icon failed" />;
       case 'pending':
-        return <Clock size={18} className="status-icon pending" />;
+        return <Clock size={16} className="status-icon pending" />;
       case 'skipped':
-        return <SkipForward size={18} className="status-icon skipped" />;
+        return <SkipForward size={16} className="status-icon skipped" />;
       case 'warning':
-        return <AlertTriangle size={18} className="status-icon warning" />;
+        return <AlertTriangle size={16} className="status-icon warning" />;
       case 'in_progress':
-        return <RefreshCw size={18} className="status-icon in-progress animate-spin" />;
+        return <RefreshCw size={16} className="status-icon in-progress animate-spin" />;
       default:
-        return <Clock size={18} className="status-icon pending" />;
+        return <Clock size={16} className="status-icon pending" />;
     }
   };
 

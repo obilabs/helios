@@ -332,7 +332,7 @@ export function VideoPlayer({
               onClick={restart}
               aria-label="Restart"
             >
-              <RotateCcw size={18} />
+              <RotateCcw size={16} />
             </button>
 
             <div className="volume-control">
@@ -342,9 +342,9 @@ export function VideoPlayer({
                 aria-label={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? (
-                  <VolumeX size={18} />
+                  <VolumeX size={16} />
                 ) : (
-                  <Volume2 size={18} />
+                  <Volume2 size={16} />
                 )}
               </button>
               <input
@@ -372,7 +372,7 @@ export function VideoPlayer({
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             >
-              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
           </div>
         </div>

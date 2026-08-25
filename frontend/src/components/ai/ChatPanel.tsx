@@ -445,9 +445,9 @@ export function ChatPanel({
               className="send-btn"
             >
               {isLoading ? (
-                <Loader2 size={18} className="spin" />
+                <Loader2 size={16} className="spin" />
               ) : (
-                <Send size={18} />
+                <Send size={16} />
               )}
             </button>
           </form>

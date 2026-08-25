@@ -324,7 +324,7 @@ export default function LifecycleAnalytics({ onNavigate: _onNavigate }: Lifecycl
         <div className="chart-card trends-chart">
           <div className="chart-header">
             <h3>
-              <Activity size={18} />
+              <Activity size={16} />
               Monthly Trends
             </h3>
           </div>
@@ -356,7 +356,7 @@ export default function LifecycleAnalytics({ onNavigate: _onNavigate }: Lifecycl
         <div className="chart-card department-chart">
           <div className="chart-header">
             <h3>
-              <Building size={18} />
+              <Building size={16} />
               Department Performance
             </h3>
           </div>
@@ -398,7 +398,7 @@ export default function LifecycleAnalytics({ onNavigate: _onNavigate }: Lifecycl
         <div className="chart-card bottleneck-chart">
           <div className="chart-header">
             <h3>
-              <AlertTriangle size={18} />
+              <AlertTriangle size={16} />
               Bottleneck Analysis
             </h3>
             <span className="chart-subtitle">Tasks most likely to cause delays</span>
@@ -448,7 +448,7 @@ export default function LifecycleAnalytics({ onNavigate: _onNavigate }: Lifecycl
         <div className="chart-card timeline-chart">
           <div className="chart-header">
             <h3>
-              <Calendar size={18} />
+              <Calendar size={16} />
               Completion Timeline
             </h3>
           </div>

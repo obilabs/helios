@@ -252,7 +252,7 @@ export function AudioPlayer({
           disabled={isLoading}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
         </button>
 
         <div

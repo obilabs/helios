@@ -255,7 +255,7 @@ export default function ManagerDashboard({ onNavigate }: ManagerDashboardProps) 
         <div className="dashboard-card team-onboardings">
           <div className="card-header">
             <h2>
-              <Users size={18} />
+              <Users size={16} />
               Team Onboardings
             </h2>
             <button className="view-all" onClick={() => onNavigate('requests')}>
@@ -307,7 +307,7 @@ export default function ManagerDashboard({ onNavigate }: ManagerDashboardProps) 
         <div className="dashboard-card my-tasks">
           <div className="card-header">
             <h2>
-              <CheckSquare size={18} />
+              <CheckSquare size={16} />
               My Tasks
             </h2>
             <button className="view-all" onClick={() => onNavigate('tasks-dashboard')}>
@@ -369,7 +369,7 @@ export default function ManagerDashboard({ onNavigate }: ManagerDashboardProps) 
         <div className="dashboard-card upcoming-starts">
           <div className="card-header">
             <h2>
-              <Calendar size={18} />
+              <Calendar size={16} />
               Upcoming Starts
             </h2>
           </div>
