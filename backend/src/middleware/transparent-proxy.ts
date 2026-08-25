@@ -18,9 +18,13 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
-import axios from 'axios';
 import { telemetryService } from '../services/telemetry.service.js';
 import { REQUIRED_SCOPES } from '../config/google-scopes.js';
+// Record/replay seam for the two outbound Google calls below. In production
+// (and any test that does not opt in) this is a straight passthrough to axios —
+// no behavior change. Tests activate replay via useGoogleReplay(); setting
+// HELIOS_GOOGLE_RECORD=1 captures sanitized fixtures. See testing/google-replay.ts.
+import { googleHttp } from '../testing/google-replay.js';
 import {
   enforceRelayAuthorization,
   type RelayAuditRecord,
@@ -428,8 +432,8 @@ async function proxyToGoogle(
     scopes: jwtPayload.scope
   });
 
-  // Exchange JWT for access token
-  const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+  // Exchange JWT for access token (via the record/replay seam)
+  const tokenResponse = await googleHttp.post('https://oauth2.googleapis.com/token', {
     grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
     assertion: signedJWT
   });
@@ -485,7 +489,7 @@ async function proxyToGoogle(
       hasData: !!requestConfig.data
     });
 
-    const response = await axios(requestConfig);
+    const response = await googleHttp(requestConfig);
 
     logger.info('Google API request successful', {
       status: response.status,
