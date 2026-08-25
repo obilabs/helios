@@ -52,12 +52,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Split large dependencies into separate chunks
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['lucide-react'],
-          'vendor-charts': ['html2canvas'],
-        }
+        // Function form (Rollup 4 / Vite 8 type-safe) — same vendor splitting
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/.test(id)) return 'vendor-react'
+          if (id.includes('node_modules/lucide-react')) return 'vendor-ui'
+          if (id.includes('node_modules/html2canvas')) return 'vendor-charts'
+        },
       }
     }
   }
