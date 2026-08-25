@@ -681,6 +681,7 @@ export function MasterDataSection({ organizationId }: MasterDataSectionProps) {
                       </button>
                     </div>
                   ) : (
+                    <div className="responsive-table">
                     <table className="data-table">
                       <thead>
                         <tr>
@@ -694,18 +695,18 @@ export function MasterDataSection({ organizationId }: MasterDataSectionProps) {
                       <tbody>
                         {costCenters.map(cc => (
                           <tr key={cc.id}>
-                            <td className="code-cell">{cc.code}</td>
-                            <td>{cc.name}</td>
-                            <td className="count-cell">
+                            <td className="code-cell" data-label="Code">{cc.code}</td>
+                            <td data-label="Name">{cc.name}</td>
+                            <td className="count-cell" data-label="Users">
                               <Users size={14} />
                               {cc.user_count || 0}
                             </td>
-                            <td>
+                            <td data-label="Status">
                               <span className={`status-badge ${cc.is_active ? 'active' : 'inactive'}`}>
                                 {cc.is_active ? 'Active' : 'Inactive'}
                               </span>
                             </td>
-                            <td>
+                            <td data-label="Actions">
                               <div className="table-actions">
                                 <button
                                   className="action-btn"
@@ -725,6 +726,7 @@ export function MasterDataSection({ organizationId }: MasterDataSectionProps) {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   )}
                 </div>
               </div>

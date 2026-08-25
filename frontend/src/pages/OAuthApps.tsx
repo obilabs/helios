@@ -434,7 +434,7 @@ export function OAuthApps({ organizationId: _organizationId }: OAuthAppsProps) {
                 <Loader2 size={20} className="animate-spin" />
               </div>
             ) : (
-              <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+              <div className="responsive-table" style={{ maxHeight: '400px', overflow: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f9fafb' }}>
@@ -449,10 +449,10 @@ export function OAuthApps({ organizationId: _organizationId }: OAuthAppsProps) {
                   <tbody>
                     {appUsers.map(user => (
                       <tr key={user.email}>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                        <td data-label="Email" style={{ padding: '12px', borderBottom: '1px solid #e5e7eb' }}>
                           {user.email}
                         </td>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #e5e7eb', color: '#6b7280' }}>
+                        <td data-label="Last Synced" style={{ padding: '12px', borderBottom: '1px solid #e5e7eb', color: '#6b7280' }}>
                           {new Date(user.syncedAt).toLocaleDateString()}
                         </td>
                       </tr>
