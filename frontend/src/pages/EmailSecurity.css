@@ -563,13 +563,8 @@
     grid-template-columns: 1fr;
   }
 
-  .results-table {
-    overflow-x: auto;
-  }
-
-  .results-table table {
-    min-width: 600px;
-  }
+  /* .results-table reflows to labeled cards via the shared .responsive-table
+     utility (index.css); the old horizontal-scroll min-width is superseded. */
 
   .modal-content {
     margin: 16px;
