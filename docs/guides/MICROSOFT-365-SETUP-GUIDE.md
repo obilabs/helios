@@ -82,12 +82,26 @@ For creating users, managing groups, and assigning licenses:
 | `GroupMember.ReadWrite.All` | Add/remove group members |
 | `LicenseAssignment.ReadWrite.All` | Assign/remove licenses |
 
-**Note:** Helios automatically detects all available licenses in your tenant (Microsoft 365 E3, E5, Business Premium, etc.) - no configuration required.
+**Note:** Helios automatically detects all available licenses in your tenant (Microsoft 365 E3, E5, Business Premium, etc.) - no configuration required. The `Organization.Read.All` permission above is what exposes subscribed-SKU totals (`prepaidUnits` / `consumedUnits`).
+
+### Optional: Mail & Drive Migration Source
+
+Add these **only** if you will use Helios to migrate mailboxes and OneDrive files **out of** this tenant (e.g. an M365 → Google Workspace migration). They are **not** needed for user/group/license sync or management.
+
+| Permission | Purpose |
+|------------|---------|
+| `Mail.Read` | Read message content (RFC822) for migration |
+| `Files.Read.All` | Read OneDrive/Drive file content for migration |
+| `Sites.Read.All` | *(optional)* Read SharePoint site content |
+
+⚠️ **These are broad, tenant-wide read grants** — the app can read **every** user's mailbox and files, not just the ones being migrated. Add them only for the migration window, and remove them (and revoke consent) afterward.
 
 5. After adding permissions, click **Grant admin consent for [Your Org]**
 6. Confirm by clicking **Yes**
 
 ✅ All permissions should show a green checkmark under "Status"
+
+> **Heads-up:** Granting admin consent is a *protected action*. If your tenant enforces step-up MFA / Privileged Identity Management, Entra will prompt you to **re-authenticate** before the consent is applied — this is expected. Consent requires the **Global Administrator** or **Privileged Role Administrator** role.
 
 ## Step 5: Connect in Helios
 
@@ -135,6 +149,16 @@ This may take a few minutes depending on your directory size.
 
 - Client secrets can only be viewed once when created
 - If lost, create a new secret and update Helios
+
+### Stored Secret Stops Working After a Restart
+
+- Helios encrypts the client secret at rest with `ENCRYPTION_KEY`. If that key changes (or was never set, so a random one was generated per process), the stored secret can no longer be decrypted and every Graph call fails after a restart.
+- **Fix:** set a stable `ENCRYPTION_KEY` in the environment *before* saving the secret, and keep it constant across restarts. In production Helios refuses to start without one.
+
+### Federated / Hybrid Tenants (JumpCloud, AD sync, ADFS)
+
+- Helios connects with **app-only client credentials**, which authenticate the *application* directly against Entra. This is **independent of user federation** — sync and all read operations work normally even when sign-in is federated to an external IdP.
+- What federation *does* block are **writes to identity mastered by the IdP**: password reset/force-change, and — when users are provisioned from on-prem/JumpCloud — `accountEnabled` toggles and user create/delete may error ("account is federated" / "mastered on-premises"). Directory reads, license reads, and mailbox/file reads are unaffected.
 
 ### Sync Issues
 
