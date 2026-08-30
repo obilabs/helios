@@ -235,6 +235,48 @@ export function gmailDeleteSendAs(userId: string, sendAsEmail: string): GoogleAp
 }
 
 // ===========================================================================
+// Gmail — message import  (M365 -> Google migration)
+// ===========================================================================
+
+/**
+ * Gmail: users.messages.import —
+ * POST /gmail/v1/users/{userId}/messages/import?internalDateSource=dateHeader&neverMarkSpam=true
+ *
+ * Replays a single migrated RFC822 message straight into {userId}'s mailbox
+ * WITHOUT sending it — the write-path primitive for an M365 -> Google mailbox
+ * migration. `raw` is the base64url-encoded RFC822 message.
+ *
+ * Query params (per Google's REST API) — folded into the PATH, not passed as a
+ * separate field:
+ *   - internalDateSource=dateHeader → Gmail takes each message's internal date
+ *     from its own `Date:` header, so the migrated copy keeps its ORIGINAL
+ *     received date instead of the import time ("now").
+ *   - neverMarkSpam=true            → a migrated message is never diverted to
+ *     Spam by import-time classification.
+ *
+ * WHY the query lives in the path: the transparent proxy and `runGoogle` forward
+ * only `path` + `body` + the `X-Impersonate-User` header (see the module header
+ * and DeveloperConsole.runGoogle). A stray `query` field would be silently
+ * dropped and never reach Google — the same trap that made Drive options no-ops
+ * before. `withQuery` encodes them into the path exactly like the Drive builders.
+ *
+ * Import runs in the TARGET user's own context, so the proxy impersonates
+ * {userId} (domain-wide delegation `sub`); the message then lands in — and is
+ * owned by — that user's own mailbox.
+ */
+export function gmailImport(userId: string, raw: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: withQuery(`${GMAIL_BASE}/users/${seg(userId)}/messages/import`, {
+      internalDateSource: 'dateHeader',
+      neverMarkSpam: true,
+    }),
+    body: { raw },
+    impersonate: impersonationSubject(userId),
+  };
+}
+
+// ===========================================================================
 // Calendar  (www.googleapis.com / calendar/v3)
 // ===========================================================================
 
