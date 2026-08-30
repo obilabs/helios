@@ -356,6 +356,77 @@ export function calendarUserRuleId(email: string): string {
   return `user:${email}`;
 }
 
+// ----- Calendar: events (offboarding — cancel/decline future events) -----
+// Events run in the calendar owner's context, so the proxy impersonates the
+// calendarId (usually the owner's email), like the ACL builders above. Query
+// params are folded into the PATH — the proxy forwards no separate `query` field.
+// The params type is written inline (not a named interface) so it carries the
+// implicit index signature `withQuery` needs, exactly like `driveListFiles`.
+
+/**
+ * Calendar: events.list —
+ * GET /calendar/v3/calendars/{calendarId}/events?{timeMin,singleEvents,maxResults,pageToken}
+ * Runs in the calendar owner's context (impersonate `calendarId`, or override).
+ *   - timeMin: RFC3339 lower bound (e.g. now) — only events ending after it.
+ *   - singleEvents: expand recurring series into individual instances.
+ *   - pageToken: continuation token from a prior page's `nextPageToken`.
+ *   - orderBy: startTime | updated (startTime requires singleEvents=true).
+ */
+export function calendarEventsList(
+  calendarId: string,
+  params: {
+    timeMin?: string;
+    singleEvents?: boolean;
+    maxResults?: number;
+    pageToken?: string;
+    orderBy?: string;
+  } = {},
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: withQuery(`${CALENDAR_BASE}/calendars/${seg(calendarId)}/events`, params),
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
+}
+
+/**
+ * Calendar: events.delete —
+ * DELETE /calendar/v3/calendars/{calendarId}/events/{eventId}
+ * Deletes (cancels) an event the impersonated user organizes.
+ */
+export function calendarEventsDelete(
+  calendarId: string,
+  eventId: string,
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/events/${seg(eventId)}`,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
+}
+
+/**
+ * Calendar: events.patch —
+ * PATCH /calendar/v3/calendars/{calendarId}/events/{eventId}
+ * Partial update — used during offboarding to set the departing user's own
+ * attendee `responseStatus` to `declined` on events they don't organize.
+ */
+export function calendarEventsPatch(
+  calendarId: string,
+  eventId: string,
+  patch: Record<string, unknown>,
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/events/${seg(eventId)}`,
+    body: patch,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
+}
+
 // ===========================================================================
 // Drive  (www.googleapis.com / drive/v3)
 // NOTE: Drive puts almost every non-resource option in the QUERY STRING, not the

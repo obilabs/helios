@@ -275,6 +275,57 @@ describe('Calendar', () => {
     ).toBe(USER);
     expect(g.calendarDeleteAcl(calId, 'user:x@corp.com', USER).impersonate).toBe(USER);
   });
+
+  // --- events (offboarding: cancel/decline future events) ---
+
+  it('eventsList -> GET calendars/{calendarId}/events with query folded into the path; impersonates the owner', () => {
+    const req = g.calendarEventsList(USER, {
+      timeMin: '2026-01-01T00:00:00.000Z',
+      singleEvents: true,
+      maxResults: 250,
+    });
+    expect(req).toEqual({
+      method: 'GET',
+      path:
+        `/api/google/calendar/v3/calendars/${USER_ENC}/events` +
+        '?timeMin=2026-01-01T00%3A00%3A00.000Z&singleEvents=true&maxResults=250',
+      impersonate: USER,
+    });
+    // No body on a GET (fetch rejects it) and no stray `query` field.
+    expect(req.body).toBeUndefined();
+  });
+
+  it('eventsList carries a continuation pageToken when paginating', () => {
+    const req = g.calendarEventsList(USER, { pageToken: 'tok-2' });
+    expect(req.path).toBe(`/api/google/calendar/v3/calendars/${USER_ENC}/events?pageToken=tok-2`);
+  });
+
+  it('eventsDelete -> DELETE calendars/{calendarId}/events/{eventId}; no body', () => {
+    const req = g.calendarEventsDelete(USER, 'evt_123');
+    expect(req).toEqual({
+      method: 'DELETE',
+      path: `/api/google/calendar/v3/calendars/${USER_ENC}/events/evt_123`,
+      impersonate: USER,
+    });
+    expect(req.body).toBeUndefined();
+  });
+
+  it('eventsPatch -> PATCH calendars/{calendarId}/events/{eventId} with the partial body', () => {
+    const body = { attendees: [{ email: USER, self: true, responseStatus: 'declined' }] };
+    expect(g.calendarEventsPatch(USER, 'evt_123', body)).toEqual({
+      method: 'PATCH',
+      path: `/api/google/calendar/v3/calendars/${USER_ENC}/events/evt_123`,
+      body,
+      impersonate: USER,
+    });
+  });
+
+  it('event builders accept an explicit impersonation override', () => {
+    const calId = 'room-42@resource.calendar.google.com';
+    expect(g.calendarEventsList(calId, {}, USER).impersonate).toBe(USER);
+    expect(g.calendarEventsDelete(calId, 'e1', USER).impersonate).toBe(USER);
+    expect(g.calendarEventsPatch(calId, 'e1', { status: 'cancelled' }, USER).impersonate).toBe(USER);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -678,6 +729,8 @@ describe('invariants', () => {
       g.calendarListCalendars(),
       g.calendarListAcl(USER),
       g.calendarDeleteAcl(USER, 'user:x@corp.com'),
+      g.calendarEventsList(USER, { timeMin: 'now', singleEvents: true }),
+      g.calendarEventsDelete(USER, 'evt_1'),
       g.driveListFiles({ q: 'x' }),
       g.driveListSharedDrives(),
       g.driveGetSharedDrive('D1'),

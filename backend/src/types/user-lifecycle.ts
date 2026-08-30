@@ -507,6 +507,12 @@ export interface OffboardingConfig {
   calendarDeclineFutureMeetings: boolean;
   calendarTransferMeetingOwnership: boolean;
   calendarTransferToUserId?: string;
+  /**
+   * Cancel/decline the departing user's FUTURE calendar events (organizer events
+   * are deleted; attendee events are declined). Also honored via the pre-existing
+   * `calendarDeclineFutureMeetings` flag — either one activates the calendar sweep.
+   */
+  cancelFutureEvents?: boolean;
 
   // Access revocation
   removeFromAllGroups: boolean;
@@ -515,6 +521,11 @@ export interface OffboardingConfig {
   revokeAppPasswords: boolean;
   signOutAllDevices: boolean;
   resetPassword: boolean;
+  /**
+   * Add the departing user to this group (e.g. an "offboarded users" group) — runs
+   * IN ADDITION to `removeFromAllGroups`. Accepts a group email or group id.
+   */
+  offboardedGroupEmail?: string;
 
   // Signature
   removeSignature: boolean;
@@ -524,10 +535,22 @@ export interface OffboardingConfig {
   // Mobile devices
   wipeMobileDevices: boolean;
 
+  // Org unit
+  /** Move the departing user into this org unit (e.g. "/Offboarded"). */
+  orgUnitPath?: string;
+
   // Account handling
   accountAction: AccountAction;
   deleteAccount: boolean;
   deleteAfterDays: number;
+  /**
+   * When true, the departing user is HARD-DELETED inline during offboarding
+   * (opt-in, on top of `deleteAccount`, and guarded by the admin self-lockout
+   * check). When false, deletion is DEFERRED: the intent and its scheduled date
+   * (now + `deleteAfterDays`) are recorded in the audit log, and suspension
+   * remains the safe default.
+   */
+  deleteImmediately?: boolean;
 
   // License
   licenseAction: LicenseAction;
