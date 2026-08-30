@@ -1,9 +1,17 @@
-import { Client } from '@microsoft/microsoft-graph-client';
+import {
+  Client,
+  AuthenticationHandler,
+  HTTPMessageHandler,
+} from '@microsoft/microsoft-graph-client';
 import { ClientSecretCredential } from '@azure/identity';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encryptionService } from './encryption.service.js';
+// Fetch-level record/replay seam for the Graph SDK path. INERT in production
+// (OFF mode is a straight passthrough); tests opt in via useGraphReplay() and
+// HELIOS_GRAPH_RECORD=1 captures sanitized fixtures. See testing/graph-replay.ts.
+import { GraphRecordReplayHandler } from '../testing/graph-replay.js';
 
 /**
  * Microsoft 365 credentials structure
@@ -127,8 +135,15 @@ export class MicrosoftGraphService {
       scopes: ['https://graph.microsoft.com/.default'],
     });
 
+    // Build the middleware chain EXPLICITLY so the record/replay handler sits
+    // between auth and the terminal HTTP handler. In production this is a
+    // passthrough (GraphRecordReplayHandler is OFF), so behavior is unchanged.
     return Client.initWithMiddleware({
-      authProvider: authProvider,
+      middleware: [
+        new AuthenticationHandler(authProvider),
+        new GraphRecordReplayHandler(),
+        new HTTPMessageHandler(),
+      ],
     });
   }
 
