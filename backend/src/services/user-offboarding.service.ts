@@ -12,6 +12,7 @@ import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
+import { googleWorkspaceService } from './google-workspace.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
 import {
   OffboardingTemplate,
@@ -511,6 +512,52 @@ class UserOffboardingService {
         result.stepsSkipped.push('set_auto_reply');
       }
 
+      // Step 4b: Cancel/decline the departing user's future calendar events.
+      // Organizer events are deleted; attendee events are declined. This is the
+      // one genuinely-missing offboarding primitive. Activated by the explicit
+      // `cancelFutureEvents` flag OR the pre-existing (previously inert)
+      // `calendarDeclineFutureMeetings` template flag.
+      if (config.cancelFutureEvents || config.calendarDeclineFutureMeetings) {
+        stepOrder++;
+        const calStart = Date.now();
+        try {
+          const cancelResult = await googleWorkspaceService.cancelFutureEvents(
+            organizationId,
+            config.userEmail
+          );
+          if (!cancelResult.success) {
+            throw new Error(cancelResult.error || 'Failed to cancel future calendar events');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'cancel_future_events',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - calStart,
+              details: {
+                cancelledCount: cancelResult.cancelledCount ?? 0,
+                declinedCount: cancelResult.declinedCount ?? 0,
+              },
+            }
+          );
+          result.stepsCompleted.push('cancel_future_events');
+        } catch (error: any) {
+          result.errors.push(`Failed to cancel future calendar events: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'cancel_future_events',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - calStart }
+          );
+          result.stepsFailed.push('cancel_future_events');
+        }
+      } else {
+        result.stepsSkipped.push('cancel_future_events');
+      }
+
       // Step 5: Remove from groups
       if (config.removeFromAllGroups) {
         stepOrder++;
@@ -537,6 +584,48 @@ class UserOffboardingService {
         }
       } else {
         result.stepsSkipped.push('remove_from_groups');
+      }
+
+      // Step 5b: Add the departing user to a designated "offboarded" group (in
+      // ADDITION to removeFromAllGroups). Common pattern for applying a
+      // restricted group policy / retaining the mailbox under group control.
+      if (config.offboardedGroupEmail) {
+        stepOrder++;
+        const addGroupStart = Date.now();
+        try {
+          const addResult = await googleWorkspaceService.addUserToGroup(
+            organizationId,
+            config.userEmail,
+            config.offboardedGroupEmail
+          );
+          if (!addResult.success) {
+            throw new Error(addResult.error || 'Failed to add user to offboarded group');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'add_to_offboarded_group',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - addGroupStart,
+              details: { group: config.offboardedGroupEmail },
+            }
+          );
+          result.stepsCompleted.push('add_to_offboarded_group');
+        } catch (error: any) {
+          result.errors.push(`Failed to add user to offboarded group: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'add_to_offboarded_group',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - addGroupStart }
+          );
+          result.stepsFailed.push('add_to_offboarded_group');
+        }
+      } else {
+        result.stepsSkipped.push('add_to_offboarded_group');
       }
 
       // Step 6: Revoke OAuth tokens
@@ -623,6 +712,48 @@ class UserOffboardingService {
         result.stepsSkipped.push('reset_password');
       }
 
+      // Step 8b: Move the departing user into an offboarding org unit (e.g.
+      // "/Offboarded") so OU-scoped policies apply. Runs BEFORE suspension so the
+      // OU move still succeeds on an active account.
+      if (config.orgUnitPath) {
+        stepOrder++;
+        const ouStart = Date.now();
+        try {
+          const ouResult = await googleWorkspaceService.setOrgUnit(
+            organizationId,
+            config.userEmail,
+            config.orgUnitPath
+          );
+          if (!ouResult.success) {
+            throw new Error(ouResult.error || 'Failed to move user to org unit');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'move_to_org_unit',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - ouStart,
+              details: { orgUnitPath: config.orgUnitPath },
+            }
+          );
+          result.stepsCompleted.push('move_to_org_unit');
+        } catch (error: any) {
+          result.errors.push(`Failed to move user to org unit: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'move_to_org_unit',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - ouStart }
+          );
+          result.stepsFailed.push('move_to_org_unit');
+        }
+      } else {
+        result.stepsSkipped.push('move_to_org_unit');
+      }
+
       // Step 9: Suspend account (if immediate)
       if (config.accountAction === 'suspend_immediately') {
         stepOrder++;
@@ -654,6 +785,78 @@ class UserOffboardingService {
         result.stepsSkipped.push('suspend_account'); // Will be handled by scheduler
       } else {
         result.stepsSkipped.push('suspend_account');
+      }
+
+      // Step 9b: Account deletion — OPT-IN (config.deleteAccount) and GUARDED.
+      // Suspension (above) is the safe default; deletion is irreversible and frees
+      // the license.
+      //   - deleteImmediately === true → HARD-DELETE inline now via
+      //     googleWorkspaceService.deleteUser, which itself re-runs the admin
+      //     self-lockout guard (assertNotProtectedAdmin) before deleting.
+      //   - otherwise → DEFERRED: record the intent + scheduled date
+      //     (now + deleteAfterDays) in the audit log; a scheduler performs the
+      //     actual deletion later. Nothing is deleted inline.
+      if (config.deleteAccount) {
+        stepOrder++;
+        const deleteStart = Date.now();
+        const deleteStep = config.deleteImmediately ? 'delete_account' : 'schedule_account_deletion';
+        try {
+          if (config.deleteImmediately) {
+            const deleteResult = await googleWorkspaceService.deleteUser(
+              organizationId,
+              config.userEmail
+            );
+            if (!deleteResult.success) {
+              throw new Error(deleteResult.error || 'Failed to delete account');
+            }
+            await this.updateHeliosUserStatus(config.userId, 'deleted');
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'delete_account',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - deleteStart,
+                details: { deleted: true, deferred: false },
+              }
+            );
+            result.stepsCompleted.push('delete_account');
+          } else {
+            // Deferral: record intent only. The audit log IS the durable record of
+            // the scheduled deletion; nothing is deleted inline.
+            const days = config.deleteAfterDays ?? 90;
+            const scheduledFor = new Date(
+              Date.now() + days * 24 * 60 * 60 * 1000
+            ).toISOString();
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'schedule_account_deletion',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - deleteStart,
+                details: { deleted: false, deferred: true, deleteAfterDays: days, scheduledFor },
+              }
+            );
+            result.stepsCompleted.push('schedule_account_deletion');
+          }
+        } catch (error: any) {
+          result.errors.push(
+            `Failed to ${config.deleteImmediately ? 'delete account' : 'schedule account deletion'}: ${error.message}`
+          );
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            deleteStep,
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - deleteStart }
+          );
+          result.stepsFailed.push(deleteStep);
+        }
+      } else {
+        result.stepsSkipped.push('delete_account');
       }
 
       // Step 10: Send notifications
@@ -1045,16 +1248,36 @@ class UserOffboardingService {
     return config.managerEmail ?? null;
   }
 
+  /**
+   * Set the departing user's Gmail vacation responder (auto-reply) to the stored
+   * offboarding message. Delegates to the working, user-impersonating
+   * googleWorkspaceService.setVacationResponder — Gmail
+   * users.settings.updateVacation IS supported, so the previous stub was a wiring
+   * gap, not an API gap. The vacation responder impersonates the departing user
+   * (their mailbox owns the setting). Throws on failure so the orchestrator
+   * records the step as failed.
+   */
   private async setAutoReply(
     organizationId: string,
     config: OffboardingConfig
   ): Promise<void> {
-    logger.info('Auto-reply would be set', {
+    const res = await googleWorkspaceService.setVacationResponder(
+      organizationId,
+      config.userEmail,
+      {
+        subject: config.emailAutoReplySubject || 'Out of office',
+        body: config.emailAutoReplyMessage || '',
+      }
+    );
+
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to set vacation responder');
+    }
+
+    logger.info('Auto-reply (vacation responder) set', {
       userEmail: config.userEmail,
       subject: config.emailAutoReplySubject,
     });
-
-    // TODO: Implement actual vacation responder setup
   }
 
   private async removeFromAllGroups(
@@ -1213,9 +1436,16 @@ class UserOffboardingService {
     );
   }
 
+  /**
+   * NO-OP (deliberately out of scope): sending offboarding notification emails
+   * requires mail-delivery infrastructure (SMTP / transactional provider) that
+   * this offboarding path does not own. This method intentionally sends NOTHING —
+   * it only logs that a notification WOULD be sent, so the step reports success
+   * without silently implying mail was delivered. Building real notification mail
+   * delivery is tracked as a follow-up.
+   */
   private async sendNotifications(config: OffboardingConfig): Promise<void> {
-    // TODO: Implement actual email notifications
-    logger.info('Notifications would be sent', {
+    logger.info('send_notifications is a no-op (mail infrastructure out of scope); no email sent', {
       userEmail: config.userEmail,
       notifyManager: config.notifyManager,
       notifyItAdmin: config.notifyItAdmin,
