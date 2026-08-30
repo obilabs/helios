@@ -3597,6 +3597,125 @@ export class GoogleWorkspaceService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Cancel/decline a user's FUTURE calendar events during offboarding.
+   *
+   * Impersonates the user (domain-wide delegation `subject = userEmail`) and pages
+   * through their primary calendar's upcoming events (`timeMin = now`,
+   * `singleEvents=true` so recurring series expand into individual instances,
+   * `maxResults=250`, following `nextPageToken`). For each event:
+   *   - the user is the ORGANIZER   → DELETE the event (cancels it for everyone),
+   *   - the user is only an ATTENDEE → PATCH their own attendee entry to
+   *     `responseStatus='declined'` (frees their calendar without cancelling the
+   *     event for the other attendees).
+   *
+   * Per-event failures are logged and skipped so one bad event never aborts the
+   * whole sweep. Requires the `https://www.googleapis.com/auth/calendar` scope
+   * (present in REQUIRED_SCOPES). This is the offboarding primitive the console
+   * path had but the audited orchestrator was missing.
+   */
+  async cancelFutureEvents(
+    organizationId: string,
+    userEmail: string
+  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, error: 'Google Workspace not configured' };
+      }
+
+      // Calendar events live in the departing user's own calendar, so impersonate
+      // that user directly (not the admin).
+      const jwtClient = new JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/calendar'],
+        subject: userEmail
+      });
+
+      const calendar = google.calendar({ version: 'v3', auth: jwtClient });
+
+      const nowISO = new Date().toISOString();
+      const targetEmail = userEmail.toLowerCase();
+      let cancelledCount = 0;
+      let declinedCount = 0;
+      let pageToken: string | undefined = undefined;
+
+      do {
+        const listResp = await calendar.events.list({
+          calendarId: userEmail,
+          timeMin: nowISO,
+          singleEvents: true,
+          maxResults: 250,
+          pageToken
+        });
+
+        const events = listResp.data.items || [];
+
+        for (const event of events) {
+          const eventId = event.id;
+          if (!eventId) continue;
+          // Already-cancelled instances need no action.
+          if (event.status === 'cancelled') continue;
+
+          const isOrganizer =
+            event.organizer?.self === true ||
+            (event.organizer?.email || '').toLowerCase() === targetEmail;
+
+          try {
+            if (isOrganizer) {
+              // The user owns the event → delete it (cancels for all attendees).
+              await calendar.events.delete({ calendarId: userEmail, eventId });
+              cancelledCount++;
+            } else {
+              // The user is (at most) an attendee → decline their own invite.
+              const attendees = event.attendees || [];
+              const self = attendees.find(
+                (a: any) => a.self === true || (a.email || '').toLowerCase() === targetEmail
+              );
+              if (!self) {
+                // Not an attendee (e.g. a subscribed/public calendar entry) →
+                // nothing to decline.
+                continue;
+              }
+              const updatedAttendees = attendees.map((a: any) =>
+                a === self ? { ...a, responseStatus: 'declined' } : a
+              );
+              await calendar.events.patch({
+                calendarId: userEmail,
+                eventId,
+                requestBody: { attendees: updatedAttendees }
+              });
+              declinedCount++;
+            }
+          } catch (eventError: any) {
+            logger.error('Failed to cancel/decline a calendar event during offboarding', {
+              userEmail,
+              eventId,
+              error: eventError.message
+            });
+          }
+        }
+
+        pageToken = listResp.data.nextPageToken || undefined;
+      } while (pageToken);
+
+      logger.info('Cancelled/declined future calendar events during offboarding', {
+        userEmail,
+        cancelledCount,
+        declinedCount
+      });
+
+      return { success: true, cancelledCount, declinedCount };
+    } catch (error: any) {
+      logger.error('Failed to cancel future calendar events', {
+        userEmail,
+        error: error.message
+      });
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const googleWorkspaceService = new GoogleWorkspaceService();
