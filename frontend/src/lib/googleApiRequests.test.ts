@@ -171,6 +171,51 @@ describe('Gmail sendAs and signature', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Gmail — message import (M365 -> Google migration)
+// The `messages.import` write path replays a migrated RFC822 message into the
+// TARGET mailbox. Query params (internalDateSource, neverMarkSpam) are folded
+// into the PATH per the module convention (runGoogle forwards only path+body,
+// so a separate `query` field would be silently dropped) — same as the Drive
+// builders. Import impersonates the destination mailbox owner.
+// ---------------------------------------------------------------------------
+describe('Gmail import (M365 -> Google migration)', () => {
+  const IMPORT_PATH =
+    `/api/google/gmail/v1/users/${USER_ENC}/messages/import` +
+    '?internalDateSource=dateHeader&neverMarkSpam=true';
+
+  it('import -> POST messages/import; query in the path, {raw} body, impersonates the target', () => {
+    const req = g.gmailImport(USER, 'UkZDODIyLXJhdw');
+    expect(req.method).toBe('POST');
+    // internalDateSource=dateHeader keeps the migrated message's original date;
+    // neverMarkSpam=true stops import-time spam routing. Both live in the path.
+    expect(req.path).toBe(IMPORT_PATH);
+    expect(req.body).toEqual({ raw: 'UkZDODIyLXJhdw' });
+    // Runs AS the destination mailbox owner via domain-wide delegation:
+    // impersonate === userId when the target is a real email.
+    expect(req.impersonate).toBe(USER);
+  });
+
+  it('import full-shape equality (exact method/path/query/body/impersonate)', () => {
+    expect(g.gmailImport(USER, 'RAW')).toEqual({
+      method: 'POST',
+      path: IMPORT_PATH,
+      body: { raw: 'RAW' },
+      impersonate: USER,
+    });
+  });
+
+  it('import query params are encoded into the path (never a separate field)', () => {
+    const req = g.gmailImport(USER, 'RAW') as g.GoogleApiRequest & { query?: unknown };
+    // The runtime dispatch (runGoogle) forwards only path+body+impersonate; a
+    // stray `query` field would be dropped, so there must not be one.
+    expect(req.query).toBeUndefined();
+    expect(req.path).toContain('internalDateSource=dateHeader');
+    expect(req.path).toContain('neverMarkSpam=true');
+    expect(req.path.startsWith('/api/google/gmail/v1/')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Calendar
 // ---------------------------------------------------------------------------
 describe('Calendar', () => {
