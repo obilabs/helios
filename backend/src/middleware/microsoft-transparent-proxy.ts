@@ -17,7 +17,12 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { encryptionService } from '../services/encryption.service.js';
-import axios from 'axios';
+// Record/replay seam for the two outbound Microsoft calls below (token exchange
+// + Graph API call). In production (and any test that does not opt in) this is a
+// straight passthrough to axios — no behavior change. Tests activate replay via
+// useGraphReplay(); setting HELIOS_GRAPH_RECORD=1 captures sanitized fixtures.
+// See testing/graph-replay.ts.
+import { graphHttp } from '../testing/graph-replay.js';
 import { Client } from '@microsoft/microsoft-graph-client';
 import { ClientSecretCredential } from '@azure/identity';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
@@ -390,7 +395,7 @@ async function getAccessToken(credentials: MicrosoftCredentials): Promise<string
   params.append('scope', 'https://graph.microsoft.com/.default');
   params.append('grant_type', 'client_credentials');
 
-  const response = await axios.post(tokenUrl, params, {
+  const response = await graphHttp.post(tokenUrl, params, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -449,7 +454,7 @@ async function proxyToMicrosoftGraph(
       requestConfig.data = proxyRequest.body;
     }
 
-    const response = await axios(requestConfig);
+    const response = await graphHttp(requestConfig);
 
     logger.info('Microsoft Graph API request successful', {
       status: response.status,
