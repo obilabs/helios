@@ -121,11 +121,11 @@ const COMMAND_SECTIONS: CommandSection[] = [
   {
     title: 'User Offboarding',
     commands: [
-      { command: 'gw users offboard <email>', description: 'Show offboarding options', example: 'gw users offboard john@example.com' },
-      { command: 'gw users offboard <email> --transfer-to=<to>', description: 'Offboard with data transfer', example: 'gw users offboard john@example.com --transfer-to=manager@example.com' },
-      { command: 'gw users offboard <email> --forward-to=<to>', description: 'Offboard with forwarding', example: 'gw users offboard john@example.com --forward-to=support@example.com' },
-      { command: 'gw users offboard <email> --suspend', description: 'Offboard and suspend', example: 'gw users offboard john@example.com --suspend --transfer-to=manager@example.com' },
-      { command: 'gw users offboard <email> --revoke-access', description: 'Revoke sessions and tokens', example: 'gw users offboard john@example.com --revoke-access --suspend' }
+      { command: 'gw offboard <email>', description: 'Show offboarding options (audited + guarded engine; alias: gw users offboard)', example: 'gw offboard john@example.com' },
+      { command: 'gw offboard <email> --manager=<email> --transfer-drive', description: 'Transfer Drive data to the manager', example: 'gw offboard john@example.com --manager=boss@example.com --transfer-drive' },
+      { command: 'gw offboard <email> --forward=<to> --delegate=<to>', description: 'Forward mail and delegate the mailbox', example: 'gw offboard john@example.com --forward=support@example.com --delegate=deputy@example.com' },
+      { command: 'gw offboard <email> --suspend --revoke', description: 'Suspend (default) and revoke tokens + sign out', example: 'gw offboard john@example.com --suspend --revoke' },
+      { command: 'gw offboard <email> --delete', description: 'Delete the account (opt-in, guarded, irreversible)', example: 'gw offboard john@example.com --delete' }
     ]
   },
   {

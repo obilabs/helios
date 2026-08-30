@@ -605,7 +605,42 @@ router.post('/offboard', async (req: Request, res: Response) => {
       scheduledFor,
       lastDay,
       configOverrides,
+      config,
     } = req.body;
+
+    // Raw-config path (developer console `gw offboard`): a config assembled from
+    // flags, run through the SAME audited + guarded orchestrator as the template
+    // path. Suspend stays the default and deletion stays opt-in + guarded inside
+    // executeOffboardingFromConfig / executeOffboarding. Org-policy defaults are
+    // resolved and merged there (per-offboard override wins).
+    if (config && typeof config === 'object' && !Array.isArray(config)) {
+      const userEmail = config.userEmail || config.email;
+      if (!userEmail) {
+        return res.status(400).json({
+          success: false,
+          error: 'config.userEmail is required',
+        });
+      }
+
+      const result = await userOffboardingService.executeOffboardingFromConfig(
+        organizationId,
+        { ...config, userEmail },
+        {
+          triggeredBy: 'user',
+          triggeredByUserId: req.user?.userId,
+        }
+      );
+
+      return res.status(result.success ? 200 : 207).json({
+        success: result.success,
+        data: {
+          stepsCompleted: result.stepsCompleted,
+          stepsFailed: result.stepsFailed,
+          stepsSkipped: result.stepsSkipped,
+        },
+        errors: result.errors.length > 0 ? result.errors : undefined,
+      });
+    }
 
     // Validate required fields
     if (!userId) {

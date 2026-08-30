@@ -3,6 +3,7 @@ import { HelpCircle, BookOpen, Trash2, X, PanelLeftOpen, PanelRightOpen, Externa
 import { ConsoleHelpPanel } from '../components/ConsoleHelpPanel';
 import { authFetch } from '../config/api';
 import * as google from '../lib/googleApiRequests';
+import { buildOffboardConfigPayload } from '../lib/offboardConfig';
 import './DeveloperConsole.css';
 
 interface ConsoleOutput {
@@ -1907,7 +1908,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const handleGoogleWorkspaceCommand = async (args: string[]) => {
     if (args.length === 0) {
       addOutput('error', 'Usage: helios gw <resource> <action> [options]');
-      addOutput('info', 'Resources: users, groups, orgunits, schemas, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
+      addOutput('info', 'Resources: users, offboard, groups, orgunits, schemas, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
       return;
     }
 
@@ -1916,6 +1917,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     const restArgs = args.slice(2);
 
     switch (resource) {
+      case 'offboard':
+        // Top-level `gw offboard <user> [flags]`. `gw users offboard` remains a
+        // thin alias (handled inside handleGWUsers). Both route to the SAME
+        // audited + guarded orchestrator via handleGWOffboard.
+        await handleGWOffboard(args.slice(1));
+        break;
       case 'users':
         await handleGWUsers(action, restArgs);
         break;
@@ -2646,179 +2653,9 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       }
 
       case 'offboard': {
-        if (args.length === 0) {
-          addOutput('error', 'Usage: gw users offboard <email> [options]');
-          addOutput('info', '');
-          addOutput('info', 'Offboard a user with optional data transfer and access revocation.');
-          addOutput('info', '');
-          addOutput('info', 'Options:');
-          addOutput('info', '  --transfer-to=<email>     Transfer Drive/Calendar data to this user');
-          addOutput('info', '  --forward-to=<email>      Forward emails to this user');
-          addOutput('info', '  --suspend                 Suspend the user after offboarding');
-          addOutput('info', '  --delete                  Delete the user after offboarding');
-          addOutput('info', '  --vacation="message"      Set vacation responder before offboarding');
-          addOutput('info', '  --revoke-access           Sign out sessions, revoke OAuth tokens');
-          addOutput('info', '');
-          addOutput('info', 'Example:');
-          addOutput('info', '  gw users offboard john@company.com --transfer-to=manager@company.com --forward-to=support@company.com --suspend');
-          return;
-        }
-
-        const email = args[0];
-        const params = parseArgs(args.slice(1));
-
-        addOutput('info', `[OFFBOARD]Starting offboarding for ${email}...`);
-        addOutput('info', '');
-
-        let stepNum = 0;
-        const results: { step: string; success: boolean; message: string }[] = [];
-
-        try {
-          // Step 1: Set vacation responder if requested
-          if (params.vacation) {
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Setting vacation responder...`);
-            try {
-              await runGoogle(google.gmailUpdateVacation(email, {
-                enableAutoReply: true,
-                responseBodyPlainText: params.vacation,
-                responseBodyHtml: `<p>${params.vacation.replace(/\n/g, '<br>')}</p>`
-              }));
-              results.push({ step: 'Vacation responder', success: true, message: 'Enabled' });
-              addOutput('success', `   Vacation responder set`);
-            } catch (e: any) {
-              results.push({ step: 'Vacation responder', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Step 2: Data transfer if requested
-          if (params['transfer-to'] || params.transferTo) {
-            const transferTo = params['transfer-to'] || params.transferTo;
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Initiating data transfer to ${transferTo}...`);
-            try {
-              const transferResponse = await runGoogle(google.dataTransferInsert({
-                oldOwnerUserId: email,
-                newOwnerUserId: transferTo,
-                applicationIds: [
-                  google.DATA_TRANSFER_APPLICATION_IDS.drive,
-                  google.DATA_TRANSFER_APPLICATION_IDS.calendar,
-                  google.DATA_TRANSFER_APPLICATION_IDS.sites
-                ]
-              }));
-              results.push({ step: 'Data transfer', success: true, message: `Transfer ID: ${transferResponse.id}` });
-              addOutput('success', `   Transfer initiated (ID: ${transferResponse.id})`);
-            } catch (e: any) {
-              results.push({ step: 'Data transfer', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Step 3: Email forwarding if requested
-          if (params['forward-to'] || params.forwardTo) {
-            const forwardTo = params['forward-to'] || params.forwardTo;
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Setting up email forwarding to ${forwardTo}...`);
-            try {
-              // Add forwarding address first
-              try {
-                await runGoogle(google.gmailCreateForwardingAddress(email, forwardTo));
-              } catch {
-                // May already exist, ignore
-              }
-
-              // Enable auto-forwarding
-              await runGoogle(google.gmailUpdateAutoForwarding(email, {
-                enabled: true,
-                emailAddress: forwardTo,
-                disposition: 'leaveInInbox'
-              }));
-              results.push({ step: 'Email forwarding', success: true, message: `Forwarding to ${forwardTo}` });
-              addOutput('success', `   Forwarding enabled`);
-            } catch (e: any) {
-              results.push({ step: 'Email forwarding', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Step 4: Revoke access if requested
-          if (params['revoke-access'] !== undefined || params.revokeAccess !== undefined) {
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Revoking access...`);
-            try {
-              // Sign out all sessions
-              await apiRequest('POST', `/api/google/admin/directory/v1/users/${email}/signOut`, {});
-              addOutput('info', `   Signed out all sessions`);
-
-              // Revoke OAuth tokens (requires Admin SDK with user management scope)
-              try {
-                const tokens = await apiRequest('GET', `/api/google/admin/directory/v1/users/${email}/tokens`);
-                if (tokens.items) {
-                  for (const token of tokens.items) {
-                    await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${email}/tokens/${token.clientId}`);
-                  }
-                  addOutput('info', `   Revoked ${tokens.items.length} OAuth tokens`);
-                }
-              } catch {
-                addOutput('info', `   No OAuth tokens to revoke`);
-              }
-
-              results.push({ step: 'Revoke access', success: true, message: 'Sessions signed out' });
-            } catch (e: any) {
-              results.push({ step: 'Revoke access', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Step 5: Suspend user if requested
-          if (params.suspend !== undefined) {
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Suspending user...`);
-            try {
-              await apiRequest('PATCH', `/api/google/admin/directory/v1/users/${email}`, { suspended: true });
-              results.push({ step: 'Suspend user', success: true, message: 'User suspended' });
-              addOutput('success', `   User suspended`);
-            } catch (e: any) {
-              results.push({ step: 'Suspend user', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Step 6: Delete user if requested (mutually exclusive with suspend)
-          if (params.delete !== undefined && params.suspend === undefined) {
-            stepNum++;
-            addOutput('info', `[STEP]Step ${stepNum}: Deleting user...`);
-            addOutput('info', '[WARN]This action is IRREVERSIBLE!');
-            try {
-              await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${email}`);
-              results.push({ step: 'Delete user', success: true, message: 'User deleted' });
-              addOutput('success', `   User deleted`);
-            } catch (e: any) {
-              results.push({ step: 'Delete user', success: false, message: e.message });
-              addOutput('error', `   Failed: ${e.message}`);
-            }
-          }
-
-          // Summary
-          addOutput('info', '');
-          addOutput('info', '='.repeat(60));
-          addOutput('success', `[OK]Offboarding complete for ${email}`);
-          addOutput('info', '');
-          addOutput('info', 'Summary:');
-          for (const result of results) {
-            const icon = result.success ? '[✓]' : '[✗]';
-            addOutput(result.success ? 'info' : 'error', `  ${icon} ${result.step}: ${result.message}`);
-          }
-
-          if (results.some(r => !r.success)) {
-            addOutput('info', '');
-            addOutput('error', '[WARN]Some steps failed. Review the errors above.');
-          }
-
-        } catch (error: any) {
-          addOutput('error', `Offboarding failed: ${error.message}`);
-        }
+        // Alias: `gw users offboard <user> [flags]` -> the same audited + guarded
+        // orchestrator path as the top-level `gw offboard`.
+        await handleGWOffboard(args);
         break;
       }
 
@@ -2910,6 +2747,92 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
       default:
         addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, suspend, restore, undelete, delete, move, groups, reset-password, add-alias, remove-alias, list-aliases, get-schema, set-schema, make-admin, offboard`);
+    }
+  };
+
+  // ----- Google Workspace: Offboard -----
+  //
+  // `gw offboard <user> [flags]` (alias: `gw users offboard <user> [flags]`).
+  //
+  // Unlike the old inline sequence, this NO LONGER drives Google directly. It
+  // translates flags into an OffboardingConfig (via the pure, unit-tested
+  // buildOffboardConfigPayload) and POSTs it to the AUDITED + GUARDED orchestrator
+  // (POST /api/v1/lifecycle/offboard). The backend suspends by default, keeps
+  // deletion opt-in + guarded (admin self-lockout protection), merges org-policy
+  // defaults, and records every step in the lifecycle audit log.
+  const handleGWOffboard = async (args: string[]) => {
+    if (args.length === 0 || args[0].startsWith('--')) {
+      addOutput('error', 'Usage: gw offboard <user> [options]   (alias: gw users offboard <user> [options])');
+      addOutput('info', '');
+      addOutput('info', 'Offboards a user through the audited + guarded lifecycle engine.');
+      addOutput('info', 'Suspend is the DEFAULT; deletion is opt-in and guarded. Every step is audited.');
+      addOutput('info', '');
+      addOutput('info', 'Options:');
+      addOutput('info', '  --manager=<email>       Manager: target for drive transfer / forwarding / delegation');
+      addOutput('info', '  --suspend               Suspend the account (default action)');
+      addOutput('info', '  --delete                Delete the account (opt-in, guarded, irreversible)');
+      addOutput('info', '  --vacation[="message"]  Set an auto-reply (vacation responder)');
+      addOutput('info', '  --transfer-drive        Transfer Drive data to the manager');
+      addOutput('info', '  --transfer-calendar     Transfer Calendar ownership to the manager (rides with drive transfer)');
+      addOutput('info', '  --cancel-events         Cancel/decline the user\'s future calendar events');
+      addOutput('info', '  --move-ou=/Path         Move the user into an org unit (e.g. /Offboarded)');
+      addOutput('info', '  --add-group=<email>     Add the user to an "offboarded" group');
+      addOutput('info', '  --forward=<email>       Forward mail to this address');
+      addOutput('info', '  --delegate=<email>      Delegate the mailbox to this address');
+      addOutput('info', '  --revoke                Revoke OAuth tokens and sign out all devices');
+      addOutput('info', '');
+      addOutput('info', 'Notes:');
+      addOutput('info', '  - Forwarding/delegation and a vacation responder are mutually exclusive; forwarding wins.');
+      addOutput('info', '  - Unset knobs fall back to your organization offboarding policy defaults.');
+      addOutput('info', '');
+      addOutput('info', 'Examples:');
+      addOutput('info', '  gw offboard john@company.com --manager=boss@company.com --transfer-drive --forward=support@company.com');
+      addOutput('info', '  gw offboard john@company.com --vacation="I have left the company." --move-ou=/Offboarded --revoke');
+      addOutput('info', '  gw offboard john@company.com --delete   (guarded, irreversible)');
+      return;
+    }
+
+    const email = args[0];
+    const params = parseArgs(args.slice(1));
+    const config = buildOffboardConfigPayload(email, params);
+
+    addOutput('info', `[OFFBOARD]Offboarding ${email} via the audited lifecycle engine...`);
+    if (config.deleteAccount) {
+      addOutput('info', '[WARN]--delete requested: the account will be DELETED (irreversible) after suspension.');
+    } else {
+      addOutput('info', '   Default action: suspend (no deletion).');
+    }
+    addOutput('info', '');
+
+    try {
+      const response = await apiRequest('POST', '/api/v1/lifecycle/offboard', { config });
+      const data = response?.data || {};
+      const completed: string[] = data.stepsCompleted || [];
+      const failed: string[] = data.stepsFailed || [];
+      const skipped: string[] = data.stepsSkipped || [];
+      const errors: string[] = response?.errors || [];
+
+      addOutput('info', '='.repeat(60));
+      if (completed.length > 0) {
+        addOutput('success', `[OK]Completed: ${completed.join(', ')}`);
+      }
+      if (skipped.length > 0) {
+        addOutput('info', `[SKIP]Skipped: ${skipped.join(', ')}`);
+      }
+      if (failed.length > 0) {
+        addOutput('error', `[FAIL]Failed: ${failed.join(', ')}`);
+      }
+      for (const err of errors) {
+        addOutput('error', `   ${err}`);
+      }
+
+      if (response?.success) {
+        addOutput('success', `[OK]Offboarding complete for ${email} (audited).`);
+      } else {
+        addOutput('error', `[WARN]Offboarding finished with failures for ${email}. Review the audit log.`);
+      }
+    } catch (error: any) {
+      addOutput('error', `Offboarding failed: ${error.message}`);
     }
   };
 
@@ -6639,24 +6562,31 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                 <table className="command-table">
                   <tbody>
                     <tr>
-                      <td className="command-name">gw users offboard &lt;email&gt;</td>
-                      <td className="command-desc">Show offboarding options and help</td>
+                      <td className="command-name">gw offboard &lt;email&gt;</td>
+                      <td className="command-desc">
+                        Show offboarding options and help (alias: gw users offboard &lt;email&gt;)
+                        <div className="command-example">Runs through the audited + guarded lifecycle engine. Suspend is default; delete is opt-in.</div>
+                      </td>
                     </tr>
                     <tr>
-                      <td className="command-name">gw users offboard &lt;email&gt; --transfer-to=&lt;email&gt;</td>
-                      <td className="command-desc">Transfer Drive/Calendar data during offboarding</td>
+                      <td className="command-name">gw offboard &lt;email&gt; --manager=&lt;email&gt; --transfer-drive</td>
+                      <td className="command-desc">Transfer Drive data to the manager during offboarding</td>
                     </tr>
                     <tr>
-                      <td className="command-name">gw users offboard &lt;email&gt; --forward-to=&lt;email&gt;</td>
-                      <td className="command-desc">Forward emails during offboarding</td>
+                      <td className="command-name">gw offboard &lt;email&gt; --forward=&lt;email&gt; --delegate=&lt;email&gt;</td>
+                      <td className="command-desc">Forward mail and delegate the mailbox to a successor</td>
                     </tr>
                     <tr>
-                      <td className="command-name">gw users offboard &lt;email&gt; --suspend</td>
-                      <td className="command-desc">Suspend user after offboarding steps</td>
+                      <td className="command-name">gw offboard &lt;email&gt; --vacation="message" --move-ou=/Offboarded</td>
+                      <td className="command-desc">Set an auto-reply and move the user into an org unit</td>
                     </tr>
                     <tr>
-                      <td className="command-name">gw users offboard &lt;email&gt; --revoke-access</td>
-                      <td className="command-desc">Sign out sessions and revoke OAuth tokens</td>
+                      <td className="command-name">gw offboard &lt;email&gt; --suspend --revoke</td>
+                      <td className="command-desc">Suspend (default) and revoke OAuth tokens + sign out all devices</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw offboard &lt;email&gt; --delete</td>
+                      <td className="command-desc">Delete the account (opt-in, guarded, irreversible)</td>
                     </tr>
                   </tbody>
                 </table>
