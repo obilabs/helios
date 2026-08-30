@@ -17,6 +17,9 @@ import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.
 import {
   OffboardingTemplate,
   OffboardingConfig,
+  OffboardingConfigInput,
+  OffboardingPolicy,
+  DEFAULT_OFFBOARDING_POLICY,
   CreateOffboardingTemplateDTO,
   UpdateOffboardingTemplateDTO,
   OFFBOARDING_STEPS,
@@ -302,8 +305,21 @@ class UserOffboardingService {
       actionId?: string;
       triggeredBy?: string;
       triggeredByUserId?: string;
+      /**
+       * Org OFFBOARDING POLICY defaults. When provided, they fill any config
+       * field the caller left unset (two-tier: per-offboard override wins over
+       * policy default). The merge is a pure, DB-free operation, so it never
+       * disturbs the step-by-step audit sequence.
+       */
+      policy?: OffboardingPolicy;
     } = {}
   ): Promise<OffboardingResult> {
+    // Apply org-policy defaults before anything else touches the config, so every
+    // downstream step (and the audit log) sees the effective, policy-merged value.
+    if (options.policy) {
+      config = this.mergePolicyDefaults(config, options.policy);
+    }
+
     const result: OffboardingResult = {
       success: true,
       errors: [],
@@ -448,9 +464,9 @@ class UserOffboardingService {
         stepOrder++;
         const delegateStart = Date.now();
         try {
-          const delegateEmail = await this.resolveForwardTarget(config);
+          const delegateEmail = await this.resolveDelegateTarget(config);
           if (!delegateEmail) {
-            throw new Error('No delegate address available (manager or forward user email missing)');
+            throw new Error('No delegate address available (delegate, forward, manager, or forward user email missing)');
           }
           const delegationDetails = await this.setupMailboxDelegation(
             organizationId,
@@ -931,6 +947,8 @@ class UserOffboardingService {
       triggeredByUserId?: string;
       lastDay?: Date;
       configOverrides?: Partial<OffboardingConfig>;
+      /** Pre-resolved org policy; resolved from the DB when omitted. */
+      policy?: OffboardingPolicy;
     } = {}
   ): Promise<OffboardingResult> {
     const template = await this.getTemplate(templateId);
@@ -1031,7 +1049,201 @@ class UserOffboardingService {
       ...options.configOverrides,
     };
 
-    return this.executeOffboarding(organizationId, config, options);
+    // Two-tier knobs: resolve the org policy (unless the caller pre-resolved it)
+    // and hand it to the orchestrator, which fills any field the template/config
+    // left unset. Template/config values always win over policy defaults.
+    const policy = options.policy ?? (await this.resolveOffboardingPolicy(organizationId));
+
+    return this.executeOffboarding(organizationId, config, {
+      actionId: options.actionId,
+      triggeredBy: options.triggeredBy,
+      triggeredByUserId: options.triggeredByUserId,
+      policy,
+    });
+  }
+
+  /**
+   * Execute offboarding from a RAW config assembled by a caller (the developer
+   * console's `gw offboard` command, or a direct API client) rather than from a
+   * stored template. This is the single audited + guarded entrypoint the console
+   * uses instead of running its own ad-hoc Google sequence.
+   *
+   * Only `userEmail` is required on the input:
+   *   - `userId` is resolved from the email against organization_users when the
+   *     caller omits it (the console works with Google emails). A missing Helios
+   *     row is non-fatal — the Google-side steps only need the email, and the
+   *     Helios status update simply matches nothing.
+   *   - every other field is defaulted by `normalizeConfig`, then org-policy
+   *     defaults are applied (per-offboard override wins).
+   */
+  async executeOffboardingFromConfig(
+    organizationId: string,
+    input: OffboardingConfigInput,
+    options: {
+      actionId?: string;
+      triggeredBy?: string;
+      triggeredByUserId?: string;
+      /** Pre-resolved org policy; resolved from the DB when omitted. */
+      policy?: OffboardingPolicy;
+    } = {}
+  ): Promise<OffboardingResult> {
+    if (!input || !input.userEmail) {
+      return {
+        success: false,
+        errors: ['User email is required'],
+        stepsCompleted: [],
+        stepsFailed: ['validate_config'],
+        stepsSkipped: [],
+      };
+    }
+
+    // Resolve the Helios user id from the email when the caller didn't supply one.
+    let userId = input.userId;
+    if (!userId) {
+      try {
+        const r = await db.query(
+          'SELECT id FROM organization_users WHERE email = $1 AND organization_id = $2',
+          [input.userEmail, organizationId]
+        );
+        userId = r.rows[0]?.id;
+      } catch {
+        // Fall through to the email placeholder below.
+      }
+    }
+
+    const config = this.normalizeConfig({
+      ...input,
+      userId: userId || input.userEmail,
+    });
+
+    const policy = options.policy ?? (await this.resolveOffboardingPolicy(organizationId));
+
+    return this.executeOffboarding(organizationId, config, {
+      actionId: options.actionId,
+      triggeredBy: options.triggeredBy,
+      triggeredByUserId: options.triggeredByUserId,
+      policy,
+    });
+  }
+
+  /**
+   * Resolve an organization's OFFBOARDING POLICY from
+   * `organization_settings.settings.offboardingPolicy`, merged over the built-in
+   * defaults. Never throws — an unreadable/absent policy yields the defaults so
+   * offboarding is never blocked by a missing policy row.
+   */
+  async resolveOffboardingPolicy(organizationId: string): Promise<OffboardingPolicy> {
+    try {
+      const result = await db.query(
+        'SELECT settings FROM organization_settings WHERE organization_id = $1',
+        [organizationId]
+      );
+      const stored = result?.rows?.[0]?.settings?.offboardingPolicy;
+      if (stored && typeof stored === 'object') {
+        return { ...DEFAULT_OFFBOARDING_POLICY, ...stored };
+      }
+    } catch (error: any) {
+      logger.warn('Failed to load offboarding policy; using defaults', {
+        organizationId,
+        error: error?.message,
+      });
+    }
+    return { ...DEFAULT_OFFBOARDING_POLICY };
+  }
+
+  /**
+   * Fill any policy-governed config field the caller left unset with the org
+   * policy default. Per-offboard values always win (nullish-coalescing, so an
+   * explicit `false`/`0` overrides the policy). Pure — no DB, no mutation of the
+   * input.
+   */
+  private mergePolicyDefaults(
+    config: OffboardingConfig,
+    policy: OffboardingPolicy
+  ): OffboardingConfig {
+    return {
+      ...config,
+      orgUnitPath: config.orgUnitPath ?? policy.targetOrgUnitPath,
+      offboardedGroupEmail: config.offboardedGroupEmail ?? policy.offboardedGroupEmail,
+      emailAutoReplyMessage: config.emailAutoReplyMessage ?? policy.autoReplyTemplate,
+      emailAutoReplySubject: config.emailAutoReplySubject ?? policy.autoReplySubject,
+      deleteAfterDays: config.deleteAfterDays ?? policy.deleteAfterDays,
+      cancelFutureEvents: config.cancelFutureEvents ?? policy.cancelFutureEvents,
+    };
+  }
+
+  /**
+   * Turn a loose `OffboardingConfigInput` into a fully-populated
+   * `OffboardingConfig` with conservative, suspend-by-default values. Deletion
+   * stays opt-in (`deleteAccount` defaults false); the account action defaults to
+   * immediate suspension.
+   */
+  private normalizeConfig(
+    input: OffboardingConfigInput & { userId: string }
+  ): OffboardingConfig {
+    return {
+      userId: input.userId,
+      userEmail: input.userEmail,
+      managerId: input.managerId,
+      managerEmail: input.managerEmail,
+      lastDay: input.lastDay,
+
+      // Drive
+      driveAction: input.driveAction ?? 'keep',
+      driveTransferToUserId: input.driveTransferToUserId,
+      driveArchiveSharedDriveId: input.driveArchiveSharedDriveId,
+
+      // Email
+      emailAction: input.emailAction ?? 'keep',
+      emailForwardToUserId: input.emailForwardToUserId,
+      emailForwardDurationDays: input.emailForwardDurationDays ?? 30,
+      emailAutoReplyMessage: input.emailAutoReplyMessage,
+      emailAutoReplySubject: input.emailAutoReplySubject,
+      emailForwardAddress: input.emailForwardAddress,
+      delegateEmail: input.delegateEmail,
+
+      // Calendar
+      calendarDeclineFutureMeetings: input.calendarDeclineFutureMeetings ?? false,
+      calendarTransferMeetingOwnership: input.calendarTransferMeetingOwnership ?? false,
+      calendarTransferToUserId: input.calendarTransferToUserId,
+      cancelFutureEvents: input.cancelFutureEvents,
+
+      // Access revocation
+      removeFromAllGroups: input.removeFromAllGroups ?? false,
+      removeFromSharedDrives: input.removeFromSharedDrives ?? false,
+      revokeOauthTokens: input.revokeOauthTokens ?? false,
+      revokeAppPasswords: input.revokeAppPasswords ?? false,
+      signOutAllDevices: input.signOutAllDevices ?? false,
+      resetPassword: input.resetPassword ?? false,
+      offboardedGroupEmail: input.offboardedGroupEmail,
+
+      // Signature
+      removeSignature: input.removeSignature ?? false,
+      setOffboardingSignature: input.setOffboardingSignature ?? false,
+      offboardingSignatureText: input.offboardingSignatureText,
+
+      // Mobile
+      wipeMobileDevices: input.wipeMobileDevices ?? false,
+
+      // Org unit
+      orgUnitPath: input.orgUnitPath,
+
+      // Account — suspend by default, delete opt-in
+      accountAction: input.accountAction ?? 'suspend_immediately',
+      deleteAccount: input.deleteAccount ?? false,
+      deleteAfterDays: input.deleteAfterDays,
+      deleteImmediately: input.deleteImmediately,
+
+      // License
+      licenseAction: input.licenseAction ?? 'remove_on_suspension',
+
+      // Notifications
+      notifyManager: input.notifyManager ?? false,
+      notifyItAdmin: input.notifyItAdmin ?? false,
+      notifyHr: input.notifyHr ?? false,
+      notificationEmailAddresses: input.notificationEmailAddresses ?? [],
+      notificationMessage: input.notificationMessage,
+    };
   }
 
   // ==========================================
@@ -1237,15 +1449,32 @@ class UserOffboardingService {
   }
 
   /**
-   * Resolve the email the departing user's mail is forwarded/delegated to:
-   * the explicit `emailForwardToUserId` (looked up) for `forward_user`, else
-   * the manager's email.
+   * Resolve the email the departing user's mail is forwarded to, in precedence
+   * order: the explicit `emailForwardAddress` (the `--forward=` console flag),
+   * then the looked-up `emailForwardToUserId` (`forward_user`), then the
+   * manager's email.
    */
   private async resolveForwardTarget(config: OffboardingConfig): Promise<string | null> {
+    if (config.emailForwardAddress) {
+      return config.emailForwardAddress;
+    }
     if (config.emailForwardToUserId) {
       return this.getUserEmail(config.emailForwardToUserId);
     }
     return config.managerEmail ?? null;
+  }
+
+  /**
+   * Resolve the Gmail delegate target, in precedence order: the explicit
+   * `delegateEmail` (the `--delegate=` console flag), then whatever the mail is
+   * forwarded to (so the successor who receives forwarded mail can also read the
+   * historical mailbox).
+   */
+  private async resolveDelegateTarget(config: OffboardingConfig): Promise<string | null> {
+    if (config.delegateEmail) {
+      return config.delegateEmail;
+    }
+    return this.resolveForwardTarget(config);
   }
 
   /**
