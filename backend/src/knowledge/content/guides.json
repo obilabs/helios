@@ -35,12 +35,12 @@
       "category": "setup",
       "subcategory": "microsoft-365",
       "summary": "Step-by-step guide to connect Microsoft 365 to Helios",
-      "content": "To connect Microsoft 365 to Helios:\n\n1. **Register an Application** in Azure AD:\n   - Go to portal.azure.com\n   - Navigate to Azure Active Directory > App registrations\n   - Create a new registration\n   - Note the Application (client) ID and Directory (tenant) ID\n\n2. **Create a Client Secret**:\n   - In your app registration, go to Certificates & secrets\n   - Create a new client secret\n   - Copy the secret value immediately (shown only once)\n\n3. **Configure API Permissions**:\n   - Add Microsoft Graph permissions:\n     - User.Read.All (Application)\n     - Group.Read.All (Application)\n     - Directory.Read.All (Application)\n   - Grant admin consent\n\n4. **Configure in Helios**:\n   - Go to Settings > Modules > Microsoft 365\n   - Enter Tenant ID, Client ID, and Client Secret\n   - Test the connection\n   - Enable the module",
-      "keywords": ["microsoft 365", "microsoft", "azure", "azure ad", "entra", "connect", "client secret", "tenant", "graph api", "m365"],
-      "aliases": ["setup microsoft", "connect m365", "microsoft integration", "azure setup"],
+      "content": "To connect Microsoft 365 to Helios:\n\n1. **Register an Application** in Azure AD:\n   - Go to portal.azure.com\n   - Navigate to Azure Active Directory > App registrations\n   - Create a new registration\n   - Note the Application (client) ID and Directory (tenant) ID\n\n2. **Create a Client Secret**:\n   - In your app registration, go to Certificates & secrets\n   - Create a new client secret\n   - Copy the secret value immediately (shown only once)\n\n3. **Configure API Permissions**:\n   - Add Microsoft Graph permissions (Application type, not Delegated):\n     - User.Read.All\n     - Group.Read.All\n     - Directory.Read.All\n     - Organization.Read.All (exposes subscribed-SKU / license totals)\n   - Grant admin consent (may prompt for MFA re-authentication)\n   - Only to migrate mail/files OUT of this tenant, also add Mail.Read and Files.Read.All (broad tenant-wide read; add only for the migration window)\n\nNote: Helios uses app-only client credentials, so sync works even on tenants federated to an external IdP (e.g. JumpCloud). Federation only blocks writes to IdP-mastered identity (password reset; account enable/create/delete on synced users).\n\n4. **Configure in Helios**:\n   - Go to Settings > Modules > Microsoft 365\n   - Enter Tenant ID, Client ID, and Client Secret\n   - Test the connection\n   - Enable the module",
+      "keywords": ["microsoft 365", "microsoft", "azure", "azure ad", "entra", "connect", "client secret", "tenant", "graph api", "m365", "app registration", "application permissions", "admin consent", "organization.read.all", "mail.read", "files.read.all", "migration", "federation", "jumpcloud"],
+      "aliases": ["setup microsoft", "connect m365", "microsoft integration", "azure setup", "azure app registration"],
       "examples": [],
       "relatedIds": ["guide-getting-started", "guide-sync-settings"],
-      "lastUpdated": "2025-12-21T00:00:00Z"
+      "lastUpdated": "2026-08-30T00:00:00Z"
     },
     {
       "id": "guide-user-management",
