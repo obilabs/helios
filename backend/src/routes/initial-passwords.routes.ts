@@ -8,17 +8,25 @@ import {
   notFoundResponse
 } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
+import { resolveEncryptionKey } from '../config/encryption-key.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-// Simple encryption for initial passwords (in production, use a proper key management system)
-const ENCRYPTION_KEY = process.env.INITIAL_PASSWORD_KEY || crypto.randomBytes(32).toString('hex').slice(0, 32);
+// Encrypt initial passwords at rest. Uses INITIAL_PASSWORD_KEY when set, otherwise
+// inherits ENCRYPTION_KEY (no extra required secret). sha256 normalizes any key
+// length to the exact 32 bytes AES-256 needs. Previously fell back to a NEW
+// per-process random key, so a stored initial password became unrecoverable after
+// the next restart.
+const KEY = crypto
+  .createHash('sha256')
+  .update(resolveEncryptionKey('INITIAL_PASSWORD_KEY', { fallbackEnv: 'ENCRYPTION_KEY' }))
+  .digest();
 const IV_LENGTH = 16;
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', KEY, iv);
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString('hex') + ':' + encrypted.toString('hex');
@@ -28,7 +36,7 @@ function decrypt(text: string): string {
   const parts = text.split(':');
   const iv = Buffer.from(parts.shift()!, 'hex');
   const encryptedText = Buffer.from(parts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, iv);
   let decrypted = decipher.update(encryptedText);
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
