@@ -59,6 +59,38 @@ consumes a seat. To take control:
 
 There is **no API** to change this setting — it must be done in the console.
 
+### 2a. Recommended org-unit structure for licensing
+
+Auto-licensing is set per **organizational unit** and inherited by child OUs. A
+sound baseline (adapt it — OUs also carry security/policy, and no single structure
+fits every org):
+
+```
+Root                    auto-licensing OFF   <- Google defaults this ON; change it
+├── Licensed Users      auto-licensing ON    (your paid edition; dept sub-OUs inherit)
+│     └── [dept / team sub-OUs]
+├── Admins              auto-licensing OFF    (dedicated + break-glass admins, unlicensed)
+├── Service Accounts    auto-licensing OFF    (automation / integration identities)
+└── Offboarded          auto-licensing OFF    (departed / suspended users, off-seat)
+```
+
+Principles:
+
+- **Root OFF is the important one.** New (and unplaced) users land in Root, so if
+  Root auto-licenses, every new account silently consumes a seat. Turn it off and
+  license explicitly by placing people in **Licensed Users**.
+- **Unlicensed accounts (admins, service, offboarded) go in OFF OUs.** Unlicensed
+  admins require Business Standard or higher.
+- **Move offboarded/suspended users to an OFF OU.** Auto-licensing licenses
+  suspended users too, so leaving them in a licensed OU keeps them holding seats.
+  Helios's offboarding can move them via its org-unit action (`orgUnitPath`).
+- **Mixed editions need OU separation** — only **one** subscription can
+  auto-license per OU, so split SKUs (e.g. Business Plus vs Starter) into
+  different OUs.
+- Remember OUs also drive **policy** (security baselines, device management, app
+  access), not just licensing — so a real org may need OUs beyond this licensing
+  baseline.
+
 ### 3. Enroll Cloud Identity Free for unlicensed identities (optional, console)
 
 If you want identity-only accounts (unlicensed admins, service accounts, shared
