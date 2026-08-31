@@ -559,6 +559,143 @@
         "guide-google-workspace-setup"
       ],
       "lastUpdated": "2026-08-31T00:00:00Z"
+    },
+    {
+      "id": "guide-bulk-operations",
+      "type": "guide",
+      "title": "Bulk Operations",
+      "category": "users",
+      "subcategory": "bulk",
+      "summary": "Perform mass changes on users and groups via CSV import, with progress tracking and reusable templates.",
+      "content": "Bulk Operations lets administrators perform mass changes without touching one record at a time:\n\n- Update multiple users at once via CSV import\n- Create new users in bulk\n- Suspend users in bulk\n- Add or remove users to/from groups\n- Track operation progress in real time\n- Save operation templates for reuse\n\nAccess it under Admin Console > Bulk Operations. Start from a CSV that matches the template for the operation you want. Full guide: docs/guides/bulk-operations.md.",
+      "keywords": [
+        "bulk",
+        "bulk operations",
+        "csv",
+        "mass update",
+        "import users",
+        "batch",
+        "bulk suspend",
+        "bulk create"
+      ],
+      "aliases": [
+        "upload csv",
+        "mass user update",
+        "batch operations",
+        "import a spreadsheet of users"
+      ],
+      "examples": [
+        "How do I update many users at once?",
+        "Can I bulk-create users from a CSV?",
+        "How do I suspend a list of users?"
+      ],
+      "relatedIds": [
+        "guide-user-management",
+        "guide-group-management"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
+    },
+    {
+      "id": "guide-dynamic-groups",
+      "type": "guide",
+      "title": "Dynamic Groups",
+      "category": "groups",
+      "subcategory": "dynamic",
+      "summary": "Groups whose membership is kept up to date automatically from rules you define, instead of manual add/remove.",
+      "content": "Dynamic groups automatically manage membership based on rules you define. Instead of manually adding and removing users, you set criteria like 'all users in Engineering' or 'everyone reporting to Sarah', and Helios keeps the membership up to date.\n\nWorkflow: create a dynamic group, write the membership rules, test the rules against your directory to preview who matches, then sync the membership to Google Workspace. Membership updates as users' attributes change. Full guide: docs/guides/dynamic-groups.md.",
+      "keywords": [
+        "dynamic groups",
+        "rule-based groups",
+        "auto membership",
+        "group rules",
+        "automatic groups",
+        "membership rules"
+      ],
+      "aliases": [
+        "automatic group membership",
+        "rule based membership",
+        "smart groups"
+      ],
+      "examples": [
+        "How do I make a group update itself?",
+        "Can group membership follow department?",
+        "How do dynamic group rules work?"
+      ],
+      "relatedIds": [
+        "guide-group-management"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
+    },
+    {
+      "id": "guide-admin-mfa-sso",
+      "type": "guide",
+      "title": "Admin Access: MFA and SSO Requirements",
+      "category": "security",
+      "subcategory": "admin-access",
+      "summary": "Security requirements for administrative access to Helios - MFA by default for admins, plus SSO support and good admin-account hygiene.",
+      "content": "All administrative accounts SHOULD require multi-factor authentication (MFA) by default. It protects against credential theft and phishing, password-reuse attacks, unauthorized access to sensitive data, and compliance violations.\n\nRecommended by role:\n- Super Admin - MFA REQUIRED, SSO supported\n- Admin - MFA REQUIRED, SSO supported\n- Manager - MFA recommended, SSO supported\n- User - MFA optional, SSO supported\n- External/vendor admin - MFA REQUIRED, access via API key\n\nPair this with strong admin-account hygiene: keep at least two super admins plus one dedicated break-glass account, give each administrator a separate admin account distinct from their daily-driver user account, and keep admin accounts unlicensed where possible. Full guide: docs/features/SSO-MFA-ADMIN-REQUIREMENTS.md.",
+      "keywords": [
+        "mfa",
+        "2fa",
+        "two-factor",
+        "sso",
+        "single sign-on",
+        "admin security",
+        "break glass",
+        "administrator",
+        "multi-factor"
+      ],
+      "aliases": [
+        "do admins need mfa",
+        "require 2fa for admins",
+        "admin login security",
+        "break-glass account"
+      ],
+      "examples": [
+        "Should admins have MFA?",
+        "How many admins should we have?",
+        "Do we need a break-glass account?"
+      ],
+      "relatedIds": [
+        "guide-authentication",
+        "guide-roles-permissions"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
+    },
+    {
+      "id": "guide-service-account-security",
+      "type": "guide",
+      "title": "Service Account Security",
+      "category": "security",
+      "subcategory": "service-accounts",
+      "summary": "Why every organization must use its own Google Cloud service account, never a shared one.",
+      "content": "EVERY organization MUST use their OWN Google Cloud service account from their OWN GCP project. This is not optional - sharing a service account between organizations is a critical security vulnerability.\n\nWhy client-owned service accounts are mandatory:\n- Data isolation - each organization's Workspace data stays completely isolated; no cross-organization access; supports data-residency and privacy compliance.\n- Breach containment - if one service account is compromised, only that organization is affected; no blast radius across multiple organizations.\n- Audit-trail integrity - a clean separation of API calls per organization.\n- Client control - the organization owns and can revoke its own access at any time.\n\nFull guide: docs/guides/SECURITY-SERVICE-ACCOUNTS.md.",
+      "keywords": [
+        "service account",
+        "gcp",
+        "own service account",
+        "shared service account",
+        "data isolation",
+        "security",
+        "dwd",
+        "credentials"
+      ],
+      "aliases": [
+        "can we share a service account",
+        "why own service account",
+        "service account per org"
+      ],
+      "examples": [
+        "Can two orgs share a service account?",
+        "Why do I need my own GCP service account?",
+        "How is my data isolated?"
+      ],
+      "relatedIds": [
+        "guide-google-workspace-setup",
+        "guide-gw-service-account-key-policy",
+        "guide-google-scopes"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
     }
   ]
 }
