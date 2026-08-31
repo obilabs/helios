@@ -237,6 +237,115 @@ export class UserSyncService {
   /**
    * Get all users for an organization with platform indicators
    */
+  /**
+   * Reconcile already-synced Microsoft 365 users (ms_synced_users) into the
+   * canonical organization_users table — mirrors syncGoogleWorkspaceUsers.
+   * Match by email: an existing row (e.g. a Google user with the same address)
+   * is LINKED (microsoft_365_* set) so one person carries BOTH platform ids
+   * (dual source); an unmatched M365 user is INSERTED (a migration candidate).
+   * No schema change — organization_users already has the microsoft_365_*
+   * columns and the sync_to_* direction flags. Non-destructive: linking only
+   * touches the microsoft_365_* fields, never Google-owned identity/status.
+   */
+  async reconcileMicrosoftUsersToOrgUsers(
+    organizationId: string,
+  ): Promise<{ linked: number; created: number }> {
+    const msUsers = await db.query(
+      `SELECT ms_id, upn, email, given_name, surname, job_title, department,
+              mobile_phone, is_account_enabled, is_admin, assigned_licenses
+         FROM ms_synced_users WHERE organization_id = $1`,
+      [organizationId],
+    );
+
+    let linked = 0;
+    let created = 0;
+
+    await db.query('BEGIN');
+    try {
+      for (const u of msUsers.rows) {
+        // Identity key: prefer the mailbox email, fall back to the UPN.
+        const email = String(u.email || u.upn || '').toLowerCase();
+        if (!email) continue;
+
+        const existing = await db.query(
+          'SELECT id FROM organization_users WHERE organization_id = $1 AND email = $2',
+          [organizationId, email],
+        );
+
+        if (existing.rows.length > 0) {
+          // LINK onto the existing (possibly Google-sourced) row. Touch only the
+          // microsoft_365_* fields so Google-owned identity/status is preserved.
+          await db.query(
+            `UPDATE organization_users SET
+               microsoft_365_id = $3,
+               microsoft_365_upn = $4,
+               microsoft_365_last_sync = NOW(),
+               microsoft_365_sync_status = 'synced',
+               updated_at = NOW()
+             WHERE id = $1 AND organization_id = $2`,
+            [existing.rows[0].id, organizationId, u.ms_id, u.upn],
+          );
+          linked++;
+        } else {
+          // Classify the M365-only person: #EXT# UPN -> guest; unlicensed (e.g.
+          // a shared mailbox) -> contact; otherwise -> staff.
+          const isGuest = String(u.upn || '').includes('#EXT#');
+          let licenses: unknown[] = [];
+          try {
+            licenses = Array.isArray(u.assigned_licenses)
+              ? u.assigned_licenses
+              : u.assigned_licenses
+                ? JSON.parse(u.assigned_licenses)
+                : [];
+          } catch {
+            licenses = [];
+          }
+          const unlicensed = !licenses || licenses.length === 0;
+          const userType = isGuest ? 'guest' : unlicensed ? 'contact' : 'staff';
+
+          await db.query(
+            `INSERT INTO organization_users (
+               organization_id, email, first_name, last_name,
+               role, job_title, department, mobile_phone,
+               microsoft_365_id, microsoft_365_upn, microsoft_365_last_sync,
+               microsoft_365_sync_status, is_active, user_type, created_at
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced',$11,$12,NOW())`,
+            [
+              organizationId,
+              email,
+              u.given_name || '',
+              u.surname || '',
+              u.is_admin ? 'admin' : 'user',
+              u.job_title || '',
+              u.department || '',
+              u.mobile_phone || '',
+              u.ms_id,
+              u.upn,
+              u.is_account_enabled ?? true,
+              userType,
+            ],
+          );
+          created++;
+        }
+      }
+      await db.query('COMMIT');
+    } catch (error: any) {
+      await db.query('ROLLBACK');
+      logger.error('Failed to reconcile Microsoft 365 users to organization_users', {
+        organizationId,
+        error: error.message,
+      });
+      throw error;
+    }
+
+    logger.info('Reconciled Microsoft 365 users into organization_users', {
+      organizationId,
+      linked,
+      created,
+    });
+    return { linked, created };
+  }
+
   async getUnifiedUsers(organizationId: string, options?: {
     platform?: string;
     isActive?: boolean;
