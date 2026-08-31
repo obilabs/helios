@@ -3,6 +3,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { microsoftGraphService } from '../services/microsoft-graph.service.js';
 import { microsoftSyncService } from '../services/microsoft-sync.service.js';
 import { migrationPlanService } from '../services/migration/migration-plan.service.js';
+import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -849,6 +850,32 @@ router.post('/migration/provision', requireAdmin, async (req: Request, res: Resp
   } catch (error: any) {
     logger.error('Failed to provision migration destinations', { error: error.message });
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to provision migration destinations');
+  }
+});
+
+/**
+ * GET /microsoft/migration/status[?days=N]
+ * Read-only migration progress from Google's `data_migration` audit stream
+ * (Reports API). Google's cross-cloud transfer is console-triggered — there is no
+ * start API — so this surfaces the transfer's progress (setup + per-object events
+ * + failures) inside Helios. Uses the admin.reports.audit.readonly scope Helios
+ * already holds. Window defaults to 7 days (1–60).
+ */
+router.get('/migration/status', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '7'), 10) || 7, 1), 60);
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);
+    const result = await googleWorkspaceService.fetchDataMigrationActivity(organizationId, { startTime, endTime });
+    successResponse(res, result);
+  } catch (error: any) {
+    logger.error('Failed to fetch migration status', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to fetch migration status');
   }
 });
 

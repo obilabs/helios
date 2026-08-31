@@ -3181,6 +3181,102 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Fetch DATA MIGRATION activity from the Google Reports API (applicationName
+   * 'data_migration'). This is how migration progress is TRACKED read-only:
+   * Google's cross-cloud Data Migration is console-triggered (no start API), but
+   * it emits setup events (CREATE_CONNECTION, START_MIGRATION) and per-object
+   * MIGRATION events (CREATE_GMAIL_MESSAGE, CREATE_CALENDAR_EVENT, CREATE_CONTACT,
+   * CREATE_FILE, plus CRAWL_FAILURE) with EXECUTION_ID/SOURCE/TARGET/status.
+   * Uses the admin.reports.audit.readonly scope Helios already holds. Returns the
+   * events plus a light summary (counts by event name + failure count) for a
+   * status view.
+   */
+  async fetchDataMigrationActivity(
+    organizationId: string,
+    options: { startTime?: Date; endTime?: Date; maxResults?: number } = {}
+  ): Promise<{
+    success: boolean;
+    events: any[];
+    summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string };
+    error?: string;
+  }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, events: [], error: 'No credentials found' };
+      }
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!adminEmail) {
+        return { success: false, events: [], error: 'No admin email configured' };
+      }
+
+      // Default to the last 7 days (migrations run over hours/days).
+      const endTime = options.endTime || new Date();
+      const startTime = options.startTime || new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const maxResults = options.maxResults || 1000;
+
+      const reportsClient = this.createReportsClient(credentials, adminEmail);
+      const response = await reportsClient.activities.list({
+        userKey: 'all',
+        applicationName: 'data_migration',
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        maxResults,
+      });
+
+      const events = (response.data.items || []).map((item: any) => {
+        const ev = (item.events && item.events[0]) || {};
+        const params: Record<string, any> = {};
+        for (const p of ev.parameters || []) {
+          params[p.name] = p.value ?? p.boolValue ?? p.intValue ?? (p.multiValue ? p.multiValue.join(',') : undefined);
+        }
+        return {
+          timestamp: item.id?.time,
+          actor: item.actor?.email,
+          name: ev.name,
+          type: ev.type,
+          executionId: params.EXECUTION_ID,
+          source: params.SOURCE_IDENTIFIER || params.SOURCE_URI,
+          target: params.TARGET_IDENTIFIER || params.TARGET_URI,
+          status: params.EVENT_STATUS || params.STATUS,
+          params,
+          rawEvent: item,
+        };
+      });
+
+      const byName: Record<string, number> = {};
+      let failures = 0;
+      for (const e of events) {
+        if (e.name) byName[e.name] = (byName[e.name] || 0) + 1;
+        if (e.name === 'CRAWL_FAILURE') failures++;
+      }
+
+      logger.info('Fetched data migration activity from Google Workspace', {
+        organizationId,
+        eventCount: events.length,
+      });
+
+      return {
+        success: true,
+        events,
+        summary: {
+          total: events.length,
+          failures,
+          byName,
+          windowStart: startTime.toISOString(),
+          windowEnd: endTime.toISOString(),
+        },
+      };
+    } catch (error: any) {
+      logger.error('Failed to fetch data migration activity', {
+        organizationId,
+        error: error.message,
+      });
+      return { success: false, events: [], error: error.message };
+    }
+  }
+
+  /**
    * Extract login type from event parameters
    */
   private extractLoginType(events: any[]): string {
