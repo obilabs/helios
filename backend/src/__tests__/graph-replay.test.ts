@@ -36,6 +36,27 @@ import {
   GraphRecordReplayHandler,
   type GraphFixture,
 } from '../testing/graph-replay.js';
+import { diffShape } from '../testing/http-replay.js';
+
+describe('diffShape (VERIFY-mode drift detection)', () => {
+  it('reports nothing when shapes match (values may differ)', () => {
+    expect(diffShape({ id: '1', enabled: true }, { id: '2', enabled: false })).toEqual([]);
+  });
+  it('flags a field the API removed', () => {
+    expect(diffShape({ id: '1' }, { id: '1', mail: 'x' })).toEqual(['mail: removed by API']);
+  });
+  it('flags a new field the API added', () => {
+    expect(diffShape({ id: '1', beta: 1 }, { id: '1' })).toEqual(['beta: new field in API']);
+  });
+  it('flags a type change (the format-drift that breaks parsers)', () => {
+    expect(diffShape({ count: '5' }, { count: 5 })).toEqual(['count: type number -> string']);
+  });
+  it('recurses into nested objects and arrays', () => {
+    const live = { value: [{ id: '1', extra: true }] };
+    const fx = { value: [{ id: '1' }] };
+    expect(diffShape(live, fx)).toEqual(['value[].extra: new field in API']);
+  });
+});
 
 // ---- helpers ----
 
