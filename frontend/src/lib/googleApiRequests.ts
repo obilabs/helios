@@ -613,6 +613,54 @@ export function usersUndelete(userKey: string, orgUnitPath = '/'): GoogleApiRequ
   };
 }
 
+// ----- Users: security / access revocation (offboarding hard-kill) -----
+
+/**
+ * Directory: tokens.list — GET /admin/directory/v1/users/{userKey}/tokens
+ * The third-party OAuth apps a user has granted, with clientId + scopes.
+ * Admin-context (not impersonated). GAM: `gam user <email> show tokens`.
+ */
+export function usersTokensList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/tokens` };
+}
+
+/**
+ * Directory: tokens.delete — DELETE .../users/{userKey}/tokens/{clientId}
+ * Revoke one third-party app's access. On offboarding this matters more than
+ * suspend — issued OAuth tokens survive a password change / suspension.
+ */
+export function usersTokensDelete(userKey: string, clientId: string): GoogleApiRequest {
+  return { method: 'DELETE', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/tokens/${seg(clientId)}` };
+}
+
+/**
+ * Directory: asps.list — GET .../users/{userKey}/asps
+ * App-specific passwords bypass 2SV; a suspended user's live ASPs are a residual
+ * access hole. GAM: `gam user <email> show asps`.
+ */
+export function usersAspsList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/asps` };
+}
+
+/** Directory: asps.delete — DELETE .../users/{userKey}/asps/{codeId}. Revoke one ASP. */
+export function usersAspsDelete(userKey: string, codeId: string): GoogleApiRequest {
+  return { method: 'DELETE', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/asps/${seg(codeId)}` };
+}
+
+/** Directory: verificationCodes.list — GET .../users/{userKey}/verificationCodes (2SV backup codes). */
+export function usersVerificationCodesList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/verificationCodes` };
+}
+
+/**
+ * Directory: verificationCodes.invalidate — POST .../users/{userKey}/verificationCodes/invalidate
+ * Invalidate ALL backup verification codes — another 2SV-bypass residual hole to
+ * close on offboarding.
+ */
+export function usersVerificationCodesInvalidate(userKey: string): GoogleApiRequest {
+  return { method: 'POST', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/verificationCodes/invalidate` };
+}
+
 /**
  * Directory: users.get with custom schema values —
  * GET /admin/directory/v1/users/{userKey}?projection=full
