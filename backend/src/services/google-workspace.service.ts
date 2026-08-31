@@ -3442,14 +3442,23 @@ export class GoogleWorkspaceService {
         {
           productId: 'Google-Apps',
           productName: 'Google Workspace',
+          // Canonical SKU ids/names — see config/google-license-skus.ts.
+          // (The previous list mislabeled 1010020025=Business Plus as "Enterprise
+          // Plus" and 1010020020=Enterprise Plus as "Enterprise Standard".)
           skus: [
-            { id: 'Google-Apps-For-Business', name: 'Business Starter' },
-            { id: 'Google-Apps-Unlimited', name: 'Business Standard' },
-            { id: 'Google-Apps-For-Postini', name: 'Business Plus' },
-            { id: '1010020020', name: 'Enterprise Standard' },
-            { id: '1010020025', name: 'Enterprise Plus' },
-            { id: '1010060003', name: 'Frontline Starter' },
-            { id: '1010060001', name: 'Frontline Standard' },
+            { id: '1010020027', name: 'Business Starter' },
+            { id: '1010020028', name: 'Business Standard' },
+            { id: '1010020025', name: 'Business Plus' },
+            { id: '1010020029', name: 'Enterprise Starter' },
+            { id: '1010020026', name: 'Enterprise Standard' },
+            { id: '1010020020', name: 'Enterprise Plus' },
+            { id: '1010060003', name: 'Enterprise Essentials' },
+            { id: '1010060005', name: 'Enterprise Essentials Plus' },
+            { id: '1010020030', name: 'Frontline Starter' },
+            { id: '1010020031', name: 'Frontline Standard' },
+            { id: '1010020034', name: 'Frontline Plus' },
+            { id: 'Google-Apps-For-Business', name: 'G Suite Basic (legacy)' },
+            { id: 'Google-Apps-Unlimited', name: 'G Suite Business (legacy)' },
           ]
         },
         {
