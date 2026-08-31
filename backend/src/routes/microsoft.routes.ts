@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { microsoftGraphService } from '../services/microsoft-graph.service.js';
 import { microsoftSyncService } from '../services/microsoft-sync.service.js';
+import { migrationPlanService } from '../services/migration/migration-plan.service.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -743,6 +744,63 @@ router.delete('/users/:id/licenses/:skuId', requireAdmin, async (req: Request, r
   } catch (error: any) {
     logger.error('Failed to remove license', { error: error.message });
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to remove license: ' + error.message);
+  }
+});
+
+/**
+ * GET /microsoft/migration/plan
+ * The saved M365->Google migration plan (or a freshly generated default),
+ * mapping each M365 user to a chosen Google destination. Read-only; execution
+ * stays out-of-band until the migration scopes + destination are in place.
+ */
+router.get('/migration/plan', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    successResponse(res, { plan, validation: migrationPlanService.validatePlan(plan) });
+  } catch (error: any) {
+    logger.error('Failed to load migration plan', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to load migration plan');
+  }
+});
+
+/**
+ * PUT /microsoft/migration/plan
+ * Persist an edited plan — destination overrides, including migrating source X
+ * into a DIFFERENT Google account Y. Returns validation (unmapped targets and
+ * destinations that do not yet exist and must be created + licensed first).
+ */
+router.put('/migration/plan', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan = req.body?.plan;
+    if (!plan || plan.organizationId !== organizationId || !Array.isArray(plan.targets)) {
+      validationErrorResponse(res, [
+        { field: 'plan', message: 'A plan with a matching organizationId and targets[] is required' },
+      ]);
+      return;
+    }
+    // Existence of each chosen destination is re-derived server-side (client
+    // flags are not trusted), then persisted.
+    const reconciled = await migrationPlanService.reconcileExistence(plan);
+    await migrationPlanService.savePlan(reconciled);
+    successResponse(res, {
+      plan: reconciled,
+      validation: migrationPlanService.validatePlan(reconciled),
+    });
+  } catch (error: any) {
+    logger.error('Failed to save migration plan', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to save migration plan');
   }
 });
 
