@@ -757,3 +757,52 @@ describe('invariants', () => {
     }
   });
 });
+
+describe('User security / access revocation', () => {
+  it('lists + revokes third-party OAuth tokens', () => {
+    expect(g.usersTokensList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/tokens`,
+    });
+    expect(g.usersTokensDelete(USER, '12345.apps.googleusercontent.com')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/tokens/12345.apps.googleusercontent.com`,
+    });
+  });
+
+  it('lists + revokes app-specific passwords', () => {
+    expect(g.usersAspsList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/asps`,
+    });
+    expect(g.usersAspsDelete(USER, '7')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/asps/7`,
+    });
+  });
+
+  it('lists + invalidates 2SV backup codes', () => {
+    expect(g.usersVerificationCodesList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/verificationCodes`,
+    });
+    expect(g.usersVerificationCodesInvalidate(USER)).toEqual({
+      method: 'POST',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/verificationCodes/invalidate`,
+    });
+  });
+
+  it('are admin-context (never impersonated)', () => {
+    const all = [
+      g.usersTokensList(USER),
+      g.usersTokensDelete(USER, 'c'),
+      g.usersAspsList(USER),
+      g.usersAspsDelete(USER, '1'),
+      g.usersVerificationCodesList(USER),
+      g.usersVerificationCodesInvalidate(USER),
+    ];
+    for (const req of all) {
+      expect((req as any).impersonate).toBeUndefined();
+    }
+  });
+});

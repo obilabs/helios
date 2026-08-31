@@ -2714,6 +2714,89 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       }
 
+      case 'list-tokens':
+      case 'tokens': {
+        // Third-party OAuth apps a user has granted (clientId + scopes). On
+        // offboarding, revoking these matters more than suspend — issued tokens
+        // survive a password change.
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users list-tokens <email>');
+          return;
+        }
+        const email = args[0];
+        const data = await runGoogle(google.usersTokensList(email));
+        const items = (data?.items || []).map(
+          (t: any) => `  ${t.displayText || t.clientId} (${t.clientId}) — ${(t.scopes || []).length} scope(s)`
+        );
+        addOutput(items.length ? 'success' : 'info',
+          items.length ? `Third-party OAuth apps granted by ${email}:\n${items.join('\n')}` : `No third-party OAuth grants for ${email}`);
+        break;
+      }
+
+      case 'revoke-token': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw users revoke-token <email> <clientId>');
+          addOutput('info', 'List clientIds with: helios gw users list-tokens <email>');
+          return;
+        }
+        await runGoogle(google.usersTokensDelete(args[0], args[1]));
+        addOutput('success', `Revoked OAuth app ${args[1]} for ${args[0]}`);
+        break;
+      }
+
+      case 'list-asps':
+      case 'asps': {
+        // App-specific passwords bypass 2SV; a suspended user's live ASPs are a
+        // residual-access hole.
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users list-asps <email>');
+          return;
+        }
+        const email = args[0];
+        const data = await runGoogle(google.usersAspsList(email));
+        const items = (data?.items || []).map(
+          (a: any) => `  ${a.codeId}  ${a.name || ''}  (last used: ${a.lastTimeUsed || 'never'})`
+        );
+        addOutput(items.length ? 'success' : 'info',
+          items.length ? `App-specific passwords for ${email}:\n${items.join('\n')}` : `No app-specific passwords for ${email}`);
+        break;
+      }
+
+      case 'revoke-asp': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw users revoke-asp <email> <codeId>');
+          addOutput('info', 'List codeIds with: helios gw users list-asps <email>');
+          return;
+        }
+        await runGoogle(google.usersAspsDelete(args[0], args[1]));
+        addOutput('success', `Revoked app-specific password ${args[1]} for ${args[0]}`);
+        break;
+      }
+
+      case 'list-backup-codes': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users list-backup-codes <email>');
+          return;
+        }
+        const email = args[0];
+        const data = await runGoogle(google.usersVerificationCodesList(email));
+        const n = (data?.items || []).length;
+        addOutput(n ? 'success' : 'info',
+          n ? `${email} has ${n} active 2SV backup code(s).` : `No active backup codes for ${email}`);
+        break;
+      }
+
+      case 'revoke-backup-codes': {
+        // Invalidate ALL 2SV backup codes (another 2SV-bypass residual hole).
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users revoke-backup-codes <email>');
+          return;
+        }
+        await runGoogle(google.usersVerificationCodesInvalidate(args[0]));
+        addOutput('success', `Invalidated all 2SV backup codes for ${args[0]}`);
+        break;
+      }
+
       case 'set-schema': {
         // helios gw users set-schema <email> <schemaName> <field=value> [<field=value>...]
         if (args.length < 3 || args[0].startsWith('--')) {
