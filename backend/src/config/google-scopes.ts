@@ -41,8 +41,38 @@ export const SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/gmail.settings.sharing', reason: 'Manage email signatures and sending settings.' },
 ]
 
-/** The plain scope list — what an admin authorises in Admin Console → API Controls → Domain-wide delegation. */
+/**
+ * BASE scopes: minted by the transparent proxy on EVERY call and requested by the
+ * base API clients. Because Google's domain-wide delegation is all-or-nothing per
+ * token exchange, EVERY scope here must be authorised by every connected tenant or
+ * all calls 401 — so adding a scope here is a breaking change for existing tenants
+ * (they must re-authorise). Keep this list to what the product needs on the common
+ * path; niche/optional capabilities go in OPTIONAL_SCOPE_DETAILS instead.
+ */
 export const REQUIRED_SCOPES: string[] = SCOPE_DETAILS.map((s) => s.scope)
 
 /** Comma-separated form Google's Admin Console expects when authorising a client. */
 export const REQUIRED_SCOPES_CSV: string = REQUIRED_SCOPES.join(',')
+
+/**
+ * OPTIONAL scopes: needed only by specific niche features (e.g. Google Vault holds
+ * via `ediscovery`). They are NOT minted by the proxy default — the feature's own
+ * client requests them directly — so adding one here NEVER blanket-401s a tenant
+ * that didn't authorise it; that one feature simply fails until it is authorised.
+ * They ARE advertised in the delegation list below, so a one-time DWD authorisation
+ * can cover them upfront (recommended: authorise the full set at setup, so a later
+ * release that lights up an optional feature needs no re-authorisation).
+ */
+export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
+  { scope: 'https://www.googleapis.com/auth/ediscovery', reason: "Create Google Vault holds to preserve a departing user's Mail and Drive before deletion (Business Plus and above)." },
+]
+
+/**
+ * The FULL set an admin should authorise in Admin Console → API Controls →
+ * Domain-wide delegation = base + optional. Advertise this (not just the base) in
+ * the setup UI / copy-paste list / deep-link, so one authorisation covers every
+ * current feature — required now and optional-but-may-be-used-later.
+ */
+export const DELEGATION_SCOPE_DETAILS: ScopeDetail[] = [...SCOPE_DETAILS, ...OPTIONAL_SCOPE_DETAILS]
+export const DELEGATION_SCOPES: string[] = DELEGATION_SCOPE_DETAILS.map((s) => s.scope)
+export const DELEGATION_SCOPES_CSV: string = DELEGATION_SCOPES.join(',')

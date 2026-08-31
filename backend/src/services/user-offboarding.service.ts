@@ -803,6 +803,65 @@ class UserOffboardingService {
         result.stepsSkipped.push('suspend_account');
       }
 
+      // Step 9a2: Vault preservation — OPT-IN (config.preserveWithVault). Runs
+      // BEFORE any deletion so the departing user's Mail + Drive survive account
+      // removal (a Vault hold is retained even after the account is deleted).
+      // GATED to Vault-eligible editions (Business Plus+); on lower tiers it is
+      // SKIPPED with a reason rather than failing the offboard.
+      if (config.preserveWithVault) {
+        stepOrder++;
+        const preserveStart = Date.now();
+        try {
+          const vaultRes = await googleWorkspaceService.preserveUserWithVault(
+            organizationId,
+            config.userEmail,
+            { matterName: config.vaultMatterName }
+          );
+          if (vaultRes.success) {
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'preserve_vault',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - preserveStart,
+                details: { matterId: vaultRes.matterId, holdIds: vaultRes.holdIds },
+              }
+            );
+            result.stepsCompleted.push('preserve_vault');
+          } else if (vaultRes.skipped) {
+            // Not an error — the org isn't on a Vault-eligible edition.
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'preserve_vault',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - preserveStart,
+                details: { skipped: true, reason: vaultRes.reason },
+              }
+            );
+            result.stepsSkipped.push('preserve_vault');
+          } else {
+            throw new Error(vaultRes.error || 'Vault preservation failed');
+          }
+        } catch (error: any) {
+          result.errors.push(`Failed to preserve with Vault: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'preserve_vault',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - preserveStart }
+          );
+          result.stepsFailed.push('preserve_vault');
+        }
+      } else {
+        result.stepsSkipped.push('preserve_vault');
+      }
+
       // Step 9b: Account deletion — OPT-IN (config.deleteAccount) and GUARDED.
       // Suspension (above) is the safe default; deletion is irreversible and frees
       // the license.
@@ -1230,6 +1289,10 @@ class UserOffboardingService {
 
       // Org unit
       orgUnitPath: input.orgUnitPath,
+
+      // Data preservation (Vault) — opt-in, Business Plus+ gated at runtime
+      preserveWithVault: input.preserveWithVault ?? false,
+      vaultMatterName: input.vaultMatterName,
 
       // Account — suspend by default, delete opt-in
       accountAction: input.accountAction ?? 'suspend_immediately',
