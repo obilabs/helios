@@ -1134,11 +1134,14 @@ class UserOffboardingService {
    */
   async resolveOffboardingPolicy(organizationId: string): Promise<OffboardingPolicy> {
     try {
+      // organization_settings is a key/value store (key, value text) — not a
+      // JSON blob. The policy lives in the row key='offboarding.policy'.
       const result = await db.query(
-        'SELECT settings FROM organization_settings WHERE organization_id = $1',
+        "SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'offboarding.policy'",
         [organizationId]
       );
-      const stored = result?.rows?.[0]?.settings?.offboardingPolicy;
+      const raw = result?.rows?.[0]?.value;
+      const stored = raw ? JSON.parse(raw) : null;
       if (stored && typeof stored === 'object') {
         return { ...DEFAULT_OFFBOARDING_POLICY, ...stored };
       }
