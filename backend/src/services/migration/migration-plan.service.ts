@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db } from '../../database/connection.js';
+import { logger } from '../../utils/logger.js';
 import { googleWorkspaceService } from '../google-workspace.service.js';
 
 /**
@@ -326,6 +327,62 @@ export class MigrationPlanService {
   }
 
   /**
+   * Write-through: reflect a freshly provisioned Google account in the Helios
+   * directory (organization_users) IMMEDIATELY, so a provisioned user appears
+   * without waiting for the next sync. Mirrors the sync/Add-User upsert. If a row
+   * already exists at this email (the common same-identity case: the M365 source
+   * row) it is linked in place (becomes dual-sourced); otherwise a new Google-
+   * sourced row is inserted. Best-effort — a failure never fails provisioning,
+   * since the next sync reconciles it anyway.
+   */
+  private async writeThroughProvisionedUser(
+    organizationId: string,
+    email: string,
+    googleUserId: string,
+    sourceName: string,
+    destinationType: MigrationTarget['destinationType'],
+  ): Promise<void> {
+    const lower = email.toLowerCase();
+    try {
+      const existing = await db.query(
+        'SELECT id FROM organization_users WHERE organization_id = $1 AND LOWER(email) = $2',
+        [organizationId, lower],
+      );
+      if (existing.rows.length > 0) {
+        await db.query(
+          `UPDATE organization_users
+              SET google_workspace_id = $1,
+                  google_workspace_sync_status = 'synced',
+                  google_workspace_last_sync = NOW(),
+                  updated_at = NOW()
+            WHERE id = $2`,
+          [googleUserId, existing.rows[0].id],
+        );
+      } else {
+        const parts = (sourceName || '').trim().split(/\s+/).filter(Boolean);
+        const firstName = parts[0] || lower.split('@')[0];
+        const lastName = parts.slice(1).join(' ') || '';
+        // A shared-mailbox destination stays a 'contact'; a regular mailbox is 'staff'.
+        const userType = destinationType === 'mailbox' ? 'staff' : 'contact';
+        await db.query(
+          `INSERT INTO organization_users (
+             organization_id, email, first_name, last_name,
+             google_workspace_id, google_workspace_sync_status, google_workspace_last_sync,
+             is_active, role, password_hash, user_type, created_at, updated_at
+           ) VALUES ($1, $2, $3, $4, $5, 'synced', NOW(), true, 'user', 'GOOGLE_WORKSPACE_AUTH', $6, NOW(), NOW())`,
+          [organizationId, lower, firstName, lastName, googleUserId, userType],
+        );
+      }
+    } catch (e: any) {
+      logger.warn('Provisioning write-through to organization_users failed (sync will reconcile)', {
+        organizationId,
+        email: lower,
+        error: e?.message,
+      });
+    }
+  }
+
+  /**
    * Provision the Google DESTINATIONS the plan needs. Google's native importer
    * NEVER creates accounts, so for each target whose chosen Google address does
    * not exist yet, create the account (name carried from the M365 source; the
@@ -404,11 +461,24 @@ export class MigrationPlanService {
         password: crypto.randomBytes(18).toString('base64') + 'Aa1!',
         changePasswordAtNextLogin: true,
       });
-      if (res.success && t.destinationType === 'delegated') {
-        for (const d of t.delegates || []) {
-          try {
-            await googleWorkspaceService.addGmailDelegate(organizationId, t.targetGoogleEmail, d);
-          } catch { /* best-effort delegation */ }
+      if (res.success) {
+        // Write-through: surface the new account in the Helios directory now,
+        // rather than only after the next sync.
+        if (res.userId) {
+          await this.writeThroughProvisionedUser(
+            organizationId,
+            t.targetGoogleEmail,
+            res.userId,
+            t.sourceName,
+            t.destinationType,
+          );
+        }
+        if (t.destinationType === 'delegated') {
+          for (const d of t.delegates || []) {
+            try {
+              await googleWorkspaceService.addGmailDelegate(organizationId, t.targetGoogleEmail, d);
+            } catch { /* best-effort delegation */ }
+          }
         }
       }
       results.push({
