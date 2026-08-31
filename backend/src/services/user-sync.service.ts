@@ -159,6 +159,24 @@ export class UserSyncService {
           }
         }
 
+        // Classify Google GUEST accounts (users.list returns isGuestUser for the
+        // 2026 Workspace guest identities) so they are not silently counted as
+        // staff. Promote to user_type='guest'; never demote a manual classification.
+        const guestGoogleIds = googleUsers
+          .filter((u: any) => u.isGuestUser === true)
+          .map((u: any) => u.id);
+        if (guestGoogleIds.length > 0) {
+          await db.query(
+            `UPDATE organization_users SET user_type = 'guest', updated_at = NOW()
+              WHERE organization_id = $1 AND google_workspace_id = ANY($2) AND user_type <> 'guest'`,
+            [organizationId, guestGoogleIds]
+          );
+          logger.info('Classified Google Workspace guest accounts', {
+            organizationId,
+            guests: guestGoogleIds.length,
+          });
+        }
+
         // Find and disable users that no longer exist in Google Workspace
         const allLocalUsers = await db.query(`
           SELECT id, email
