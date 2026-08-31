@@ -1766,6 +1766,10 @@ function AppContent() {
           setChatInitialMessage(question);
           setShowChatPanel(true);
         }}
+        onNavigate={(path) => {
+          setShowHelpWidget(false);
+          navigate(path);
+        }}
       />
     </div>
   );
