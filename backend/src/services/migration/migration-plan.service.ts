@@ -1,4 +1,6 @@
+import crypto from 'crypto';
 import { db } from '../../database/connection.js';
+import { googleWorkspaceService } from '../google-workspace.service.js';
 
 /**
  * Cross-cloud migration destination mapping (M365 -> Google Workspace).
@@ -32,6 +34,16 @@ export interface MigrationTarget {
   /** Whether a Google account with targetGoogleEmail is known in the directory. */
   targetExists: boolean;
   transfer: MigrateWhat;
+  /**
+   * Destination strategy. Regular users -> 'mailbox' (a licensed Google account).
+   * A SHARED mailbox has a choice: 'group' = a Google Group for NEW mail only,
+   * free, but the old mail is NOT migrated ("miss old emails"); or 'delegated' =
+   * a licensed Google mailbox with delegation to the team, which DOES migrate the
+   * full history but costs a Google seat (no free shared-mailbox equivalent).
+   */
+  destinationType: 'mailbox' | 'group' | 'delegated';
+  /** For 'delegated' = who gets mailbox access; for 'group' = members. */
+  delegates?: string[];
   status: 'unmapped' | 'ready';
 }
 
@@ -70,6 +82,7 @@ export class MigrationPlanService {
     const ms = await db.query(
       `SELECT microsoft_365_id,
               microsoft_365_upn,
+              user_type,
               LOWER(email) AS email,
               COALESCE(NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), ''), email) AS name
          FROM organization_users
@@ -81,6 +94,10 @@ export class MigrationPlanService {
     const targets: MigrationTarget[] = ms.rows.map((r: any) => {
       const sameEmailExists = googleEmails.has(r.email);
       const targetGoogleEmail = sameEmailExists ? r.email : null;
+      // A 'contact' is our unlicensed / shared-mailbox candidate. Default it to a
+      // delegated licensed mailbox (keeps history, safe) — the admin can switch it
+      // to 'group' to save the seat at the cost of not migrating old mail.
+      const isShared = r.user_type === 'contact';
       return {
         sourceMs365Id: r.microsoft_365_id,
         sourceUpn: r.microsoft_365_upn ?? null,
@@ -89,6 +106,7 @@ export class MigrationPlanService {
         targetGoogleEmail,
         targetExists: sameEmailExists,
         transfer: { ...DEFAULT_TRANSFER },
+        destinationType: isShared ? 'delegated' : 'mailbox',
         status: targetStatus(targetGoogleEmail),
       };
     });
@@ -221,7 +239,15 @@ export class MigrationPlanService {
     const raw = r.rows?.[0]?.value;
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as MigrationPlan;
+      const plan = JSON.parse(raw) as MigrationPlan;
+      // Forward-compat: backfill fields added after a plan was persisted so older
+      // stored plans keep working (e.g. destinationType, added for shared-mailbox
+      // group-vs-delegated choice).
+      plan.targets = (plan.targets || []).map((t) => ({
+        destinationType: 'mailbox' as const,
+        ...t,
+      }));
+      return plan;
     } catch {
       return null;
     }
@@ -256,11 +282,119 @@ export class MigrationPlanService {
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
     const rows: string[] = ['Source Email,Destination Email'];
     for (const t of plan.targets) {
-      if (t.targetGoogleEmail && t.targetExists) {
+      // 'group' destinations are excluded — a Google Group cannot receive
+      // imported mail history (that source's old mail is intentionally not migrated).
+      if (t.targetGoogleEmail && t.targetExists && t.destinationType !== 'group') {
         rows.push(`${esc(t.sourceEmail)},${esc(t.targetGoogleEmail)}`);
       }
     }
     return rows.join('\n') + '\n';
+  }
+
+  /**
+   * Provision the Google DESTINATIONS the plan needs. Google's native importer
+   * NEVER creates accounts, so for each target whose chosen Google address does
+   * not exist yet, create the account (name carried from the M365 source; the
+   * new account auto-consumes a license so it can receive mail/Drive — note that
+   * shared mailboxes therefore cost a Google seat, there is no free equivalent).
+   * DRY-RUN by default: execute=false only lists what WOULD be created.
+   * Requires the destination domain to already be added to the Google workspace.
+   */
+  async provisionMigrationDestinations(
+    organizationId: string,
+    execute = false,
+  ): Promise<{
+    execute: boolean;
+    created: number;
+    wouldCreate: number;
+    results: Array<{ source: string; target?: string; action: string; error?: string }>;
+  }> {
+    const base =
+      (await this.loadPlan(organizationId)) ??
+      (await this.generateDefaultPlan(organizationId));
+    const plan = await this.reconcileExistence(base);
+    const results: Array<{ source: string; target?: string; action: string; error?: string }> = [];
+
+    for (const t of plan.targets) {
+      if (!t.targetGoogleEmail) {
+        results.push({ source: t.sourceEmail, action: 'skipped-unmapped' });
+        continue;
+      }
+      if (t.targetExists) {
+        results.push({ source: t.sourceEmail, target: t.targetGoogleEmail, action: 'exists' });
+        continue;
+      }
+      if (!execute) {
+        results.push({
+          source: t.sourceEmail,
+          target: t.targetGoogleEmail,
+          action: `would-create-${t.destinationType}`,
+        });
+        continue;
+      }
+
+      if (t.destinationType === 'group') {
+        // A Google Group — free, receives NEW mail only (no history import).
+        const gres = await googleWorkspaceService.createGroup(
+          organizationId,
+          t.targetGoogleEmail,
+          t.sourceName || t.targetGoogleEmail,
+          `Migrated shared mailbox (${t.sourceEmail})`,
+        );
+        const ok = gres && gres.success !== false;
+        if (ok) {
+          for (const m of t.delegates || []) {
+            try {
+              await googleWorkspaceService.addGroupMember(organizationId, t.targetGoogleEmail, m);
+            } catch { /* best-effort membership */ }
+          }
+        }
+        results.push({
+          source: t.sourceEmail,
+          target: t.targetGoogleEmail,
+          action: ok ? 'created-group' : 'error',
+          ...(ok ? {} : { error: gres?.error || 'group create failed' }),
+        });
+        continue;
+      }
+
+      // 'mailbox' or 'delegated' — a licensed Google account.
+      const parts = (t.sourceName || '').trim().split(/\s+/).filter(Boolean);
+      const firstName = parts[0] || t.sourceEmail.split('@')[0];
+      const lastName = parts.slice(1).join(' ') || firstName;
+      const res = await googleWorkspaceService.createUser(organizationId, {
+        email: t.targetGoogleEmail,
+        firstName,
+        lastName,
+        // Strong random temp password (meets Google complexity); force reset.
+        password: crypto.randomBytes(18).toString('base64') + 'Aa1!',
+        changePasswordAtNextLogin: true,
+      });
+      if (res.success && t.destinationType === 'delegated') {
+        for (const d of t.delegates || []) {
+          try {
+            await googleWorkspaceService.addGmailDelegate(organizationId, t.targetGoogleEmail, d);
+          } catch { /* best-effort delegation */ }
+        }
+      }
+      results.push({
+        source: t.sourceEmail,
+        target: t.targetGoogleEmail,
+        action: res.success
+          ? t.destinationType === 'delegated'
+            ? 'created-delegated'
+            : 'created'
+          : 'error',
+        ...(res.error ? { error: res.error } : {}),
+      });
+    }
+
+    return {
+      execute,
+      created: results.filter((r) => r.action.startsWith('created')).length,
+      wouldCreate: results.filter((r) => r.action.startsWith('would-create')).length,
+      results,
+    };
   }
 }
 
