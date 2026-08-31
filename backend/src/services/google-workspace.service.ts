@@ -1,10 +1,11 @@
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
+import { skuHasVault } from '../config/google-license-skus.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
-import { REQUIRED_SCOPES, SCOPE_DETAILS } from '../config/google-scopes.js';
+import { REQUIRED_SCOPES, SCOPE_DETAILS, DELEGATION_SCOPES, DELEGATION_SCOPE_DETAILS } from '../config/google-scopes.js';
 
 export interface ServiceAccountCredentials {
   type: string;
@@ -288,6 +289,113 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Create an authenticated Google Vault (eDiscovery) client via Domain-Wide
+   * Delegation. Separate from the admin client because Vault needs the
+   * `ediscovery` scope and a Vault-privileged admin subject.
+   */
+  private createVaultClient(credentials: ServiceAccountCredentials, adminEmail: string) {
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/ediscovery'],
+      subject: adminEmail,
+    });
+    return google.vault({ version: 'v1', auth: jwtClient });
+  }
+
+  /**
+   * Preserve a (departing) user's Mail + Drive with Google Vault BEFORE deletion.
+   * Vault is a Business Plus+ entitlement, so this is GATED: if the org holds no
+   * Vault-eligible SKU we return skipped=true with a reason rather than surface a
+   * raw Google 403. Creates a matter, then a MAIL hold and a DRIVE hold (Vault
+   * allows one corpus per hold) covering the account. A hold survives account
+   * deletion — that is the point: the data is retained even after the user is
+   * removed. Callers should record the returned matterId/holdIds.
+   */
+  async preserveUserWithVault(
+    organizationId: string,
+    userEmail: string,
+    opts: { matterName?: string } = {}
+  ): Promise<{
+    success: boolean;
+    skipped?: boolean;
+    reason?: string;
+    matterId?: string;
+    holdIds?: string[];
+    error?: string;
+  }> {
+    try {
+      // Tier gate — the org must hold a Vault-eligible license.
+      const inv = await this.getLicenseInventory(organizationId);
+      if (inv.success && Array.isArray(inv.licenses)) {
+        const vaultCapable = inv.licenses.some((l: any) => skuHasVault(l.skuId));
+        if (!vaultCapable) {
+          return {
+            success: false,
+            skipped: true,
+            reason: 'Vault preservation requires Business Plus or a higher Vault-eligible edition.',
+          };
+        }
+      }
+
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, error: 'Google Workspace credentials not found.' };
+      }
+      const credRow = await db.query(
+        'SELECT admin_email, domain FROM gw_credentials WHERE organization_id = $1',
+        [organizationId]
+      );
+      if (credRow.rows.length === 0) {
+        return { success: false, error: 'No Google Workspace credentials for this organization.' };
+      }
+      const { admin_email, domain } = credRow.rows[0];
+      const adminEmail = admin_email || `admin@${domain}`;
+      const vault = this.createVaultClient(credentials, adminEmail);
+
+      const matterName = opts.matterName || `Offboarding hold - ${userEmail}`;
+      const matterRes = await vault.matters.create({
+        requestBody: {
+          name: matterName,
+          description: `Retention hold created by Helios during offboarding of ${userEmail}.`,
+        },
+      });
+      const matterId = matterRes.data.matterId;
+      if (!matterId) {
+        return { success: false, error: 'Vault did not return a matter id.' };
+      }
+
+      const holdIds: string[] = [];
+      for (const corpus of ['MAIL', 'DRIVE'] as const) {
+        const holdRes = await vault.matters.holds.create({
+          matterId,
+          requestBody: {
+            name: `${corpus} hold - ${userEmail}`,
+            corpus,
+            accounts: [{ email: userEmail }],
+          },
+        });
+        if (holdRes.data.holdId) holdIds.push(holdRes.data.holdId);
+      }
+
+      logger.info('Vault preservation holds created', {
+        organizationId,
+        userEmail,
+        matterId,
+        holdCount: holdIds.length,
+      });
+      return { success: true, matterId, holdIds };
+    } catch (error: any) {
+      logger.error('Vault preservation failed', {
+        organizationId,
+        userEmail,
+        error: error?.message,
+      });
+      return { success: false, error: error?.message || 'Vault preservation failed' };
+    }
+  }
+
+  /**
    * Get stored credentials for an organization
    */
   private async getCredentials(organizationId: string): Promise<ServiceAccountCredentials | null> {
@@ -543,17 +651,21 @@ export class GoogleWorkspaceService {
     scopeDetails: { scope: string; reason: string }[];
     setupInstructions: string[];
   } {
-    // Single source of truth: config/google-scopes.ts. The previous inline list
-    // advertised only 5 of the 17 scopes the code actually requests, so admins
-    // authorised a partial set and every unlisted feature silently 403'd.
-    const requiredScopes = REQUIRED_SCOPES;
+    // Single source of truth: config/google-scopes.ts. Advertise the FULL
+    // delegation set (base + optional, e.g. Vault's ediscovery) so a one-time
+    // authorisation covers every current feature — required-now and
+    // optional-but-may-be-used-later — and a later release that lights up an
+    // optional feature needs no re-authorisation. (The proxy still only *mints*
+    // the base REQUIRED_SCOPES, so an un-authorised optional scope never
+    // blanket-401s the tenant — that one feature just fails until authorised.)
+    const requiredScopes = DELEGATION_SCOPES;
 
     return {
       clientId: process.env.GOOGLE_CLIENT_ID || null,
       serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null,
       requiredScopes,
       requiredScopesCsv: requiredScopes.join(','),
-      scopeDetails: SCOPE_DETAILS,
+      scopeDetails: DELEGATION_SCOPE_DETAILS,
       setupInstructions: [
         'Create a service account in Google Cloud Console',
         'Download the service account JSON file',
