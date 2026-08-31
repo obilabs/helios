@@ -214,6 +214,7 @@ export const graph: HttpReplayInstance = createHttpReplay({
   namespace: 'graph',
   fixturesDirName: 'graph',
   recordEnvVar: 'HELIOS_GRAPH_RECORD',
+  verifyEnvVar: 'HELIOS_GRAPH_VERIFY',
   fixturesDirEnvVar: 'HELIOS_GRAPH_FIXTURES_DIR',
   isTokenEndpoint: (host, path) =>
     host === 'login.microsoftonline.com' || path.endsWith('/token'),

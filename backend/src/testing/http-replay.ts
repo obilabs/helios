@@ -87,7 +87,7 @@ export interface MinimalResponse {
   headers: Record<string, string>;
 }
 
-export type HarnessMode = 'off' | 'replay' | 'record';
+export type HarnessMode = 'off' | 'replay' | 'record' | 'verify';
 
 /** Config that specializes the generic harness core for one provider. */
 export interface HttpReplayConfig {
@@ -97,6 +97,14 @@ export interface HttpReplayConfig {
   fixturesDirName: string;
   /** Env var (`=1`) that turns on RECORD mode for this provider. */
   recordEnvVar: string;
+  /**
+   * Optional env var (`=1`) that turns on VERIFY mode: hit the LIVE provider,
+   * structurally diff the response against the committed fixture, and report
+   * drift. Never overwrites the fixture; the live response is returned so the
+   * app keeps working. This is the drift/canary check — a stale fixture that
+   * still "passes" replay is the silent-failure mode this catches.
+   */
+  verifyEnvVar?: string;
   /** Optional env var that overrides the fixtures root directory. */
   fixturesDirEnvVar?: string;
   /** True for the provider's token endpoint (served synthetically in replay). */
@@ -146,6 +154,10 @@ export interface HttpReplayInstance {
   loadFixtureFamily: (family: string) => HttpFixture[];
   fixturesRoot: () => string;
   isRecordMode: () => boolean;
+  isVerifyMode: () => boolean;
+  /** VERIFY-mode drift report: structural differences found between live responses and fixtures. */
+  getDrift: () => Array<{ key: string; diffs: string[] }>;
+  resetDrift: () => void;
   // ----- lower-level primitives (used by non-axios seams, e.g. fetch/SDK) -----
   deriveName: HttpReplayConfig['deriveName'];
   isTokenEndpoint: HttpReplayConfig['isTokenEndpoint'];
@@ -243,6 +255,36 @@ const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 // The factory
 // ---------------------------------------------------------------------------
 
+/**
+ * Structural diff between a live response and a committed fixture — reports
+ * missing keys, new keys, and type mismatches, IGNORING values (values change
+ * legitimately; shape/type drift is what silently breaks replay). Used by VERIFY
+ * mode as the drift/canary check. Returns [] when the shapes match.
+ */
+export function diffShape(live: unknown, fixture: unknown, path = ''): string[] {
+  const t = (v: unknown) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v);
+  const tl = t(live);
+  const tf = t(fixture);
+  if (tl !== tf) return [`${path || '(root)'}: type ${tf} -> ${tl}`];
+  if (tl === 'object') {
+    const out: string[] = [];
+    const kl = new Set(Object.keys(live as object));
+    const kf = new Set(Object.keys(fixture as object));
+    const p = (k: string) => `${path}${path ? '.' : ''}${k}`;
+    for (const k of kf) if (!kl.has(k)) out.push(`${p(k)}: removed by API`);
+    for (const k of kl) if (!kf.has(k)) out.push(`${p(k)}: new field in API`);
+    for (const k of kf) if (kl.has(k)) out.push(...diffShape((live as any)[k], (fixture as any)[k], p(k)));
+    return out;
+  }
+  if (tl === 'array') {
+    const a = (live as unknown[])[0];
+    const b = (fixture as unknown[])[0];
+    if (a === undefined || b === undefined) return [];
+    return diffShape(a, b, `${path}[]`);
+  }
+  return [];
+}
+
 export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
   // Per-instance state — NO shared module singleton.
   const state = {
@@ -252,6 +294,8 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
     replayActive: false,
     /** Optional record-naming overrides, keyed the same way as replayMap. */
     recordNames: new Map<string, { family: string; name: string }>(),
+    /** VERIFY-mode structural drift found between live responses and fixtures. */
+    drift: [] as Array<{ key: string; diffs: string[] }>,
   };
 
   const buildSanitizer =
@@ -279,8 +323,13 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
     return process.env[config.recordEnvVar] === '1';
   }
 
+  function isVerifyMode(): boolean {
+    return !!config.verifyEnvVar && process.env[config.verifyEnvVar] === '1';
+  }
+
   function currentMode(): HarnessMode {
     if (isRecordMode()) return 'record';
+    if (isVerifyMode()) return 'verify';
     if (state.replayActive) return 'replay';
     return 'off';
   }
@@ -463,6 +512,35 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
       return replayLookup(method, host, path);
     }
 
+    if (mode === 'verify') {
+      // Hit live, structurally diff against the committed fixture, report drift.
+      // Never overwrites the fixture; returns the live response so nothing breaks.
+      const real = (await axios(cfg)) as MinimalResponse;
+      try {
+        const key = fixtureKey(method, host, path);
+        const target =
+          state.recordNames.get(key) ?? config.deriveName(method, host, path);
+        const file = join(fixturesRoot(), target.family, `${target.name}.json`);
+        if (!existsSync(file)) {
+          state.drift.push({ key, diffs: ['no committed fixture to verify against'] });
+        } else {
+          const fx = JSON.parse(readFileSync(file, 'utf8')) as HttpFixture;
+          const liveSanitized = buildSanitizer()(real.data);
+          const diffs = diffShape(liveSanitized, fx.response.data, '');
+          if (diffs.length) {
+            state.drift.push({ key, diffs });
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[${config.namespace}-replay] FIXTURE DRIFT ${key}:\n  ${diffs.join('\n  ')}`,
+            );
+          }
+        }
+      } catch {
+        // verify must never break the live request path
+      }
+      return real;
+    }
+
     // record: hit the real provider, persist the sanitized pair, return it.
     const real = (await axios(cfg)) as MinimalResponse;
     record({
@@ -517,6 +595,11 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
     loadFixtureFamily,
     fixturesRoot,
     isRecordMode,
+    isVerifyMode,
+    getDrift: () => state.drift,
+    resetDrift: () => {
+      state.drift = [];
+    },
     deriveName: config.deriveName,
     isTokenEndpoint: config.isTokenEndpoint,
     currentMode,
