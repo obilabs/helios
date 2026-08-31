@@ -32,8 +32,17 @@ destination-mapping plan service (`migration-plan.service.ts`).
   many-to-one consolidation) — the plan service — and **emit the Google-import CSV**
   (`toGoogleMigrationCsv`, `GET /microsoft/migration/plan/csv`). Its "destination must exist"
   validation *is* Google's hard prerequisite.
-- **Hand-off + track**: deep-link / guide the admin into Google's native import, then track
-  per-user completion and tie it to offboarding/lifecycle.
+- **Hand-off + track**: deep-link / guide the admin into Google's native import (the transfer is
+  **admin-started in the Google console — there is no public API to trigger it**), then **track
+  progress by reading Google's `data_migration` audit stream** via the Admin SDK Reports API
+  (`Activities.list(applicationName=data_migration)`, using the `admin.reports.audit.readonly`
+  scope Helios already holds — no new scope). That stream carries setup events
+  (`CREATE_CONNECTION`, `CREATE_MIGRATION_MAP`, `START_MIGRATION`, `STOP_MIGRATION`) and per-object
+  `MIGRATION` events — `CREATE_GMAIL_MESSAGE`, `CREATE_CALENDAR_EVENT`, `CREATE_CONTACT`,
+  `CREATE_FILE`, plus `CRAWL_FAILURE` — each with `EXECUTION_ID`, `SOURCE_IDENTIFIER`,
+  `TARGET_IDENTIFIER`, and a status (Success/Failed/Skipped), and it **explicitly covers Exchange
+  Online / OneDrive sources**. So per-user completion + failures ARE observable in-Helios; tie them
+  to offboarding/lifecycle.
 
 ## Non-Goals
 
@@ -47,6 +56,16 @@ destination-mapping plan service (`migration-plan.service.ts`).
 
 ## Design notes
 
+- **Two different Google "transfer" surfaces — do NOT conflate them.** This workflow is the
+  **Data Migration Service = EXTERNAL → INTERNAL** cross-cloud import (an M365 mailbox/OneDrive
+  *outside* the workspace → Gmail/Drive *inside* it): **console-triggered (no start API)**,
+  **read-only** progress via the `data_migration` Reports-API audit stream. The **intra-domain
+  user→user transfer** used by OFFBOARDING (a departing user's Drive/Calendar → another user in the
+  *same* workspace) is a **separate** feature — the **Data Transfer API** (`admin.datatransfer`,
+  which Helios already calls) — and it has a **full API**: `transfers.insert` to **trigger** AND
+  `transfers.get`/`.list` to **track** (`overallTransferStatusCode` + per-application
+  `applicationTransferStatus`). So offboarding transfers are fully controllable *and* trackable by
+  Helios; the cross-cloud migration is orchestrate-and-observe only.
 - **Reuse, don't rebuild.** The plan service already does generate/override/validate/persist and
   now emits the Google CSV. No new tables (`organization_settings` key/value).
 - **Provisioning** reuses Helios's existing Google user/group creation; recreate M365 DLs as
