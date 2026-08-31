@@ -15,6 +15,7 @@ function target(over: Partial<MigrationTarget> = {}): MigrationTarget {
     targetGoogleEmail: null,
     targetExists: false,
     transfer: { mail: true, drive: true, calendar: true, contacts: true },
+    destinationType: 'mailbox',
     status: 'unmapped',
     ...over,
   };
@@ -98,5 +99,25 @@ describe('MigrationPlanService.toScriptMap', () => {
       ]),
     );
     expect(m).toEqual({ 'x@old': 'manager@new.com' });
+  });
+});
+
+describe('MigrationPlanService.toGoogleMigrationCsv', () => {
+  it('includes ready mailbox/delegated targets and EXCLUDES group destinations', () => {
+    const csv = svc.toGoogleMigrationCsv(
+      plan([
+        target({ sourceEmail: 'a@old.com', targetGoogleEmail: 'a@new.com', targetExists: true, status: 'ready', destinationType: 'mailbox' }),
+        target({ sourceEmail: 'shared@old.com', targetGoogleEmail: 'shared@new.com', targetExists: true, status: 'ready', destinationType: 'delegated' }),
+        // group = no history import -> excluded from the Google import CSV
+        target({ sourceEmail: 'info@old.com', targetGoogleEmail: 'info@new.com', targetExists: true, status: 'ready', destinationType: 'group' }),
+        // unmapped / not-yet-existing -> excluded
+        target({ sourceEmail: 'z@old.com' }),
+      ]),
+    );
+    expect(csv).toBe(
+      'Source Email,Destination Email\n' +
+        'a@old.com,a@new.com\n' +
+        'shared@old.com,shared@new.com\n',
+    );
   });
 });
