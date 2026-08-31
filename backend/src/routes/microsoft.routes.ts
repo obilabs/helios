@@ -831,6 +831,35 @@ router.get('/migration/plan/csv', requireAdmin, async (req: Request, res: Respon
 });
 
 /**
+ * GET /microsoft/migration/plan/scope-csv[?header=...]
+ * SOURCE-ONLY CSV for import steps that take a scope list (e.g. Google's OneDrive
+ * import "Step 2: Set data import scope"). READY targets only. The mapping step
+ * (OneDrive Step 3) uses /plan/csv, whose columns already match Google's sample.
+ */
+router.get('/migration/plan/scope-csv', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const header = typeof req.query.header === 'string' && req.query.header.trim()
+      ? req.query.header.trim()
+      : 'Source OneDrive User';
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    const csv = migrationPlanService.toGoogleScopeCsv(plan, header);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="m365-google-migration-scope.csv"');
+    res.status(200).send(csv);
+  } catch (error: any) {
+    logger.error('Failed to export migration scope CSV', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to export migration scope CSV');
+  }
+});
+
+/**
  * POST /microsoft/migration/provision[?execute=true]
  * Provision the Google DESTINATIONS the migration plan needs — Google's native
  * importer never creates accounts. Dry-run unless ?execute=true. Honors each
