@@ -93,8 +93,25 @@ const GRAPH_REDACT_KEYS = new Set(
     'businessPhones',
     'onPremisesImmutableId',
     'proxyAddresses',
+    // Identity/domain-bearing fields. userPrincipalName/mail are redacted (not
+    // aliased) because guest UPNs use the `<orig-email>#EXT#@tenant` form that
+    // embeds a real external address and slips past the email aliaser.
+    'userPrincipalName',
+    'mail',
+    'otherMails',
+    'imAddresses',
+    'mailNickname',
+    // Tenant-identifying: the verified-domains array (onmicrosoft.com + custom
+    // domains) and the license accountName reveal the real tenant.
+    'verifiedDomains',
+    'accountName',
   ].map((k) => k.toLowerCase()),
 );
+
+/** Replace any `<label>.onmicrosoft.com` host with a stable synthetic tenant. */
+function stripOnmicrosoftDomain(s: string): string {
+  return s.replace(/\b[a-z0-9][a-z0-9-]*\.onmicrosoft\.com\b/gi, 'tenant.onmicrosoft.com');
+}
 
 /** Keys whose values are PUBLIC catalog GUIDs and must be kept verbatim. */
 const GRAPH_KEEP_KEYS = new Set(['skuId', 'servicePlanId'].map((k) => k.toLowerCase()));
@@ -111,7 +128,8 @@ function graphSanitizeValue(
   aliasEmail: (s: string) => string,
   aliasGuid: (s: string) => string,
 ): unknown {
-  if (typeof value === 'string') return aliasGuid(aliasEmail(value));
+  if (typeof value === 'string')
+    return aliasGuid(aliasEmail(stripOnmicrosoftDomain(value)));
   if (Array.isArray(value))
     return value.map((v) => graphSanitizeValue(v, aliasEmail, aliasGuid));
   if (value && typeof value === 'object') {
