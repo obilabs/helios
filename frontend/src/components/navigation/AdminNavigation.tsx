@@ -26,6 +26,7 @@ import {
   Key,
   Building2,
   Layers,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { useLabels } from '../../contexts/LabelsContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagsContext';
@@ -149,6 +150,16 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
         >
           <Layers size={16} className="nav-icon" />
           <span>Bulk Operations</span>
+        </button>
+
+        {/* Migration - Microsoft 365 -> Google Workspace */}
+        <button
+          className={`nav-item ${currentPage === 'migration' ? 'active' : ''}`}
+          onClick={() => onNavigate('migration')}
+          data-testid="nav-migration"
+        >
+          <ArrowRightLeft size={16} className="nav-icon" />
+          <span>Migration</span>
         </button>
       </div>
 

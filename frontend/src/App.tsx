@@ -24,6 +24,7 @@ import { OAuthApps } from './pages/OAuthApps'
 import { EmailSecurity } from './pages/EmailSecurity'
 import AuditLogs from './pages/AuditLogs'
 import Licenses from './pages/Licenses'
+import Migration from './pages/Migration'
 import { MyProfile } from './pages/MyProfile'
 import { People } from './pages/People'
 import { MyTeam } from './pages/MyTeam'
@@ -1515,6 +1516,10 @@ function AppContent() {
             <Suspense fallback={<PageLoader />}>
               <BulkOperations organizationId={config?.organizationId || ''} />
             </Suspense>
+          )}
+
+          {currentPage === 'migration' && (
+            <Migration />
           )}
 
           {currentPage === 'external-sharing' && (
