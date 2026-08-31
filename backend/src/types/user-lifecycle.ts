@@ -552,6 +552,17 @@ export interface OffboardingConfig {
   /** Move the departing user into this org unit (e.g. "/Offboarded"). */
   orgUnitPath?: string;
 
+  // Data preservation
+  /**
+   * Preserve the departing user's Mail + Drive with Google Vault (retention hold)
+   * BEFORE any deletion, so the data survives account removal. Business Plus and
+   * above only — gated at runtime; on lower editions it is skipped with a reason
+   * rather than failing the offboard.
+   */
+  preserveWithVault?: boolean;
+  /** Optional Vault matter name for the preservation hold. */
+  vaultMatterName?: string;
+
   // Account handling
   accountAction: AccountAction;
   deleteAccount: boolean;

@@ -99,3 +99,27 @@ export function tierMeets(have: GoogleTier | null, min: GoogleTier): boolean {
   if (!have) return false;
   return TIER_RANK[have] >= TIER_RANK[min];
 }
+
+/**
+ * Tiers whose base edition INCLUDES Google Vault (retention + legal holds).
+ * Vault is NOT a clean rank threshold — Business Standard (rank 2) lacks it while
+ * Frontline Standard (rank 2) has it — so it is an explicit set, not tierMeets().
+ * Business Starter/Standard and Frontline Starter do NOT include Vault.
+ */
+const VAULT_ELIGIBLE_TIERS = new Set<GoogleTier>([
+  'business_plus',
+  'enterprise_starter',
+  'enterprise_standard',
+  'enterprise_plus',
+  'enterprise_essentials',
+  'enterprise_essentials_plus',
+  'frontline_standard',
+  'frontline_plus',
+]);
+
+/** True if this SKU includes Google Vault. The standalone Vault add-on SKUs count too. */
+export function skuHasVault(skuId: string): boolean {
+  if (GOOGLE_VAULT_SKUS[skuId]) return true;
+  const tier = skuTier(skuId);
+  return tier ? VAULT_ELIGIBLE_TIERS.has(tier) : false;
+}
