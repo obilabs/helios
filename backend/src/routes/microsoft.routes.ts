@@ -804,4 +804,29 @@ router.put('/migration/plan', requireAdmin, async (req: Request, res: Response):
   }
 });
 
+/**
+ * GET /microsoft/migration/plan/csv
+ * The source->destination mapping as CSV for Google's native Data Migration
+ * import (READY targets only — both accounts must already exist).
+ */
+router.get('/migration/plan/csv', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    const csv = migrationPlanService.toGoogleMigrationCsv(plan);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="m365-google-migration-mapping.csv"');
+    res.status(200).send(csv);
+  } catch (error: any) {
+    logger.error('Failed to export migration plan CSV', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to export migration plan CSV');
+  }
+});
+
 export default router;
