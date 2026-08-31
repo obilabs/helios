@@ -27,6 +27,7 @@ import {
   Building2,
   Layers,
   ArrowRightLeft,
+  MailPlus,
 } from 'lucide-react';
 import { useLabels } from '../../contexts/LabelsContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagsContext';
@@ -160,6 +161,16 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
         >
           <ArrowRightLeft size={16} className="nav-icon" />
           <span>Migration</span>
+        </button>
+
+        {/* Email Delegations - Gmail delegate access across the workspace */}
+        <button
+          className={`nav-item ${currentPage === 'delegations' ? 'active' : ''}`}
+          onClick={() => onNavigate('delegations')}
+          data-testid="nav-delegations"
+        >
+          <MailPlus size={16} className="nav-icon" />
+          <span>Delegations</span>
         </button>
       </div>
 

@@ -1,0 +1,42 @@
+.delegations-page { padding: 24px; max-width: 1000px; margin: 0 auto; }
+.delegations-page .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.delegations-page .page-header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; color: #111827; }
+.delegations-page .page-subtitle { color: #6b7280; font-size: 13px; margin: 0; max-width: 720px; }
+
+.delegations-page .btn-primary,
+.delegations-page .btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent; white-space: nowrap;
+}
+.delegations-page .btn-primary { background: #8b5cf6; color: #fff; }
+.delegations-page .btn-primary:hover:not(:disabled) { background: #7c3aed; }
+.delegations-page .btn-secondary { background: #fff; border-color: #e5e7eb; color: #374151; }
+.delegations-page .btn-secondary:hover:not(:disabled) { background: #f9fafb; }
+.delegations-page button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.deleg-error { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+
+.deleg-add { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
+.deleg-input { flex: 1; min-width: 220px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+.deleg-input:focus { outline: none; border-color: #8b5cf6; }
+
+.deleg-loading, .deleg-empty { padding: 32px; text-align: center; color: #9ca3af; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; }
+.deleg-count { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+.deleg-list { display: flex; flex-direction: column; gap: 10px; }
+.deleg-row { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; }
+.deleg-mailbox { font-weight: 600; color: #111827; font-size: 14px; margin-bottom: 8px; }
+.deleg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.deleg-chip { display: inline-flex; align-items: center; gap: 6px; background: #eef2ff; color: #4338ca; padding: 4px 8px; border-radius: 14px; font-size: 12px; }
+.deleg-status { font-size: 10px; text-transform: capitalize; color: #9ca3af; }
+.deleg-status.ok { color: #15803d; }
+.deleg-remove { background: none; border: none; padding: 0; cursor: pointer; color: #9ca3af; display: inline-flex; align-items: center; }
+.deleg-remove:hover { color: #b91c1c; }
+
+.spin { animation: deleg-spin 1s linear infinite; }
+@keyframes deleg-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .deleg-add { flex-direction: column; }
+  .deleg-input { min-width: 0; }
+}
