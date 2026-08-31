@@ -20,6 +20,7 @@ import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
 import { telemetryService } from '../services/telemetry.service.js';
 import { REQUIRED_SCOPES } from '../config/google-scopes.js';
+import { googleWorkspaceService } from '../services/google-workspace.service.js';
 // Record/replay seam for the two outbound Google calls below. In production
 // (and any test that does not opt in) this is a straight passthrough to axios —
 // no behavior change. Tests activate replay via useGoogleReplay(); setting
@@ -263,36 +264,40 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
     }
 
     // 4.5 CROSS-DOMAIN IMPERSONATION GUARD (SECURITY)
-    // If the caller asked to impersonate a user, that user MUST belong to this
-    // org's own verified Workspace domain. Impersonating an address in any other
-    // domain is refused OUTRIGHT — no token is minted, nothing is forwarded to
-    // Google — which prevents a caller from using the org's domain-wide
-    // delegation to act as someone outside the tenant. A malformed target (no
-    // parseable domain) is treated the same as a mismatch.
+    // If the caller asked to impersonate a user, that user MUST belong to one of
+    // this org's own verified Workspace domains (primary OR any secondary/alias
+    // domain of the same tenant). Impersonating an address outside the tenant is
+    // refused OUTRIGHT — no token is minted, nothing is forwarded to Google —
+    // which prevents a caller from using the org's domain-wide delegation to act
+    // as someone outside the tenant. A malformed target (no parseable domain) is
+    // treated the same as a mismatch.
     if (impersonateSubject) {
       const targetDomain = impersonateSubject.includes('@')
         ? impersonateSubject.split('@').pop()!.toLowerCase()
         : null;
-      const orgDomain = (googleCreds.domain || '').toLowerCase();
+      const orgId = req.user?.organizationId;
+      const allowedDomains = orgId
+        ? await getAllowedImpersonationDomains(orgId, googleCreds.domain || '')
+        : new Set<string>([(googleCreds.domain || '').toLowerCase()].filter(Boolean));
 
-      if (!targetDomain || !orgDomain || targetDomain !== orgDomain) {
+      if (!targetDomain || allowedDomains.size === 0 || !allowedDomains.has(targetDomain)) {
         logger.warn('Cross-domain impersonation rejected', {
-          organizationId: req.user?.organizationId,
+          organizationId: orgId,
           impersonateSubject,
-          orgDomain
+          allowedDomains: Array.from(allowedDomains),
         });
 
         await updateAuditLogEntry(auditLogId, {
           status: 'failure',
           statusCode: 403,
-          error: `impersonation-denied: target '${impersonateSubject}' is not in org domain '${orgDomain}'`,
+          error: `impersonation-denied: target '${impersonateSubject}' is not in a verified domain of this workspace`,
           duration: Date.now() - startTime
         });
 
         return res.status(403).json({
           success: false,
           error: 'Cross-domain impersonation is not allowed',
-          reason: 'The impersonation target must belong to this organization\'s domain'
+          reason: 'The impersonation target must belong to one of this organization\'s verified Workspace domains'
         });
       }
     }
@@ -406,6 +411,76 @@ function extractActor(req: Request): Actor {
     name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || req.user?.email || 'Unknown User',
     email: req.user?.email || 'unknown'
   };
+}
+
+/**
+ * Allowed impersonation domains per org, cached briefly.
+ *
+ * The cross-domain guard must permit EVERY verified domain of the bound
+ * workspace — not just the single primary stored in gw_credentials.domain — so
+ * that a user on a SECONDARY/alias domain (e.g. a workspace whose primary is
+ * foo.com but which also owns tmscanada.ca) can be impersonated. It must still
+ * REFUSE any address outside the tenant.
+ *
+ * The cache key includes the primary domain, so a rebind that changes the bound
+ * workspace (new primary) uses a fresh key automatically — no stale allow-list
+ * survives a rebind. On any live-lookup failure we fall back to the known-good
+ * set (primary + Helios-tracked verified domains): fail-CLOSED, never fail-open.
+ */
+const impersonationDomainCache = new Map<string, { domains: Set<string>; expires: number }>();
+const IMPERSONATION_DOMAIN_TTL_MS = 10 * 60 * 1000;
+
+async function getAllowedImpersonationDomains(
+  organizationId: string,
+  primaryDomain: string
+): Promise<Set<string>> {
+  const primary = (primaryDomain || '').toLowerCase();
+  const cacheKey = `${organizationId}::${primary}`;
+  const now = Date.now();
+  const cached = impersonationDomainCache.get(cacheKey);
+  if (cached && cached.expires > now) return cached.domains;
+
+  const domains = new Set<string>();
+  if (primary) domains.add(primary);
+
+  // 1) Domains Helios already tracks as verified (DB-only, fast).
+  try {
+    const r = await db.query(
+      `SELECT LOWER(domain) AS domain FROM organization_domains
+        WHERE organization_id = $1 AND verification_status = 'verified'`,
+      [organizationId]
+    );
+    for (const row of r.rows) if (row.domain) domains.add(row.domain);
+  } catch {
+    // organization_domains is optional/may be empty — ignore and rely on 2.
+  }
+
+  // 2) Authoritative live tenant domain list (covers secondary/alias domains
+  //    not yet mirrored into organization_domains). Every domain it returns is
+  //    inside this customer's tenant, so allowing them is correct + secure.
+  try {
+    const live = await googleWorkspaceService.listGoogleWorkspaceDomains(organizationId);
+    if (live?.success && Array.isArray(live.domains)) {
+      for (const d of live.domains as Array<{ domainName?: string; verified?: boolean }>) {
+        const name = (d?.domainName || '').toLowerCase();
+        // Google marks unverified domains verified:false — do not trust those.
+        if (name && d?.verified !== false) domains.add(name);
+      }
+    }
+  } catch (e) {
+    logger.warn('Impersonation-domain live lookup failed; using tracked domains only', {
+      organizationId,
+      error: (e as Error)?.message,
+    });
+  }
+
+  impersonationDomainCache.set(cacheKey, { domains, expires: now + IMPERSONATION_DOMAIN_TTL_MS });
+  return domains;
+}
+
+/** Test-only: clear the impersonation-domain allow-list cache between cases. */
+export function __resetImpersonationDomainCache(): void {
+  impersonationDomainCache.clear();
 }
 
 /**
