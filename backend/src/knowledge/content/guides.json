@@ -8,10 +8,28 @@
       "subcategory": "initial-setup",
       "summary": "Complete setup guide for first-time Helios users",
       "content": "Welcome to Helios! Here's how to get started:\n\n1. **Complete Initial Setup**: When you first access Helios, you'll be guided through creating your organization and admin account.\n\n2. **Connect Google Workspace**: Navigate to Settings > Modules > Google Workspace to connect your Google Workspace domain. You'll need:\n   - A service account JSON key file\n   - Domain-wide delegation enabled\n   - Admin email address for impersonation\n\n3. **Connect Microsoft 365** (optional): In Settings > Modules > Microsoft 365, you can connect your Microsoft tenant using:\n   - Azure AD tenant ID\n   - Application client ID\n   - Client secret\n\n4. **Review Your Directory**: Once connected, your users and groups will sync automatically. View them in the Directory section.\n\n5. **Set Up Team Members**: Add administrator accounts for your team under Settings > Roles.",
-      "keywords": ["getting started", "setup", "first time", "initial", "configure", "connect", "google workspace", "microsoft 365", "welcome"],
-      "aliases": ["how to start", "first steps", "new setup", "onboarding helios"],
+      "keywords": [
+        "getting started",
+        "setup",
+        "first time",
+        "initial",
+        "configure",
+        "connect",
+        "google workspace",
+        "microsoft 365",
+        "welcome"
+      ],
+      "aliases": [
+        "how to start",
+        "first steps",
+        "new setup",
+        "onboarding helios"
+      ],
       "examples": [],
-      "relatedIds": ["guide-google-workspace-setup", "guide-microsoft-365-setup"],
+      "relatedIds": [
+        "guide-google-workspace-setup",
+        "guide-microsoft-365-setup"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -22,10 +40,32 @@
       "subcategory": "google-workspace",
       "summary": "Step-by-step guide to connect Google Workspace to Helios",
       "content": "To connect Google Workspace to Helios:\n\n1. **Create a Service Account** in Google Cloud Console:\n   - Go to console.cloud.google.com\n   - Create a new project or select existing\n   - Navigate to IAM & Admin > Service Accounts\n   - Create a new service account\n   - Generate a JSON key and download it\n\n2. **Enable Domain-Wide Delegation**:\n   - In the service account settings, enable \"Domain-wide delegation\"\n   - Copy the Client ID\n\n3. **Authorize in Google Admin**:\n   - Go to admin.google.com\n   - Navigate to Security > API Controls > Domain-wide Delegation\n   - Add the Client ID with ALL required scopes. Authorizing only a subset causes \"unauthorized_client\" errors on the features whose scope was omitted (Gmail, Drive, Calendar, licensing, device wipe, data transfer). The exact, always-current list is shown on the connect screen (Settings > Modules > Google Workspace); the full set is:\n     - https://www.googleapis.com/auth/admin.directory.user\n     - https://www.googleapis.com/auth/admin.directory.user.security\n     - https://www.googleapis.com/auth/admin.directory.group\n     - https://www.googleapis.com/auth/admin.directory.group.member\n     - https://www.googleapis.com/auth/admin.directory.orgunit\n     - https://www.googleapis.com/auth/admin.directory.domain\n     - https://www.googleapis.com/auth/admin.directory.device.mobile\n     - https://www.googleapis.com/auth/admin.reports.audit.readonly\n     - https://www.googleapis.com/auth/admin.reports.usage.readonly\n     - https://www.googleapis.com/auth/admin.datatransfer\n     - https://www.googleapis.com/auth/apps.licensing\n     - https://www.googleapis.com/auth/calendar\n     - https://www.googleapis.com/auth/drive\n     - https://www.googleapis.com/auth/drive.file\n     - https://www.googleapis.com/auth/drive.readonly\n     - https://www.googleapis.com/auth/gmail.settings.basic\n     - https://www.googleapis.com/auth/gmail.settings.sharing\n\n4. **Configure in Helios**:\n   - Go to Settings > Modules > Google Workspace\n   - Upload your service account JSON\n   - Enter your admin email (must be a super admin)\n   - Test the connection\n   - Enable the module",
-      "keywords": ["google workspace", "google", "service account", "domain-wide delegation", "oauth", "connect", "api", "scopes", "gcp", "cloud console", "unauthorized_client"],
-      "aliases": ["setup google", "connect gws", "google integration", "gw setup"],
+      "keywords": [
+        "google workspace",
+        "google",
+        "service account",
+        "domain-wide delegation",
+        "oauth",
+        "connect",
+        "api",
+        "scopes",
+        "gcp",
+        "cloud console",
+        "unauthorized_client"
+      ],
+      "aliases": [
+        "setup google",
+        "connect gws",
+        "google integration",
+        "gw setup"
+      ],
       "examples": [],
-      "relatedIds": ["guide-getting-started", "guide-sync-settings", "guide-gw-service-account-key-policy", "guide-gw-dwd-deeplink"],
+      "relatedIds": [
+        "guide-getting-started",
+        "guide-sync-settings",
+        "guide-gw-service-account-key-policy",
+        "guide-gw-dwd-deeplink"
+      ],
       "lastUpdated": "2026-08-24T00:00:00Z"
     },
     {
@@ -36,10 +76,39 @@
       "subcategory": "microsoft-365",
       "summary": "Step-by-step guide to connect Microsoft 365 to Helios",
       "content": "To connect Microsoft 365 to Helios:\n\n1. **Register an Application** in Azure AD:\n   - Go to portal.azure.com\n   - Navigate to Azure Active Directory > App registrations\n   - Create a new registration\n   - Note the Application (client) ID and Directory (tenant) ID\n\n2. **Create a Client Secret**:\n   - In your app registration, go to Certificates & secrets\n   - Create a new client secret\n   - Copy the secret value immediately (shown only once)\n\n3. **Configure API Permissions**:\n   - Add Microsoft Graph permissions (Application type, not Delegated):\n     - User.Read.All\n     - Group.Read.All\n     - Directory.Read.All\n     - Organization.Read.All (exposes subscribed-SKU / license totals)\n   - Grant admin consent (may prompt for MFA re-authentication)\n   - Only to migrate mail/files OUT of this tenant, also add Mail.Read and Files.Read.All (broad tenant-wide read; add only for the migration window)\n\nNote: Helios uses app-only client credentials, so sync works even on tenants federated to an external IdP (e.g. JumpCloud). Federation only blocks writes to IdP-mastered identity (password reset; account enable/create/delete on synced users).\n\n4. **Configure in Helios**:\n   - Go to Settings > Modules > Microsoft 365\n   - Enter Tenant ID, Client ID, and Client Secret\n   - Test the connection\n   - Enable the module",
-      "keywords": ["microsoft 365", "microsoft", "azure", "azure ad", "entra", "connect", "client secret", "tenant", "graph api", "m365", "app registration", "application permissions", "admin consent", "organization.read.all", "mail.read", "files.read.all", "migration", "federation", "jumpcloud"],
-      "aliases": ["setup microsoft", "connect m365", "microsoft integration", "azure setup", "azure app registration"],
+      "keywords": [
+        "microsoft 365",
+        "microsoft",
+        "azure",
+        "azure ad",
+        "entra",
+        "connect",
+        "client secret",
+        "tenant",
+        "graph api",
+        "m365",
+        "app registration",
+        "application permissions",
+        "admin consent",
+        "organization.read.all",
+        "mail.read",
+        "files.read.all",
+        "migration",
+        "federation",
+        "jumpcloud"
+      ],
+      "aliases": [
+        "setup microsoft",
+        "connect m365",
+        "microsoft integration",
+        "azure setup",
+        "azure app registration"
+      ],
       "examples": [],
-      "relatedIds": ["guide-getting-started", "guide-sync-settings"],
+      "relatedIds": [
+        "guide-getting-started",
+        "guide-sync-settings"
+      ],
       "lastUpdated": "2026-08-30T00:00:00Z"
     },
     {
@@ -50,10 +119,31 @@
       "subcategory": "management",
       "summary": "Complete guide to viewing and managing users in Helios",
       "content": "Helios provides comprehensive user management:\n\n**Viewing Users**:\n- Navigate to Directory > Users to see all synced users\n- Use filters to narrow by status, department, or location\n- Search by name or email\n- Click any user to see their full profile\n\n**User Details**:\nEach user profile shows:\n- Basic information (name, email, title, department)\n- Group memberships\n- License assignments\n- Login history and activity\n- Custom fields\n\n**Syncing Users**:\nUsers are automatically synced from connected platforms. Manual sync can be triggered from Settings > Advanced.\n\n**Note**: User creation and modification is done in the source platform (Google Workspace or Microsoft 365). Helios syncs these changes automatically.",
-      "keywords": ["users", "directory", "profile", "employee", "team", "people", "view", "search", "filter", "sync", "manage"],
-      "aliases": ["user management", "view users", "find users", "user directory"],
+      "keywords": [
+        "users",
+        "directory",
+        "profile",
+        "employee",
+        "team",
+        "people",
+        "view",
+        "search",
+        "filter",
+        "sync",
+        "manage"
+      ],
+      "aliases": [
+        "user management",
+        "view users",
+        "find users",
+        "user directory"
+      ],
       "examples": [],
-      "relatedIds": ["guide-user-onboarding", "guide-user-offboarding", "guide-sync-settings"],
+      "relatedIds": [
+        "guide-user-onboarding",
+        "guide-user-offboarding",
+        "guide-sync-settings"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -64,10 +154,28 @@
       "subcategory": "lifecycle",
       "summary": "Guide to onboarding new employees using Helios",
       "content": "Helios helps streamline new employee onboarding:\n\n**Onboarding Templates**:\nCreate reusable templates that define:\n- Account setup checklist\n- Group assignments\n- License requirements\n- Welcome email content\n- Training materials\n\n**Creating an Onboarding**:\n1. Navigate to Lifecycle > Onboarding Templates\n2. Create a new template or select existing\n3. Fill in the required information\n4. Review and confirm\n\n**Tracking Progress**:\nMonitor onboarding status in the Scheduled Actions section. You can see pending, in-progress, and completed onboardings.\n\n**Automation** (Coming Soon):\nFuture updates will allow scheduling automatic group assignments and license provisioning based on start dates.",
-      "keywords": ["onboarding", "new hire", "employee", "welcome", "setup", "template", "lifecycle", "start date", "provision"],
-      "aliases": ["new user", "add employee", "hire user", "onboard user"],
+      "keywords": [
+        "onboarding",
+        "new hire",
+        "employee",
+        "welcome",
+        "setup",
+        "template",
+        "lifecycle",
+        "start date",
+        "provision"
+      ],
+      "aliases": [
+        "new user",
+        "add employee",
+        "hire user",
+        "onboard user"
+      ],
       "examples": [],
-      "relatedIds": ["guide-user-management", "guide-user-offboarding"],
+      "relatedIds": [
+        "guide-user-management",
+        "guide-user-offboarding"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -78,10 +186,30 @@
       "subcategory": "lifecycle",
       "summary": "Guide to offboarding departing employees using Helios",
       "content": "Handle departing employees with Helios offboarding:\n\n**Offboarding Templates**:\nDefine standard procedures for departures:\n- Account suspension timeline\n- Data transfer requirements\n- Group removal\n- License recovery\n- Email forwarding setup\n\n**Initiating Offboarding**:\n1. Navigate to Lifecycle > Offboarding Templates\n2. Select the template appropriate for the departure type\n3. Configure departure date and options\n4. Review and schedule\n\n**Key Features**:\n- Schedule future account suspension\n- Set up email forwarding\n- Transfer Drive/OneDrive files\n- Remove from all groups\n- Recover licenses\n\n**Audit Trail**:\nAll offboarding actions are logged in the audit trail for compliance.",
-      "keywords": ["offboarding", "departure", "leaving", "terminate", "suspend", "deactivate", "lifecycle", "last day", "transfer", "remove"],
-      "aliases": ["remove user", "deactivate user", "offboard user", "user leaving"],
+      "keywords": [
+        "offboarding",
+        "departure",
+        "leaving",
+        "terminate",
+        "suspend",
+        "deactivate",
+        "lifecycle",
+        "last day",
+        "transfer",
+        "remove"
+      ],
+      "aliases": [
+        "remove user",
+        "deactivate user",
+        "offboard user",
+        "user leaving"
+      ],
       "examples": [],
-      "relatedIds": ["guide-user-management", "guide-user-onboarding", "guide-audit-logs"],
+      "relatedIds": [
+        "guide-user-management",
+        "guide-user-onboarding",
+        "guide-audit-logs"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -92,10 +220,27 @@
       "subcategory": "management",
       "summary": "Guide to viewing and managing groups in Helios",
       "content": "Groups in Helios help organize your users:\n\n**Viewing Groups**:\n- Navigate to Directory > Groups\n- See all synced groups from Google Workspace and Microsoft 365\n- Filter by type (security, distribution, mailing list)\n- Search by name or email\n\n**Group Details**:\nClick any group to view:\n- Member list with roles\n- Group settings\n- Email aliases\n- Nested groups\n- Who can join/manage\n\n**Dynamic Groups** (Coming Soon):\nCreate groups that automatically include users based on attributes like department, location, or job title.\n\n**Note**: Group membership changes are made in the source platform. Helios syncs these changes automatically.",
-      "keywords": ["groups", "teams", "distribution", "mailing list", "security group", "members", "membership", "dynamic", "manage"],
-      "aliases": ["group management", "view groups", "find groups"],
+      "keywords": [
+        "groups",
+        "teams",
+        "distribution",
+        "mailing list",
+        "security group",
+        "members",
+        "membership",
+        "dynamic",
+        "manage"
+      ],
+      "aliases": [
+        "group management",
+        "view groups",
+        "find groups"
+      ],
       "examples": [],
-      "relatedIds": ["guide-user-management", "guide-sync-settings"],
+      "relatedIds": [
+        "guide-user-management",
+        "guide-sync-settings"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -106,15 +251,32 @@
       "subcategory": "api",
       "summary": "Guide to creating and using API keys for Helios integrations",
       "content": "Helios provides API access for custom integrations:\n\n**Creating API Keys**:\n1. Go to Settings > Integrations\n2. Click \"Create API Key\"\n3. Choose key type:\n   - Service Key: Full access for backend integrations\n   - Vendor Key: Limited access for third-party tools\n4. Set expiration and permissions\n5. Copy the key (shown only once!)\n\n**Using API Keys**:\nInclude in requests as Bearer token:\n```\nAuthorization: Bearer hk_xxxxx...\n```\n\n**Key Management**:\n- Rotate keys regularly\n- Revoke compromised keys immediately\n- Monitor usage in audit logs\n\n**Rate Limits**:\n- 100 requests per minute per key\n- Higher limits available for Enterprise plans",
-      "keywords": ["api", "api key", "integration", "automation", "rest", "bearer", "token", "developer", "webhook"],
-      "aliases": ["create api key", "api access", "api token"],
+      "keywords": [
+        "api",
+        "api key",
+        "integration",
+        "automation",
+        "rest",
+        "bearer",
+        "token",
+        "developer",
+        "webhook"
+      ],
+      "aliases": [
+        "create api key",
+        "api access",
+        "api token"
+      ],
       "examples": [
         {
           "description": "Using an API key in a request",
           "code": "curl -H 'Authorization: Bearer hk_xxxxx...' https://your-domain/api/v1/users"
         }
       ],
-      "relatedIds": ["guide-sync-settings", "guide-audit-logs"],
+      "relatedIds": [
+        "guide-sync-settings",
+        "guide-audit-logs"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -125,10 +287,28 @@
       "subcategory": "sync",
       "summary": "Guide to configuring data sync between Helios and connected platforms",
       "content": "Helios keeps your directory data in sync:\n\n**Automatic Sync**:\nBy default, Helios syncs every 15 minutes from:\n- Google Workspace\n- Microsoft 365\n\n**Manual Sync**:\nTrigger immediate sync from Settings > Advanced or the dashboard widget.\n\n**Sync Settings**:\nConfigure in Settings > Advanced:\n- Sync interval (5 min to daily)\n- Enable/disable auto-sync\n- Conflict resolution preferences\n\n**What Syncs**:\n- Users and their attributes\n- Groups and memberships\n- Organizational units\n- Licenses (availability)\n\n**Sync History**:\nView past syncs and any errors in Settings > Advanced > Sync History.",
-      "keywords": ["sync", "synchronize", "update", "refresh", "automatic", "manual", "interval", "schedule", "data"],
-      "aliases": ["sync settings", "data sync", "sync now", "refresh data"],
+      "keywords": [
+        "sync",
+        "synchronize",
+        "update",
+        "refresh",
+        "automatic",
+        "manual",
+        "interval",
+        "schedule",
+        "data"
+      ],
+      "aliases": [
+        "sync settings",
+        "data sync",
+        "sync now",
+        "refresh data"
+      ],
       "examples": [],
-      "relatedIds": ["guide-google-workspace-setup", "guide-microsoft-365-setup"],
+      "relatedIds": [
+        "guide-google-workspace-setup",
+        "guide-microsoft-365-setup"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -139,10 +319,29 @@
       "subcategory": "compliance",
       "summary": "Guide to viewing and using audit logs for compliance",
       "content": "Helios maintains comprehensive audit logs:\n\n**What's Logged**:\n- User logins and logouts\n- Admin actions\n- Configuration changes\n- API key usage\n- Sync events\n- Security events\n\n**Viewing Logs**:\nNavigate to Security > Audit Logs to:\n- Search by user, action, or time\n- Filter by event type\n- Export to CSV\n\n**Retention**:\nLogs are retained for 90 days by default. Enterprise plans support longer retention.\n\n**Compliance**:\nAudit logs help with:\n- SOC 2 compliance\n- Security investigations\n- Access reviews\n- Change management",
-      "keywords": ["audit", "logs", "activity", "history", "compliance", "tracking", "security", "events", "export", "soc2"],
-      "aliases": ["view logs", "audit trail", "activity log", "event log"],
+      "keywords": [
+        "audit",
+        "logs",
+        "activity",
+        "history",
+        "compliance",
+        "tracking",
+        "security",
+        "events",
+        "export",
+        "soc2"
+      ],
+      "aliases": [
+        "view logs",
+        "audit trail",
+        "activity log",
+        "event log"
+      ],
       "examples": [],
-      "relatedIds": ["guide-roles-permissions", "guide-authentication"],
+      "relatedIds": [
+        "guide-roles-permissions",
+        "guide-authentication"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -153,10 +352,27 @@
       "subcategory": "access-control",
       "summary": "Guide to understanding and managing roles and permissions",
       "content": "Control access with Helios roles:\n\n**Built-in Roles**:\n- **Admin**: Full access to all features\n- **Manager**: View and manage their department\n- **User**: Self-service access only\n\n**Role Capabilities**:\nAdmins can:\n- Manage all users and groups\n- Configure integrations\n- Access audit logs\n- Manage settings\n\nManagers can:\n- View their team members\n- Run department reports\n- Limited bulk operations\n\nUsers can:\n- View their own profile\n- See their groups\n- Self-service password reset\n\n**Assigning Roles**:\nGo to Settings > Roles to assign roles to platform users.",
-      "keywords": ["roles", "permissions", "access", "admin", "manager", "user", "security", "rbac", "authorization"],
-      "aliases": ["role management", "user roles", "access control"],
+      "keywords": [
+        "roles",
+        "permissions",
+        "access",
+        "admin",
+        "manager",
+        "user",
+        "security",
+        "rbac",
+        "authorization"
+      ],
+      "aliases": [
+        "role management",
+        "user roles",
+        "access control"
+      ],
       "examples": [],
-      "relatedIds": ["guide-authentication", "guide-audit-logs"],
+      "relatedIds": [
+        "guide-authentication",
+        "guide-audit-logs"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -167,10 +383,29 @@
       "subcategory": "access-control",
       "summary": "Guide to authentication options and security settings",
       "content": "Helios authentication options:\n\n**Password Authentication**:\n- Email and password login\n- Password requirements configurable\n- Account lockout after failed attempts\n\n**Session Management**:\n- Access tokens expire after 8 hours\n- Refresh tokens valid for 7 days\n- Sessions tracked and can be revoked\n\n**Two-Factor Authentication** (Coming Soon):\n- TOTP authenticator apps\n- SMS verification\n\n**Single Sign-On** (Coming Soon):\n- Google OAuth\n- Microsoft Azure AD\n- SAML 2.0\n\n**Password Reset**:\nUsers can reset passwords via email link from the login page.",
-      "keywords": ["login", "password", "authentication", "sso", "2fa", "mfa", "session", "security", "sign in", "oauth"],
-      "aliases": ["login help", "password reset", "sign in", "forgot password"],
+      "keywords": [
+        "login",
+        "password",
+        "authentication",
+        "sso",
+        "2fa",
+        "mfa",
+        "session",
+        "security",
+        "sign in",
+        "oauth"
+      ],
+      "aliases": [
+        "login help",
+        "password reset",
+        "sign in",
+        "forgot password"
+      ],
       "examples": [],
-      "relatedIds": ["guide-roles-permissions", "guide-audit-logs"],
+      "relatedIds": [
+        "guide-roles-permissions",
+        "guide-audit-logs"
+      ],
       "lastUpdated": "2025-12-21T00:00:00Z"
     },
     {
@@ -181,10 +416,34 @@
       "subcategory": "google-workspace",
       "summary": "If Create Key fails, override the iam.disableServiceAccountKeyCreation org policy, then generate the JSON key",
       "content": "If **Create key** is greyed out or fails when you try to generate the service account JSON key, your Google Cloud organization enforces the **iam.disableServiceAccountKeyCreation** org policy (Google's \"Secure by Default\" posture on newer organizations). Key creation is denied at the organization level until you add an exception.\n\nYou need the **Organization Policy Administrator** role (roles/orgpolicy.policyAdmin) to change this:\n\n1. Google Cloud Console > IAM & Admin > Organization Policies\n2. Search for 'Disable service account key creation' (constraints/iam.disableServiceAccountKeyCreation)\n3. Click Manage policy\n4. Choose 'Override parent's policy', click 'Add a rule', and set Enforcement to Off. (The console rejects an empty override with 'At least one rule is required', so you must add a rule, not just toggle the top switch.)\n5. Click 'Set policy' and wait about a minute for it to propagate\n6. Go back to the service account > Keys > Add key > Create new key > JSON\n7. For security, re-tighten the policy afterward, or scope the exception to only the project that holds this service account.\n\nUse a JSON key (not P12) — Helios consumes the JSON service-account key.",
-      "keywords": ["service account", "json key", "org policy", "organization policy", "constraint", "iam.disableServiceAccountKeyCreation", "disableServiceAccountKeyCreation", "secure by default", "blocked", "create key", "key creation disabled", "google workspace", "gcp"],
-      "aliases": ["cannot create service account key", "key creation disabled", "org policy blocks key", "create key greyed out", "service account key creation is disabled"],
+      "keywords": [
+        "service account",
+        "json key",
+        "org policy",
+        "organization policy",
+        "constraint",
+        "iam.disableServiceAccountKeyCreation",
+        "disableServiceAccountKeyCreation",
+        "secure by default",
+        "blocked",
+        "create key",
+        "key creation disabled",
+        "google workspace",
+        "gcp"
+      ],
+      "aliases": [
+        "cannot create service account key",
+        "key creation disabled",
+        "org policy blocks key",
+        "create key greyed out",
+        "service account key creation is disabled"
+      ],
       "examples": [],
-      "relatedIds": ["guide-google-workspace-setup", "guide-gw-dwd-deeplink", "guide-getting-started"],
+      "relatedIds": [
+        "guide-google-workspace-setup",
+        "guide-gw-dwd-deeplink",
+        "guide-getting-started"
+      ],
       "lastUpdated": "2026-08-24T00:00:00Z"
     },
     {
@@ -195,11 +454,111 @@
       "subcategory": "google-workspace",
       "summary": "Authorize the client ID and all required scopes in one step with the wizard's pre-filled Domain-Wide Delegation link",
       "content": "The Google Workspace connect wizard (Settings > Modules > Google Workspace) gives you a **pre-filled Domain-Wide Delegation link** and a **Copy scopes** button, so you authorize the exact Client ID and all required scopes in one step. Authorizing only a partial scope set causes unauthorized_client errors later on Gmail settings, Drive, Calendar, licensing, device, and data-transfer actions.\n\n1. In the wizard's 'Authorize API scopes' step, click 'Open pre-filled authorization' (or use Copy scopes for the manual path in the Admin console)\n2. It opens admin.google.com's Domain-Wide Delegation page with the Client ID and the full scope list already filled in\n3. Sign in as a Super Admin and click Authorize\n\nGotchas seen in the field:\n- If nothing opens, your browser blocked the pop-up. Copy the link and open it directly in the same tab.\n- Google may ask you to re-enter your admin password before it lets you authorize.\n- Delegation changes take a few minutes to propagate. If Test Connection fails immediately after authorizing, wait a minute and retry.",
-      "keywords": ["domain-wide delegation", "dwd", "deep-link", "deeplink", "wizard", "pre-filled", "client id", "scopes", "authorize", "google admin", "unauthorized_client", "copy scopes"],
-      "aliases": ["delegation deep link", "dwd link", "pre-filled delegation link", "authorize delegation", "unauthorized_client"],
+      "keywords": [
+        "domain-wide delegation",
+        "dwd",
+        "deep-link",
+        "deeplink",
+        "wizard",
+        "pre-filled",
+        "client id",
+        "scopes",
+        "authorize",
+        "google admin",
+        "unauthorized_client",
+        "copy scopes"
+      ],
+      "aliases": [
+        "delegation deep link",
+        "dwd link",
+        "pre-filled delegation link",
+        "authorize delegation",
+        "unauthorized_client"
+      ],
       "examples": [],
-      "relatedIds": ["guide-google-workspace-setup", "guide-gw-service-account-key-policy"],
+      "relatedIds": [
+        "guide-google-workspace-setup",
+        "guide-gw-service-account-key-policy"
+      ],
       "lastUpdated": "2026-08-24T00:00:00Z"
+    },
+    {
+      "id": "guide-m365-google-migration",
+      "type": "guide",
+      "title": "Migrating from Microsoft 365 to Google Workspace",
+      "category": "users",
+      "subcategory": "migration",
+      "summary": "How Helios orchestrates a Microsoft 365 to Google Workspace migration, and where Google's native Data Migration takes over.",
+      "content": "Helios ORCHESTRATES the migration; Google's native Data Migration does the actual transfer (free, supported, and it handles attachments, large mailboxes, throttling, and resumability). Helios provisions the destinations, builds the mapping, and tracks progress.\n\n1. Provision destinations (Helios). Google's importer never creates accounts, so Helios creates them from the reconciled Microsoft 365 directory. Same-identity is the default when the source's domain is a verified domain of your Google workspace; external / *.onmicrosoft.com users are skipped. A shared mailbox can become a delegated licensed mailbox (keeps history) or a Google Group (new mail only). New accounts appear in the Helios directory immediately.\n\n2. Licensing. If you turned OFF automatic licensing (recommended, so you can keep unlicensed break-glass admins), a provisioned mailbox is created unlicensed and cannot receive mail until a license is assigned (Helios can assign per-user, or place the account in a license-enabled OU).\n\n3. Download the mapping CSV (Helios) and feed it to Google's tool.\n\n4. Run the transfer (Google Admin console). Data Migration -> source = Microsoft 365 / Exchange -> authorize to the source tenant -> run per data type (Email, Calendar, Contacts, Drive). Google connects to M365 directly; no extra Helios scope is needed. Note: calendar events copy but attendees are NOT re-invited (users re-invite future meetings manually); external Drive shares break.\n\n5. Track progress. Admin console -> Reporting -> Audit and investigation -> data_migration, or via the Reports API (read-only). The cross-cloud transfer is console-triggered and read-only-trackable.\n\n6. Offboard (after data lands). Helios drives offboarding directly via the Data Transfer API (transfer a departing user's Drive/Calendar to another user - both trigger and track), delete, and preserve with Google Vault (Business Plus and above).\n\nSee the full runbook: docs/guides/M365-TO-GOOGLE-MIGRATION-GUIDE.md.",
+      "keywords": [
+        "migration",
+        "migrate",
+        "m365",
+        "microsoft 365",
+        "office 365",
+        "google workspace",
+        "import",
+        "mailbox",
+        "onedrive",
+        "data migration",
+        "move email",
+        "tenant migration"
+      ],
+      "aliases": [
+        "move from microsoft to google",
+        "m365 to google",
+        "import mail from office 365",
+        "cross-cloud migration"
+      ],
+      "examples": [
+        "How do I migrate from Microsoft 365 to Google?",
+        "Can Helios move our Office 365 email to Google Workspace?",
+        "How do I track a migration?"
+      ],
+      "relatedIds": [
+        "guide-microsoft-365-setup",
+        "guide-user-offboarding",
+        "guide-gw-dwd-deeplink"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
+    },
+    {
+      "id": "guide-google-scopes",
+      "type": "guide",
+      "title": "Google Workspace Scopes and What Each Enables",
+      "category": "security",
+      "subcategory": "permissions",
+      "summary": "Every Google API scope Helios requests via domain-wide delegation, and the feature each one powers, so you can grant with confidence.",
+      "content": "Helios uses domain-wide delegation (DWD) to act on your Google Workspace. Because DWD is all-or-nothing per token, the scopes below are split into BASE (requested on every call) and OPTIONAL (requested only by a specific feature). Authorize the FULL set once at setup, so a later release that lights up an optional feature needs no re-authorization; the base/optional split means an un-authorized optional scope only disables that one feature rather than breaking everything.\n\nBASE scopes (always requested):\n- admin.directory.user - Create, suspend, and offboard users\n- admin.directory.user.security - User security settings (2-step verification, recovery, app passwords)\n- admin.directory.group - Read and manage groups\n- admin.directory.group.member - Add and remove group members\n- admin.directory.orgunit - Read and manage organizational units\n- admin.directory.domain - Read domain configuration (verified domains)\n- admin.directory.device.mobile - View and act on mobile devices during offboarding\n- admin.reports.audit.readonly - Read the admin audit log (activity feed, migration tracking, compliance evidence)\n- admin.reports.usage.readonly - Read usage reports (adoption metrics)\n- admin.datatransfer - Transfer a departing user's Drive and Calendar during offboarding\n- apps.licensing - Read and assign Workspace licenses\n- calendar - Manage calendar resources and hand-off during lifecycle actions\n- drive - External-sharing audit and bulk-revoke of Drive permissions\n- drive.file - Access files Helios itself creates\n- drive.readonly - Read-only Drive access for the external-sharing audit\n- gmail.settings.basic - Read and apply Gmail settings (delegation, vacation responder)\n- gmail.settings.sharing - Manage email signatures and sending settings\n\nOPTIONAL scopes (feature-specific):\n- ediscovery - Create Google Vault holds to preserve a departing user's Mail and Drive before deletion (Business Plus and above). Requested only by the Vault preservation feature.\n\nThe exact copy-paste list and a one-click authorization link are on the Google Workspace setup screen (see 'Using the Domain-Wide Delegation Deep-Link').",
+      "keywords": [
+        "scopes",
+        "permissions",
+        "domain-wide delegation",
+        "dwd",
+        "oauth",
+        "least privilege",
+        "ediscovery",
+        "vault",
+        "api access",
+        "authorize",
+        "security"
+      ],
+      "aliases": [
+        "what permissions does helios need",
+        "which scopes",
+        "google api access",
+        "why does helios need these permissions"
+      ],
+      "examples": [
+        "What scopes does Helios request?",
+        "Which feature uses the ediscovery scope?",
+        "Why does Helios need Drive access?"
+      ],
+      "relatedIds": [
+        "guide-gw-dwd-deeplink",
+        "guide-google-workspace-setup"
+      ],
+      "lastUpdated": "2026-08-31T00:00:00Z"
     }
   ]
 }
