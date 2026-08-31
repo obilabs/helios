@@ -24,7 +24,6 @@ export interface ScopeDetail {
 export const SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/admin.directory.user', reason: 'Read and manage Workspace users (create, suspend, offboard).' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.user.security', reason: 'Manage user security settings (2-step verification, recovery, app passwords) during on/offboarding.' },
-  { scope: 'https://www.googleapis.com/auth/admin.directory.userschema', reason: 'Manage custom user schema definitions (the gw schemas commands) for custom directory attributes.' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.group', reason: 'Read and manage groups.' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.group.member', reason: 'Add and remove group members.' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.orgunit', reason: 'Read and manage organizational units.' },
@@ -40,8 +39,6 @@ export const SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/drive.readonly', reason: 'Read-only Drive access for the external-sharing audit.' },
   { scope: 'https://www.googleapis.com/auth/gmail.settings.basic', reason: 'Read and apply Gmail settings (e.g. delegation) during lifecycle actions.' },
   { scope: 'https://www.googleapis.com/auth/gmail.settings.sharing', reason: 'Manage email signatures and sending settings.' },
-  { scope: 'https://www.googleapis.com/auth/gmail.insert', reason: 'Import migrated messages into a mailbox (M365→Google migration).' },
-  { scope: 'https://www.googleapis.com/auth/gmail.modify', reason: 'Create labels and apply labels/threading to imported messages during migration.' },
 ]
 
 /** The plain scope list — what an admin authorises in Admin Console → API Controls → Domain-wide delegation. */
