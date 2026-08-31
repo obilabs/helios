@@ -829,4 +829,27 @@ router.get('/migration/plan/csv', requireAdmin, async (req: Request, res: Respon
   }
 });
 
+/**
+ * POST /microsoft/migration/provision[?execute=true]
+ * Provision the Google DESTINATIONS the migration plan needs — Google's native
+ * importer never creates accounts. Dry-run unless ?execute=true. Honors each
+ * target's destinationType (mailbox / delegated licensed mailbox / Google Group).
+ * Requires the destination domain to already be added to the Google workspace.
+ */
+router.post('/migration/provision', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const execute = req.query.execute === 'true';
+    const result = await migrationPlanService.provisionMigrationDestinations(organizationId, execute);
+    successResponse(res, result);
+  } catch (error: any) {
+    logger.error('Failed to provision migration destinations', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to provision migration destinations');
+  }
+});
+
 export default router;
