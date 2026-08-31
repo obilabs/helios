@@ -241,6 +241,27 @@ export class MigrationPlanService {
     }
     return map;
   }
+
+  /**
+   * Emit the source->destination mapping as CSV for GOOGLE'S NATIVE Data
+   * Migration / Data Import (Exchange Online -> Gmail, OneDrive -> Drive), which
+   * ingests a source-email -> destination-Google-email mapping and REQUIRES both
+   * accounts to already exist. Only READY targets (destination chosen AND known
+   * to exist) are included, so the import never targets a missing mailbox. This
+   * is the primary output now that Google's native tool does the transfer; the
+   * legacy `toScriptMap` feeds the throwaway custom script fallback. Adjust the
+   * header row to match the exact columns your Google import tool expects.
+   */
+  toGoogleMigrationCsv(plan: MigrationPlan): string {
+    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const rows: string[] = ['Source Email,Destination Email'];
+    for (const t of plan.targets) {
+      if (t.targetGoogleEmail && t.targetExists) {
+        rows.push(`${esc(t.sourceEmail)},${esc(t.targetGoogleEmail)}`);
+      }
+    }
+    return rows.join('\n') + '\n';
+  }
 }
 
 export const migrationPlanService = new MigrationPlanService();
