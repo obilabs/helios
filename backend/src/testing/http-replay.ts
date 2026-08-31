@@ -320,9 +320,20 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
 
   function writeFixture(fx: HttpFixture): string {
     const dir = join(fixturesRoot(), fx.family);
-    mkdirSync(dir, { recursive: true });
     const file = join(dir, `${fx.name}.json`);
-    writeFileSync(file, JSON.stringify(fx, null, 2) + '\n', 'utf8');
+    try {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(file, JSON.stringify(fx, null, 2) + '\n', 'utf8');
+    } catch (err) {
+      // Record mode must never break the live request path. A read-only
+      // fixtures directory (e.g. a production container where dist/ is not
+      // writable) must degrade to serving the real response, not a 500.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[${config.namespace}-replay] could not persist fixture ${file}: ${(err as Error).message}`,
+      );
+      return '';
+    }
     return file;
   }
 
@@ -399,8 +410,10 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
       },
     };
     const file = writeFixture(fx);
-    // eslint-disable-next-line no-console
-    console.log(`[${config.namespace}-replay] recorded ${key} -> ${file}`);
+    if (file) {
+      // eslint-disable-next-line no-console
+      console.log(`[${config.namespace}-replay] recorded ${key} -> ${file}`);
+    }
     return file;
   }
 
