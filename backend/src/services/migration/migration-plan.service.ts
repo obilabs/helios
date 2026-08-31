@@ -8,9 +8,12 @@ import { googleWorkspaceService } from '../google-workspace.service.js';
  * A migration PLAN pairs each M365 source user with a chosen Google destination
  * account. The destination may be a DIFFERENT user than the source (migrate a
  * departing user's mailbox into a manager's account, consolidate two M365 users
- * into one Google account, etc.). The default destination is the same email if a
- * Google account with that address already exists in the reconciled directory;
- * otherwise the target is left unmapped for an explicit choice.
+ * into one Google account, etc.). The default destination is a SAME-IDENTITY
+ * proposal: the same email address, when either a Google account already exists
+ * at it OR the source's domain is a verified domain of the bound Google
+ * workspace (so the address can be provisioned there). Sources whose domain is
+ * NOT in the workspace — external guests, *.onmicrosoft.com tenant admins — are
+ * left unmapped for an explicit choice, since they cannot be recreated as-is.
  *
  * Persistence reuses the existing organization_settings key/value store — no new
  * table. The plan's target list maps 1:1 onto the migration script's source->
@@ -67,9 +70,34 @@ function targetStatus(email: string | null): MigrationTarget['status'] {
 
 export class MigrationPlanService {
   /**
+   * The set of VERIFIED domains of the bound Google workspace (primary +
+   * secondary/alias), lowercased. Used to decide which M365 sources can default
+   * to a same-identity destination. Best-effort: on any lookup failure returns an
+   * empty set, degrading to "only already-existing Google accounts map" (safe).
+   */
+  private async getVerifiedWorkspaceDomains(organizationId: string): Promise<Set<string>> {
+    try {
+      const res = await googleWorkspaceService.listGoogleWorkspaceDomains(organizationId);
+      if (res?.success && Array.isArray(res.domains)) {
+        return new Set<string>(
+          res.domains
+            .filter((d: any) => d?.verified !== false)
+            .map((d: any) => String(d?.domainName || '').toLowerCase())
+            .filter(Boolean),
+        );
+      }
+    } catch {
+      /* fall through to empty set */
+    }
+    return new Set<string>();
+  }
+
+  /**
    * Build a default plan from the reconciled directory (organization_users):
-   * every M365 user is a source; the default destination is the same email when
-   * a Google account with that address exists, else unmapped for explicit choice.
+   * every M365 user is a source; the default destination is a SAME-IDENTITY
+   * proposal (same email) when a Google account already exists at it OR the
+   * source's domain is a verified workspace domain (provisionable). Sources whose
+   * domain is not in the workspace (external / *.onmicrosoft.com) are unmapped.
    */
   async generateDefaultPlan(organizationId: string): Promise<MigrationPlan> {
     const gw = await db.query(
@@ -78,6 +106,7 @@ export class MigrationPlanService {
       [organizationId],
     );
     const googleEmails = new Set<string>(gw.rows.map((r: any) => r.email));
+    const workspaceDomains = await this.getVerifiedWorkspaceDomains(organizationId);
 
     const ms = await db.query(
       `SELECT microsoft_365_id,
@@ -93,7 +122,12 @@ export class MigrationPlanService {
 
     const targets: MigrationTarget[] = ms.rows.map((r: any) => {
       const sameEmailExists = googleEmails.has(r.email);
-      const targetGoogleEmail = sameEmailExists ? r.email : null;
+      const srcDomain = r.email.includes('@') ? r.email.split('@').pop()! : '';
+      // Same-identity: use the same address if a Google account already exists at
+      // it, or if its domain is a verified workspace domain (then it can be
+      // provisioned there). Otherwise leave unmapped for an explicit choice.
+      const sameIdentityEligible = sameEmailExists || workspaceDomains.has(srcDomain);
+      const targetGoogleEmail = sameIdentityEligible ? r.email : null;
       // A 'contact' is our unlicensed / shared-mailbox candidate. Default it to a
       // delegated licensed mailbox (keeps history, safe) — the admin can switch it
       // to 'group' to save the seat at the cost of not migrating old mail.
