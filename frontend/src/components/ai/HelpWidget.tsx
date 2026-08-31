@@ -20,6 +20,8 @@ interface HelpWidgetProps {
   onExternalClose?: () => void;
   hideFloatingButton?: boolean;
   onAskAI?: (question: string) => void;
+  /** Navigate the app to an in-app route from a [[nav:/path|label]] token in KB content. */
+  onNavigate?: (path: string) => void;
 }
 
 export function HelpWidget({
@@ -29,6 +31,7 @@ export function HelpWidget({
   onExternalClose,
   hideFloatingButton = false,
   onAskAI,
+  onNavigate,
 }: HelpWidgetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,6 +160,38 @@ export function HelpWidget({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, selectedArticle]);
 
+  // Render inline tokens within a line: **bold** and [[nav:/path|label]] — the
+  // latter becomes a clickable button that navigates the app (author-controlled
+  // target; only same-app absolute paths are made clickable, never external URLs).
+  const renderInline = (text: string) => {
+    const TOKEN = /(\*\*.*?\*\*|\[\[nav:[^\]|]+\|[^\]]+\]\])/g;
+    return text.split(TOKEN).map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      const m = part.match(/^\[\[nav:([^\]|]+)\|([^\]]+)\]\]$/);
+      if (m) {
+        const path = m[1];
+        const label = m[2];
+        const safe = path.startsWith('/') && !path.startsWith('//') && !/^[a-z][\w+.-]*:/i.test(path);
+        if (safe && onNavigate) {
+          return (
+            <button
+              key={i}
+              type="button"
+              className="help-nav-link"
+              onClick={() => { onNavigate(path); setIsOpen(false); }}
+            >
+              {label}
+            </button>
+          );
+        }
+        return label;
+      }
+      return part;
+    });
+  };
+
   // Format markdown-like content to JSX
   const formatContent = (content: string) => {
     const lines = content.split('\n');
@@ -165,29 +200,16 @@ export function HelpWidget({
       if (line.startsWith('**') && line.endsWith('**:')) {
         return <h4 key={index} className="help-content-header">{line.replace(/\*\*/g, '').replace(/:$/, '')}</h4>;
       }
-      // Bold text
-      if (line.includes('**')) {
-        const parts = line.split(/(\*\*.*?\*\*)/g);
-        return (
-          <p key={index}>
-            {parts.map((part, i) =>
-              part.startsWith('**') && part.endsWith('**')
-                ? <strong key={i}>{part.slice(2, -2)}</strong>
-                : part
-            )}
-          </p>
-        );
-      }
-      // List items
+      // List items (may contain inline bold + nav tokens)
       if (line.startsWith('- ')) {
-        return <li key={index}>{line.slice(2)}</li>;
+        return <li key={index}>{renderInline(line.slice(2))}</li>;
       }
       // Empty lines
       if (!line.trim()) {
         return <br key={index} />;
       }
-      // Regular paragraph
-      return <p key={index}>{line}</p>;
+      // Regular paragraph (may contain inline bold + nav tokens)
+      return <p key={index}>{renderInline(line)}</p>;
     });
   };
 
