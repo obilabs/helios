@@ -704,7 +704,7 @@
       "category": "setup",
       "subcategory": "licensing",
       "summary": "Structure organizational units and automatic licensing so paid seats go only to the users who need them.",
-      "content": "Automatic licensing is set per organizational unit (OU) and inherited by child OUs. A sound baseline (adapt it - OUs also carry security/policy, and no single structure fits every org):\n\nRoot - auto-licensing OFF (Google defaults this ON; change it)\n  Licensed Users - auto-licensing ON, your paid edition (department sub-OUs inherit)\n  Admins - auto-licensing OFF (dedicated + break-glass admins, unlicensed)\n  Service Accounts - auto-licensing OFF (automation / integration identities)\n  Offboarded - auto-licensing OFF (departed / suspended users, off-seat)\n\nPrinciples:\n- Root OFF is the important one. New and unplaced users land in Root, so if Root auto-licenses, every new account silently consumes a seat. Turn it off and license explicitly by placing people in Licensed Users.\n- Unlicensed accounts (admins, service, offboarded) go in OFF OUs. Unlicensed admins require Business Standard or higher.\n- Move offboarded/suspended users to an OFF OU. Auto-licensing licenses suspended users too, so leaving them in a licensed OU keeps them holding seats. Helios offboarding can move them via its org-unit action.\n- Mixed editions need OU separation: only one subscription can auto-license per OU, so split SKUs into different OUs.\n- OUs also drive policy (security baselines, device management, app access), not just licensing.\n\nAssigning a license per user is done via Helios (Licensing API); enabling/disabling auto-licensing and enrolling Cloud Identity Free are Admin-console actions with no API.",
+      "content": "Automatic licensing is set per organizational unit (OU) and inherited by child OUs. A sound baseline (adapt it - OUs also carry security/policy, and no single structure fits every org):\n\nRoot - auto-licensing OFF (Google defaults this ON; change it)\n  Licensed Users - auto-licensing ON, your paid edition (department sub-OUs inherit)\n  Admins - auto-licensing OFF (dedicated + break-glass admins, unlicensed)\n  Service Accounts - auto-licensing OFF (automation / integration identities)\n  Offboarded - auto-licensing OFF (departed / suspended users, off-seat)\n\nPrinciples:\n- Root OFF is the important one. New and unplaced users land in Root, so if Root auto-licenses, every new account silently consumes a seat. Turn it off and license explicitly by placing people in Licensed Users.\n- Unlicensed accounts (admins, service, offboarded) go in OFF OUs. Admin accounts need no paid Workspace license: a user created with auto-licensing off automatically gets a free Cloud Identity license (site-based), and can still be made super admin. On Business Starter the auto-licensing-off toggle may not be exposed; enroll Cloud Identity Free to create unlicensed accounts there.\n- Move offboarded/suspended users to an OFF OU. Auto-licensing licenses suspended users too, so leaving them in a licensed OU keeps them holding seats. Helios offboarding can move them via its org-unit action.\n- Mixed editions need OU separation: only one subscription can auto-license per OU, so split SKUs into different OUs.\n- OUs also drive policy (security baselines, device management, app access), not just licensing.\n\nAssigning a license per user is done via Helios (Licensing API); enabling/disabling auto-licensing and enrolling Cloud Identity Free are Admin-console actions with no API.",
       "keywords": [
         "licensing",
         "license",
@@ -718,7 +718,10 @@
         "break glass",
         "offboarded",
         "service account",
-        "cloud identity"
+        "cloud identity",
+        "cloud identity free",
+        "unlicensed accounts",
+        "site-based licensing"
       ],
       "aliases": [
         "how should I set up OUs",

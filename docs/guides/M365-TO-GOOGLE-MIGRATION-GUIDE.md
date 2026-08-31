@@ -79,8 +79,12 @@ Principles:
 - **Root OFF is the important one.** New (and unplaced) users land in Root, so if
   Root auto-licenses, every new account silently consumes a seat. Turn it off and
   license explicitly by placing people in **Licensed Users**.
-- **Unlicensed accounts (admins, service, offboarded) go in OFF OUs.** Unlicensed
-  admins require Business Standard or higher.
+- **Unlicensed accounts (admins, service, offboarded) go in OFF OUs.** Admin
+  accounts need **no paid Workspace license**: a user created with auto-licensing
+  off automatically gets a free **Cloud Identity** license (site-based — no seat
+  assignment needed) and can still be made super admin. (On Business Starter the
+  auto-licensing-off toggle may not be exposed; enroll **Cloud Identity Free** to
+  create unlicensed accounts there.)
 - **Move offboarded/suspended users to an OFF OU.** Auto-licensing licenses
   suspended users too, so leaving them in a licensed OU keeps them holding seats.
   Helios's offboarding can move them via its org-unit action (`orgUnitPath`).
