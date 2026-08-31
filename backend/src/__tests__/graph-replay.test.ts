@@ -190,9 +190,11 @@ describe('record round-trip (fetch/SDK middleware path) + sanitization', () => {
     expect(user.onPremisesImmutableId).toBe('REDACTED');
     expect(user.proxyAddresses).toEqual(['REDACTED', 'REDACTED']);
 
-    // Emails aliased to stable example.com addresses.
-    expect(user.userPrincipalName).toBe('user1@example.com');
-    expect(user.mail).toBe('user1@example.com');
+    // Identity fields (UPN/mail) are REDACTED, not aliased — guest UPNs use the
+    // `<orig-email>#EXT#@tenant.onmicrosoft.com` form that embeds a real
+    // external address and slips past the email aliaser.
+    expect(user.userPrincipalName).toBe('REDACTED');
+    expect(user.mail).toBe('REDACTED');
 
     // Object-id GUID aliased to a synthetic GUID that keeps the GUID shape.
     expect(user.id).toMatch(

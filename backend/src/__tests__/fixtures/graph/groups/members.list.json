@@ -1,0 +1,34 @@
+{
+  "family": "groups",
+  "name": "members.list",
+  "recordedAt": "2026-08-31T01:15:48.747Z",
+  "request": {
+    "method": "GET",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/groups/c8727b0b-d9bb-4a18-b032-1dba54d95688/members",
+    "query": {
+      "$select": "id,userPrincipalName,displayName,mail",
+      "$top": "100"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects(id,userPrincipalName,displayName,mail)",
+      "value": []
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "content-encoding": "gzip",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "date": "Mon, 31 Aug 2026 01:15:48 GMT",
+      "odata-version": "4.0",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"000\",\"RoleInstance\":\"CO1PEPF00000D13\"}}",
+      "x-ms-resource-unit": "2"
+    }
+  }
+}
