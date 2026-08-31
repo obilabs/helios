@@ -630,8 +630,10 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
       userEmailMap.set(user.email.toLowerCase(), userData);
     });
 
-    // If Google Workspace is enabled, also fetch synced users
-    if (googleWorkspaceEnabled) {
+    // If Google Workspace is enabled, also fetch synced users — but only when the
+    // platform filter actually includes Google. Otherwise (e.g. platform=microsoft_365
+    // or =local) this merge would pull Google-cache users past the filter.
+    if (googleWorkspaceEnabled && (platformFilter === 'all' || platformFilter === 'google_workspace')) {
       logger.info('Fetching users from Google Workspace cache');
       const gwUsersResult = await db.query(`
         SELECT
