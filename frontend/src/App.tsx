@@ -25,6 +25,7 @@ import { EmailSecurity } from './pages/EmailSecurity'
 import AuditLogs from './pages/AuditLogs'
 import Licenses from './pages/Licenses'
 import Migration from './pages/Migration'
+import Delegations from './pages/Delegations'
 import { MyProfile } from './pages/MyProfile'
 import { People } from './pages/People'
 import { MyTeam } from './pages/MyTeam'
@@ -151,6 +152,7 @@ function getPageFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/external-sharing')) return 'external-sharing';
   if (pathname.startsWith('/admin/bulk-operations')) return 'bulk-operations';
   if (pathname.startsWith('/admin/migration')) return 'migration';
+  if (pathname.startsWith('/admin/delegations')) return 'delegations';
   if (pathname.startsWith('/admin/settings')) return 'settings';
   if (pathname.startsWith('/admin/administrators')) return 'administrators';
   if (pathname.startsWith('/admin/console')) return 'console';
@@ -240,6 +242,7 @@ function AppContent() {
       'external-sharing': '/admin/external-sharing',
       'bulk-operations': '/admin/bulk-operations',
       'migration': '/admin/migration',
+      'delegations': '/admin/delegations',
       'settings': '/admin/settings',
       'administrators': '/admin/administrators',
       'console': '/admin/console',
@@ -1522,6 +1525,10 @@ function AppContent() {
             <Migration />
           )}
 
+          {currentPage === 'delegations' && (
+            <Delegations />
+          )}
+
           {currentPage === 'external-sharing' && (
             <Suspense fallback={<PageLoader />}>
               <ExternalSharingManager />
@@ -1700,7 +1707,7 @@ function AppContent() {
             </Suspense>
           )}
 
-          {currentPage !== 'dashboard' && currentPage !== 'settings' && currentPage !== 'users' && currentPage !== 'groups' && currentPage !== 'workspaces' && currentPage !== 'orgUnits' && currentPage !== 'assets' && currentPage !== 'files-assets' && currentPage !== 'email-security' && currentPage !== 'signatures' && currentPage !== 'security-events' && currentPage !== 'audit-logs' && currentPage !== 'licenses' && currentPage !== 'external-sharing' && currentPage !== 'console' && currentPage !== 'administrators' && currentPage !== 'my-profile' && currentPage !== 'people' && currentPage !== 'my-team' && currentPage !== 'my-groups' && currentPage !== 'user-settings' && currentPage !== 'orgChart' && currentPage !== 'add-user' && currentPage !== 'onboarding-templates' && currentPage !== 'new-onboarding-template' && currentPage !== 'edit-onboarding-template' && currentPage !== 'offboarding-templates' && currentPage !== 'new-offboarding-template' && currentPage !== 'edit-offboarding-template' && currentPage !== 'scheduled-actions' && currentPage !== 'new-user-onboarding' && currentPage !== 'user-offboarding' && currentPage !== 'requests' && currentPage !== 'bulk-operations' && currentPage !== 'migration' && (
+          {currentPage !== 'dashboard' && currentPage !== 'settings' && currentPage !== 'users' && currentPage !== 'groups' && currentPage !== 'workspaces' && currentPage !== 'orgUnits' && currentPage !== 'assets' && currentPage !== 'files-assets' && currentPage !== 'email-security' && currentPage !== 'signatures' && currentPage !== 'security-events' && currentPage !== 'audit-logs' && currentPage !== 'licenses' && currentPage !== 'external-sharing' && currentPage !== 'console' && currentPage !== 'administrators' && currentPage !== 'my-profile' && currentPage !== 'people' && currentPage !== 'my-team' && currentPage !== 'my-groups' && currentPage !== 'user-settings' && currentPage !== 'orgChart' && currentPage !== 'add-user' && currentPage !== 'onboarding-templates' && currentPage !== 'new-onboarding-template' && currentPage !== 'edit-onboarding-template' && currentPage !== 'offboarding-templates' && currentPage !== 'new-offboarding-template' && currentPage !== 'edit-offboarding-template' && currentPage !== 'scheduled-actions' && currentPage !== 'new-user-onboarding' && currentPage !== 'user-offboarding' && currentPage !== 'requests' && currentPage !== 'bulk-operations' && currentPage !== 'migration' && currentPage !== 'delegations' && (
             <div className="page-placeholder">
               <div className="placeholder-content">
                 <h2>Page Not Found</h2>

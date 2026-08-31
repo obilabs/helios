@@ -3844,4 +3844,72 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
   }
 });
 
+/**
+ * GET /organization/delegations
+ * Org-wide Gmail delegation overview: for each Google-linked mailbox, its
+ * delegates. Returns only mailboxes that HAVE at least one delegate. Iterates the
+ * directory (one Gmail API call per mailbox), which is fine at typical org sizes;
+ * a very large org would want caching/pagination.
+ */
+router.get('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const users = await db.query(
+      `SELECT email FROM organization_users
+        WHERE organization_id = $1 AND google_workspace_id IS NOT NULL
+        ORDER BY email`,
+      [organizationId]
+    );
+    const delegations: Array<{ mailbox: string; delegates: Array<{ email: string; verificationStatus: string }> }> = [];
+    const errors: Array<{ mailbox: string; error: string }> = [];
+    for (const u of users.rows) {
+      const r = await googleWorkspaceService.listGmailDelegates(organizationId, u.email);
+      if (r.success) {
+        if (r.delegates && r.delegates.length) delegations.push({ mailbox: u.email, delegates: r.delegates });
+      } else if (r.error) {
+        errors.push({ mailbox: u.email, error: r.error });
+      }
+    }
+    return res.json({ success: true, data: { delegations, mailboxesChecked: users.rows.length, errors } });
+  } catch (error: any) {
+    logger.error('Failed to list org delegations', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to list delegations' });
+  }
+});
+
+/** POST /organization/delegations { mailbox, delegateEmail } — add a Gmail delegate. */
+router.post('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { mailbox, delegateEmail } = req.body || {};
+    if (!organizationId || !mailbox || !delegateEmail) {
+      return res.status(400).json({ success: false, error: 'mailbox and delegateEmail are required' });
+    }
+    const result = await googleWorkspaceService.addGmailDelegate(organizationId, mailbox, delegateEmail);
+    if (!result.success) return res.status(400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { mailbox, delegateEmail } });
+  } catch (error: any) {
+    logger.error('Failed to add delegate', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to add delegate' });
+  }
+});
+
+/** DELETE /organization/delegations { mailbox, delegateEmail } — remove a Gmail delegate. */
+router.delete('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { mailbox, delegateEmail } = req.body || {};
+    if (!organizationId || !mailbox || !delegateEmail) {
+      return res.status(400).json({ success: false, error: 'mailbox and delegateEmail are required' });
+    }
+    const result = await googleWorkspaceService.removeGmailDelegate(organizationId, mailbox, delegateEmail);
+    if (!result.success) return res.status(400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { mailbox, delegateEmail } });
+  } catch (error: any) {
+    logger.error('Failed to remove delegate', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to remove delegate' });
+  }
+});
+
 export default router;
