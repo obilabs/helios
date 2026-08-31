@@ -185,6 +185,40 @@ begin immediately and are visible in Helios (Step 4).
   public folders, SharePoint lists/metadata, resource/room calendars. Those need
   a third-party tool (CloudFuze/ShareGate/BitTitan).
 
+### Step 3b — OneDrive → Google Drive (a SEPARATE import)
+
+Files are **not** part of the Exchange import — OneDrive is its own wizard (reach
+it from the Exchange status page's "Go to the Microsoft OneDrive data import tool"
+link, or Data import → Import data from Microsoft → **OneDrive**). It needs a
+**separate Microsoft consent** (OneDrive *files* read — the Exchange consent did
+not include files), and it is a **5-step** flow driven by **two CSVs**:
+
+1. **Connect to Microsoft OneDrive** — global-admin OAuth (real browser; sandboxed
+   browsers block it).
+2. **Set data import scope** — **upload a source-only CSV** (single column
+   `Source OneDrive User`). Helios emits it: `GET /microsoft/migration/plan/scope-csv`.
+3. **Map source and target users** — **upload a mapping CSV**
+   (`Source Email,Destination Email`). Helios emits it: `GET /microsoft/migration/plan/csv`
+   — Google's own sample uses those exact column headers, so it's a drop-in.
+4. **Data import settings** — defaults import **all files** (any date, extension,
+   size); unmapped identities keep their original addresses.
+5. **Start import** — status goes In progress; `CREATE_FILE` / `CREATE_FOLDER`
+   events appear in the same `data_migration` tracking (Step 4).
+
+> **Supplying an explicit mapping CSV side-steps the Step-2 auto-map trap** from the
+> Exchange flow — the CSV states each source→destination pair, so there's no
+> local-part guessing. Still generate the CSV from Helios (READY targets only), which
+> already excludes external / `*.onmicrosoft.com` sources.
+
+> **SharePoint** is *yet another* separate import (its own "Go to the Microsoft
+> SharePoint data import tool" link) if you have SharePoint/Shared-Drive content.
+
+> **Automation note (Helios/testing):** the CSV `<input type=file>` elements can be
+> populated programmatically via a `DataTransfer` object + a dispatched `change`
+> event — no OS file picker — which is how Helios can stage/drive an OneDrive import
+> end-to-end in a controlled browser. The OAuth **Connect** still needs a real user
+> gesture (popups are gesture-gated).
+
 ### Step 4 — Track progress
 
 The transfer's live progress lives in Google — check it either place:
