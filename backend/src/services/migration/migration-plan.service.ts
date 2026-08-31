@@ -327,6 +327,26 @@ export class MigrationPlanService {
   }
 
   /**
+   * SOURCE-ONLY CSV for Google import steps that take a SCOPE list rather than a
+   * source→destination map — e.g. the OneDrive import's "Step 2: Set data import
+   * scope" (a single "Source OneDrive User" column; the target mapping is supplied
+   * separately in Step 3, for which `toGoogleMigrationCsv` is the drop-in — Google's
+   * own sample columns are literally "Source Email,Destination Email"). Same READY
+   * targets as the mapping CSV. The header is configurable because Google labels the
+   * column differently per import type.
+   */
+  toGoogleScopeCsv(plan: MigrationPlan, header = 'Source OneDrive User'): string {
+    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const rows: string[] = [header];
+    for (const t of plan.targets) {
+      if (t.targetGoogleEmail && t.targetExists && t.destinationType !== 'group') {
+        rows.push(esc(t.sourceEmail));
+      }
+    }
+    return rows.join('\n') + '\n';
+  }
+
+  /**
    * Write-through: reflect a freshly provisioned Google account in the Helios
    * directory (organization_users) IMMEDIATELY, so a provisioned user appears
    * without waiting for the next sync. Mirrors the sync/Add-User upsert. If a row
