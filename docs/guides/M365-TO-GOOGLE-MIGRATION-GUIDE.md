@@ -133,29 +133,57 @@ ingests (`GET /api/v1/microsoft/migration/plan/csv`). Only **ready** targets
 (destination chosen *and* it exists) are included; Group destinations are
 excluded (they can't receive imported mail).
 
-### Step 3 — Run Google's native Data Migration (Admin console)
+### Step 3 — Run the transfer in Google's console (the real steps)
 
-This is the transfer itself — launched in Google's console, per data type:
+> As of **April 2026** Google renamed "Data Migration Service" to the **Data
+> import** tool. The steps below are the *actual* flow (verified end-to-end
+> 2026-08-31), which differs from older docs.
 
-1. Admin console → **Data Migration** (or the migrate.google.com onboarding tool).
-2. **Source = Microsoft 365 / Exchange.** Authorize to the source tenant when
-   prompted (Google connects to M365 directly — this does **not** use Helios's
-   Azure app, so no extra Helios scope is required).
-3. Choose the data type (**Email** first), set the date range, and provide the
-   source→destination map (the CSV from Step 2).
-4. Start it. Repeat for **Calendar**, **Contacts**, and **Drive** (OneDrive → My
-   Drive) as needed.
+**Getting to it:** Admin console → **search "Data import"** → open **Data import**
+→ scroll to **Import data from Microsoft** → **Exchange Online** → **Import**.
+(OneDrive, SharePoint Online, and Teams are **separate** imports in the same
+section.)
+
+**In-tool Step 1 — Connect (OAuth to M365).** Click **Connect** → sign into
+Microsoft as a **global administrator** → **grant consent**. What you actually
+grant: an app named **"Google Workspace Migrate"** (publisher **Google LLC**),
+**org-wide, read-only** — *Read mail / calendars / contacts / mailbox settings /
+tasks in all mailboxes*, plus *read directory / hidden memberships / organization
+info*, plus *maintain access* (token refresh). **Nothing writes to M365.** It's
+**application** consent (no per-user prompts) and appears afterward as an
+authorized client. Revoke later at myapps.microsoft.com / Entra → Enterprise
+applications.
+> **Sandboxed/embedded browsers block this OAuth** (`ERR_BLOCKED_BY_CLIENT`) —
+> do the Connect step in a normal Chrome/Edge window.
+
+**In-tool Step 2 — Select users. ⚠️ VERIFY EVERY MAPPING.** The tool **auto-maps**
+each M365 user to a Google account **by the local part of the address**, and it
+auto-selects the ones it matched (these will be the accounts Helios provisioned).
+**The trap:** a same-local-part source on a *different domain* (e.g.
+`tubears@tmslocks.ca`) with no exact-domain Google target gets **mapped onto the
+wrong account** (`tubears@tmscanada.ca`) — merging two people's data. The display
+**truncates the domain** (`tubears@tms…`), so you can't tell them apart at a
+glance. **Before continuing, confirm every source→destination pair** (hover /
+inspect the full address) and **uncheck any cross-domain mis-map** and the
+`*.onmicrosoft.com` / external rows.
+
+**In-tool Step 3 — Configure.** Defaults to **Email + Calendar + To-do tasks (all
+dates) + all Contacts**. Adjust if needed, then **Start import**.
+
+Status goes **In progress** (updates every ~10s) and Steps 2–3 lock. Per-object
+events (`CREATE_GMAIL_MESSAGE`, `CREATE_CALENDAR_EVENT`, `CREATE_GMAIL_LABEL`, …)
+begin immediately and are visible in Helios (Step 4).
 
 **Set expectations with users:**
 
 - **Calendar:** events copy over, but **attendees are not re-invited**. External
   guests get no new invite, and future recurring meetings must be **re-invited
   manually**. Past events land fine as a record.
-- **Drive:** internal shares re-map only if *both* users are migrated; external
-  shares break and must be re-shared.
-- **Not covered by the native tool:** file version history, 1-to-many mailbox
-  splitting, Teams, public folders, SharePoint lists/metadata, resource/room
-  calendars. Those need a third-party tool (CloudFuze/ShareGate/BitTitan).
+- **Drive/OneDrive:** a **separate** import in the same tool; internal shares
+  re-map only if *both* users are migrated; external shares break.
+- **Not covered:** file version history, 1-to-many mailbox splitting, Teams,
+  public folders, SharePoint lists/metadata, resource/room calendars. Those need
+  a third-party tool (CloudFuze/ShareGate/BitTitan).
 
 ### Step 4 — Track progress
 
@@ -164,7 +192,11 @@ The transfer's live progress lives in Google — check it either place:
 - **Admin console → Reporting → Audit and investigation → `data_migration`** —
   shows who started a migration, the data type, per-item status
   (Success/Failed/Skipped), and item counts.
-- **Programmatically** (and what a future Helios migration view uses): the Admin
+- **In Helios — the Migration page** (Admin → Migration): its "Transfer progress"
+  section reads the same audit stream via `GET /microsoft/migration/status` and
+  shows the running counts (e.g. `CREATE_GMAIL_MESSAGE`, `CREATE_CALENDAR_EVENT`)
+  and any failures, so you can watch the transfer without leaving Helios.
+- **Programmatically:** the Admin
   SDK Reports API, `Activities.list(applicationName=data_migration)`, using the
   `admin.reports.audit.readonly` scope Helios already holds. It carries setup
   events (`CREATE_CONNECTION`, `CREATE_MIGRATION_MAP`, `START_MIGRATION`) and
