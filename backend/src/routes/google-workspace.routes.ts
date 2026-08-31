@@ -916,6 +916,122 @@ router.post('/disable/:organizationId', requireAdmin, async (req: Request, res: 
 });
 
 /**
+ * POST /api/google-workspace/disconnect/:organizationId
+ * Cleanly unbind Google Workspace and WIPE Helios's cached Google directory so
+ * the org can be re-bound to a DIFFERENT workspace without the old tenant's
+ * users lingering / mixing in the Directory. Use this before rebinding.
+ *
+ * SAFE BY CONSTRUCTION — Microsoft 365 is never touched:
+ *  - The organization_users DELETE requires `microsoft_365_id IS NULL`, so pure
+ *    M365 rows can never match; dual-sourced rows only have their Google link
+ *    nulled (the M365 side, and the row, are kept).
+ *  - ms_credentials / ms_synced_* and the stored M365 secret are not referenced.
+ *  - The requesting admin's own account is always excluded from deletion.
+ * RECOVERABLE: Google remains the source of truth; rebinding + a sync repopulates
+ * everything. Pass ?clearCredentials=true to also forget the stored SA/domain
+ * (default keeps them so a re-bind to the SAME workspace can enable-in-place).
+ */
+router.post('/disconnect/:organizationId', requireAdmin, async (req: Request, res: Response) => {
+  const { organizationId } = req.params;
+  const clearCredentials =
+    req.query.clearCredentials === 'true' || req.body?.clearCredentials === true;
+  const requesterEmail = (req.user?.email || '').toLowerCase();
+
+  try {
+    const counts: Record<string, number> = {};
+
+    // 1. Disable the module (canonical slug: underscore).
+    const moduleResult = await db.query(
+      `SELECT id FROM modules WHERE slug = 'google_workspace' LIMIT 1`
+    );
+    if (moduleResult.rows.length > 0) {
+      await db.query(
+        `UPDATE organization_modules SET is_enabled = false, updated_at = NOW()
+          WHERE organization_id = $1 AND module_id = $2`,
+        [organizationId, moduleResult.rows[0].id]
+      );
+    }
+
+    // 2. Dual-sourced rows (Google + M365): drop the stale Google link, KEEP the
+    //    row so the M365 side survives.
+    const dual = await db.query(
+      `UPDATE organization_users
+          SET google_workspace_id = NULL,
+              google_workspace_sync_status = NULL,
+              google_workspace_last_sync = NULL,
+              updated_at = CURRENT_TIMESTAMP
+        WHERE organization_id = $1
+          AND google_workspace_id IS NOT NULL
+          AND microsoft_365_id IS NOT NULL`,
+      [organizationId]
+    );
+    counts.googleUnlinkedFromM365 = dual.rowCount || 0;
+
+    // 3. Pure Google directory-cache rows: remove. NEVER M365-linked, NEVER the
+    //    requesting admin's own login.
+    const removed = await db.query(
+      `DELETE FROM organization_users
+        WHERE organization_id = $1
+          AND google_workspace_id IS NOT NULL
+          AND microsoft_365_id IS NULL
+          AND LOWER(email) <> $2`,
+      [organizationId, requesterEmail]
+    );
+    counts.googleUsersRemoved = removed.rowCount || 0;
+
+    // 4. Wipe the Google directory caches. Table names are a fixed literal list
+    //    (not user input) — safe to interpolate.
+    for (const table of ['gw_synced_users', 'gw_groups', 'gw_org_units']) {
+      try {
+        const r = await db.query(
+          `DELETE FROM ${table} WHERE organization_id = $1`,
+          [organizationId]
+        );
+        counts[table] = r.rowCount || 0;
+      } catch (e: any) {
+        logger.warn(`disconnect: could not clear ${table}`, { error: e?.message });
+      }
+    }
+
+    // 5. Reset the stale migration plan — its Google destinations belonged to the
+    //    old tenant. It regenerates on next read from the newly-synced directory.
+    const plan = await db.query(
+      `DELETE FROM organization_settings WHERE organization_id = $1 AND key = 'migration.plan'`,
+      [organizationId]
+    );
+    counts.migrationPlanReset = plan.rowCount || 0;
+
+    // 6. Optionally forget the stored workspace binding.
+    if (clearCredentials) {
+      const cred = await db.query(
+        `DELETE FROM gw_credentials WHERE organization_id = $1`,
+        [organizationId]
+      );
+      counts.credentialsCleared = cred.rowCount || 0;
+    }
+
+    logger.info('Google Workspace disconnected + directory cache wiped', {
+      organizationId,
+      clearCredentials,
+      counts,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Google Workspace disconnected and directory cache cleared',
+      clearedCredentials: clearCredentials,
+      counts,
+    });
+  } catch (error: any) {
+    logger.error('Failed to disconnect Google Workspace', { error: error.message });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to disconnect Google Workspace',
+    });
+  }
+});
+
+/**
  * POST /api/google-workspace/enable
  * Re-enable the Google Workspace module for an organization that ALREADY has
  * valid stored credentials — without forcing a re-upload of the service-account
