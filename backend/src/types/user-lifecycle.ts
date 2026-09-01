@@ -71,6 +71,10 @@ export interface OnboardingTemplate {
   googleOrgUnitPath?: string | null;
   googleServices: GoogleServices;
 
+  // Microsoft 365 settings
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string | null;
+
   // Memberships
   groupIds: string[];
   sharedDriveAccess: SharedDriveAccess[];
@@ -105,6 +109,8 @@ export interface CreateOnboardingTemplateDTO {
   googleLicenseSku?: string;
   googleOrgUnitPath?: string;
   googleServices?: GoogleServices;
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string;
   groupIds?: string[];
   sharedDriveAccess?: SharedDriveAccess[];
   calendarSubscriptions?: string[];
@@ -461,6 +467,10 @@ export interface OnboardingConfig {
   googleLicenseSku?: string;
   googleOrgUnitPath?: string;
   googleServices?: GoogleServices;
+
+  // Microsoft 365 settings
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string;
 
   // Memberships
   groupIds: string[];
