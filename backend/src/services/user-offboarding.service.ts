@@ -822,17 +822,32 @@ class UserOffboardingService {
           if (!msId || !initialized) {
             result.stepsSkipped.push('m365_offboard');
           } else {
+            const willDelete = config.deleteAccount && !!config.deleteImmediately;
+            // Each sub-op is independent: a redundant license-removal failure
+            // (e.g. a group-inherited SKU Graph refuses to strip) must NOT block
+            // the requested account delete, which is the operation of record.
+            const subErrors: string[] = [];
             if (config.accountAction === 'suspend_immediately') {
-              await microsoftGraphService.disableUser(msId);
+              try { await microsoftGraphService.disableUser(msId); }
+              catch (e: any) { subErrors.push(`disable: ${e.message}`); }
             }
-            if (config.licenseAction === 'remove_immediately' ||
-                (config.licenseAction === 'remove_on_suspension' && config.accountAction === 'suspend_immediately')) {
-              const lics = await microsoftGraphService.getUserLicenses(msId);
-              const skuIds = lics.map((l: any) => l.skuId).filter(Boolean);
-              if (skuIds.length) await microsoftGraphService.removeLicense(msId, skuIds);
+            // Skip license removal entirely when deleting — Graph strips direct
+            // assignments on user deletion, so removing first is pointless and can
+            // fail on group-inherited licenses.
+            if (!willDelete && (config.licenseAction === 'remove_immediately' ||
+                (config.licenseAction === 'remove_on_suspension' && config.accountAction === 'suspend_immediately'))) {
+              try {
+                const lics = await microsoftGraphService.getUserLicenses(msId);
+                const skuIds = lics.map((l: any) => l.skuId).filter(Boolean);
+                if (skuIds.length) await microsoftGraphService.removeLicense(msId, skuIds);
+              } catch (e: any) { subErrors.push(`removeLicense: ${e.message}`); }
             }
-            if (config.deleteAccount && config.deleteImmediately) {
-              await microsoftGraphService.deleteUser(msId);
+            if (willDelete) {
+              try { await microsoftGraphService.deleteUser(msId); }
+              catch (e: any) { subErrors.push(`delete: ${e.message}`); }
+            }
+            if (subErrors.length) {
+              throw new Error(subErrors.join('; '));
             }
             await lifecycleLogService.logSuccess(
               organizationId, 'offboard', 'm365_offboard',

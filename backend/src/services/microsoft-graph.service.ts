@@ -381,6 +381,19 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * The tenant's ISO country code (countryLetterCode), used to set a user's
+   * usageLocation — a prerequisite for assignLicense (Graph rejects license
+   * assignment for a user with no usageLocation). Returns null if unavailable.
+   */
+  async getTenantCountry(): Promise<string | null> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    const res = await this.graphClient.api('/organization').select('countryLetterCode').get();
+    return res?.value?.[0]?.countryLetterCode || null;
+  }
+
+  /**
    * Update a user in Entra ID
    */
   async updateUser(userId: string, updates: Partial<MicrosoftUser>): Promise<void> {
