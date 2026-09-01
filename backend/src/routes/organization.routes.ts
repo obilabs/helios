@@ -541,7 +541,14 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     if (userType) {
       // Map 'guests' to 'guest' for frontend compatibility
       const dbUserType = userType === 'guests' ? 'guest' : userType === 'contacts' ? 'contact' : userType;
-      statusCondition += ` AND ou.user_type = '${dbUserType}'`;
+      if (dbUserType === 'staff') {
+        // The Staff tab represents internal humans, which includes locally-created
+        // (Helios-native) accounts stored as user_type='local'. Without this they
+        // are unreachable anywhere in the admin Users page.
+        statusCondition += " AND ou.user_type IN ('staff','local')";
+      } else {
+        statusCondition += ` AND ou.user_type = '${dbUserType}'`;
+      }
     } else if (guestOnly) {
       // Fallback to old guest filter for backwards compatibility
       statusCondition += " AND ou.is_guest = true";
@@ -613,6 +620,11 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
       ORDER BY ou.first_name, ou.last_name, ou.email
     `, [organizationId]);
 
+    // Secondary index by Google link id, so a synced cache row whose email
+    // differs from the canonical organization_users email still resolves to the
+    // SAME identity instead of spawning a duplicate directory row.
+    const googleIdMap = new Map<string, any>();
+
     // Add local users to the map
     localUsersResult.rows.forEach((user: any) => {
       // Determine platforms based on platform IDs
@@ -628,6 +640,7 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         source: user.googleWorkspaceId ? 'google_workspace' : (user.microsoft365Id ? 'microsoft_365' : 'local')
       };
       userEmailMap.set(user.email.toLowerCase(), userData);
+      if (user.googleWorkspaceId) googleIdMap.set(user.googleWorkspaceId, userData);
     });
 
     // If Google Workspace is enabled, also fetch synced users — but only when the
@@ -671,9 +684,11 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         // Use explicit department field, or extract from OU path as fallback
         const gwDepartment = user.department || extractDepartmentFromOUPath(user.org_unit_path);
 
-        // If user already exists locally, add google_workspace to their platforms if not already present
-        if (userEmailMap.has(email)) {
-          const existingUser = userEmailMap.get(email);
+        // Resolve to an existing identity by email OR by the Google link id, so
+        // a linked person is never split into a second row when their cache
+        // email differs from their organization_users email.
+        const existingUser = userEmailMap.get(email) || googleIdMap.get(user.external_id);
+        if (existingUser) {
           if (!existingUser.platforms.includes('google_workspace')) {
             existingUser.platforms.push('google_workspace');
             // Remove 'local' if we now have a real platform
@@ -769,11 +784,16 @@ router.get('/users/count', authenticateToken, async (req: Request, res: Response
 
     logger.info('Fetching user count', { organizationId, userType, dbUserType });
 
-    // Count users by type (exclude soft-deleted)
+    // Count users by type (exclude soft-deleted). Staff includes 'local'
+    // (Helios-native) accounts so the count matches the Staff tab listing.
+    const typeCondition = dbUserType === 'staff'
+      ? "user_type IN ('staff','local')"
+      : 'user_type = $2';
+    const countParams = dbUserType === 'staff' ? [organizationId] : [organizationId, dbUserType];
     const result = await db.query(
       `SELECT COUNT(*) as count FROM organization_users
-       WHERE organization_id = $1 AND user_type = $2 AND status != 'deleted'`,
-      [organizationId, dbUserType]
+       WHERE organization_id = $1 AND ${typeCondition} AND status != 'deleted'`,
+      countParams
     );
 
     const count = parseInt(result.rows[0].count) || 0;
@@ -843,19 +863,23 @@ router.get('/users/export', authenticateToken, async (req: Request, res: Respons
       }
     }
 
-    // Build query
-    let whereClause = 'WHERE organization_id = $1 AND user_type = $2';
-    const params: any[] = [organizationId, userType];
+    // Build query. Map frontend tab values and make Staff inclusive of 'local'
+    // (Helios-native) accounts, matching the Users list + count endpoints.
+    const dbUserType = userType === 'guests' ? 'guest' : userType === 'contacts' ? 'contact' : userType;
+    const params: any[] = [organizationId];
+    let whereClause: string;
+    if (dbUserType === 'staff') {
+      whereClause = "WHERE organization_id = $1 AND user_type IN ('staff','local')";
+    } else {
+      whereClause = 'WHERE organization_id = $1 AND user_type = $2';
+      params.push(dbUserType);
+    }
 
-    // Add status filter if provided
+    // Add status filter if provided (use the next positional parameter)
     if (status && status !== 'all') {
-      if (status === 'pending') {
-        whereClause += ' AND status = $3';
-        params.push('staged');
-      } else {
-        whereClause += ' AND status = $3';
-        params.push(status);
-      }
+      const idx = params.length + 1;
+      whereClause += ` AND status = $${idx}`;
+      params.push(status === 'pending' ? 'staged' : status);
     }
 
     const result = await db.query(`
