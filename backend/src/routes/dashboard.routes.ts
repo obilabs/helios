@@ -179,6 +179,60 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         lastSync = syncResult.rows[0]?.last_sync || null;
       }
 
+      // License detection + configurable per-platform limits. `licenses.total` is
+      // the admin-configured available-seat limit when set, else the provider-
+      // reported total (real for M365 via Graph subscribedSkus; not reliably
+      // reported for Google, so its limit must be configured). Display-only —
+      // Helios never enforces a hard cap.
+      let licenseLimits: { google: number | null; microsoft: number | null } = { google: null, microsoft: null };
+      try {
+        const ll = await db.query(
+          `SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'license_limits'`,
+          [organizationId]
+        );
+        if (ll.rows[0]?.value) licenseLimits = { ...licenseLimits, ...JSON.parse(ll.rows[0].value) };
+      } catch (err) {
+        logger.debug('Failed to read license_limits for dashboard', { error: (err as Error).message });
+      }
+
+      // Google: assigned seats = users with a Google account (matches the
+      // directory). Provider total is unreliable, so the configured limit is the
+      // denominator when present (null otherwise -> card shows N/A, no banner).
+      let googleLicenses: { used: number; total: number | null; providerTotal: number | null; reportDate: string | null } | null = null;
+      if (isGoogleConfigured) {
+        googleLicenses = {
+          used: parseInt(googleUsers.rows[0].count) || 0,
+          total: licenseLimits.google ?? null,
+          providerTotal: null,
+          reportDate: lastSync,
+        };
+      }
+
+      // Microsoft: aggregate ms_licenses (real Graph prepaid/consumed seats). The
+      // configured limit overrides the provider total when set.
+      let microsoftLicenses: { used: number; total: number | null; providerTotal: number | null; reportDate: string | null } | null = null;
+      if (isMicrosoftConfigured) {
+        try {
+          const msl = await db.query(
+            `SELECT COALESCE(SUM(total_units), 0) AS total,
+                    COALESCE(SUM(consumed_units), 0) AS consumed,
+                    MAX(last_sync_at) AS last_sync
+             FROM ms_licenses WHERE organization_id = $1`,
+            [organizationId]
+          );
+          const row = msl.rows[0];
+          const providerTotal = parseInt(row.total) || 0;
+          microsoftLicenses = {
+            used: parseInt(row.consumed) || 0,
+            total: licenseLimits.microsoft ?? (providerTotal > 0 ? providerTotal : null),
+            providerTotal: providerTotal > 0 ? providerTotal : null,
+            reportDate: row.last_sync || null,
+          };
+        } catch (err) {
+          logger.debug('Failed to aggregate ms_licenses for dashboard', { error: (err as Error).message });
+        }
+      }
+
       // Get security stats (unified 2FA across all sources + OAuth apps).
       // 2FA and OAuth-apps are collected independently so a failure in one
       // source (e.g. a missing table) doesn't blank BOTH cards. Failures are
@@ -231,13 +285,15 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           totalUsers: parseInt(googleUsers.rows[0].count),
           suspendedUsers: parseInt(suspendedUsers.rows[0].count),
           adminUsers: parseInt(admins.rows[0].count),
-          lastSync: lastSync
+          lastSync: lastSync,
+          licenses: googleLicenses
         } : {
           connected: false,
           totalUsers: 0,
           suspendedUsers: 0,
           adminUsers: 0,
-          lastSync: null as string | null
+          lastSync: null as string | null,
+          licenses: null
         },
         helios: {
           totalUsers: parseInt(localUsers.rows[0].count),
@@ -249,7 +305,8 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           totalUsers: microsoftStats.total,
           disabledUsers: microsoftStats.suspended,
           adminUsers: microsoftStats.admins,
-          lastSync: microsoftStats.lastSync
+          lastSync: microsoftStats.lastSync,
+          licenses: microsoftLicenses
         },
         security: securityStats
       };
