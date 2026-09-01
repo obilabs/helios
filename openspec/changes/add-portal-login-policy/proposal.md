@@ -108,8 +108,20 @@ Guests and contacts can never be granted `portal_access_enabled` through the UI
 
 ### 4. Admin controls
 
+The authoritative gate is always the per-user `portal_access_enabled` flag; every
+control below is just a way to *set* it, which keeps the eligibility guard simple.
+
 - **Users list**: a "Portal access" column (enabled/disabled icon) for staff/local
   rows; a per-row toggle (admin only) that flips `portal_access_enabled`.
+- **Per-user**: the row toggle above (one person at a time).
+- **Per-group**: "Enable portal access for everyone in group X". Two flavors:
+  - *Static bulk* — flips `portal_access_enabled = true` for the group's current
+    staff members (a one-time convenience). Works with any Helios group today.
+  - *Standing rule* — a group whose membership auto-grants portal access as members
+    come and go. This depends on **dynamic/rule-based group membership**, which is
+    specced but not yet functional against the live schema (see the group-sync
+    findings); until that lands, per-group grant is static-bulk only.
+  Guests/contacts in the group are always skipped (never eligible).
 - **Bulk**: "Enable/disable portal access" bulk action on selected staff.
 - **Settings → Security**: the `portal_login_policy` toggles (`allowStaffSSO`,
   `autoGrantSyncedStaff`) with clear copy on the security implications.
