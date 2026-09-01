@@ -102,7 +102,7 @@ export class OAuthTokenSyncService {
       const credResult = await db.query(`
         SELECT service_account_key, admin_email, domain
         FROM gw_credentials
-        WHERE organization_id = $1 AND is_active = true
+        WHERE organization_id = $1
         LIMIT 1
       `, [organizationId]);
 
