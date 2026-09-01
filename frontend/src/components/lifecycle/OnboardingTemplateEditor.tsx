@@ -48,6 +48,8 @@ interface OnboardingTemplate {
   googleLicenseSku: string;
   googleOrgUnitPath: string;
   googleServices: GoogleServices;
+  createInMicrosoft: boolean;
+  microsoftLicenseSku: string;
   groupIds: string[];
   sharedDriveAccess: SharedDriveAccess[];
   calendarSubscriptions: string[];
@@ -86,6 +88,8 @@ const defaultTemplate: OnboardingTemplate = {
   departmentId: '',
   googleLicenseSku: '',
   googleOrgUnitPath: '',
+  createInMicrosoft: false,
+  microsoftLicenseSku: '',
   googleServices: {
     gmail: true,
     drive: true,
@@ -436,6 +440,36 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
                   />
                 </div>
               </div>
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={template.createInMicrosoft}
+                    onChange={(e) =>
+                      setTemplate((prev) => ({ ...prev, createInMicrosoft: e.target.checked }))
+                    }
+                  />
+                  <span>Create account in Microsoft 365</span>
+                </label>
+                <p className="form-hint">Also provision this user in Microsoft 365 / Entra ID.</p>
+              </div>
+
+              {template.createInMicrosoft && (
+                <div className="form-group">
+                  <label htmlFor="msLicense">Microsoft 365 License SKU</label>
+                  <input
+                    id="msLicense"
+                    type="text"
+                    value={template.microsoftLicenseSku}
+                    onChange={(e) =>
+                      setTemplate((prev) => ({ ...prev, microsoftLicenseSku: e.target.value }))
+                    }
+                    placeholder="e.g., O365_BUSINESS_PREMIUM or a SKU GUID"
+                  />
+                  <p className="form-hint">Optional. Leave blank to create the account without a license.</p>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Google Services</label>
