@@ -109,7 +109,9 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         db.query('SELECT COUNT(*) as count FROM access_groups WHERE organization_id = $1', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NOT NULL', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NULL', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_guest = true', [organizationId]),
+        // Guest users are classified by user_type ('guest'); the legacy is_guest
+        // boolean is not maintained by the sync path, so count on user_type.
+        db.query("SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND user_type = 'guest'", [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND role = \'admin\'', [organizationId]),
         // Orphaned users: no manager assigned, not CEO, active
         db.query(`
@@ -131,6 +133,40 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
 
       const isGoogleConfigured = gwConfig.rows[0].count > 0;
 
+      // Check if Microsoft 365 is configured, and count its synced users.
+      // Mirrors the Google branch: the M365 population lives in organization_users
+      // keyed by microsoft_365_id (written by the M365 reconcile). The creds live
+      // in ms_credentials (NOT microsoft365_credentials — that helper is stale).
+      let isMicrosoftConfigured = false;
+      let microsoftStats = { total: 0, suspended: 0, admins: 0, lastSync: null as string | null };
+      try {
+        const msConfig = await db.query(
+          'SELECT COUNT(*) as count FROM ms_credentials WHERE organization_id = $1',
+          [organizationId]
+        );
+        isMicrosoftConfigured = parseInt(msConfig.rows[0].count) > 0;
+        if (isMicrosoftConfigured) {
+          const msUsers = await db.query(
+            `SELECT COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE is_active = false) as suspended,
+                    COUNT(*) FILTER (WHERE role = 'admin') as admins,
+                    MAX(microsoft_365_last_sync) as last_sync
+             FROM organization_users
+             WHERE organization_id = $1 AND microsoft_365_id IS NOT NULL`,
+            [organizationId]
+          );
+          const r = msUsers.rows[0];
+          microsoftStats = {
+            total: parseInt(r.total) || 0,
+            suspended: parseInt(r.suspended) || 0,
+            admins: parseInt(r.admins) || 0,
+            lastSync: r.last_sync || null,
+          };
+        }
+      } catch (err) {
+        logger.debug('Failed to get Microsoft 365 stats for dashboard', { error: (err as Error).message });
+      }
+
       // Get last sync time if Google Workspace is configured
       // Use gw_synced_users updated_at as a proxy for last sync
       let lastSync: string | null = null;
@@ -143,43 +179,51 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         lastSync = syncResult.rows[0]?.last_sync || null;
       }
 
-      // Get security stats (unified 2FA across all sources + OAuth)
-      let securityStats = null;
+      // Get security stats (unified 2FA across all sources + OAuth apps).
+      // 2FA and OAuth-apps are collected independently so a failure in one
+      // source (e.g. a missing table) doesn't blank BOTH cards. Failures are
+      // logged at warn — a silently-swallowed error here previously showed as
+      // an unexplained "N/A" on the dashboard.
+      let twoFactorStats = null;
       try {
-        // Get unified 2FA status from all sources (Helios, Google, M365)
         const unified2FAData = await oauthTokenSyncService.getUnified2FAStatus(organizationId);
+        twoFactorStats = {
+          total: unified2FAData.summary.total,
+          enrolled: unified2FAData.summary.enrolled,
+          notEnrolled: unified2FAData.summary.notEnrolled,
+          percentage: unified2FAData.summary.percentage,
+          bySource: unified2FAData.summary.bySource
+        };
+      } catch (err) {
+        logger.warn('Failed to get 2FA stats for dashboard', { organizationId, error: (err as Error).message });
+      }
 
-        // Get OAuth apps data if Google is configured
-        let oauthAppsData = null;
-        if (isGoogleConfigured) {
-          oauthAppsData = await oauthTokenSyncService.getOAuthApps(organizationId, {
+      let oauthAppsStats = null;
+      if (isGoogleConfigured) {
+        try {
+          const oauthAppsData = await oauthTokenSyncService.getOAuthApps(organizationId, {
             sortBy: 'userCount',
             sortOrder: 'desc',
             limit: 5
           });
+          if (oauthAppsData) {
+            oauthAppsStats = {
+              totalApps: oauthAppsData.total,
+              totalGrants: oauthAppsData.totalGrants,
+              topApps: oauthAppsData.apps.map(app => ({
+                displayName: app.displayName || 'Unknown App',
+                userCount: app.userCount
+              }))
+            };
+          }
+        } catch (err) {
+          logger.warn('Failed to get OAuth apps stats for dashboard', { organizationId, error: (err as Error).message });
         }
-
-        securityStats = {
-          twoFactor: {
-            total: unified2FAData.summary.total,
-            enrolled: unified2FAData.summary.enrolled,
-            notEnrolled: unified2FAData.summary.notEnrolled,
-            percentage: unified2FAData.summary.percentage,
-            bySource: unified2FAData.summary.bySource
-          },
-          oauthApps: oauthAppsData ? {
-            totalApps: oauthAppsData.total,
-            totalGrants: oauthAppsData.totalGrants,
-            topApps: oauthAppsData.apps.map(app => ({
-              displayName: app.displayName || 'Unknown App',
-              userCount: app.userCount
-            }))
-          } : null
-        };
-      } catch (err) {
-        // Security stats are optional, don't fail the whole request
-        logger.debug('Failed to get security stats for dashboard', { error: (err as Error).message });
       }
+
+      const securityStats = (twoFactorStats || oauthAppsStats)
+        ? { twoFactor: twoFactorStats, oauthApps: oauthAppsStats }
+        : null;
 
       return {
         google: isGoogleConfigured ? {
@@ -201,11 +245,11 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           orphanedUsers: parseInt(orphanedUsers.rows[0].count)
         },
         microsoft: {
-          connected: false,
-          totalUsers: 0,
-          disabledUsers: 0,
-          adminUsers: 0,
-          lastSync: null as string | null
+          connected: isMicrosoftConfigured,
+          totalUsers: microsoftStats.total,
+          disabledUsers: microsoftStats.suspended,
+          adminUsers: microsoftStats.admins,
+          lastSync: microsoftStats.lastSync
         },
         security: securityStats
       };

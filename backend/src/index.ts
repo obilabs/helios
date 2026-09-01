@@ -934,6 +934,11 @@ async function startServer(): Promise<void> {
           syncScheduler.startOrganizationSync(org.id).catch(err => {
             logger.error(`Failed to start sync for ${org.name}`, err);
           });
+          // Also start OAuth token sync so the Connected Apps dashboard card is
+          // populated (oauth_apps is only written by this path). Self-guarding.
+          syncScheduler.startTokenSync(org.id).catch(err => {
+            logger.error(`Failed to start OAuth token sync for ${org.name}`, err);
+          });
         }
         logger.info(`🔄 Auto-sync enabled for ${orgsWithGW.rows.length} organization(s)`);
       } else {
