@@ -892,7 +892,11 @@ async function syncGroupResource(params: {
         logger.warn('proxy member-remove mirror failed', { error: (e as Error).message });
       }
       logger.info('Synced Microsoft group member removal', { group: gMsId, user: uMsId });
-    } else {
+    } else if (/groups\/[^/?]+\/?(\?.*)?$/i.test(params.path)) {
+      // ONLY a bare /groups/{id} delete removes the group row. Any other group
+      // sub-resource DELETE (/owners/{id}/$ref, /acceptedSenders/..., etc.) must
+      // NOT touch ms_synced_groups — extractGroupKeyFromPath would return the
+      // GROUP id and cascade-delete every membership.
       const groupKey = extractGroupKeyFromPath(params.path);
       await db.query(`
         DELETE FROM ms_synced_groups
@@ -900,6 +904,10 @@ async function syncGroupResource(params: {
           AND ms_id = $2
       `, [params.organizationId, groupKey]);
       logger.info('Synced Microsoft group deletion', { groupKey });
+    } else {
+      // Some other group sub-resource (owners / senders / …) the mirror doesn't
+      // track — leave ms_synced_groups untouched.
+      logger.debug('Proxy DELETE on unmirrored group sub-resource — mirror untouched', { path: params.path });
     }
   }
 
