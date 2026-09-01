@@ -367,6 +367,20 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * List the tenant's verified domains (with the default flagged) — needed to
+   * build a valid userPrincipalName when creating an M365 user.
+   */
+  async getVerifiedDomains(): Promise<Array<{ name: string; isDefault: boolean; isVerified: boolean }>> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    const res = await this.graphClient.api('/organization').select('verifiedDomains').get();
+    const org = res?.value?.[0];
+    const domains = org?.verifiedDomains || [];
+    return domains.map((d: any) => ({ name: d.name, isDefault: !!d.isDefault, isVerified: d.isVerified !== false }));
+  }
+
+  /**
    * Update a user in Entra ID
    */
   async updateUser(userId: string, updates: Partial<MicrosoftUser>): Promise<void> {
