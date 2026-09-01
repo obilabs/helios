@@ -13,6 +13,7 @@ import { TrackingSettings } from './settings/TrackingSettings';
 import { FeatureFlagsSettings } from './settings/FeatureFlagsSettings';
 import { RelayAccessSettings } from './settings/RelayAccessSettings';
 import { EntityLabelSettings } from './settings/EntityLabelSettings';
+import { LicenseLimitsSection } from './LicenseLimitsSection';
 import { useTabPersistence } from '../hooks/useTabPersistence';
 import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link } from 'lucide-react';
 import { authFetch } from '../config/api';
@@ -615,6 +616,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
           )}
 
           {activeTab === 'organization' && (
+            <>
             <div className="settings-section">
               <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
@@ -684,6 +686,8 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 </div>
               </div>
             </div>
+            <LicenseLimitsSection />
+            </>
           )}
 
           {activeTab === 'roles' && (

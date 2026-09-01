@@ -11,6 +11,7 @@ import { Settings } from './components/Settings'
 // PlatformCard - available for future use
 // import { PlatformCard } from './components/PlatformCard'
 import { MetricCard } from './components/MetricCard'
+import { LicenseBanner } from './components/LicenseBanner'
 import { DashboardCustomizer } from './components/DashboardCustomizer'
 import { Administrators } from './components/Administrators'
 import { Users } from './pages/Users'
@@ -1181,6 +1182,9 @@ function AppContent() {
                   Customize Dashboard
                 </button>
               </div>
+
+              {/* License-limit banners (near / at / over available seats) */}
+              <LicenseBanner google={stats?.google} microsoft={stats?.microsoft} />
 
               {/* Dashboard Widget Grid */}
               <div className="dashboard-widget-grid">

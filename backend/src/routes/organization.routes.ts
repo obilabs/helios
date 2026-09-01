@@ -3936,4 +3936,56 @@ router.delete('/delegations', authenticateToken, requireAdmin, async (req: Reque
   }
 });
 
+/**
+ * GET /organization/license-limits — the admin-configured "available licenses"
+ * per platform, used to drive the dashboard license cards + limit banners.
+ * null means "use the provider-reported total" (or, for Google whose total is
+ * not reliably reported, means "not tracked"). Stored as a single JSON setting.
+ */
+router.get('/license-limits', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const result = await db.query(
+      `SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'license_limits'`,
+      [organizationId]
+    );
+    let limits: { google: number | null; microsoft: number | null } = { google: null, microsoft: null };
+    if (result.rows[0]?.value) {
+      try { limits = { ...limits, ...JSON.parse(result.rows[0].value) }; } catch { /* keep defaults */ }
+    }
+    return res.json({ success: true, data: limits });
+  } catch (error: any) {
+    logger.error('Failed to get license limits', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to get license limits' });
+  }
+});
+
+/** PUT /organization/license-limits { google, microsoft } — set the per-platform
+ * available-license counts. null/empty clears a platform (falls back to provider
+ * total). This is display-only guidance and NEVER enforces a hard cap. */
+router.put('/license-limits', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const norm = (v: any): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return Math.floor(n);
+    };
+    const value = JSON.stringify({ google: norm(req.body?.google), microsoft: norm(req.body?.microsoft) });
+    await db.query(
+      `INSERT INTO organization_settings (organization_id, key, value)
+       VALUES ($1, 'license_limits', $2)
+       ON CONFLICT (organization_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [organizationId, value]
+    );
+    return res.json({ success: true, data: JSON.parse(value) });
+  } catch (error: any) {
+    logger.error('Failed to set license limits', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to set license limits' });
+  }
+});
+
 export default router;
