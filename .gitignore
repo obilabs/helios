@@ -99,3 +99,6 @@ projects/
 
 # Generated test reports/screenshots (build output — never commit)
 openspec/testing/reports/
+
+# Raw M365 Graph write recordings — scrub before copying into __tests__/fixtures
+.record-fixtures/

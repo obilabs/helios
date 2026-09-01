@@ -659,6 +659,17 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * Clear a user's manager (DELETE /users/{id}/manager/$ref).
+   */
+  async removeUserManager(userId: string): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+
+    await this.graphClient.api(`/users/${userId}/manager/$ref`).delete();
+  }
+
+  /**
    * Get user's direct reports
    */
   async getUserDirectReports(userId: string): Promise<MicrosoftUser[]> {
