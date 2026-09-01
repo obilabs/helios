@@ -5,7 +5,7 @@ import { Search, RefreshCw, Plus, Users, Loader2 } from 'lucide-react';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { GroupSlideOut } from '../components/GroupSlideOut';
 import { DataTable, createColumnHelper } from '../components/ui/DataTable';
-import { useGroups, useSyncGroups, useCreateGroup } from '../hooks/queries/useGroups';
+import { useGroups, useSyncGroups, useCreateGroup, useCreateMicrosoftGroup } from '../hooks/queries/useGroups';
 import type { Group } from '../hooks/queries/useGroups';
 import './Pages.css';
 
@@ -22,6 +22,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newGroupPlatform, setNewGroupPlatform] = useState('google_workspace');
   const [newGroupEmail, setNewGroupEmail] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
@@ -36,6 +37,8 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
 
   const syncMutation = useSyncGroups();
   const createMutation = useCreateGroup();
+  const createMsMutation = useCreateMicrosoftGroup();
+  const creating = createMutation.isPending || createMsMutation.isPending;
 
   const handleSyncGroups = async () => {
     try {
@@ -45,23 +48,40 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
     }
   };
 
+  const resetCreateForm = () => {
+    setShowCreateModal(false);
+    setNewGroupEmail('');
+    setNewGroupName('');
+    setNewGroupDescription('');
+    setCreateError(null);
+  };
+
   const handleCreateGroup = async () => {
-    if (!newGroupEmail || !newGroupName) {
-      setCreateError('Please provide both email and group name');
+    const isMicrosoft = newGroupPlatform === 'microsoft_365';
+    if (!newGroupName || (!isMicrosoft && !newGroupEmail)) {
+      setCreateError(isMicrosoft ? 'Please provide a group name' : 'Please provide both email and group name');
       return;
     }
 
     try {
       setCreateError(null);
-      await createMutation.mutateAsync({
-        email: newGroupEmail,
-        name: newGroupName,
-        description: newGroupDescription
-      });
-      setShowCreateModal(false);
-      setNewGroupEmail('');
-      setNewGroupName('');
-      setNewGroupDescription('');
+      if (isMicrosoft) {
+        // App-only Graph can create pure security groups; Unified/mail-enabled
+        // need extra support, so we create a security group here.
+        await createMsMutation.mutateAsync({
+          displayName: newGroupName,
+          description: newGroupDescription,
+          securityEnabled: true,
+          mailEnabled: false,
+        });
+      } else {
+        await createMutation.mutateAsync({
+          email: newGroupEmail,
+          name: newGroupName,
+          description: newGroupDescription,
+        });
+      }
+      resetCreateForm();
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create group');
     }
@@ -171,6 +191,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
         >
           <option value="all">All Sources</option>
           <option value="google_workspace">Google Workspace</option>
+          <option value="microsoft_365">Microsoft 365</option>
           <option value="manual">Local Only</option>
         </select>
 
@@ -240,13 +261,11 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
 
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
-                Group Email <span style={{ color: '#dc2626' }}>*</span>
+                Platform
               </label>
-              <input
-                type="email"
-                value={newGroupEmail}
-                onChange={(e) => setNewGroupEmail(e.target.value)}
-                placeholder="group@example.com"
+              <select
+                value={newGroupPlatform}
+                onChange={(e) => setNewGroupPlatform(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '0.75rem',
@@ -254,9 +273,34 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                   borderRadius: '8px',
                   fontSize: '1rem'
                 }}
-                disabled={createMutation.isPending}
-              />
+                disabled={creating}
+              >
+                <option value="google_workspace">Google Workspace</option>
+                <option value="microsoft_365">Microsoft 365 (security group)</option>
+              </select>
             </div>
+
+            {newGroupPlatform !== 'microsoft_365' && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
+                  Group Email <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={newGroupEmail}
+                  onChange={(e) => setNewGroupEmail(e.target.value)}
+                  placeholder="group@example.com"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem'
+                  }}
+                  disabled={creating}
+                />
+              </div>
+            )}
 
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
@@ -274,7 +318,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                   borderRadius: '8px',
                   fontSize: '1rem'
                 }}
-                disabled={createMutation.isPending}
+                disabled={creating}
               />
             </div>
 
@@ -295,7 +339,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                   fontSize: '1rem',
                   resize: 'vertical'
                 }}
-                disabled={createMutation.isPending}
+                disabled={creating}
               />
             </div>
 
@@ -309,17 +353,17 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                   setNewGroupDescription('');
                   setCreateError(null);
                 }}
-                disabled={createMutation.isPending}
+                disabled={creating}
               >
                 Cancel
               </button>
               <button
                 className="btn-primary"
                 onClick={handleCreateGroup}
-                disabled={createMutation.isPending || !newGroupEmail || !newGroupName}
+                disabled={creating || !newGroupName || (newGroupPlatform !== 'microsoft_365' && !newGroupEmail)}
               >
                 <Plus size={14} />
-                {createMutation.isPending ? 'Creating...' : 'Create Group'}
+                {creating ? 'Creating...' : 'Create Group'}
               </button>
             </div>
           </div>
@@ -330,6 +374,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
       {selectedGroupId && (
         <GroupSlideOut
           groupId={selectedGroupId}
+          platform={groups.find(g => g.id === selectedGroupId)?.platform}
           organizationId={organizationId}
           onClose={() => setSelectedGroupId(null)}
           onGroupUpdated={() => {
