@@ -1829,6 +1829,36 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
           await microsoftGraphService.updateUser(linkedMs365Id, graphUpdate as any);
         }
 
+        // Custom fields (pronouns / certifications / professional designations)
+        // have no native Graph field — push them into a stable open extension.
+        // Read the stored values (pronouns column + custom_fields JSONB; both
+        // exist live). professional_designations may be absent on some installs,
+        // so read it defensively from JSONB, not the bare column.
+        try {
+          const cf = await db.query(
+            'SELECT pronouns, custom_fields FROM organization_users WHERE id = $1 AND organization_id = $2',
+            [userId, organizationId]
+          );
+          const row = cf.rows[0] || {};
+          const custom = (row.custom_fields && typeof row.custom_fields === 'object') ? row.custom_fields : {};
+          const extProps: Record<string, unknown> = {};
+          if (row.pronouns) extProps['pronouns'] = row.pronouns;
+          if (custom.certifications) extProps['certifications'] = custom.certifications;
+          const designation = custom.professional_designation ?? custom.professionalDesignations ?? custom.professional_designations;
+          if (designation) extProps['professionalDesignations'] = designation;
+          // Spread any remaining custom_fields keys (excluding the ones already mapped).
+          for (const [k, v] of Object.entries(custom)) {
+            if (v == null || v === '') continue;
+            if (['certifications', 'professional_designation', 'professionalDesignations', 'professional_designations'].includes(k)) continue;
+            extProps[k] = v;
+          }
+          if (Object.keys(extProps).length > 0) {
+            await microsoftGraphService.upsertUserOpenExtension(linkedMs365Id, extProps);
+          }
+        } catch (extErr) {
+          logger.warn('Failed to push custom fields to M365 open extension', { userId, error: (extErr as Error).message });
+        }
+
         // Manager: set to the target user's M365 id, or clear it.
         if (req.body.managerId !== undefined) {
           if (req.body.managerId) {
