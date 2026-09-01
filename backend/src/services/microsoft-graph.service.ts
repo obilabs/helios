@@ -519,6 +519,21 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * Update a group's editable metadata (displayName / description / mailNickname).
+   * PATCH /groups/{id} returns 204 No Content.
+   */
+  async updateGroup(
+    groupId: string,
+    updates: { displayName?: string; description?: string; mailNickname?: string },
+  ): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+
+    await this.graphClient.api(`/groups/${groupId}`).patch(updates);
+  }
+
+  /**
    * Delete a group
    */
   async deleteGroup(groupId: string): Promise<void> {

@@ -445,8 +445,13 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
       recordedAt: new Date().toISOString(),
       request: {
         method,
-        host: entry.host,
-        path: entry.path,
+        // Sanitize host + path too — write paths embed real object GUIDs
+        // (e.g. /groups/{id}/members/{userId}/$ref), which would otherwise leak
+        // real tenant ids into committed fixtures. Sanitize path FIRST so the
+        // URL's primary id aliases to ...01, consistently with the response body.
+        // deriveName()/recordNames above already keyed off the RAW path.
+        host: s(entry.host) as string,
+        path: s(entry.path) as string,
         query: entry.query
           ? (s(entry.query) as Record<string, unknown>)
           : null,

@@ -1673,6 +1673,14 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
       externalAdminValue = newRole === 'admin' ? isExternalAdmin : false;
     }
 
+    // Manager: the UI sends `managerId`; some callers send `reportingManagerId`.
+    // Accept either, and only write the column when one was actually provided —
+    // a partial update that omits it must NOT wipe the existing manager. (The
+    // historical bug bound the always-undefined `reportingManagerId` to a
+    // non-COALESCE assignment, so every save from the UI nulled the manager.)
+    const managerProvided = req.body.managerId !== undefined || reportingManagerId !== undefined;
+    const managerIdValue = (req.body.managerId !== undefined ? req.body.managerId : reportingManagerId) || null;
+
     // Update user
     const result = await db.query(
       `UPDATE organization_users SET
@@ -1685,7 +1693,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         department = COALESCE($7, department),
         organizational_unit = COALESCE($8, organizational_unit),
         location = COALESCE($9, location),
-        reporting_manager_id = $10,
+        reporting_manager_id = CASE WHEN $32 THEN $10 ELSE reporting_manager_id END,
         employee_id = COALESCE($11, employee_id),
         employee_type = COALESCE($12, employee_type),
         cost_center = COALESCE($13, cost_center),
@@ -1718,7 +1726,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         department,
         organizationalUnit,
         location,
-        reportingManagerId,
+        managerIdValue,
         employeeId,
         employeeType,
         costCenter,
@@ -1739,7 +1747,8 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         avatarUrl,
         externalAdminValue,
         userId,
-        organizationId
+        organizationId,
+        managerProvided
       ]
     );
 
