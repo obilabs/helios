@@ -220,9 +220,11 @@ async function createMicrosoftGroup(data: CreateMicrosoftGroupData): Promise<any
   });
   const result = await response.json();
   if (!response.ok || !result.success) {
-    // Surfaces the capability-guard message (distribution/dynamic/role-assignable
-    // /"Microsoft 365 not configured").
-    throw new Error(result.error || 'Failed to create Microsoft 365 group');
+    // The /microsoft routes return error as { code, message } (errorResponse),
+    // while google routes return a plain string — handle both. This surfaces the
+    // capability-guard message (distribution/dynamic/role-assignable /"Microsoft
+    // 365 not configured") instead of "[object Object]".
+    throw new Error(result.error?.message || result.error || 'Failed to create Microsoft 365 group');
   }
   return result.data;
 }

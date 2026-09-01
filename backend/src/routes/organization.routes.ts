@@ -1517,6 +1517,8 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     // the Helios user already exists, so a Graph failure only records an error.
     let microsoft365UserId: string | null = null;
     let microsoftCreationError: string | null = null;
+    let microsoftLicenseAssigned = false;
+    let microsoftLicenseError: string | null = null;
 
     if (createInMicrosoft) {
       try {
@@ -1583,10 +1585,24 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
                 );
                 const skuId = lic.rows[0]?.sku_id;
                 if (skuId) {
+                  // Graph rejects assignLicense for a user with no usageLocation —
+                  // set it from the tenant country first (best-effort).
+                  try {
+                    const country = await microsoftGraphService.getTenantCountry();
+                    if (country) {
+                      await microsoftGraphService.updateUser(microsoft365UserId, { usageLocation: country } as any);
+                    }
+                  } catch (locErr) {
+                    logger.warn('Could not set usageLocation before license assignment', { error: (locErr as Error).message });
+                  }
                   await microsoftGraphService.assignLicense(microsoft365UserId, [skuId]);
+                  microsoftLicenseAssigned = true;
+                } else {
+                  microsoftLicenseError = 'Selected license not found for this tenant';
                 }
               } catch (licErr) {
-                logger.warn('M365 user created but license assignment failed', { error: (licErr as Error).message });
+                microsoftLicenseError = (licErr as Error).message;
+                logger.warn('M365 user created but license assignment failed', { error: microsoftLicenseError });
               }
             }
             logger.info('User created in Microsoft 365 and linked to Helios', { userId: newUser.id, microsoft365Id: microsoft365UserId, upn });
@@ -1639,7 +1655,10 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
             requested: true,
             success: !!microsoft365UserId,
             userId: microsoft365UserId,
-            error: microsoftCreationError
+            error: microsoftCreationError,
+            licenseRequested: !!licenseId,
+            licenseAssigned: microsoftLicenseAssigned,
+            licenseError: microsoftLicenseError
           } : null
         }
       }
