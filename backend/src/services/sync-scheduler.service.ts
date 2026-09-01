@@ -231,8 +231,9 @@ export class SyncSchedulerService {
             given_name, family_name, full_name,
             is_admin, is_suspended, org_unit_path,
             creation_time, last_login_time, raw_data,
+            is_enrolled_2sv, is_enforced_2sv,
             last_sync_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
         `, [
           organizationId,
           user.id,
@@ -245,7 +246,11 @@ export class SyncSchedulerService {
           user.orgUnitPath || '/',
           user.creationTime || null,
           user.lastLoginTime || null,
-          JSON.stringify(user)
+          JSON.stringify(user),
+          // 2SV status is already fetched (getUsers uses projection:'full'); persist
+          // it so the primary sync no longer resets 2FA-adoption to 0 every run.
+          (user as any).isEnrolledIn2Sv || false,
+          (user as any).isEnforcedIn2Sv || false
         ]);
 
         // Create or update user in organization_users table
