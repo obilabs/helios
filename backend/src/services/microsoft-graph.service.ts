@@ -378,6 +378,37 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * Upsert a user's custom properties into a stable OPEN EXTENSION. Graph has no
+   * native fields for pronouns / certifications / professional designations, so
+   * Helios stores them under a reverse-DNS open extension. POST creates it; if it
+   * already exists (409) fall back to PATCH the same extension.
+   */
+  async upsertUserOpenExtension(
+    userId: string,
+    props: Record<string, unknown>,
+    extensionName = 'com.obilabs.helios',
+  ): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    try {
+      await this.graphClient.api(`/users/${userId}/extensions`).post({
+        '@odata.type': 'microsoft.graph.openTypeExtension',
+        extensionName,
+        ...props,
+      });
+    } catch (err: any) {
+      const status = err?.statusCode ?? err?.status;
+      if (status === 409 || /exist/i.test(err?.message || '')) {
+        // Already present — PATCH the existing extension (no @odata.type needed).
+        await this.graphClient.api(`/users/${userId}/extensions/${extensionName}`).patch({ ...props });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  /**
    * Disable a user account
    */
   async disableUser(userId: string): Promise<void> {
