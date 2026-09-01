@@ -131,7 +131,7 @@ export const getWidgetData = (
 
   if (widgetId === 'google-licenses') {
     const licenses = stats?.google?.licenses;
-    if (!licenses || licenses.total === 0) {
+    if (!licenses || !licenses.total) {
       return {
         ...baseData,
         value: 'N/A',
@@ -146,7 +146,7 @@ export const getWidgetData = (
       value: `${percentUsed}%`,
       label: `${licenses.used} / ${licenses.total} licenses`,
       footer: licenses.reportDate ? `As of ${new Date(licenses.reportDate).toLocaleDateString()}` : undefined,
-      state: percentUsed > 90 ? 'warning' : percentUsed > 100 ? 'error' : 'default',
+      state: percentUsed > 100 ? 'error' : percentUsed >= 90 ? 'warning' : 'default',
     };
   }
 
@@ -194,7 +194,7 @@ export const getWidgetData = (
 
   if (widgetId === 'microsoft-licenses') {
     const licenses = stats?.microsoft?.licenses;
-    if (!licenses || licenses.total === 0) {
+    if (!licenses || !licenses.total) {
       return {
         ...baseData,
         value: 'N/A',
@@ -209,7 +209,7 @@ export const getWidgetData = (
       value: `${percentUsed}%`,
       label: `${licenses.used} / ${licenses.total} licenses`,
       footer: licenses.reportDate ? `As of ${new Date(licenses.reportDate).toLocaleDateString()}` : undefined,
-      state: percentUsed > 90 ? 'warning' : percentUsed > 100 ? 'error' : 'default',
+      state: percentUsed > 100 ? 'error' : percentUsed >= 90 ? 'warning' : 'default',
     };
   }
 
