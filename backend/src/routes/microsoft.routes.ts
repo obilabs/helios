@@ -883,12 +883,18 @@ router.post('/migration/provision', requireAdmin, async (req: Request, res: Resp
 });
 
 /**
- * GET /microsoft/migration/status[?days=N]
+ * GET /microsoft/migration/status[?days=N][&maxPages=N]
  * Read-only migration progress from Google's `data_migration` audit stream
  * (Reports API). Google's cross-cloud transfer is console-triggered — there is no
  * start API — so this surfaces the transfer's progress (setup + per-object events
  * + failures) inside Helios. Uses the admin.reports.audit.readonly scope Helios
  * already holds. Window defaults to 7 days (1–60).
+ *
+ * The service pages through the whole window so counts reflect the TRUE totals
+ * (not a single 1000-event page), bounded by `maxPages` (default 30, 1–100) to
+ * cap quota/latency; when the cap is hit `summary.truncated` is set. The response
+ * also carries per-item `failures` detail and a per-user/per-execution `byTarget`
+ * breakdown.
  */
 router.get('/migration/status', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -900,7 +906,11 @@ router.get('/migration/status', requireAdmin, async (req: Request, res: Response
     const days = Math.min(Math.max(parseInt(String(req.query.days ?? '7'), 10) || 7, 1), 60);
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);
-    const result = await googleWorkspaceService.fetchDataMigrationActivity(organizationId, { startTime, endTime });
+    // Optional ops override for very large migrations; service clamps to 1–100.
+    const maxPages = req.query.maxPages !== undefined
+      ? parseInt(String(req.query.maxPages), 10) || undefined
+      : undefined;
+    const result = await googleWorkspaceService.fetchDataMigrationActivity(organizationId, { startTime, endTime, maxPages });
     successResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to fetch migration status', { error: error.message });
