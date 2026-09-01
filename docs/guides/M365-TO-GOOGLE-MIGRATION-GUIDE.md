@@ -228,8 +228,13 @@ The transfer's live progress lives in Google — check it either place:
   (Success/Failed/Skipped), and item counts.
 - **In Helios — the Migration page** (Admin → Migration): its "Transfer progress"
   section reads the same audit stream via `GET /microsoft/migration/status` and
-  shows the running counts (e.g. `CREATE_GMAIL_MESSAGE`, `CREATE_CALENDAR_EVENT`)
-  and any failures, so you can watch the transfer without leaving Helios.
+  shows the running counts (e.g. `CREATE_GMAIL_MESSAGE`, `CREATE_CALENDAR_EVENT`),
+  a **per-user breakdown** (objects migrated and failures per destination), and
+  **per-item failure detail** (source → target + reason) so you can watch the
+  transfer — and see *what* failed — without leaving Helios. The endpoint pages
+  through the whole audit window so the counts are true totals rather than a
+  single 1000-event page; for a very large migration it caps at `maxPages`
+  (default 30, override with `?maxPages=N`) and flags the result `truncated`.
 - **Programmatically:** the Admin
   SDK Reports API, `Activities.list(applicationName=data_migration)`, using the
   `admin.reports.audit.readonly` scope Helios already holds. It carries setup
