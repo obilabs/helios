@@ -68,7 +68,7 @@ import { EmailEngagementWidget } from './components/widgets/EmailEngagementWidge
 import { LoginMapWidget } from './components/widgets/LoginMapWidget'
 import { getWidgetData } from './utils/widget-data'
 import { getEnabledWidgets, type WidgetId } from './config/widgets'
-import { UserPlus, Upload, Download, RefreshCw, AlertCircle, Info, Edit3, Bell, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon, ShieldCheck, Zap, BarChart3 } from 'lucide-react'
+import { UserPlus, Upload, Download, RefreshCw, AlertCircle, Info, Edit3, Bell, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon, ShieldCheck, Zap, BarChart3, Menu, X } from 'lucide-react'
 
 // Loading fallback for lazy-loaded components
 const PageLoader = () => (
@@ -213,6 +213,10 @@ function AppContent() {
   const [_syncLoading, setSyncLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Mobile/tablet off-canvas navigation drawer (used at <=768px)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
 
   // Check if we're in popup mode (for console)
   const urlParams = new URLSearchParams(location.search);
@@ -414,6 +418,30 @@ function AppContent() {
   }, [step, loginOrgName]);
 
   // No need to save currentPage to localStorage - React Router handles URL state
+
+  // Close the mobile navigation drawer whenever the route changes. This covers
+  // every navigation path (nav items, user menu, view switch, quick actions)
+  // without threading a close callback through each handler.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Material-style drawer behavior: while the drawer is open, Escape closes it,
+  // focus moves into the drawer (its close button), and on close focus returns
+  // to the hamburger that opened it. Keeps the overlay usable via keyboard and
+  // screen readers.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    drawerCloseRef.current?.focus();
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      hamburgerRef.current?.focus();
+    };
+  }, [mobileNavOpen]);
 
   // Track previous view to detect actual view changes (not initial render)
   const prevViewRef = useRef<string | null>(null);
@@ -903,6 +931,16 @@ function AppContent() {
     <div className="app">
       <header className="client-header">
         <div className="header-left">
+          <button
+            ref={hamburgerRef}
+            className="mobile-nav-toggle"
+            onClick={() => setMobileNavOpen((open) => !open)}
+            aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileNavOpen}
+            aria-controls="primary-navigation"
+          >
+            {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
           <a
             href={config?.logoClickUrl || (currentUser?.isAdmin ? '/admin/dashboard' : '/user/dashboard')}
             className="org-branding-link"
@@ -1074,7 +1112,10 @@ function AppContent() {
       </header>
 
       <div className="client-layout">
-        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <aside
+          id="primary-navigation"
+          className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}
+        >
           <div className="sidebar-header">
             <button
               className="sidebar-toggle"
@@ -1082,6 +1123,14 @@ function AppContent() {
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? '→' : '←'}
+            </button>
+            <button
+              ref={drawerCloseRef}
+              className="mobile-nav-close"
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Close navigation menu"
+            >
+              <X size={18} />
             </button>
           </div>
           {/* View-aware navigation - show admin or user navigation based on current view */}
@@ -1105,6 +1154,15 @@ function AppContent() {
             />
           )}
         </aside>
+
+        {/* Dimmed backdrop behind the open drawer (mobile/tablet only) */}
+        {mobileNavOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
         <main className="client-main">
           {currentPage === 'dashboard' && currentView === 'admin' && (
