@@ -162,3 +162,27 @@ Then each row shows a "Portal access" indicator (enabled/disabled)
 And local users show enabled
 And staff without a grant show disabled
 ```
+
+---
+
+## SPEC-PLP-008: Per-group grant
+
+**Requirement:** An admin can grant portal access to the members of a group, and
+guests/contacts in that group are never granted.
+
+### Scenario: Static bulk grant by group
+```gherkin
+Given a group "Sales" whose members are 2 staff, 1 guest, and 1 contact
+When an admin chooses "Enable portal access for everyone in Sales"
+Then portal_access_enabled becomes true for the 2 staff members
+And it stays false for the guest and the contact
+And each change is written to the audit log
+```
+
+### Scenario: Standing rule grant requires dynamic groups
+```gherkin
+Given dynamic/rule-based group membership is not yet functional
+When an admin configures a standing "members of Staff get portal access" rule
+Then the system applies it as a one-time static grant to current members
+And surfaces that live auto-grant is unavailable until dynamic groups ship
+```
