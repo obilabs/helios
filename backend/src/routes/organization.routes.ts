@@ -1513,11 +1513,92 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       }
     }
 
-    // TODO: Microsoft 365 user creation
-    // if (createInMicrosoft) { /* Create user in Microsoft 365 */ }
+    // Microsoft 365 user creation (+ optional license). Best-effort like Google:
+    // the Helios user already exists, so a Graph failure only records an error.
+    let microsoft365UserId: string | null = null;
+    let microsoftCreationError: string | null = null;
 
-    // TODO: License assignment
-    // if (licenseId) { /* Assign license to user */ }
+    if (createInMicrosoft) {
+      try {
+        const initialized = await microsoftGraphService.initialize(organizationId);
+        if (!initialized) {
+          microsoftCreationError = 'Microsoft 365 not configured';
+        } else {
+          const localPart = email.split('@')[0];
+          const emailDomain = (email.split('@')[1] || '').toLowerCase();
+          // UPN must be on a VERIFIED tenant domain: use the email if its domain
+          // is verified, else the local part on the default verified domain.
+          let upn = email.toLowerCase();
+          try {
+            const domains = await microsoftGraphService.getVerifiedDomains();
+            const verifiedNames = domains.filter(d => d.isVerified).map(d => d.name.toLowerCase());
+            if (!verifiedNames.includes(emailDomain)) {
+              const def = domains.find(d => d.isDefault) || domains[0];
+              if (def) upn = `${localPart}@${def.name}`;
+            }
+          } catch (dErr) {
+            logger.warn('Could not resolve verified domains for M365 UPN; using email as UPN', { error: (dErr as Error).message });
+          }
+
+          const tempPassword = crypto.randomBytes(16).toString('base64').slice(0, 16) + 'Aa1!';
+          const created: any = await microsoftGraphService.createUser({
+            displayName: `${firstName} ${lastName}`.trim(),
+            mailNickname: localPart,
+            userPrincipalName: upn,
+            password: tempPassword,
+            accountEnabled: true,
+            jobTitle: jobTitle || undefined,
+            department: department || undefined,
+          });
+          microsoft365UserId = created?.id || null;
+
+          if (microsoft365UserId) {
+            await db.query(
+              `UPDATE organization_users
+               SET microsoft_365_id = $1, microsoft_365_upn = $2,
+                   microsoft_365_sync_status = 'synced', microsoft_365_last_sync = NOW()
+               WHERE id = $3`,
+              [microsoft365UserId, upn, newUser.id]
+            );
+            // Mirror into ms_synced_users so group/license routes (which resolve
+            // ms_synced_users.id -> ms_id) can act on the new user before the next sync.
+            try {
+              await db.query(
+                `INSERT INTO ms_synced_users (organization_id, ms_id, upn, display_name, email, is_account_enabled, last_sync_at)
+                 VALUES ($1,$2,$3,$4,$5,true,NOW())
+                 ON CONFLICT (organization_id, ms_id) DO UPDATE SET
+                   upn = EXCLUDED.upn, display_name = EXCLUDED.display_name, email = EXCLUDED.email, last_sync_at = NOW()`,
+                [organizationId, microsoft365UserId, upn, `${firstName} ${lastName}`.trim(), email.toLowerCase()]
+              );
+            } catch (mirrErr) {
+              logger.warn('M365 user created but ms_synced_users mirror failed', { error: (mirrErr as Error).message });
+            }
+
+            // Optional license assignment (licenseId may be an ms_licenses.id or a raw sku_id).
+            if (licenseId) {
+              try {
+                const lic = await db.query(
+                  'SELECT sku_id, available_units FROM ms_licenses WHERE organization_id = $1 AND (id::text = $2 OR sku_id = $2)',
+                  [organizationId, String(licenseId)]
+                );
+                const skuId = lic.rows[0]?.sku_id;
+                if (skuId) {
+                  await microsoftGraphService.assignLicense(microsoft365UserId, [skuId]);
+                }
+              } catch (licErr) {
+                logger.warn('M365 user created but license assignment failed', { error: (licErr as Error).message });
+              }
+            }
+            logger.info('User created in Microsoft 365 and linked to Helios', { userId: newUser.id, microsoft365Id: microsoft365UserId, upn });
+          } else {
+            microsoftCreationError = 'Microsoft 365 create returned no id';
+          }
+        }
+      } catch (msErr: any) {
+        microsoftCreationError = msErr?.message || 'Unknown error creating Microsoft 365 user';
+        logger.warn('Failed to create user in Microsoft 365', { userId: newUser.id, error: microsoftCreationError });
+      }
+    }
 
     // Build response message based on what was created
     let message = 'User created successfully';
@@ -1525,6 +1606,11 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       message = 'User created in Helios and Google Workspace';
     } else if (createInGoogle && googleCreationError) {
       message = 'User created in Helios. Google Workspace creation failed: ' + googleCreationError;
+    }
+    if (createInMicrosoft && microsoft365UserId) {
+      message += (message.includes('Google Workspace') ? ' and Microsoft 365' : ' in Helios and Microsoft 365');
+    } else if (createInMicrosoft && microsoftCreationError) {
+      message += '. Microsoft 365 creation failed: ' + microsoftCreationError;
     }
 
     res.status(201).json({
@@ -1551,8 +1637,9 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
           } : null,
           microsoft: createInMicrosoft ? {
             requested: true,
-            success: false,
-            error: 'Microsoft 365 user creation not yet implemented'
+            success: !!microsoft365UserId,
+            userId: microsoft365UserId,
+            error: microsoftCreationError
           } : null
         }
       }
