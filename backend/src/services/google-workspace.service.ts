@@ -56,6 +56,38 @@ export interface ConnectionTestResult {
   error?: string;
 }
 
+/**
+ * One failed data-migration item (a CRAWL_FAILURE event), surfaced so an admin can
+ * see WHAT failed — not just the failure count.
+ */
+export interface MigrationFailureDetail {
+  timestamp?: string;
+  executionId?: string;
+  user?: string;
+  source?: string;
+  target?: string;
+  reason?: string;
+  params: Record<string, any>;
+}
+
+/**
+ * Per-migrated-user progress rollup so the UI can show status per user rather than
+ * only an aggregate. The DMS audit tags per-object events with the MAILBOX OWNER
+ * (SOURCE_NAME, or the email embedded in the `users/<email>/…` resource paths) —
+ * NOT a stable per-user id — so we derive the user email as the group key. (Grouping
+ * by TARGET_IDENTIFIER would explode: it is `users/<email>/messages/<id>`, unique
+ * per message.)
+ */
+export interface MigrationUserProgress {
+  user: string;
+  executionId: string | null;
+  total: number;
+  failures: number;
+  byName: Record<string, number>;
+  firstActivity?: string;
+  lastActivity?: string;
+}
+
 export class GoogleWorkspaceService {
   /**
    * Test connection with domain-wide delegation
@@ -3187,84 +3219,213 @@ export class GoogleWorkspaceService {
    * it emits setup events (CREATE_CONNECTION, START_MIGRATION) and per-object
    * MIGRATION events (CREATE_GMAIL_MESSAGE, CREATE_CALENDAR_EVENT, CREATE_CONTACT,
    * CREATE_FILE, plus CRAWL_FAILURE) with EXECUTION_ID/SOURCE/TARGET/status.
-   * Uses the admin.reports.audit.readonly scope Helios already holds. Returns the
-   * events plus a light summary (counts by event name + failure count) for a
-   * status view.
+   * Uses the admin.reports.audit.readonly scope Helios already holds.
+   *
+   * ACCURATE TOTALS: the Reports API caps a single page at `maxResults` (≤1000),
+   * so a large migration (e.g. 6,198 mail objects) would only surface the most
+   * recent page. We PAGE THROUGH `nextPageToken` and aggregate counts across every
+   * page so the summary reflects the true totals, bounded by `maxPages` to keep
+   * quota/latency in check. If the cap is hit, `summary.truncated` is set and the
+   * counts become a lower bound (logged, never silently dropped).
+   *
+   * Returns, alongside the light summary (counts by event name + failure count):
+   *   - `events`   — a bounded, most-recent SAMPLE (raw event dropped to slim the
+   *                  payload); the full stream is aggregated, not returned.
+   *   - `failures` — per-item detail for every CRAWL_FAILURE (user/source/target/
+   *                  reason) so an admin can see WHAT failed, not just how many.
+   *   - `byUser`   — a per-migrated-user breakdown (grouped by the derived mailbox
+   *                  owner email) with counts and failure totals, so the UI can
+   *                  show status per user.
    */
   async fetchDataMigrationActivity(
     organizationId: string,
-    options: { startTime?: Date; endTime?: Date; maxResults?: number } = {}
+    options: { startTime?: Date; endTime?: Date; maxResults?: number; maxPages?: number } = {}
   ): Promise<{
     success: boolean;
     events: any[];
-    summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string };
+    failures: MigrationFailureDetail[];
+    byUser: MigrationUserProgress[];
+    summary?: {
+      total: number;
+      failures: number;
+      byName: Record<string, number>;
+      windowStart: string;
+      windowEnd: string;
+      pagesFetched: number;
+      truncated: boolean;
+    };
     error?: string;
   }> {
     try {
       const credentials = await this.getCredentials(organizationId);
       if (!credentials) {
-        return { success: false, events: [], error: 'No credentials found' };
+        return { success: false, events: [], failures: [], byUser: [], error: 'No credentials found' };
       }
       const adminEmail = await this.getAdminEmail(organizationId);
       if (!adminEmail) {
-        return { success: false, events: [], error: 'No admin email configured' };
+        return { success: false, events: [], failures: [], byUser: [], error: 'No admin email configured' };
       }
 
       // Default to the last 7 days (migrations run over hours/days).
       const endTime = options.endTime || new Date();
       const startTime = options.startTime || new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const maxResults = options.maxResults || 1000;
+      // Reports API hard-caps a page at 1000; page count is what bounds cost.
+      const perPage = Math.min(options.maxResults || 1000, 1000);
+      const maxPages = Math.min(Math.max(options.maxPages || 30, 1), 100);
+
+      // Retention bounds — aggregate across every page, but never hold the full
+      // stream in memory or ship it to the client.
+      const SAMPLE_LIMIT = 100; // most-recent events kept for the activity feed
+      const FAILURE_LIMIT = 500; // failed-item detail kept for display
+      const GROUP_LIMIT = 2000; // distinct target/execution groups kept
 
       const reportsClient = this.createReportsClient(credentials, adminEmail);
-      const response = await reportsClient.activities.list({
-        userKey: 'all',
-        applicationName: 'data_migration',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        maxResults,
-      });
-
-      const events = (response.data.items || []).map((item: any) => {
-        const ev = (item.events && item.events[0]) || {};
-        const params: Record<string, any> = {};
-        for (const p of ev.parameters || []) {
-          params[p.name] = p.value ?? p.boolValue ?? p.intValue ?? (p.multiValue ? p.multiValue.join(',') : undefined);
-        }
-        return {
-          timestamp: item.id?.time,
-          actor: item.actor?.email,
-          name: ev.name,
-          type: ev.type,
-          executionId: params.EXECUTION_ID,
-          source: params.SOURCE_IDENTIFIER || params.SOURCE_URI,
-          target: params.TARGET_IDENTIFIER || params.TARGET_URI,
-          status: params.EVENT_STATUS || params.STATUS,
-          params,
-          rawEvent: item,
-        };
-      });
 
       const byName: Record<string, number> = {};
-      let failures = 0;
-      for (const e of events) {
-        if (e.name) byName[e.name] = (byName[e.name] || 0) + 1;
-        if (e.name === 'CRAWL_FAILURE') failures++;
+      const byUserMap = new Map<string, MigrationUserProgress>();
+      const sample: any[] = [];
+      const failures: MigrationFailureDetail[] = [];
+      let total = 0;
+      let failureCount = 0;
+      let pagesFetched = 0;
+      let truncated = false;
+      let groupsTruncated = false;
+      let pageToken: string | undefined = undefined;
+
+      do {
+        const response = await reportsClient.activities.list({
+          userKey: 'all',
+          applicationName: 'data_migration',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          maxResults: perPage,
+          pageToken,
+        });
+
+        const items = response.data.items || [];
+        for (const item of items) {
+          const ev = (item.events && item.events[0]) || {};
+          const params: Record<string, any> = {};
+          for (const p of ev.parameters || []) {
+            params[p.name] = p.value ?? p.boolValue ?? p.intValue ?? (p.multiValue ? p.multiValue.join(',') : undefined);
+          }
+          const timestamp: string | undefined = item.id?.time;
+          const name: string | undefined = ev.name;
+          const source = params.SOURCE_IDENTIFIER || params.SOURCE_URI;
+          const target = params.TARGET_IDENTIFIER || params.TARGET_URI;
+          const status = params.EVENT_STATUS || params.STATUS;
+          const executionId = params.EXECUTION_ID;
+          const isFailure = name === 'CRAWL_FAILURE';
+          // The mailbox owner email — the natural per-user grouping key.
+          const user = this.deriveMigrationUser(params);
+
+          // ---- accurate totals: count every event across every page ----
+          total++;
+          if (name) byName[name] = (byName[name] || 0) + 1;
+          if (isFailure) failureCount++;
+
+          // ---- bounded, most-recent activity sample (rawEvent dropped) ----
+          if (sample.length < SAMPLE_LIMIT) {
+            sample.push({ timestamp, actor: item.actor?.email, name, type: ev.type, executionId, source, target, status, params });
+          }
+
+          // ---- per-item failure detail ----
+          if (isFailure && failures.length < FAILURE_LIMIT) {
+            failures.push({
+              timestamp,
+              executionId,
+              user,
+              source,
+              target,
+              // DMS failures carry the reason in MIGRATION_ERROR_TITLE/_CODE; other
+              // event families use different names. Fall through the likely ones and
+              // keep the raw params so nothing is lost.
+              reason:
+                params.MIGRATION_ERROR_TITLE ||
+                params.MIGRATION_ERROR_CODE ||
+                params.FAILURE_REASON ||
+                params.ERROR_MESSAGE ||
+                params.MESSAGE ||
+                params.STATUS_DETAIL ||
+                params.REASON ||
+                status ||
+                undefined,
+              params,
+            });
+          }
+
+          // ---- per-migrated-user breakdown (keyed by mailbox owner email) ----
+          if (user) {
+            let group = byUserMap.get(user);
+            if (!group) {
+              if (byUserMap.size >= GROUP_LIMIT) {
+                groupsTruncated = true;
+              } else {
+                group = { user, executionId: executionId || null, total: 0, failures: 0, byName: {}, firstActivity: timestamp, lastActivity: timestamp };
+                byUserMap.set(user, group);
+              }
+            }
+            if (group) {
+              group.total++;
+              if (isFailure) group.failures++;
+              if (name) group.byName[name] = (group.byName[name] || 0) + 1;
+              if (executionId && !group.executionId) group.executionId = executionId;
+              // Reports API returns newest-first, so first-seen is the latest.
+              if (timestamp) {
+                if (!group.lastActivity || timestamp > group.lastActivity) group.lastActivity = timestamp;
+                if (!group.firstActivity || timestamp < group.firstActivity) group.firstActivity = timestamp;
+              }
+            }
+          }
+        }
+
+        pagesFetched++;
+        pageToken = response.data.nextPageToken || undefined;
+        if (pageToken && pagesFetched >= maxPages) {
+          truncated = true;
+          break;
+        }
+      } while (pageToken);
+
+      if (truncated) {
+        logger.warn('Data migration activity capped at maxPages — counts are a lower bound', {
+          organizationId,
+          pagesFetched,
+          maxPages,
+          countedEvents: total,
+        });
       }
+      if (groupsTruncated) {
+        logger.warn('Data migration per-user breakdown capped at GROUP_LIMIT groups', {
+          organizationId,
+          groupLimit: GROUP_LIMIT,
+        });
+      }
+
+      const byUser = Array.from(byUserMap.values()).sort((a, b) => b.total - a.total);
 
       logger.info('Fetched data migration activity from Google Workspace', {
         organizationId,
-        eventCount: events.length,
+        eventCount: total,
+        pagesFetched,
+        failures: failureCount,
+        users: byUser.length,
+        truncated,
       });
 
       return {
         success: true,
-        events,
+        events: sample,
+        failures,
+        byUser,
         summary: {
-          total: events.length,
-          failures,
+          total,
+          failures: failureCount,
           byName,
           windowStart: startTime.toISOString(),
           windowEnd: endTime.toISOString(),
+          pagesFetched,
+          truncated,
         },
       };
     } catch (error: any) {
@@ -3272,8 +3433,33 @@ export class GoogleWorkspaceService {
         organizationId,
         error: error.message,
       });
-      return { success: false, events: [], error: error.message };
+      return { success: false, events: [], failures: [], byUser: [], error: error.message };
     }
+  }
+
+  /**
+   * Derive the migrated user's email (the mailbox owner) from a `data_migration`
+   * event's parameters, for per-user grouping. DMS tags per-object events with
+   * SOURCE_NAME (already the email) and embeds the email in the resource-path
+   * identifiers (`users/<email>/messages/<id>`, `mailboxes/<email>/…`,
+   * `drives/<email>`). Message-ID URIs (SOURCE_URI/TARGET_URI) also contain an `@`
+   * but are NOT user emails, so they are deliberately excluded. Setup events
+   * (CREATE_CONNECTION, etc.) resolve to no user and are left out of the per-user
+   * rollup (they are still counted in the global summary).
+   */
+  private deriveMigrationUser(params: Record<string, any>): string | undefined {
+    const name = params.SOURCE_NAME;
+    if (typeof name === 'string' && /^[^@\s]+@[^@\s]+$/.test(name)) {
+      return name.toLowerCase();
+    }
+    const emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+    for (const path of [params.TARGET_IDENTIFIER, params.SOURCE_IDENTIFIER]) {
+      if (typeof path === 'string') {
+        const m = path.match(emailRe);
+        if (m) return m[0].toLowerCase();
+      }
+    }
+    return undefined;
   }
 
   /**
