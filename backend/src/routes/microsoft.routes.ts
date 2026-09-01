@@ -506,6 +506,184 @@ router.get('/groups/:id', async (req: Request, res: Response): Promise<void> => 
 });
 
 // =====================================================
+// GROUP WRITE ENDPOINTS (create / update / delete / membership)
+// =====================================================
+
+/**
+ * App-only Graph (Group.ReadWrite.All) can fully manage pure security groups and
+ * Unified/M365 groups. It CANNOT manage: mail-enabled security / distribution
+ * groups (need Exchange Online), dynamic-membership groups (need Entra ID P1 +
+ * membershipRule), or role-assignable groups (need RoleManagement.ReadWrite.
+ * Directory). Refuse those up front with a clear message rather than letting
+ * Graph reject them — or, worse, silently "succeed" — which is the exact
+ * silent-failure mode to avoid. Returns an error message, or null when OK.
+ */
+function unmanageableM365GroupReason(body: any): string | null {
+  const groupTypes: string[] = Array.isArray(body?.groupTypes) ? body.groupTypes : [];
+  if (groupTypes.includes('DynamicMembership')) {
+    return 'Dynamic-membership groups require Entra ID P1 and a membershipRule, and cannot be managed with the app-only Graph permissions Helios holds.';
+  }
+  if (body?.isAssignableToRole === true) {
+    return 'Role-assignable groups require RoleManagement.ReadWrite.Directory, which Helios is not consented for.';
+  }
+  if (body?.mailEnabled === true && !groupTypes.includes('Unified')) {
+    return 'Distribution lists and mail-enabled security groups require Exchange Online and cannot be managed with app-only Graph permissions.';
+  }
+  return null;
+}
+
+/** POST /microsoft/groups — create a security or Unified/M365 group. */
+router.post('/groups', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const { displayName, description, mailNickname, securityEnabled, mailEnabled } = req.body || {};
+    if (!displayName) { validationErrorResponse(res, [{ field: 'displayName', message: 'displayName is required' }]); return; }
+    const reason = unmanageableM365GroupReason(req.body);
+    if (reason) { errorResponse(res, ErrorCode.VALIDATION_ERROR, reason); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    const created: any = await microsoftGraphService.createGroup({ displayName, description, mailNickname, securityEnabled, mailEnabled });
+
+    try {
+      if (created?.id) {
+        await db.query(
+          `INSERT INTO ms_synced_groups (organization_id, ms_id, display_name, description, mail, mail_enabled, security_enabled, group_types, raw_data, member_count, last_sync_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,0,NOW())
+           ON CONFLICT (organization_id, ms_id) DO UPDATE SET
+             display_name = EXCLUDED.display_name, description = EXCLUDED.description,
+             mail = EXCLUDED.mail, mail_enabled = EXCLUDED.mail_enabled,
+             security_enabled = EXCLUDED.security_enabled, group_types = EXCLUDED.group_types,
+             raw_data = EXCLUDED.raw_data, last_sync_at = NOW()`,
+          [organizationId, created.id, created.displayName || displayName, created.description ?? description ?? null,
+            created.mail ?? null, created.mailEnabled ?? !!mailEnabled, created.securityEnabled ?? (securityEnabled ?? true),
+            JSON.stringify(created.groupTypes || []), JSON.stringify(created)]
+        );
+      }
+    } catch (mErr) { logger.warn('Group created in M365 but local mirror upsert failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, created);
+  } catch (error: any) {
+    logger.error('Failed to create Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to create group: ' + error.message);
+  }
+});
+
+/** PATCH /microsoft/groups/:id — update group metadata (displayName/description/mailNickname). */
+router.patch('/groups/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    const { displayName, description, mailNickname } = req.body || {};
+    const updates: { displayName?: string; description?: string; mailNickname?: string } = {};
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (description !== undefined) updates.description = description;
+    if (mailNickname !== undefined) updates.mailNickname = mailNickname;
+    if (Object.keys(updates).length === 0) { validationErrorResponse(res, [{ field: 'body', message: 'No updatable fields provided' }]); return; }
+
+    await microsoftGraphService.updateGroup(g.rows[0].ms_id, updates);
+    try {
+      await db.query(
+        'UPDATE ms_synced_groups SET display_name = COALESCE($3, display_name), description = COALESCE($4, description), last_sync_at = NOW() WHERE organization_id = $1 AND id = $2',
+        [organizationId, id, displayName ?? null, description ?? null]
+      );
+    } catch (mErr) { logger.warn('Group updated in M365 but local mirror update failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Group updated successfully' });
+  } catch (error: any) {
+    logger.error('Failed to update Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update group: ' + error.message);
+  }
+});
+
+/** DELETE /microsoft/groups/:id — delete a group (memberships cascade in the mirror). */
+router.delete('/groups/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.deleteGroup(g.rows[0].ms_id);
+    try {
+      await db.query('DELETE FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    } catch (mErr) { logger.warn('Group deleted in M365 but local mirror delete failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Group deleted successfully' });
+  } catch (error: any) {
+    logger.error('Failed to delete Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to delete group: ' + error.message);
+  }
+});
+
+/** POST /microsoft/groups/:id/members { userId } — add a member. */
+router.post('/groups/:id/members', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    const { userId } = req.body || {};
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    if (!userId) { validationErrorResponse(res, [{ field: 'userId', message: 'userId is required' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const u = await db.query('SELECT id, ms_id FROM ms_synced_users WHERE organization_id = $1 AND id = $2', [organizationId, userId]);
+    if (u.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'User not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.addGroupMember(g.rows[0].ms_id, u.rows[0].ms_id);
+    try {
+      await db.query(
+        'INSERT INTO ms_group_memberships (organization_id, group_id, user_id) VALUES ($1, $2, $3) ON CONFLICT (group_id, user_id) DO NOTHING',
+        [organizationId, g.rows[0].id, u.rows[0].id]
+      );
+      await db.query('UPDATE ms_synced_groups SET member_count = (SELECT COUNT(*) FROM ms_group_memberships WHERE group_id = $1) WHERE id = $1', [g.rows[0].id]);
+    } catch (mErr) { logger.warn('Member added in M365 but local mirror insert failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Member added successfully' });
+  } catch (error: any) {
+    logger.error('Failed to add Microsoft group member', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to add member: ' + error.message);
+  }
+});
+
+/** DELETE /microsoft/groups/:id/members/:userId — remove a member. */
+router.delete('/groups/:id/members/:userId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id, userId } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const u = await db.query('SELECT id, ms_id FROM ms_synced_users WHERE organization_id = $1 AND id = $2', [organizationId, userId]);
+    if (u.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'User not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.removeGroupMember(g.rows[0].ms_id, u.rows[0].ms_id);
+    try {
+      await db.query('DELETE FROM ms_group_memberships WHERE group_id = $1 AND user_id = $2', [g.rows[0].id, u.rows[0].id]);
+      await db.query('UPDATE ms_synced_groups SET member_count = (SELECT COUNT(*) FROM ms_group_memberships WHERE group_id = $1) WHERE id = $1', [g.rows[0].id]);
+    } catch (mErr) { logger.warn('Member removed in M365 but local mirror delete failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Member removed successfully' });
+  } catch (error: any) {
+    logger.error('Failed to remove Microsoft group member', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to remove member: ' + error.message);
+  }
+});
+
+// =====================================================
 // LICENSE MANAGEMENT ENDPOINTS
 // =====================================================
 
