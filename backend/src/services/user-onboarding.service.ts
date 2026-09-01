@@ -12,6 +12,7 @@ import { decodeServiceAccountKey } from './gw-credentials.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
+import { microsoftGraphService } from './microsoft-graph.service.js';
 import {
   OnboardingTemplate,
   OnboardingConfig,
@@ -131,8 +132,10 @@ class UserOnboardingService {
         welcome_email_body,
         is_active,
         is_default,
-        created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        created_by,
+        create_in_microsoft,
+        microsoft_license_sku
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING *
     `;
 
@@ -165,6 +168,8 @@ class UserOnboardingService {
       dto.isActive ?? true,
       dto.isDefault ?? false,
       createdBy || null,
+      dto.createInMicrosoft ?? false,
+      dto.microsoftLicenseSku || null,
     ];
 
     const result = await db.query(query, values);
@@ -191,6 +196,8 @@ class UserOnboardingService {
       departmentId: 'department_id',
       googleLicenseSku: 'google_license_sku',
       googleOrgUnitPath: 'google_org_unit_path',
+      createInMicrosoft: 'create_in_microsoft',
+      microsoftLicenseSku: 'microsoft_license_sku',
       defaultJobTitle: 'default_job_title',
       defaultManagerId: 'default_manager_id',
       signatureTemplateId: 'signature_template_id',
@@ -386,6 +393,44 @@ class UserOnboardingService {
         );
         result.stepsFailed.push('create_google_account');
         // Continue with other steps even if Google creation fails
+      }
+
+      // Step 3b: Create Microsoft 365 account — opt-in via the template
+      // (create_in_microsoft). Best-effort like the Google step.
+      if (config.createInMicrosoft) {
+        stepOrder++;
+        const msStart = Date.now();
+        try {
+          const msUser = await this.createMicrosoftUser(organizationId, config);
+          await this.linkMicrosoftUser(result.userId!, msUser.id, msUser.upn, organizationId, config);
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'onboard',
+            'create_microsoft_account',
+            {
+              ...logOptions,
+              userId: result.userId,
+              stepOrder,
+              durationMs: Date.now() - msStart,
+              targetResourceType: 'microsoft_user',
+              targetResourceId: msUser.id,
+              targetResourceName: config.email,
+            }
+          );
+          result.stepsCompleted.push('create_microsoft_account');
+        } catch (error: any) {
+          result.errors.push(`Failed to create Microsoft 365 account: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'onboard',
+            'create_microsoft_account',
+            error,
+            { ...logOptions, userId: result.userId, stepOrder, durationMs: Date.now() - msStart }
+          );
+          result.stepsFailed.push('create_microsoft_account');
+        }
+      } else {
+        result.stepsSkipped.push('create_microsoft_account');
       }
 
       // Step 4: Set Org Unit (if Google account was created)
@@ -629,6 +674,8 @@ class UserOnboardingService {
       googleLicenseSku: template.googleLicenseSku || undefined,
       googleOrgUnitPath: template.googleOrgUnitPath || undefined,
       googleServices: template.googleServices,
+      createInMicrosoft: template.createInMicrosoft ?? false,
+      microsoftLicenseSku: template.microsoftLicenseSku || undefined,
       groupIds: template.groupIds,
       sharedDriveAccess: template.sharedDriveAccess,
       calendarSubscriptions: template.calendarSubscriptions,
@@ -758,6 +805,87 @@ class UserOnboardingService {
       FROM organization_users WHERE id = $3
       ON CONFLICT (google_id) DO UPDATE SET last_sync_at = NOW()
     `, [googleId, email, userId]);
+  }
+
+  private async createMicrosoftUser(
+    organizationId: string,
+    config: OnboardingConfig,
+  ): Promise<{ id: string; upn: string }> {
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) {
+      throw new Error('Microsoft 365 not configured');
+    }
+
+    const localPart = config.email.split('@')[0];
+    const emailDomain = (config.email.split('@')[1] || '').toLowerCase();
+    // UPN must be on a verified tenant domain.
+    let upn = config.email.toLowerCase();
+    try {
+      const domains = await microsoftGraphService.getVerifiedDomains();
+      const verified = domains.filter(d => d.isVerified).map(d => d.name.toLowerCase());
+      if (!verified.includes(emailDomain)) {
+        const def = domains.find(d => d.isDefault) || domains[0];
+        if (def) upn = `${localPart}@${def.name}`;
+      }
+    } catch {
+      // fall back to the email as the UPN
+    }
+
+    const password = config.tempPassword || this.generateTempPassword();
+    const created: any = await microsoftGraphService.createUser({
+      displayName: `${config.firstName} ${config.lastName}`.trim(),
+      mailNickname: localPart,
+      userPrincipalName: upn,
+      password,
+      accountEnabled: true,
+      jobTitle: config.jobTitle || undefined,
+    });
+    const id = created?.id;
+    if (!id) throw new Error('Microsoft 365 create returned no id');
+
+    // Optional license — set usageLocation first (Graph requires it for assign).
+    if (config.microsoftLicenseSku) {
+      const lic = await db.query(
+        'SELECT sku_id FROM ms_licenses WHERE organization_id = $1 AND (id::text = $2 OR sku_id = $2)',
+        [organizationId, String(config.microsoftLicenseSku)]
+      );
+      const skuId = lic.rows[0]?.sku_id;
+      if (skuId) {
+        try {
+          const country = await microsoftGraphService.getTenantCountry();
+          if (country) await microsoftGraphService.updateUser(id, { usageLocation: country } as any);
+        } catch {
+          // best-effort
+        }
+        await microsoftGraphService.assignLicense(id, [skuId]);
+      }
+    }
+
+    return { id, upn };
+  }
+
+  private async linkMicrosoftUser(
+    userId: string,
+    microsoftId: string,
+    upn: string,
+    organizationId: string,
+    config: OnboardingConfig,
+  ): Promise<void> {
+    await db.query(
+      `UPDATE organization_users
+       SET microsoft_365_id = $1, microsoft_365_upn = $2,
+           microsoft_365_sync_status = 'synced', microsoft_365_last_sync = NOW()
+       WHERE id = $3`,
+      [microsoftId, upn, userId]
+    );
+    // Mirror into ms_synced_users so group/license routes can act immediately.
+    await db.query(
+      `INSERT INTO ms_synced_users (organization_id, ms_id, upn, display_name, email, is_account_enabled, last_sync_at)
+       VALUES ($1, $2, $3, $4, $5, true, NOW())
+       ON CONFLICT (organization_id, ms_id) DO UPDATE SET
+         upn = EXCLUDED.upn, display_name = EXCLUDED.display_name, email = EXCLUDED.email, last_sync_at = NOW()`,
+      [organizationId, microsoftId, upn, `${config.firstName} ${config.lastName}`.trim(), config.email.toLowerCase()]
+    );
   }
 
   private async setOrgUnit(organizationId: string, email: string, orgUnitPath: string): Promise<void> {
@@ -957,6 +1085,8 @@ Welcome to the team!`;
       googleLicenseSku: row.google_license_sku,
       googleOrgUnitPath: row.google_org_unit_path,
       googleServices: row.google_services || {},
+      createInMicrosoft: row.create_in_microsoft ?? false,
+      microsoftLicenseSku: row.microsoft_license_sku,
       groupIds: row.group_ids || [],
       sharedDriveAccess: row.shared_drive_access || [],
       calendarSubscriptions: row.calendar_subscriptions || [],
