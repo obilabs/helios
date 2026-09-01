@@ -208,26 +208,45 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         };
       }
 
-      // Microsoft: aggregate ms_licenses (real Graph prepaid/consumed seats). The
-      // configured limit overrides the provider total when set.
-      let microsoftLicenses: { used: number; total: number | null; providerTotal: number | null; reportDate: string | null } | null = null;
+      // Microsoft: each SKU is a SEPARATE license pool, so we must NOT sum across
+      // them — a huge auto-provisioned free SKU (FLOW_FREE ~10k, Power BI ~1M
+      // seats) would dilute the ratio and mask an exhausted paid SKU (the "healthy
+      // 0%" silent-failure). Default headline = the MOST-CONSTRAINED SKU by
+      // utilization, so free pools (near-0% used) can never win over a full paid
+      // pool. If the admin sets an explicit aggregate limit, honor that instead.
+      let microsoftLicenses:
+        | { used: number; total: number | null; providerTotal: number | null; reportDate: string | null; skuName?: string | null; skus?: Array<{ name: string; used: number; total: number; available: number }> }
+        | null = null;
       if (isMicrosoftConfigured) {
         try {
           const msl = await db.query(
-            `SELECT COALESCE(SUM(total_units), 0) AS total,
-                    COALESCE(SUM(consumed_units), 0) AS consumed,
-                    MAX(last_sync_at) AS last_sync
+            `SELECT sku_part_number, display_name, total_units, consumed_units, last_sync_at
              FROM ms_licenses WHERE organization_id = $1`,
             [organizationId]
           );
-          const row = msl.rows[0];
-          const providerTotal = parseInt(row.total) || 0;
-          microsoftLicenses = {
-            used: parseInt(row.consumed) || 0,
-            total: licenseLimits.microsoft ?? (providerTotal > 0 ? providerTotal : null),
-            providerTotal: providerTotal > 0 ? providerTotal : null,
-            reportDate: row.last_sync || null,
-          };
+          const skus: Array<{ name: string; used: number; total: number; available: number }> = msl.rows.map((r: any) => {
+            const total = parseInt(r.total_units) || 0;
+            const used = parseInt(r.consumed_units) || 0;
+            return { name: r.display_name || r.sku_part_number || 'Unknown SKU', total, used, available: Math.max(0, total - used) };
+          });
+          let reportDate: string | null = null;
+          for (const r of msl.rows) {
+            if (r.last_sync_at && (!reportDate || r.last_sync_at > reportDate)) reportDate = r.last_sync_at;
+          }
+          if (licenseLimits.microsoft != null) {
+            // Admin chose to track an explicit aggregate seat total.
+            const used = skus.reduce((n, s) => n + s.used, 0);
+            const providerTotal = skus.reduce((n, s) => n + s.total, 0);
+            microsoftLicenses = { used, total: licenseLimits.microsoft, providerTotal: providerTotal > 0 ? providerTotal : null, reportDate, skus };
+          } else {
+            const withTotals = skus.filter(s => s.total > 0);
+            const tightest = withTotals.length
+              ? withTotals.reduce((a, b) => (b.used / b.total > a.used / a.total ? b : a))
+              : null;
+            microsoftLicenses = tightest
+              ? { used: tightest.used, total: tightest.total, providerTotal: tightest.total, reportDate, skuName: tightest.name, skus }
+              : { used: 0, total: null, providerTotal: null, reportDate, skus };
+          }
         } catch (err) {
           logger.debug('Failed to aggregate ms_licenses for dashboard', { error: (err as Error).message });
         }
