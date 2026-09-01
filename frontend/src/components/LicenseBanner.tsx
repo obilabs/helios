@@ -15,7 +15,7 @@ import './LicenseBanner.css';
  * remembered per platform+state+total in localStorage, so a dismissed banner
  * reappears when the state escalates or the limit changes.
  */
-interface LicenseInfo { used: number; total: number | null; providerTotal?: number | null; reportDate?: string | null; }
+interface LicenseInfo { used: number; total: number | null; providerTotal?: number | null; reportDate?: string | null; skuName?: string | null; }
 interface PlatformStats { connected?: boolean; licenses?: LicenseInfo | null; }
 interface Props { google?: PlatformStats | null; microsoft?: PlatformStats | null; }
 
@@ -27,9 +27,12 @@ const NEAR_THRESHOLD = 0.8;
 function computeBanner(platform: string, label: string, lic?: LicenseInfo | null): Banner | null {
   if (!lic || lic.total == null || lic.total <= 0) return null;
   const { used, total } = lic;
-  if (used > total) return { platform, label, state: 'over', used, total };
-  if (used === total) return { platform, label, state: 'at', used, total };
-  if (used / total >= NEAR_THRESHOLD) return { platform, label, state: 'near', used, total };
+  // Name the specific SKU pool when we have one (M365 reports per-SKU), so an
+  // "at limit" message is actionable rather than a vague platform-wide number.
+  const effLabel = lic.skuName ? `${label} — ${lic.skuName}` : label;
+  if (used > total) return { platform, label: effLabel, state: 'over', used, total };
+  if (used === total) return { platform, label: effLabel, state: 'at', used, total };
+  if (used / total >= NEAR_THRESHOLD) return { platform, label: effLabel, state: 'near', used, total };
   return null;
 }
 
