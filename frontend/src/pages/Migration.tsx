@@ -41,10 +41,47 @@ interface ProvisionResult {
   wouldCreate: number;
   results: Array<{ source: string; target?: string; action: string; error?: string }>;
 }
-interface MigrationStatus {
-  summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string };
-  events?: Array<{ timestamp: string; name: string; target?: string; status?: string }>;
+interface MigrationFailure {
+  timestamp?: string;
+  executionId?: string;
+  user?: string;
+  source?: string;
+  target?: string;
+  reason?: string;
 }
+interface MigrationUserProgress {
+  user: string;
+  executionId: string | null;
+  total: number;
+  failures: number;
+  byName: Record<string, number>;
+  firstActivity?: string;
+  lastActivity?: string;
+}
+interface MigrationStatus {
+  summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string; pagesFetched?: number; truncated?: boolean };
+  events?: Array<{ timestamp: string; name: string; target?: string; status?: string }>;
+  failures?: MigrationFailure[];
+  byUser?: MigrationUserProgress[];
+}
+
+// Friendly labels for the data_migration event names Google emits per object.
+const EVENT_LABELS: Record<string, string> = {
+  CREATE_GMAIL_MESSAGE: 'Mail',
+  CREATE_CALENDAR_EVENT: 'Calendar',
+  CREATE_CONTACT: 'Contacts',
+  CREATE_FILE: 'Drive',
+  CREATE_TASK: 'Tasks',
+};
+
+// Compact per-object-type summary for one target, e.g. "Mail 1,203 · Calendar 45".
+const dataSummary = (byName: Record<string, number>): string => {
+  const parts = Object.entries(byName)
+    .filter(([name]) => EVENT_LABELS[name])
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, n]) => `${EVENT_LABELS[name]} ${n.toLocaleString()}`);
+  return parts.join(' · ') || '—';
+};
 
 const CONSOLE_LINKS = [
   { label: 'Google Data Migration', url: 'https://admin.google.com/ac/dm' },
@@ -245,14 +282,77 @@ export default function Migration() {
         {status?.summary && status.summary.total > 0 ? (
           <>
             <div className="mig-status-row">
-              <span><CheckCircle2 size={14} /> {status.summary.total} events</span>
-              {status.summary.failures > 0 && <span className="mig-row-error"><AlertTriangle size={14} /> {status.summary.failures} failures</span>}
+              <span><CheckCircle2 size={14} /> {status.summary.total.toLocaleString()} events</span>
+              {status.summary.failures > 0 && <span className="mig-row-error"><AlertTriangle size={14} /> {status.summary.failures.toLocaleString()} failures</span>}
             </div>
+            {status.summary.truncated && (
+              <p className="mig-sub mig-truncated">
+                <AlertTriangle size={13} /> Counts are a lower bound — the audit window returned more pages than were read
+                {status.summary.pagesFetched ? ` (${status.summary.pagesFetched} pages)` : ''}. Narrow the window or raise <code>maxPages</code> for an exact total.
+              </p>
+            )}
             <ul className="mig-status-breakdown">
               {Object.entries(status.summary.byName).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => (
-                <li key={name}><code>{name}</code>: {n}</li>
+                <li key={name}><code>{name}</code>: {n.toLocaleString()}</li>
               ))}
             </ul>
+
+            {/* Per-migrated-user breakdown */}
+            {status.byUser && status.byUser.length > 0 && (
+              <div className="mig-table-wrap mig-status-table">
+                <table className="mig-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Data migrated</th>
+                      <th>Objects</th>
+                      <th>Status</th>
+                      <th>Last activity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {status.byUser.map((g, i) => (
+                      <tr key={g.user || `grp-${i}`}>
+                        <td><div className="mig-email">{g.user}</div></td>
+                        <td className="mig-data">{dataSummary(g.byName)}</td>
+                        <td>{g.total.toLocaleString()}</td>
+                        <td>
+                          {g.failures > 0
+                            ? <span className="mig-badge mig-badge-fail"><AlertTriangle size={12} /> {g.failures.toLocaleString()} failed</span>
+                            : <span className="mig-badge ready"><CheckCircle2 size={12} /> ok</span>}
+                        </td>
+                        <td className="mig-sub">{g.lastActivity ? new Date(g.lastActivity).toLocaleString() : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Failed-item detail (what failed, not just how many) */}
+            {status.failures && status.failures.length > 0 && (
+              <div className="mig-failures">
+                <h3><AlertTriangle size={14} /> Failed items</h3>
+                <ul className="mig-failures-list">
+                  {status.failures.slice(0, 25).map((f, i) => (
+                    <li key={i}>
+                      {f.user && <div className="mig-email">{f.user}</div>}
+                      <div className="mig-fail-path">
+                        {f.source && <code>{f.source}</code>}
+                        {f.source && f.target && ' → '}
+                        {f.target && <code>{f.target}</code>}
+                        {!f.source && !f.target && <span className="mig-sub">(no source/target reported)</span>}
+                      </div>
+                      {f.reason && <div className="mig-fail-reason">{f.reason}</div>}
+                      {f.timestamp && <div className="mig-sub">{new Date(f.timestamp).toLocaleString()}</div>}
+                    </li>
+                  ))}
+                </ul>
+                {status.failures.length > 25 && (
+                  <p className="mig-sub">Showing 25 of {status.summary.failures.toLocaleString()} failures. Narrow the window to see others.</p>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <p className="mig-sub">No migration activity in the last 7 days. Once you start a transfer in Google, its progress (per-object events + failures) appears here.</p>
