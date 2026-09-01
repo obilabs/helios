@@ -8,6 +8,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
+import { microsoftGraphService } from '../services/microsoft-graph.service.js';
 import { activityTracker } from '../services/activity-tracker.service.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 import {
@@ -1756,7 +1757,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
 
     // Sync to Google Workspace if the user is linked
     const userDetailsResult = await db.query(
-      'SELECT google_workspace_id, email FROM organization_users WHERE id = $1',
+      'SELECT google_workspace_id, microsoft_365_id, email FROM organization_users WHERE id = $1',
       [userId]
     );
 
@@ -1805,6 +1806,50 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         // Continue - don't fail the whole request if Google sync fails
       } else {
         logger.info('User synced to Google Workspace', { userId, googleWorkspaceId });
+      }
+    }
+
+    // Sync to Microsoft 365 / Entra ID if the user is linked (parity with the
+    // Google branch above — editing an M365-linked user must reach Entra, not
+    // just the local row). Best-effort: a Graph failure logs a warning and does
+    // not fail the request. Manager is written via the dedicated $ref endpoints.
+    const linkedMs365Id = userDetailsResult.rows[0]?.microsoft_365_id;
+    if (linkedMs365Id) {
+      try {
+        await microsoftGraphService.initialize(organizationId);
+
+        const graphUpdate: Record<string, unknown> = {};
+        if (jobTitle !== undefined) graphUpdate['jobTitle'] = jobTitle;
+        if (department !== undefined) graphUpdate['department'] = department;
+        if (location !== undefined) graphUpdate['officeLocation'] = location;
+        if (mobilePhone !== undefined) graphUpdate['mobilePhone'] = mobilePhone;
+        if (firstName !== undefined) graphUpdate['givenName'] = firstName;
+        if (lastName !== undefined) graphUpdate['surname'] = lastName;
+        if (Object.keys(graphUpdate).length > 0) {
+          await microsoftGraphService.updateUser(linkedMs365Id, graphUpdate as any);
+        }
+
+        // Manager: set to the target user's M365 id, or clear it.
+        if (req.body.managerId !== undefined) {
+          if (req.body.managerId) {
+            const mgr = await db.query(
+              'SELECT microsoft_365_id FROM organization_users WHERE id = $1 AND organization_id = $2',
+              [req.body.managerId, organizationId]
+            );
+            const managerMsId = mgr.rows[0]?.microsoft_365_id;
+            if (managerMsId) {
+              await microsoftGraphService.setUserManager(linkedMs365Id, managerMsId);
+            } else {
+              logger.warn('M365 manager not set: manager has no microsoft_365_id', { userId, managerId: req.body.managerId });
+            }
+          } else {
+            await microsoftGraphService.removeUserManager(linkedMs365Id);
+          }
+        }
+        logger.info('User synced to Microsoft 365', { userId, microsoft365Id: linkedMs365Id });
+      } catch (err) {
+        logger.warn('Failed to sync user update to Microsoft 365', { userId, error: (err as Error).message });
+        // Continue - don't fail the whole request if the Graph sync fails
       }
     }
 
