@@ -13,6 +13,7 @@ import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
+import { microsoftGraphService } from './microsoft-graph.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
 import {
   OffboardingTemplate,
@@ -801,6 +802,52 @@ class UserOffboardingService {
         result.stepsSkipped.push('suspend_account'); // Will be handled by scheduler
       } else {
         result.stepsSkipped.push('suspend_account');
+      }
+
+      // Step 9a1: Microsoft 365 offboard — disable / remove-license / delete,
+      // parallel to the Google suspend/delete above. This is the FIRST consumer
+      // of config.licenseAction. Skips cleanly when the user has no M365 link or
+      // M365 isn't configured; its own try/catch so an M365 failure never rolls
+      // back completed Google steps.
+      {
+        stepOrder++;
+        const msStart = Date.now();
+        try {
+          const msRow = await db.query(
+            'SELECT microsoft_365_id FROM organization_users WHERE (id = $1 OR email = $2) AND organization_id = $3 LIMIT 1',
+            [config.userId, config.userEmail, organizationId]
+          );
+          const msId = msRow.rows[0]?.microsoft_365_id;
+          const initialized = msId ? await microsoftGraphService.initialize(organizationId) : false;
+          if (!msId || !initialized) {
+            result.stepsSkipped.push('m365_offboard');
+          } else {
+            if (config.accountAction === 'suspend_immediately') {
+              await microsoftGraphService.disableUser(msId);
+            }
+            if (config.licenseAction === 'remove_immediately' ||
+                (config.licenseAction === 'remove_on_suspension' && config.accountAction === 'suspend_immediately')) {
+              const lics = await microsoftGraphService.getUserLicenses(msId);
+              const skuIds = lics.map((l: any) => l.skuId).filter(Boolean);
+              if (skuIds.length) await microsoftGraphService.removeLicense(msId, skuIds);
+            }
+            if (config.deleteAccount && config.deleteImmediately) {
+              await microsoftGraphService.deleteUser(msId);
+            }
+            await lifecycleLogService.logSuccess(
+              organizationId, 'offboard', 'm365_offboard',
+              { ...logOptions, stepOrder, durationMs: Date.now() - msStart }
+            );
+            result.stepsCompleted.push('m365_offboard');
+          }
+        } catch (error: any) {
+          result.errors.push(`Failed M365 offboard: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId, 'offboard', 'm365_offboard', error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - msStart }
+          );
+          result.stepsFailed.push('m365_offboard');
+        }
       }
 
       // Step 9a2: Vault preservation — OPT-IN (config.preserveWithVault). Runs
