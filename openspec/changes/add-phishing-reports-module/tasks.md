@@ -4,10 +4,12 @@
 > direction is recorded, not to authorise a build.
 
 ## Phase 0 — Research (the gate)
-- [ ] Gmail add-on / Apps Script (Track A button): capabilities + quotas for reading a
-      message, showing a verdict UI, posting to an external endpoint; the publishing path.
-- [ ] Workspace Marketplace: listing requirements, OAuth scopes + verification, review.
-- [ ] Impersonation-detection signals (Track A): SPF/DKIM/DMARC alignment, display-name
+- [ ] Gmail add-on / Apps Script (L1/L2 button): capabilities + quotas for reading a
+      message, showing a verdict UI, posting to a configured management URL; the
+      copy-paste deploy story (L1) vs the Marketplace publish (L2).
+- [ ] Workspace Marketplace: listing requirements, OAuth scopes + verification, review —
+      and what an L1 copy-paste script can ship WITHOUT any of it.
+- [ ] Impersonation-detection signals (L3): SPF/DKIM/DMARC alignment, display-name
       spoofing, lookalike/homoglyph domains, reply-to mismatch — reliability + which need
       the org directory.
 - [ ] **Gmail injection (Track B):** `gmail.insert` vs `gmail.import` behaviour (spam
@@ -19,18 +21,23 @@
 - [ ] Helios module contract: how the live Google/M365 modules register (routes, nav,
       migrations, capability guard) + the ingest-endpoint auth model.
 
-## Phase 1 — Standalone Gmail button (obilabs/baitcheck) — Track A wedge
-- [ ] Apps Script MVP: analyse-before-report, local verdict, optional post to a configured
-      Helios endpoint. Works with NO Helios.
-- [ ] Prove triage value in real use before building anything server-side.
+## Phase 1 — L1: plain Apps Script button (obilabs/baitcheck), open source
+- [ ] Copy-paste-deployable Apps Script: analyse-before-report, local verdict, optional
+      POST to a configured management URL. No account, no Marketplace, no Helios.
+- [ ] Open-source it; prove triage value in real use before building anything else.
 
-## Phase 2 — Helios detection module (post-research)
+## Phase 2 — L2: Workspace Marketplace app (free)
+- [ ] Package L1 as a Marketplace add-on (OAuth verification, review).
+- [ ] Admin config UI: management URL (→ Helios), bring-your-own AI API key, branding.
+- [ ] One-click install + auto-updates.
+
+## Phase 3 — L3: Helios detection module (monetization) — post-research
 - [ ] Authenticated ingest endpoint + storage.
 - [ ] Per-org reports dashboard (reports, verdicts, trends).
 - [ ] Directory-based impersonation detection.
 - [ ] Spec deltas here (`specs/`) BEFORE implementation.
 
-## Phase 3 — Helios simulation module (post-research)
+## Phase 4 — Helios simulation module (Track B) — post-research
 - [ ] Template builder (templates + link/landing tracking).
 - [ ] Workspace-injection delivery (`insert` / `import`), no SMTP.
 - [ ] Catch-rate tracking (clicked / reported / ignored), per user + org-wide.
@@ -38,6 +45,5 @@
 - [ ] Audit: every campaign attributable (who ran what against whom, when).
 - [ ] Spec deltas here (`specs/`) BEFORE implementation.
 
-## Phase 4 — Distribution + MTP (only on demand)
-- [ ] Workspace Marketplace listing.
-- [ ] MTP cross-org rollup.
+## Phase 5 — MTP cross-org rollup (only on demand)
+- [ ] MTP rollup of detection + simulation across managed orgs.
