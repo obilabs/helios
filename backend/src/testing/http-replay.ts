@@ -460,7 +460,18 @@ export function createHttpReplay(config: HttpReplayConfig): HttpReplayInstance {
       response: {
         status: entry.response.status,
         data: s(entry.response.data),
-        headers: sanitizeHeaders(entry.response.headers),
+        // Sanitize header VALUES too, through the SAME per-fixture aliaser: a
+        // create's `location` header embeds the real tenant + new-object GUIDs,
+        // which sanitizeHeaders (correlation-id stripping only) leaves intact.
+        headers: (() => {
+          const stripped = sanitizeHeaders(entry.response.headers);
+          if (!stripped) return stripped;
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(stripped)) {
+            out[k] = typeof v === 'string' ? (s(v) as string) : v;
+          }
+          return out;
+        })(),
       },
     };
     const file = writeFixture(fx);
