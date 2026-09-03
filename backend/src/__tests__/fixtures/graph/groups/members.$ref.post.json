@@ -1,0 +1,25 @@
+{
+  "family": "groups",
+  "name": "members.$ref.post",
+  "recordedAt": "2026-09-03T16:24:17.050Z",
+  "request": {
+    "method": "POST",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/groups/00000000-0000-0000-0000-000000000001/members/$ref",
+    "query": null,
+    "body": {
+      "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/00000000-0000-0000-0000-000000000002"
+    }
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "cache-control": "no-cache",
+      "date": "Thu, 03 Sep 2026 16:24:18 GMT",
+      "strict-transport-security": "max-age=31536000",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"004\",\"RoleInstance\":\"MW2PEPF00014388\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}
