@@ -232,3 +232,7 @@ Built by [ObiLabs](https://obilabs.dev). We also offer:
 - **helios-mtp:** Multi-tenant version for MSPs and IT providers
 
 Contact: [info@obilabs.dev](mailto:info@obilabs.dev)
+
+---
+
+_Built with AI-assisted development ([Claude Code](https://claude.com/claude-code)), under human direction and review._
