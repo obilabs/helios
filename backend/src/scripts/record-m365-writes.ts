@@ -54,9 +54,32 @@ async function main(): Promise<void> {
   console.log(`Manager: ${manager.display_name} (${manager.ms_id})`);
 
   const results: OpResult[] = [];
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const run = async (op: string, fn: () => Promise<unknown>): Promise<void> => {
     try { await fn(); results.push({ op, ok: true }); console.log(`✔ ${op}`); }
     catch (e: any) { results.push({ op, ok: false, note: e?.message }); console.error(`✗ ${op}: ${e?.message}`); }
+  };
+  // A freshly-created group/user takes a few seconds to replicate before Graph
+  // will accept operations on it ("Resource … does not exist"). Retry those.
+  const runWithRetry = async (op: string, fn: () => Promise<unknown>, retries = 8, delayMs = 4000): Promise<void> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await fn();
+        results.push({ op, ok: true });
+        console.log(`✔ ${op}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+        return;
+      } catch (e: any) {
+        const msg = e?.message || '';
+        if (/does not exist|ResourceNotFound|not present/i.test(msg) && attempt < retries) {
+          console.log(`  … ${op} not replicated yet — retrying in ${delayMs}ms (attempt ${attempt}/${retries})`);
+          await sleep(delayMs);
+          continue;
+        }
+        results.push({ op, ok: false, note: msg });
+        console.error(`✗ ${op}: ${msg}`);
+        return;
+      }
+    }
   };
 
   // --- USER writes (set-and-revert) ---
@@ -64,6 +87,20 @@ async function main(): Promise<void> {
   await run('user.update revert jobTitle', () => microsoftGraphService.updateUser(subject.ms_id, { jobTitle: originalTitle } as any));
   await run('user.setManager PUT manager/$ref', () => microsoftGraphService.setUserManager(subject.ms_id, manager.ms_id));
   await run('user.removeManager DELETE manager/$ref', () => microsoftGraphService.removeUserManager(subject.ms_id));
+
+  // Clean up any leftover 'ZZ Helios Record Test' groups from a prior interrupted
+  // run (e.g. a create that succeeded but whose delete failed on replication delay).
+  try {
+    const existing: any[] = await microsoftGraphService.listGroups();
+    for (const g of existing) {
+      if (g?.displayName === 'ZZ Helios Record Test' && g?.id) {
+        await microsoftGraphService.deleteGroup(g.id).catch(() => { /* best-effort */ });
+        console.log(`  cleaned up leftover test group ${g.id}`);
+      }
+    }
+  } catch {
+    /* best-effort cleanup */
+  }
 
   // --- GROUP writes (throwaway, self-cleaning) ---
   let groupId: string | undefined;
@@ -79,10 +116,11 @@ async function main(): Promise<void> {
     console.log(`  created group ${groupId}`);
   });
   if (groupId) {
-    await run('group.update PATCH /groups', () => microsoftGraphService.updateGroup(groupId!, { description: 'recorded' }));
-    await run('group.addMember POST members/$ref', () => microsoftGraphService.addGroupMember(groupId!, subject.ms_id));
-    await run('group.removeMember DELETE members/$ref', () => microsoftGraphService.removeGroupMember(groupId!, subject.ms_id));
-    await run('group.delete DELETE /groups', () => microsoftGraphService.deleteGroup(groupId!));
+    // Retry — the group needs a few seconds to replicate before Graph accepts ops.
+    await runWithRetry('group.update PATCH /groups', () => microsoftGraphService.updateGroup(groupId!, { description: 'recorded' }));
+    await runWithRetry('group.addMember POST members/$ref', () => microsoftGraphService.addGroupMember(groupId!, subject.ms_id));
+    await runWithRetry('group.removeMember DELETE members/$ref', () => microsoftGraphService.removeGroupMember(groupId!, subject.ms_id));
+    await runWithRetry('group.delete DELETE /groups', () => microsoftGraphService.deleteGroup(groupId!));
   } else {
     console.warn('⚠  group create failed — skipping group update/member/delete recordings');
   }
