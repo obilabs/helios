@@ -64,8 +64,8 @@ core detection** — so L1 can be free and open while L2/L3 still make sense.
   provider, not ObiLabs — "your data, your call"), and branding. Distribution + the funnel;
   it sells *ease*, since L1 already gives the core detection away.
 - **L3 — Helios integration + dashboard.** Org-wide reports + verdict trends +
-  **directory-based internal-impersonation detection**. **This is the monetization point** —
-  L1 and L2 are free by design; value is captured at Helios (and MTP), never on the button.
+  **directory-based internal-impersonation detection**. Free, like the rest of Helios — the
+  whole suite is a **wedge**, not a paid tier.
 
 The button (L1/L2) is **never gated behind Helios** — gating the wedge would kill the funnel.
 
@@ -96,16 +96,20 @@ L1/L2 button              Helios (per-org, L3+)                    MTP
   prove triage value before anything else.
 - **Phase 2 — L2** (Workspace Marketplace app, free, configurable: management URL, BYO AI
   key, branding).
-- **Phase 3 — L3 Helios detection module** (reports + impersonation detection). *First
-  monetization surface.*
+- **Phase 3 — L3 Helios detection module** (reports + impersonation detection).
 - **Phase 4 — Helios simulation module** (Track B: template builder + injection + catch
   tracking + org-wide visibility).
 - **Phase 5 — MTP cross-org rollup** — only on demand.
 
 ## Impact
 
-- **Monetization at L3 (Helios), not the button** — L1 (open source) and L2 (Marketplace)
-  are free, by design, to maximize the wedge/funnel.
+- **The suite is free — a wedge, not a revenue line.** L1 (open source), L2 (Marketplace),
+  and L3 (Helios) are all free/community, like Helios itself. Monetization is **indirect**:
+  it grows Helios adoption → grows MTP's addressable orgs (MTP is the only paid product) +
+  paid setup/install services. *Open fork:* the simulation module (Track B) is
+  differentiated enough to be a candidate for the first **paid** Helios module — a
+  deliberate decision that would break "Helios fully free"; deferred, not assumed. (No
+  hosting today.)
 - New **opt-in** Helios modules; no change to existing modules or the wire contract.
 - L3 reuses Helios directory sync, audit trail, and module system.
 - Track B needs new Gmail scopes (`insert` / `import`) via DWD — a research + consent item
