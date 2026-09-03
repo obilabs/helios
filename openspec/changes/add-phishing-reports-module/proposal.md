@@ -1,11 +1,11 @@
 # Add Phishing Capabilities to Helios (Detection + Simulation)
 
 > **Status: CAPTURED — exploring, research-gated. NOT ready to implement.**
-> Recorded so the direction isn't lost. Build only after Phase 0 research, and only
-> after the standalone Gmail button (Track A, Phase 1) has shipped and proven its value.
-> Spec deltas (`specs/`) are intentionally deferred until research resolves the open
-> questions in `tasks.md`. This change may later split into two (detection, simulation)
-> once research firms the boundaries.
+> Recorded so the direction isn't lost. Build only after Phase 0 research, and only after
+> L1 (the copy-paste Apps Script button) has shipped and proven its value. Spec deltas
+> (`specs/`) are intentionally deferred until research resolves the open questions in
+> `tasks.md`. This change may later split into two (detection, simulation) once research
+> firms the boundaries.
 
 ## Why
 
@@ -50,47 +50,64 @@ than a weapon — and it is the accountability-first way to build it regardless.
 
 ## What Changes (proposed)
 
-**Track A — Detection**
-1. Standalone Gmail button (`obilabs/baitcheck`, Apps Script → Marketplace) — the wedge;
-   works with **no Helios**, reports *to* Helios only if configured (never gated behind it
-   — gating the wedge would kill the funnel).
-2. Helios reports dashboard — reported emails, verdicts, trends, repeat targets/senders.
-3. Directory-based internal-impersonation detection.
+### Track A — Detection (open-core ladder)
 
-**Track B — Simulation**
-4. Template builder (phish templates + landing/link tracking).
-5. Workspace-injection delivery (`insert` / `import`), no SMTP.
-6. Catch-rate tracking (clicked / reported / ignored), per user and org-wide.
-7. Org-wide admin visibility (shared campaigns / templates / results).
-8. *Optional Aegis hook later* — raise a follow-up ticket for repeat clickers by
+Three delivery levels. Each works on its own; higher levels add **ease + integration, not
+core detection** — so L1 can be free and open while L2/L3 still make sense.
+
+- **L1 — plain Apps Script, open source, copy-paste (`obilabs/baitcheck`).** The DIY wedge:
+  no account, no Marketplace, no Helios — fork it, paste into Apps Script, deploy. Fastest
+  to ship and the SEO/goodwill base. **Free. This is Phase 1.**
+- **L2 — Workspace Marketplace app. FREE.** The no-code easy button for non-technical
+  admins: one-click install, auto-updates, and an admin config UI for a **management URL**
+  (→ Helios), a **bring-your-own AI API key** (analysis runs through the org's own AI
+  provider, not ObiLabs — "your data, your call"), and branding. Distribution + the funnel;
+  it sells *ease*, since L1 already gives the core detection away.
+- **L3 — Helios integration + dashboard.** Org-wide reports + verdict trends +
+  **directory-based internal-impersonation detection**. **This is the monetization point** —
+  L1 and L2 are free by design; value is captured at Helios (and MTP), never on the button.
+
+The button (L1/L2) is **never gated behind Helios** — gating the wedge would kill the funnel.
+
+### Track B — Simulation
+
+1. Template builder (phish templates + landing/link tracking).
+2. Workspace-injection delivery (`insert` / `import`), no SMTP.
+3. Catch-rate tracking (clicked / reported / ignored), per user and org-wide.
+4. Org-wide admin visibility (shared campaigns / templates / results).
+5. *Optional Aegis hook later* — raise a follow-up ticket for repeat clickers by
    **integrating to Aegis**, not by rebuilding ITSM in Helios.
 
-Both tracks are **opt-in Helios modules** built on Helios's existing module system — the
-live **Google Workspace / Microsoft 365 modules** are the precedent (NOT
-`add-itsm-module`, which is stale and duplicates Aegis — see the tidy-up backlog). Neither
-track is ITSM, so neither steps on Aegis.
+Both Helios modules (L3 detection, and simulation) are **opt-in**, built on Helios's
+existing module system — the live **Google Workspace / Microsoft 365 modules** are the
+precedent (NOT `add-itsm-module`, which is stale and duplicates Aegis — see the tidy-up
+backlog). Neither track is ITSM, so neither steps on Aegis.
 
 ### Layering
 ```
-Gmail button              Helios (per-org)                        MTP
-(per-user, standalone) →  Detection dashboard + Simulation     →  cross-org rollup (MSPs)
+L1/L2 button              Helios (per-org, L3+)                    MTP
+(per-user, standalone) →  Detection dashboard + Simulation      →  cross-org rollup (MSPs)
 ```
 
 ## Sequencing (deliberate — do not build all at once)
 
 - **Phase 0 — research** (the gate; see `tasks.md`).
-- **Phase 1 — ship the standalone Apps Script button** (`baitcheck`, Track A wedge). Prove
-  triage value before building anything server-side.
-- **Phase 2 — Helios detection module** (reports + impersonation detection).
-- **Phase 3 — Helios simulation module** (template builder + injection + catch tracking +
-  org-wide visibility).
-- **Phase 4 — distribution + MTP** (Marketplace listing, cross-org rollup) — only on demand.
+- **Phase 1 — L1** (plain copy-paste Apps Script, open source). The zero-friction wedge;
+  prove triage value before anything else.
+- **Phase 2 — L2** (Workspace Marketplace app, free, configurable: management URL, BYO AI
+  key, branding).
+- **Phase 3 — L3 Helios detection module** (reports + impersonation detection). *First
+  monetization surface.*
+- **Phase 4 — Helios simulation module** (Track B: template builder + injection + catch
+  tracking + org-wide visibility).
+- **Phase 5 — MTP cross-org rollup** — only on demand.
 
 ## Impact
 
+- **Monetization at L3 (Helios), not the button** — L1 (open source) and L2 (Marketplace)
+  are free, by design, to maximize the wedge/funnel.
 - New **opt-in** Helios modules; no change to existing modules or the wire contract.
-- Track A depends on `obilabs/baitcheck` shipping first.
-- Reuses Helios directory sync, audit trail, and module system.
+- L3 reuses Helios directory sync, audit trail, and module system.
 - Track B needs new Gmail scopes (`insert` / `import`) via DWD — a research + consent item
   (adding to `REQUIRED_SCOPES` is all-or-nothing across connected orgs; treat as opt-in).
 - No spec/schema changes proposed yet — deferred post-research.
