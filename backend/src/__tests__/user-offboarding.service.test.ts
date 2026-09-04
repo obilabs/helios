@@ -127,6 +127,9 @@ describe('UserOffboardingService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockQuery.mockReset();
+    // Real pg never resolves undefined — an unmocked read is an EMPTY result.
+    // (The M365 offboard step reads ms_synced_users before deciding to skip.)
+    mockQuery.mockResolvedValue({ rows: [] });
     mockLogSuccess.mockResolvedValue({});
     mockLogFailure.mockResolvedValue({});
     mockLogSkipped.mockResolvedValue({});
@@ -1363,7 +1366,7 @@ describe('UserOffboardingService', () => {
 
       it('merges a stored policy over the defaults', async () => {
         mockQuery.mockResolvedValueOnce({
-          rows: [{ settings: { offboardingPolicy: { targetOrgUnitPath: '/Gone', deleteAfterDays: 7 } } }],
+          rows: [{ value: JSON.stringify({ targetOrgUnitPath: '/Gone', deleteAfterDays: 7 }) }],
         });
 
         const policy = await userOffboardingService.resolveOffboardingPolicy(testOrgId);
@@ -1487,7 +1490,7 @@ describe('UserOffboardingService', () => {
             return { rows: [{ id: 'resolved-user-id' }] };
           }
           if (typeof text === 'string' && text.includes('FROM organization_settings')) {
-            return { rows: [{ settings: { offboardingPolicy: { targetOrgUnitPath: '/Offboarded' } } }] };
+            return { rows: [{ value: JSON.stringify({ targetOrgUnitPath: '/Offboarded' }) }] };
           }
           if (typeof text === 'string' && text.includes('service_account_key')) {
             return { rows: [{ service_account_key: SA_KEY_JSON }] };
