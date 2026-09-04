@@ -1,9 +1,17 @@
-import { Client } from '@microsoft/microsoft-graph-client';
+import {
+  Client,
+  AuthenticationHandler,
+  HTTPMessageHandler,
+} from '@microsoft/microsoft-graph-client';
 import { ClientSecretCredential } from '@azure/identity';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encryptionService } from './encryption.service.js';
+// Fetch-level record/replay seam for the Graph SDK path. INERT in production
+// (OFF mode is a straight passthrough); tests opt in via useGraphReplay() and
+// HELIOS_GRAPH_RECORD=1 captures sanitized fixtures. See testing/graph-replay.ts.
+import { GraphRecordReplayHandler } from '../testing/graph-replay.js';
 
 /**
  * Microsoft 365 credentials structure
@@ -127,8 +135,15 @@ export class MicrosoftGraphService {
       scopes: ['https://graph.microsoft.com/.default'],
     });
 
+    // Build the middleware chain EXPLICITLY so the record/replay handler sits
+    // between auth and the terminal HTTP handler. In production this is a
+    // passthrough (GraphRecordReplayHandler is OFF), so behavior is unchanged.
     return Client.initWithMiddleware({
-      authProvider: authProvider,
+      middleware: [
+        new AuthenticationHandler(authProvider),
+        new GraphRecordReplayHandler(),
+        new HTTPMessageHandler(),
+      ],
     });
   }
 
@@ -352,6 +367,33 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * List the tenant's verified domains (with the default flagged) — needed to
+   * build a valid userPrincipalName when creating an M365 user.
+   */
+  async getVerifiedDomains(): Promise<Array<{ name: string; isDefault: boolean; isVerified: boolean }>> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    const res = await this.graphClient.api('/organization').select('verifiedDomains').get();
+    const org = res?.value?.[0];
+    const domains = org?.verifiedDomains || [];
+    return domains.map((d: any) => ({ name: d.name, isDefault: !!d.isDefault, isVerified: d.isVerified !== false }));
+  }
+
+  /**
+   * The tenant's ISO country code (countryLetterCode), used to set a user's
+   * usageLocation — a prerequisite for assignLicense (Graph rejects license
+   * assignment for a user with no usageLocation). Returns null if unavailable.
+   */
+  async getTenantCountry(): Promise<string | null> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    const res = await this.graphClient.api('/organization').select('countryLetterCode').get();
+    return res?.value?.[0]?.countryLetterCode || null;
+  }
+
+  /**
    * Update a user in Entra ID
    */
   async updateUser(userId: string, updates: Partial<MicrosoftUser>): Promise<void> {
@@ -360,6 +402,37 @@ export class MicrosoftGraphService {
     }
 
     await this.graphClient.api(`/users/${userId}`).patch(updates);
+  }
+
+  /**
+   * Upsert a user's custom properties into a stable OPEN EXTENSION. Graph has no
+   * native fields for pronouns / certifications / professional designations, so
+   * Helios stores them under a reverse-DNS open extension. POST creates it; if it
+   * already exists (409) fall back to PATCH the same extension.
+   */
+  async upsertUserOpenExtension(
+    userId: string,
+    props: Record<string, unknown>,
+    extensionName = 'com.obilabs.helios',
+  ): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    try {
+      await this.graphClient.api(`/users/${userId}/extensions`).post({
+        '@odata.type': 'microsoft.graph.openTypeExtension',
+        extensionName,
+        ...props,
+      });
+    } catch (err: any) {
+      const status = err?.statusCode ?? err?.status;
+      if (status === 409 || /exist/i.test(err?.message || '')) {
+        // Already present — PATCH the existing extension (no @odata.type needed).
+        await this.graphClient.api(`/users/${userId}/extensions/${extensionName}`).patch({ ...props });
+      } else {
+        throw err;
+      }
+    }
   }
 
   /**
@@ -504,6 +577,21 @@ export class MicrosoftGraphService {
   }
 
   /**
+   * Update a group's editable metadata (displayName / description / mailNickname).
+   * PATCH /groups/{id} returns 204 No Content.
+   */
+  async updateGroup(
+    groupId: string,
+    updates: { displayName?: string; description?: string; mailNickname?: string },
+  ): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+
+    await this.graphClient.api(`/groups/${groupId}`).patch(updates);
+  }
+
+  /**
    * Delete a group
    */
   async deleteGroup(groupId: string): Promise<void> {
@@ -626,6 +714,17 @@ export class MicrosoftGraphService {
     await this.graphClient.api(`/users/${userId}/manager/$ref`).put({
       '@odata.id': `https://graph.microsoft.com/v1.0/users/${managerId}`,
     });
+  }
+
+  /**
+   * Clear a user's manager (DELETE /users/{id}/manager/$ref).
+   */
+  async removeUserManager(userId: string): Promise<void> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+
+    await this.graphClient.api(`/users/${userId}/manager/$ref`).delete();
   }
 
   /**

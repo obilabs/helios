@@ -171,6 +171,51 @@ describe('Gmail sendAs and signature', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Gmail — message import (M365 -> Google migration)
+// The `messages.import` write path replays a migrated RFC822 message into the
+// TARGET mailbox. Query params (internalDateSource, neverMarkSpam) are folded
+// into the PATH per the module convention (runGoogle forwards only path+body,
+// so a separate `query` field would be silently dropped) — same as the Drive
+// builders. Import impersonates the destination mailbox owner.
+// ---------------------------------------------------------------------------
+describe('Gmail import (M365 -> Google migration)', () => {
+  const IMPORT_PATH =
+    `/api/google/gmail/v1/users/${USER_ENC}/messages/import` +
+    '?internalDateSource=dateHeader&neverMarkSpam=true';
+
+  it('import -> POST messages/import; query in the path, {raw} body, impersonates the target', () => {
+    const req = g.gmailImport(USER, 'UkZDODIyLXJhdw');
+    expect(req.method).toBe('POST');
+    // internalDateSource=dateHeader keeps the migrated message's original date;
+    // neverMarkSpam=true stops import-time spam routing. Both live in the path.
+    expect(req.path).toBe(IMPORT_PATH);
+    expect(req.body).toEqual({ raw: 'UkZDODIyLXJhdw' });
+    // Runs AS the destination mailbox owner via domain-wide delegation:
+    // impersonate === userId when the target is a real email.
+    expect(req.impersonate).toBe(USER);
+  });
+
+  it('import full-shape equality (exact method/path/query/body/impersonate)', () => {
+    expect(g.gmailImport(USER, 'RAW')).toEqual({
+      method: 'POST',
+      path: IMPORT_PATH,
+      body: { raw: 'RAW' },
+      impersonate: USER,
+    });
+  });
+
+  it('import query params are encoded into the path (never a separate field)', () => {
+    const req = g.gmailImport(USER, 'RAW') as g.GoogleApiRequest & { query?: unknown };
+    // The runtime dispatch (runGoogle) forwards only path+body+impersonate; a
+    // stray `query` field would be dropped, so there must not be one.
+    expect(req.query).toBeUndefined();
+    expect(req.path).toContain('internalDateSource=dateHeader');
+    expect(req.path).toContain('neverMarkSpam=true');
+    expect(req.path.startsWith('/api/google/gmail/v1/')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Calendar
 // ---------------------------------------------------------------------------
 describe('Calendar', () => {
@@ -229,6 +274,57 @@ describe('Calendar', () => {
         .impersonate,
     ).toBe(USER);
     expect(g.calendarDeleteAcl(calId, 'user:x@corp.com', USER).impersonate).toBe(USER);
+  });
+
+  // --- events (offboarding: cancel/decline future events) ---
+
+  it('eventsList -> GET calendars/{calendarId}/events with query folded into the path; impersonates the owner', () => {
+    const req = g.calendarEventsList(USER, {
+      timeMin: '2026-01-01T00:00:00.000Z',
+      singleEvents: true,
+      maxResults: 250,
+    });
+    expect(req).toEqual({
+      method: 'GET',
+      path:
+        `/api/google/calendar/v3/calendars/${USER_ENC}/events` +
+        '?timeMin=2026-01-01T00%3A00%3A00.000Z&singleEvents=true&maxResults=250',
+      impersonate: USER,
+    });
+    // No body on a GET (fetch rejects it) and no stray `query` field.
+    expect(req.body).toBeUndefined();
+  });
+
+  it('eventsList carries a continuation pageToken when paginating', () => {
+    const req = g.calendarEventsList(USER, { pageToken: 'tok-2' });
+    expect(req.path).toBe(`/api/google/calendar/v3/calendars/${USER_ENC}/events?pageToken=tok-2`);
+  });
+
+  it('eventsDelete -> DELETE calendars/{calendarId}/events/{eventId}; no body', () => {
+    const req = g.calendarEventsDelete(USER, 'evt_123');
+    expect(req).toEqual({
+      method: 'DELETE',
+      path: `/api/google/calendar/v3/calendars/${USER_ENC}/events/evt_123`,
+      impersonate: USER,
+    });
+    expect(req.body).toBeUndefined();
+  });
+
+  it('eventsPatch -> PATCH calendars/{calendarId}/events/{eventId} with the partial body', () => {
+    const body = { attendees: [{ email: USER, self: true, responseStatus: 'declined' }] };
+    expect(g.calendarEventsPatch(USER, 'evt_123', body)).toEqual({
+      method: 'PATCH',
+      path: `/api/google/calendar/v3/calendars/${USER_ENC}/events/evt_123`,
+      body,
+      impersonate: USER,
+    });
+  });
+
+  it('event builders accept an explicit impersonation override', () => {
+    const calId = 'room-42@resource.calendar.google.com';
+    expect(g.calendarEventsList(calId, {}, USER).impersonate).toBe(USER);
+    expect(g.calendarEventsDelete(calId, 'e1', USER).impersonate).toBe(USER);
+    expect(g.calendarEventsPatch(calId, 'e1', { status: 'cancelled' }, USER).impersonate).toBe(USER);
   });
 });
 
@@ -633,6 +729,8 @@ describe('invariants', () => {
       g.calendarListCalendars(),
       g.calendarListAcl(USER),
       g.calendarDeleteAcl(USER, 'user:x@corp.com'),
+      g.calendarEventsList(USER, { timeMin: 'now', singleEvents: true }),
+      g.calendarEventsDelete(USER, 'evt_1'),
       g.driveListFiles({ q: 'x' }),
       g.driveListSharedDrives(),
       g.driveGetSharedDrive('D1'),
@@ -656,6 +754,55 @@ describe('invariants', () => {
     ];
     for (const req of all) {
       expect(req.path.startsWith('/api/google/')).toBe(true);
+    }
+  });
+});
+
+describe('User security / access revocation', () => {
+  it('lists + revokes third-party OAuth tokens', () => {
+    expect(g.usersTokensList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/tokens`,
+    });
+    expect(g.usersTokensDelete(USER, '12345.apps.googleusercontent.com')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/tokens/12345.apps.googleusercontent.com`,
+    });
+  });
+
+  it('lists + revokes app-specific passwords', () => {
+    expect(g.usersAspsList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/asps`,
+    });
+    expect(g.usersAspsDelete(USER, '7')).toEqual({
+      method: 'DELETE',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/asps/7`,
+    });
+  });
+
+  it('lists + invalidates 2SV backup codes', () => {
+    expect(g.usersVerificationCodesList(USER)).toEqual({
+      method: 'GET',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/verificationCodes`,
+    });
+    expect(g.usersVerificationCodesInvalidate(USER)).toEqual({
+      method: 'POST',
+      path: `/api/google/admin/directory/v1/users/${USER_ENC}/verificationCodes/invalidate`,
+    });
+  });
+
+  it('are admin-context (never impersonated)', () => {
+    const all = [
+      g.usersTokensList(USER),
+      g.usersTokensDelete(USER, 'c'),
+      g.usersAspsList(USER),
+      g.usersAspsDelete(USER, '1'),
+      g.usersVerificationCodesList(USER),
+      g.usersVerificationCodesInvalidate(USER),
+    ];
+    for (const req of all) {
+      expect((req as any).impersonate).toBeUndefined();
     }
   });
 });

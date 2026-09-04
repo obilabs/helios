@@ -2,6 +2,7 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { microsoftGraphService, MicrosoftUser, MicrosoftGroup, MicrosoftLicense } from './microsoft-graph.service.js';
 import crypto from 'crypto';
+import { userSyncService } from './user-sync.service.js';
 
 /**
  * Microsoft 365 Sync Service
@@ -18,6 +19,7 @@ class MicrosoftSyncService {
       users: { synced: number; created: number; updated: number };
       groups: { synced: number; created: number; updated: number };
       licenses: { synced: number };
+      reconcile?: { linked: number; created: number };
     };
   }> {
     try {
@@ -43,6 +45,20 @@ class MicrosoftSyncService {
         this.syncLicenses(organizationId),
       ]);
 
+      // Surface the synced M365 users in the unified directory by reconciling
+      // them into organization_users (link-by-email = dual source; unmatched =
+      // migration candidate). Non-fatal: the primary sync already succeeded, so
+      // a reconcile failure logs loudly but does not fail the sync.
+      let reconcile = { linked: 0, created: 0 };
+      try {
+        reconcile = await userSyncService.reconcileMicrosoftUsersToOrgUsers(organizationId);
+      } catch (err: any) {
+        logger.error('M365 directory reconciliation failed (users synced but not surfaced)', {
+          organizationId,
+          error: err.message,
+        });
+      }
+
       // Update sync status to completed
       await db.query(
         `UPDATE ms_credentials
@@ -61,6 +77,7 @@ class MicrosoftSyncService {
           users: usersResult,
           groups: groupsResult,
           licenses: licensesResult,
+          reconcile,
         },
       };
     } catch (error: any) {

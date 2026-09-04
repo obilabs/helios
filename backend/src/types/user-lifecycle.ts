@@ -71,6 +71,10 @@ export interface OnboardingTemplate {
   googleOrgUnitPath?: string | null;
   googleServices: GoogleServices;
 
+  // Microsoft 365 settings
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string | null;
+
   // Memberships
   groupIds: string[];
   sharedDriveAccess: SharedDriveAccess[];
@@ -105,6 +109,8 @@ export interface CreateOnboardingTemplateDTO {
   googleLicenseSku?: string;
   googleOrgUnitPath?: string;
   googleServices?: GoogleServices;
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string;
   groupIds?: string[];
   sharedDriveAccess?: SharedDriveAccess[];
   calendarSubscriptions?: string[];
@@ -462,6 +468,10 @@ export interface OnboardingConfig {
   googleOrgUnitPath?: string;
   googleServices?: GoogleServices;
 
+  // Microsoft 365 settings
+  createInMicrosoft?: boolean;
+  microsoftLicenseSku?: string;
+
   // Memberships
   groupIds: string[];
   sharedDriveAccess: SharedDriveAccess[];
@@ -502,11 +512,30 @@ export interface OffboardingConfig {
   emailForwardDurationDays: number;
   emailAutoReplyMessage?: string;
   emailAutoReplySubject?: string;
+  /**
+   * Explicit forwarding target email. Overrides the manager / forward-user
+   * resolution when set — lets the caller (e.g. the `gw offboard --forward=`
+   * console flag) forward mail to an arbitrary address that is independent of
+   * the drive-transfer manager target.
+   */
+  emailForwardAddress?: string;
+  /**
+   * Explicit Gmail delegate target email. Overrides the forward-target-derived
+   * delegate when set (the `gw offboard --delegate=` console flag). Lets the
+   * delegate differ from both the forwarding address and the manager.
+   */
+  delegateEmail?: string;
 
   // Calendar handling
   calendarDeclineFutureMeetings: boolean;
   calendarTransferMeetingOwnership: boolean;
   calendarTransferToUserId?: string;
+  /**
+   * Cancel/decline the departing user's FUTURE calendar events (organizer events
+   * are deleted; attendee events are declined). Also honored via the pre-existing
+   * `calendarDeclineFutureMeetings` flag — either one activates the calendar sweep.
+   */
+  cancelFutureEvents?: boolean;
 
   // Access revocation
   removeFromAllGroups: boolean;
@@ -515,6 +544,11 @@ export interface OffboardingConfig {
   revokeAppPasswords: boolean;
   signOutAllDevices: boolean;
   resetPassword: boolean;
+  /**
+   * Add the departing user to this group (e.g. an "offboarded users" group) — runs
+   * IN ADDITION to `removeFromAllGroups`. Accepts a group email or group id.
+   */
+  offboardedGroupEmail?: string;
 
   // Signature
   removeSignature: boolean;
@@ -524,10 +558,39 @@ export interface OffboardingConfig {
   // Mobile devices
   wipeMobileDevices: boolean;
 
+  // Org unit
+  /** Move the departing user into this org unit (e.g. "/Offboarded"). */
+  orgUnitPath?: string;
+
+  // Data preservation
+  /**
+   * Preserve the departing user's Mail + Drive with Google Vault (retention hold)
+   * BEFORE any deletion, so the data survives account removal. Business Plus and
+   * above only — gated at runtime; on lower editions it is skipped with a reason
+   * rather than failing the offboard.
+   */
+  preserveWithVault?: boolean;
+  /** Optional Vault matter name for the preservation hold. */
+  vaultMatterName?: string;
+
   // Account handling
   accountAction: AccountAction;
   deleteAccount: boolean;
-  deleteAfterDays: number;
+  /**
+   * Days after which a delete-flagged account is deleted (deferred deletion).
+   * Optional so the org OFFBOARDING POLICY default can fill it when a per-offboard
+   * config leaves it unset (two-tier resolution); the deferred-deletion step
+   * falls back to 90 at the point of use.
+   */
+  deleteAfterDays?: number;
+  /**
+   * When true, the departing user is HARD-DELETED inline during offboarding
+   * (opt-in, on top of `deleteAccount`, and guarded by the admin self-lockout
+   * check). When false, deletion is DEFERRED: the intent and its scheduled date
+   * (now + `deleteAfterDays`) are recorded in the audit log, and suspension
+   * remains the safe default.
+   */
+  deleteImmediately?: boolean;
 
   // License
   licenseAction: LicenseAction;
@@ -538,6 +601,63 @@ export interface OffboardingConfig {
   notifyHr: boolean;
   notificationEmailAddresses: string[];
   notificationMessage?: string;
+}
+
+// ==========================================
+// OFFBOARDING POLICY (org-level defaults)
+// ==========================================
+
+/**
+ * Org-level offboarding policy: the DEFAULT knobs applied to every offboard,
+ * overridable per-offboard (two-tier resolution — a per-offboard config value
+ * always wins over the policy default). Persisted per organization in
+ * `organization_settings.settings.offboardingPolicy`; organizations without a
+ * stored policy fall back to DEFAULT_OFFBOARDING_POLICY.
+ *
+ * A dedicated Settings UI for editing this policy is an intentional follow-up;
+ * for now it is seedable via organization_settings and always honored by the
+ * orchestrator.
+ */
+export interface OffboardingPolicy {
+  /** Default org unit offboarded users are moved into (e.g. "/Offboarded"). */
+  targetOrgUnitPath?: string;
+  /** Default group offboarded users are added to (group email or id). */
+  offboardedGroupEmail?: string;
+  /** Default Gmail auto-reply (vacation responder) body for offboarded users. */
+  autoReplyTemplate?: string;
+  /** Default Gmail auto-reply subject. */
+  autoReplySubject?: string;
+  /** Default number of days after which a delete-flagged account is deleted. */
+  deleteAfterDays: number;
+  /**
+   * Default handling for the departing user's FUTURE calendar events:
+   * true = cancel/decline them, false = keep them (safer default).
+   */
+  cancelFutureEvents: boolean;
+}
+
+/**
+ * Sensible built-in defaults used when an organization has no stored policy.
+ * Deliberately conservative: no OU move, no group, no auto-reply, keep future
+ * events, and a 90-day deferred-deletion window.
+ */
+export const DEFAULT_OFFBOARDING_POLICY: OffboardingPolicy = {
+  targetOrgUnitPath: undefined,
+  offboardedGroupEmail: undefined,
+  autoReplyTemplate: undefined,
+  autoReplySubject: undefined,
+  deleteAfterDays: 90,
+  cancelFutureEvents: false,
+};
+
+/**
+ * Loose offboarding input accepted by the console / API raw-config path (as
+ * opposed to the template path): only `userEmail` is required. `userId` is
+ * resolved from the email when omitted, and every other field is defaulted (and
+ * policy-filled) before the audited + guarded orchestrator runs.
+ */
+export interface OffboardingConfigInput extends Partial<Omit<OffboardingConfig, 'userEmail'>> {
+  userEmail: string;
 }
 
 // ==========================================

@@ -11,12 +11,12 @@ import { Settings } from './components/Settings'
 // PlatformCard - available for future use
 // import { PlatformCard } from './components/PlatformCard'
 import { MetricCard } from './components/MetricCard'
+import { LicenseBanner } from './components/LicenseBanner'
 import { DashboardCustomizer } from './components/DashboardCustomizer'
 import { Administrators } from './components/Administrators'
 import { Users } from './pages/Users'
 import { Groups } from './pages/Groups'
-// OrgUnits - available for future use
-// import { OrgUnits } from './pages/OrgUnits'
+import { OrgUnits } from './pages/OrgUnits'
 import OrgChart from './pages/OrgChart'
 import { AssetManagement } from './pages/AssetManagement'
 import { Workspaces } from './pages/Workspaces'
@@ -25,6 +25,8 @@ import { OAuthApps } from './pages/OAuthApps'
 import { EmailSecurity } from './pages/EmailSecurity'
 import AuditLogs from './pages/AuditLogs'
 import Licenses from './pages/Licenses'
+import Migration from './pages/Migration'
+import Delegations from './pages/Delegations'
 import { MyProfile } from './pages/MyProfile'
 import { People } from './pages/People'
 import { MyTeam } from './pages/MyTeam'
@@ -53,6 +55,7 @@ const HRDashboard = lazy(() => import('./pages/HRDashboard'));
 const ManagerDashboard = lazy(() => import('./pages/ManagerDashboard'));
 const LifecycleAnalytics = lazy(() => import('./pages/LifecycleAnalytics'));
 const RulesEngine = lazy(() => import('./pages/RulesEngine'));
+const BulkOperations = lazy(() => import('./pages/BulkOperations').then(m => ({ default: m.BulkOperations })));
 import { CommandBar } from './components/ai/CommandBar'
 import { ChatPanel } from './components/ai/ChatPanel'
 import { HelpWidget } from './components/ai/HelpWidget'
@@ -137,6 +140,7 @@ function getPageFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/users')) return 'users';
   if (pathname.startsWith('/admin/groups')) return 'groups';
   if (pathname.startsWith('/admin/org-chart')) return 'orgChart';
+  if (pathname.startsWith('/admin/org-units')) return 'orgUnits';
   if (pathname.startsWith('/admin/workspaces')) return 'workspaces';
   if (pathname.startsWith('/admin/assets')) return 'assets';
   if (pathname.startsWith('/admin/files-assets') || pathname.startsWith('/admin/media-files')) return 'files-assets';
@@ -147,6 +151,9 @@ function getPageFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/audit-logs')) return 'audit-logs';
   if (pathname.startsWith('/admin/licenses')) return 'licenses';
   if (pathname.startsWith('/admin/external-sharing')) return 'external-sharing';
+  if (pathname.startsWith('/admin/bulk-operations')) return 'bulk-operations';
+  if (pathname.startsWith('/admin/migration')) return 'migration';
+  if (pathname.startsWith('/admin/delegations')) return 'delegations';
   if (pathname.startsWith('/admin/settings')) return 'settings';
   if (pathname.startsWith('/admin/administrators')) return 'administrators';
   if (pathname.startsWith('/admin/console')) return 'console';
@@ -227,6 +234,7 @@ function AppContent() {
       'users': '/admin/users',
       'groups': '/admin/groups',
       'orgChart': '/admin/org-chart',
+      'orgUnits': '/admin/org-units',
       'workspaces': '/admin/workspaces',
       'assets': '/admin/assets',
       'files-assets': '/admin/files-assets',
@@ -237,6 +245,9 @@ function AppContent() {
       'audit-logs': '/admin/audit-logs',
       'licenses': '/admin/licenses',
       'external-sharing': '/admin/external-sharing',
+      'bulk-operations': '/admin/bulk-operations',
+      'migration': '/admin/migration',
+      'delegations': '/admin/delegations',
       'settings': '/admin/settings',
       'administrators': '/admin/administrators',
       'console': '/admin/console',
@@ -1172,6 +1183,9 @@ function AppContent() {
                 </button>
               </div>
 
+              {/* License-limit banners (near / at / over available seats) */}
+              <LicenseBanner google={stats?.google} microsoft={stats?.microsoft} />
+
               {/* Dashboard Widget Grid */}
               <div className="dashboard-widget-grid">
                 {widgetsLoading || statsLoading ? (
@@ -1559,6 +1573,24 @@ function AppContent() {
             <Licenses />
           )}
 
+          {currentPage === 'orgUnits' && (
+            <OrgUnits organizationId={config?.organizationId || ''} />
+          )}
+
+          {currentPage === 'bulk-operations' && (
+            <Suspense fallback={<PageLoader />}>
+              <BulkOperations organizationId={config?.organizationId || ''} />
+            </Suspense>
+          )}
+
+          {currentPage === 'migration' && (
+            <Migration />
+          )}
+
+          {currentPage === 'delegations' && (
+            <Delegations />
+          )}
+
           {currentPage === 'external-sharing' && (
             <Suspense fallback={<PageLoader />}>
               <ExternalSharingManager />
@@ -1737,7 +1769,7 @@ function AppContent() {
             </Suspense>
           )}
 
-          {currentPage !== 'dashboard' && currentPage !== 'settings' && currentPage !== 'users' && currentPage !== 'groups' && currentPage !== 'workspaces' && currentPage !== 'orgUnits' && currentPage !== 'assets' && currentPage !== 'files-assets' && currentPage !== 'email-security' && currentPage !== 'signatures' && currentPage !== 'security-events' && currentPage !== 'audit-logs' && currentPage !== 'licenses' && currentPage !== 'external-sharing' && currentPage !== 'console' && currentPage !== 'administrators' && currentPage !== 'my-profile' && currentPage !== 'people' && currentPage !== 'my-team' && currentPage !== 'my-groups' && currentPage !== 'user-settings' && currentPage !== 'orgChart' && currentPage !== 'add-user' && currentPage !== 'onboarding-templates' && currentPage !== 'new-onboarding-template' && currentPage !== 'edit-onboarding-template' && currentPage !== 'offboarding-templates' && currentPage !== 'new-offboarding-template' && currentPage !== 'edit-offboarding-template' && currentPage !== 'scheduled-actions' && currentPage !== 'new-user-onboarding' && currentPage !== 'user-offboarding' && currentPage !== 'requests' && (
+          {currentPage !== 'dashboard' && currentPage !== 'settings' && currentPage !== 'users' && currentPage !== 'groups' && currentPage !== 'workspaces' && currentPage !== 'orgUnits' && currentPage !== 'assets' && currentPage !== 'files-assets' && currentPage !== 'email-security' && currentPage !== 'signatures' && currentPage !== 'security-events' && currentPage !== 'audit-logs' && currentPage !== 'licenses' && currentPage !== 'external-sharing' && currentPage !== 'console' && currentPage !== 'administrators' && currentPage !== 'my-profile' && currentPage !== 'people' && currentPage !== 'my-team' && currentPage !== 'my-groups' && currentPage !== 'user-settings' && currentPage !== 'orgChart' && currentPage !== 'add-user' && currentPage !== 'onboarding-templates' && currentPage !== 'new-onboarding-template' && currentPage !== 'edit-onboarding-template' && currentPage !== 'offboarding-templates' && currentPage !== 'new-offboarding-template' && currentPage !== 'edit-offboarding-template' && currentPage !== 'scheduled-actions' && currentPage !== 'new-user-onboarding' && currentPage !== 'user-offboarding' && currentPage !== 'requests' && currentPage !== 'bulk-operations' && currentPage !== 'migration' && currentPage !== 'delegations' && (
             <div className="page-placeholder">
               <div className="placeholder-content">
                 <h2>Page Not Found</h2>
@@ -1807,6 +1839,10 @@ function AppContent() {
           setShowHelpWidget(false);
           setChatInitialMessage(question);
           setShowChatPanel(true);
+        }}
+        onNavigate={(path) => {
+          setShowHelpWidget(false);
+          navigate(path);
         }}
       />
     </div>

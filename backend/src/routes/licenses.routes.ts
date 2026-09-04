@@ -158,15 +158,23 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
         displayName: 'Google Workspace Enterprise Plus',
         description: 'Advanced enterprise features with eDiscovery'
       },
-      {
-        skuId: '1010020020',
-        displayName: 'Google Workspace Essentials',
-        description: 'Meet and Drive for non-Gmail users'
-      },
+      // Canonical numeric SKU ids — see config/google-license-skus.ts.
+      // (Previously 1010020020=Enterprise Plus was mislabeled "Essentials" and
+      // 1010020025=Business Plus was mislabeled "Frontline Starter".)
       {
         skuId: '1010020025',
-        displayName: 'Google Workspace Frontline Starter',
-        description: 'Basic tools for frontline workers'
+        displayName: 'Google Workspace Business Plus',
+        description: 'Advanced security and management for businesses'
+      },
+      {
+        skuId: '1010020026',
+        displayName: 'Google Workspace Enterprise Standard',
+        description: 'Enterprise-grade security and compliance'
+      },
+      {
+        skuId: '1010020020',
+        displayName: 'Google Workspace Enterprise Plus',
+        description: 'Advanced enterprise features with eDiscovery'
       }
     ];
 

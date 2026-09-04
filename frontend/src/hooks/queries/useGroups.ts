@@ -43,20 +43,46 @@ async function fetchGroups(): Promise<Group[]> {
 
   const result = await response.json();
 
-  if (result.success && result.data) {
-    return result.data.map((group: any) => ({
-      id: group.id,
-      name: group.name,
-      description: group.description || '',
-      email: group.email,
-      memberCount: parseInt(group.member_count) || parseInt(group.metadata?.directMembersCount) || group.directMembersCount || 0,
-      platform: group.platform || 'google_workspace',
-      type: group.group_type || (group.metadata?.adminCreated ? 'Admin' : 'User'),
-      createdAt: group.created_at || group.createdAt || new Date().toISOString()
-    }));
+  const groups: Group[] = (result.success && result.data)
+    ? result.data.map((group: any) => ({
+        id: group.id,
+        name: group.name,
+        description: group.description || '',
+        email: group.email,
+        memberCount: parseInt(group.member_count) || parseInt(group.metadata?.directMembersCount) || group.directMembersCount || 0,
+        platform: group.platform || 'google_workspace',
+        type: group.group_type || (group.metadata?.adminCreated ? 'Admin' : 'User'),
+        createdAt: group.created_at || group.createdAt || new Date().toISOString()
+      }))
+    : [];
+
+  // Also merge Microsoft 365 groups (a separate table/id-space). Best-effort:
+  // /microsoft/groups returns [] when M365 isn't configured, so this is safe to
+  // always call. These carry platform:'microsoft_365' so the row badge + the
+  // GroupSlideOut route their operations to the /microsoft endpoints.
+  try {
+    const msResp = await authFetch('/api/v1/microsoft/groups');
+    if (msResp.ok) {
+      const msResult = await msResp.json();
+      for (const g of (msResult?.data || [])) {
+        const isUnified = Array.isArray(g.group_types) && g.group_types.includes('Unified');
+        groups.push({
+          id: g.id,
+          name: g.display_name,
+          description: g.description || '',
+          email: g.mail || '',
+          memberCount: parseInt(g.member_count) || 0,
+          platform: 'microsoft_365',
+          type: isUnified ? 'Microsoft 365' : 'Security',
+          createdAt: g.last_sync_at || new Date().toISOString(),
+        });
+      }
+    }
+  } catch {
+    // M365 is optional — ignore fetch failures.
   }
 
-  return [];
+  return groups;
 }
 
 // Create a new group
@@ -167,6 +193,50 @@ export function useDeleteGroup() {
 
   return useMutation({
     mutationFn: deleteGroup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [GROUPS_KEY] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Microsoft 365 group create (the slideout uses authFetch directly for
+// update/delete/member ops, matching its own pattern).
+// ---------------------------------------------------------------------------
+
+interface CreateMicrosoftGroupData {
+  displayName: string;
+  description?: string;
+  mailNickname?: string;
+  securityEnabled?: boolean;
+  mailEnabled?: boolean;
+}
+
+async function createMicrosoftGroup(data: CreateMicrosoftGroupData): Promise<any> {
+  const response = await authFetch('/api/v1/microsoft/groups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) {
+    // The /microsoft routes return error as { code, message } (errorResponse),
+    // while google routes return a plain string — handle both. This surfaces the
+    // capability-guard message (distribution/dynamic/role-assignable /"Microsoft
+    // 365 not configured") instead of "[object Object]".
+    throw new Error(result.error?.message || result.error || 'Failed to create Microsoft 365 group');
+  }
+  return result.data;
+}
+
+/**
+ * Hook to create a Microsoft 365 group.
+ */
+export function useCreateMicrosoftGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMicrosoftGroup,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GROUPS_KEY] });
     },

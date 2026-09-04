@@ -17,7 +17,12 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { encryptionService } from '../services/encryption.service.js';
-import axios from 'axios';
+// Record/replay seam for the two outbound Microsoft calls below (token exchange
+// + Graph API call). In production (and any test that does not opt in) this is a
+// straight passthrough to axios — no behavior change. Tests activate replay via
+// useGraphReplay(); setting HELIOS_GRAPH_RECORD=1 captures sanitized fixtures.
+// See testing/graph-replay.ts.
+import { graphHttp } from '../testing/graph-replay.js';
 import { Client } from '@microsoft/microsoft-graph-client';
 import { ClientSecretCredential } from '@azure/identity';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
@@ -390,7 +395,7 @@ async function getAccessToken(credentials: MicrosoftCredentials): Promise<string
   params.append('scope', 'https://graph.microsoft.com/.default');
   params.append('grant_type', 'client_credentials');
 
-  const response = await axios.post(tokenUrl, params, {
+  const response = await graphHttp.post(tokenUrl, params, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -449,7 +454,7 @@ async function proxyToMicrosoftGraph(
       requestConfig.data = proxyRequest.body;
     }
 
-    const response = await axios(requestConfig);
+    const response = await graphHttp(requestConfig);
 
     logger.info('Microsoft Graph API request successful', {
       status: response.status,
@@ -862,17 +867,48 @@ async function syncGroupResource(params: {
     });
   }
 
-  // DELETE GROUP
+  // DELETE — group OR member removal
   else if (method === 'DELETE') {
-    const groupKey = extractGroupKeyFromPath(params.path);
-
-    await db.query(`
-      DELETE FROM ms_synced_groups
-      WHERE organization_id = $1
-        AND ms_id = $2
-    `, [params.organizationId, groupKey]);
-
-    logger.info('Synced Microsoft group deletion', { groupKey });
+    // A member-remove path is /groups/{gid}/members/{uid}/$ref. The historic bug
+    // ran extractGroupKeyFromPath here (which matches the GROUP id in that path)
+    // and DELETE'd the whole group row, cascading away every membership. Detect
+    // the member path and remove only the membership.
+    const memberMatch = params.path.match(/groups\/([^/?]+)\/members\/([^/?]+)/i);
+    if (memberMatch) {
+      const gMsId = decodeURIComponent(memberMatch[1]);
+      const uMsId = decodeURIComponent(memberMatch[2]);
+      try {
+        await db.query(`
+          DELETE FROM ms_group_memberships m
+          USING ms_synced_groups g, ms_synced_users u
+          WHERE m.group_id = g.id AND m.user_id = u.id
+            AND m.organization_id = $1 AND g.ms_id = $2 AND u.ms_id = $3
+        `, [params.organizationId, gMsId, uMsId]);
+        await db.query(`
+          UPDATE ms_synced_groups SET member_count = (SELECT COUNT(*) FROM ms_group_memberships WHERE group_id = ms_synced_groups.id)
+          WHERE organization_id = $1 AND ms_id = $2
+        `, [params.organizationId, gMsId]);
+      } catch (e) {
+        logger.warn('proxy member-remove mirror failed', { error: (e as Error).message });
+      }
+      logger.info('Synced Microsoft group member removal', { group: gMsId, user: uMsId });
+    } else if (/groups\/[^/?]+\/?(\?.*)?$/i.test(params.path)) {
+      // ONLY a bare /groups/{id} delete removes the group row. Any other group
+      // sub-resource DELETE (/owners/{id}/$ref, /acceptedSenders/..., etc.) must
+      // NOT touch ms_synced_groups — extractGroupKeyFromPath would return the
+      // GROUP id and cascade-delete every membership.
+      const groupKey = extractGroupKeyFromPath(params.path);
+      await db.query(`
+        DELETE FROM ms_synced_groups
+        WHERE organization_id = $1
+          AND ms_id = $2
+      `, [params.organizationId, groupKey]);
+      logger.info('Synced Microsoft group deletion', { groupKey });
+    } else {
+      // Some other group sub-resource (owners / senders / …) the mirror doesn't
+      // track — leave ms_synced_groups untouched.
+      logger.debug('Proxy DELETE on unmirrored group sub-resource — mirror untouched', { path: params.path });
+    }
   }
 
   // LIST GROUPS (GET)

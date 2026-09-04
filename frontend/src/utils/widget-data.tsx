@@ -25,8 +25,10 @@ interface OrganizationStats {
     lastSync: string | null;
     licenses?: {
       used: number;
-      total: number;
+      total: number | null;
       reportDate?: string;
+      skuName?: string | null;
+      skus?: Array<{ name: string; used: number; total: number; available: number }>;
     } | null;
   };
   microsoft?: {
@@ -37,8 +39,10 @@ interface OrganizationStats {
     lastSync: string | null;
     licenses?: {
       used: number;
-      total: number;
+      total: number | null;
       reportDate?: string;
+      skuName?: string | null;
+      skus?: Array<{ name: string; used: number; total: number; available: number }>;
     } | null;
   };
   helios?: {
@@ -131,7 +135,7 @@ export const getWidgetData = (
 
   if (widgetId === 'google-licenses') {
     const licenses = stats?.google?.licenses;
-    if (!licenses || licenses.total === 0) {
+    if (!licenses || !licenses.total) {
       return {
         ...baseData,
         value: 'N/A',
@@ -144,9 +148,9 @@ export const getWidgetData = (
     return {
       ...baseData,
       value: `${percentUsed}%`,
-      label: `${licenses.used} / ${licenses.total} licenses`,
+      label: licenses.skuName ? `${licenses.used} / ${licenses.total} · ${licenses.skuName}` : `${licenses.used} / ${licenses.total} licenses`,
       footer: licenses.reportDate ? `As of ${new Date(licenses.reportDate).toLocaleDateString()}` : undefined,
-      state: percentUsed > 90 ? 'warning' : percentUsed > 100 ? 'error' : 'default',
+      state: percentUsed > 100 ? 'error' : percentUsed >= 90 ? 'warning' : 'default',
     };
   }
 
@@ -194,7 +198,7 @@ export const getWidgetData = (
 
   if (widgetId === 'microsoft-licenses') {
     const licenses = stats?.microsoft?.licenses;
-    if (!licenses || licenses.total === 0) {
+    if (!licenses || !licenses.total) {
       return {
         ...baseData,
         value: 'N/A',
@@ -207,9 +211,9 @@ export const getWidgetData = (
     return {
       ...baseData,
       value: `${percentUsed}%`,
-      label: `${licenses.used} / ${licenses.total} licenses`,
+      label: licenses.skuName ? `${licenses.used} / ${licenses.total} · ${licenses.skuName}` : `${licenses.used} / ${licenses.total} licenses`,
       footer: licenses.reportDate ? `As of ${new Date(licenses.reportDate).toLocaleDateString()}` : undefined,
-      state: percentUsed > 90 ? 'warning' : percentUsed > 100 ? 'error' : 'default',
+      state: percentUsed > 100 ? 'error' : percentUsed >= 90 ? 'warning' : 'default',
     };
   }
 
