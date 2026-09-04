@@ -59,6 +59,12 @@ jest.unstable_mockModule('../services/feature-flags.service.js', () => ({
   featureFlagsService: { isEnabled: mockIsEnabled },
 }));
 
+// transparent-proxy imports this for the multi-domain impersonation guard; stub
+// it so the module graph resolves (these tests don't exercise impersonation).
+jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
+  googleWorkspaceService: { listGoogleWorkspaceDomains: jest.fn() },
+}));
+
 // jwt.sign is real (jsonwebtoken) but our private key is fake; stub the signer.
 jest.unstable_mockModule('jsonwebtoken', () => ({
   default: { sign: jest.fn(() => 'signed-jwt') },

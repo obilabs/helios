@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { microsoftGraphService } from '../services/microsoft-graph.service.js';
 import { microsoftSyncService } from '../services/microsoft-sync.service.js';
+import { migrationPlanService } from '../services/migration/migration-plan.service.js';
+import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -504,6 +506,184 @@ router.get('/groups/:id', async (req: Request, res: Response): Promise<void> => 
 });
 
 // =====================================================
+// GROUP WRITE ENDPOINTS (create / update / delete / membership)
+// =====================================================
+
+/**
+ * App-only Graph (Group.ReadWrite.All) can fully manage pure security groups and
+ * Unified/M365 groups. It CANNOT manage: mail-enabled security / distribution
+ * groups (need Exchange Online), dynamic-membership groups (need Entra ID P1 +
+ * membershipRule), or role-assignable groups (need RoleManagement.ReadWrite.
+ * Directory). Refuse those up front with a clear message rather than letting
+ * Graph reject them — or, worse, silently "succeed" — which is the exact
+ * silent-failure mode to avoid. Returns an error message, or null when OK.
+ */
+function unmanageableM365GroupReason(body: any): string | null {
+  const groupTypes: string[] = Array.isArray(body?.groupTypes) ? body.groupTypes : [];
+  if (groupTypes.includes('DynamicMembership')) {
+    return 'Dynamic-membership groups require Entra ID P1 and a membershipRule, and cannot be managed with the app-only Graph permissions Helios holds.';
+  }
+  if (body?.isAssignableToRole === true) {
+    return 'Role-assignable groups require RoleManagement.ReadWrite.Directory, which Helios is not consented for.';
+  }
+  if (body?.mailEnabled === true && !groupTypes.includes('Unified')) {
+    return 'Distribution lists and mail-enabled security groups require Exchange Online and cannot be managed with app-only Graph permissions.';
+  }
+  return null;
+}
+
+/** POST /microsoft/groups — create a security or Unified/M365 group. */
+router.post('/groups', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const { displayName, description, mailNickname, securityEnabled, mailEnabled } = req.body || {};
+    if (!displayName) { validationErrorResponse(res, [{ field: 'displayName', message: 'displayName is required' }]); return; }
+    const reason = unmanageableM365GroupReason(req.body);
+    if (reason) { errorResponse(res, ErrorCode.VALIDATION_ERROR, reason); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    const created: any = await microsoftGraphService.createGroup({ displayName, description, mailNickname, securityEnabled, mailEnabled });
+
+    try {
+      if (created?.id) {
+        await db.query(
+          `INSERT INTO ms_synced_groups (organization_id, ms_id, display_name, description, mail, mail_enabled, security_enabled, group_types, raw_data, member_count, last_sync_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,0,NOW())
+           ON CONFLICT (organization_id, ms_id) DO UPDATE SET
+             display_name = EXCLUDED.display_name, description = EXCLUDED.description,
+             mail = EXCLUDED.mail, mail_enabled = EXCLUDED.mail_enabled,
+             security_enabled = EXCLUDED.security_enabled, group_types = EXCLUDED.group_types,
+             raw_data = EXCLUDED.raw_data, last_sync_at = NOW()`,
+          [organizationId, created.id, created.displayName || displayName, created.description ?? description ?? null,
+            created.mail ?? null, created.mailEnabled ?? !!mailEnabled, created.securityEnabled ?? (securityEnabled ?? true),
+            JSON.stringify(created.groupTypes || []), JSON.stringify(created)]
+        );
+      }
+    } catch (mErr) { logger.warn('Group created in M365 but local mirror upsert failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, created);
+  } catch (error: any) {
+    logger.error('Failed to create Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to create group: ' + error.message);
+  }
+});
+
+/** PATCH /microsoft/groups/:id — update group metadata (displayName/description/mailNickname). */
+router.patch('/groups/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    const { displayName, description, mailNickname } = req.body || {};
+    const updates: { displayName?: string; description?: string; mailNickname?: string } = {};
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (description !== undefined) updates.description = description;
+    if (mailNickname !== undefined) updates.mailNickname = mailNickname;
+    if (Object.keys(updates).length === 0) { validationErrorResponse(res, [{ field: 'body', message: 'No updatable fields provided' }]); return; }
+
+    await microsoftGraphService.updateGroup(g.rows[0].ms_id, updates);
+    try {
+      await db.query(
+        'UPDATE ms_synced_groups SET display_name = COALESCE($3, display_name), description = COALESCE($4, description), last_sync_at = NOW() WHERE organization_id = $1 AND id = $2',
+        [organizationId, id, displayName ?? null, description ?? null]
+      );
+    } catch (mErr) { logger.warn('Group updated in M365 but local mirror update failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Group updated successfully' });
+  } catch (error: any) {
+    logger.error('Failed to update Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update group: ' + error.message);
+  }
+});
+
+/** DELETE /microsoft/groups/:id — delete a group (memberships cascade in the mirror). */
+router.delete('/groups/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.deleteGroup(g.rows[0].ms_id);
+    try {
+      await db.query('DELETE FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    } catch (mErr) { logger.warn('Group deleted in M365 but local mirror delete failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Group deleted successfully' });
+  } catch (error: any) {
+    logger.error('Failed to delete Microsoft group', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to delete group: ' + error.message);
+  }
+});
+
+/** POST /microsoft/groups/:id/members { userId } — add a member. */
+router.post('/groups/:id/members', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id } = req.params;
+    const { userId } = req.body || {};
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    if (!userId) { validationErrorResponse(res, [{ field: 'userId', message: 'userId is required' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const u = await db.query('SELECT id, ms_id FROM ms_synced_users WHERE organization_id = $1 AND id = $2', [organizationId, userId]);
+    if (u.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'User not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.addGroupMember(g.rows[0].ms_id, u.rows[0].ms_id);
+    try {
+      await db.query(
+        'INSERT INTO ms_group_memberships (organization_id, group_id, user_id) VALUES ($1, $2, $3) ON CONFLICT (group_id, user_id) DO NOTHING',
+        [organizationId, g.rows[0].id, u.rows[0].id]
+      );
+      await db.query('UPDATE ms_synced_groups SET member_count = (SELECT COUNT(*) FROM ms_group_memberships WHERE group_id = $1) WHERE id = $1', [g.rows[0].id]);
+    } catch (mErr) { logger.warn('Member added in M365 but local mirror insert failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Member added successfully' });
+  } catch (error: any) {
+    logger.error('Failed to add Microsoft group member', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to add member: ' + error.message);
+  }
+});
+
+/** DELETE /microsoft/groups/:id/members/:userId — remove a member. */
+router.delete('/groups/:id/members/:userId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { id, userId } = req.params;
+    if (!organizationId) { validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]); return; }
+    const g = await db.query('SELECT id, ms_id FROM ms_synced_groups WHERE organization_id = $1 AND id = $2', [organizationId, id]);
+    if (g.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'Group not found'); return; }
+    const u = await db.query('SELECT id, ms_id FROM ms_synced_users WHERE organization_id = $1 AND id = $2', [organizationId, userId]);
+    if (u.rows.length === 0) { errorResponse(res, ErrorCode.NOT_FOUND, 'User not found'); return; }
+    const initialized = await microsoftGraphService.initialize(organizationId);
+    if (!initialized) { errorResponse(res, ErrorCode.VALIDATION_ERROR, 'Microsoft 365 not configured'); return; }
+
+    await microsoftGraphService.removeGroupMember(g.rows[0].ms_id, u.rows[0].ms_id);
+    try {
+      await db.query('DELETE FROM ms_group_memberships WHERE group_id = $1 AND user_id = $2', [g.rows[0].id, u.rows[0].id]);
+      await db.query('UPDATE ms_synced_groups SET member_count = (SELECT COUNT(*) FROM ms_group_memberships WHERE group_id = $1) WHERE id = $1', [g.rows[0].id]);
+    } catch (mErr) { logger.warn('Member removed in M365 but local mirror delete failed', { error: (mErr as Error).message }); }
+
+    successResponse(res, { message: 'Member removed successfully' });
+  } catch (error: any) {
+    logger.error('Failed to remove Microsoft group member', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to remove member: ' + error.message);
+  }
+});
+
+// =====================================================
 // LICENSE MANAGEMENT ENDPOINTS
 // =====================================================
 
@@ -743,6 +923,176 @@ router.delete('/users/:id/licenses/:skuId', requireAdmin, async (req: Request, r
   } catch (error: any) {
     logger.error('Failed to remove license', { error: error.message });
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to remove license: ' + error.message);
+  }
+});
+
+/**
+ * GET /microsoft/migration/plan
+ * The saved M365->Google migration plan (or a freshly generated default),
+ * mapping each M365 user to a chosen Google destination. Read-only; execution
+ * stays out-of-band until the migration scopes + destination are in place.
+ */
+router.get('/migration/plan', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    successResponse(res, { plan, validation: migrationPlanService.validatePlan(plan) });
+  } catch (error: any) {
+    logger.error('Failed to load migration plan', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to load migration plan');
+  }
+});
+
+/**
+ * PUT /microsoft/migration/plan
+ * Persist an edited plan — destination overrides, including migrating source X
+ * into a DIFFERENT Google account Y. Returns validation (unmapped targets and
+ * destinations that do not yet exist and must be created + licensed first).
+ */
+router.put('/migration/plan', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan = req.body?.plan;
+    if (!plan || plan.organizationId !== organizationId || !Array.isArray(plan.targets)) {
+      validationErrorResponse(res, [
+        { field: 'plan', message: 'A plan with a matching organizationId and targets[] is required' },
+      ]);
+      return;
+    }
+    // Existence of each chosen destination is re-derived server-side (client
+    // flags are not trusted), then persisted.
+    const reconciled = await migrationPlanService.reconcileExistence(plan);
+    await migrationPlanService.savePlan(reconciled);
+    successResponse(res, {
+      plan: reconciled,
+      validation: migrationPlanService.validatePlan(reconciled),
+    });
+  } catch (error: any) {
+    logger.error('Failed to save migration plan', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to save migration plan');
+  }
+});
+
+/**
+ * GET /microsoft/migration/plan/csv
+ * The source->destination mapping as CSV for Google's native Data Migration
+ * import (READY targets only — both accounts must already exist).
+ */
+router.get('/migration/plan/csv', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    const csv = migrationPlanService.toGoogleMigrationCsv(plan);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="m365-google-migration-mapping.csv"');
+    res.status(200).send(csv);
+  } catch (error: any) {
+    logger.error('Failed to export migration plan CSV', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to export migration plan CSV');
+  }
+});
+
+/**
+ * GET /microsoft/migration/plan/scope-csv[?header=...]
+ * SOURCE-ONLY CSV for import steps that take a scope list (e.g. Google's OneDrive
+ * import "Step 2: Set data import scope"). READY targets only. The mapping step
+ * (OneDrive Step 3) uses /plan/csv, whose columns already match Google's sample.
+ */
+router.get('/migration/plan/scope-csv', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const header = typeof req.query.header === 'string' && req.query.header.trim()
+      ? req.query.header.trim()
+      : 'Source OneDrive User';
+    const plan =
+      (await migrationPlanService.loadPlan(organizationId)) ??
+      (await migrationPlanService.generateDefaultPlan(organizationId));
+    const csv = migrationPlanService.toGoogleScopeCsv(plan, header);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="m365-google-migration-scope.csv"');
+    res.status(200).send(csv);
+  } catch (error: any) {
+    logger.error('Failed to export migration scope CSV', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to export migration scope CSV');
+  }
+});
+
+/**
+ * POST /microsoft/migration/provision[?execute=true]
+ * Provision the Google DESTINATIONS the migration plan needs — Google's native
+ * importer never creates accounts. Dry-run unless ?execute=true. Honors each
+ * target's destinationType (mailbox / delegated licensed mailbox / Google Group).
+ * Requires the destination domain to already be added to the Google workspace.
+ */
+router.post('/migration/provision', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const execute = req.query.execute === 'true';
+    const result = await migrationPlanService.provisionMigrationDestinations(organizationId, execute);
+    successResponse(res, result);
+  } catch (error: any) {
+    logger.error('Failed to provision migration destinations', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to provision migration destinations');
+  }
+});
+
+/**
+ * GET /microsoft/migration/status[?days=N][&maxPages=N]
+ * Read-only migration progress from Google's `data_migration` audit stream
+ * (Reports API). Google's cross-cloud transfer is console-triggered — there is no
+ * start API — so this surfaces the transfer's progress (setup + per-object events
+ * + failures) inside Helios. Uses the admin.reports.audit.readonly scope Helios
+ * already holds. Window defaults to 7 days (1–60).
+ *
+ * The service pages through the whole window so counts reflect the TRUE totals
+ * (not a single 1000-event page), bounded by `maxPages` (default 30, 1–100) to
+ * cap quota/latency; when the cap is hit `summary.truncated` is set. The response
+ * also carries per-item `failures` detail and a per-user/per-execution `byTarget`
+ * breakdown.
+ */
+router.get('/migration/status', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
+      return;
+    }
+    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '7'), 10) || 7, 1), 60);
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);
+    // Optional ops override for very large migrations; service clamps to 1–100.
+    const maxPages = req.query.maxPages !== undefined
+      ? parseInt(String(req.query.maxPages), 10) || undefined
+      : undefined;
+    const result = await googleWorkspaceService.fetchDataMigrationActivity(organizationId, { startTime, endTime, maxPages });
+    successResponse(res, result);
+  } catch (error: any) {
+    logger.error('Failed to fetch migration status', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to fetch migration status');
   }
 });
 

@@ -95,6 +95,27 @@ jest.unstable_mockModule('google-auth-library', () => ({
   })),
 }));
 
+// Mock the Google Workspace service the orchestrator delegates the newly-wired
+// primitives to (auto-reply / cancel-future-events / add-to-group / move-to-OU /
+// delete). These are separate methods on googleWorkspaceService; the existing
+// inline-client steps (drive transfer, forwarding, delegation, groups, tokens,
+// signout, password, suspend) don't touch this service, so mocking it here does
+// not affect them.
+const mockSetVacationResponder = jest.fn<(...args: any[]) => Promise<any>>();
+const mockCancelFutureEvents = jest.fn<(...args: any[]) => Promise<any>>();
+const mockAddUserToGroup = jest.fn<(...args: any[]) => Promise<any>>();
+const mockSetOrgUnit = jest.fn<(...args: any[]) => Promise<any>>();
+const mockDeleteUser = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
+  googleWorkspaceService: {
+    setVacationResponder: mockSetVacationResponder,
+    cancelFutureEvents: mockCancelFutureEvents,
+    addUserToGroup: mockAddUserToGroup,
+    setOrgUnit: mockSetOrgUnit,
+    deleteUser: mockDeleteUser,
+  },
+}));
+
 // Import after mocks
 import type { OffboardingConfig, CreateOffboardingTemplateDTO } from '../types/user-lifecycle.js';
 const { userOffboardingService } = await import('../services/user-offboarding.service.js');
@@ -106,9 +127,19 @@ describe('UserOffboardingService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockQuery.mockReset();
+    // Real pg never resolves undefined — an unmocked read is an EMPTY result.
+    // (The M365 offboard step reads ms_synced_users before deciding to skip.)
+    mockQuery.mockResolvedValue({ rows: [] });
     mockLogSuccess.mockResolvedValue({});
     mockLogFailure.mockResolvedValue({});
     mockLogSkipped.mockResolvedValue({});
+    // Delegated Google Workspace primitives default to success; individual tests
+    // override to assert failure handling.
+    mockSetVacationResponder.mockResolvedValue({ success: true });
+    mockCancelFutureEvents.mockResolvedValue({ success: true, cancelledCount: 0, declinedCount: 0 });
+    mockAddUserToGroup.mockResolvedValue({ success: true });
+    mockSetOrgUnit.mockResolvedValue({ success: true });
+    mockDeleteUser.mockResolvedValue({ success: true });
   });
 
   afterEach(() => {
@@ -946,6 +977,248 @@ describe('UserOffboardingService', () => {
       });
     });
 
+    // ---------------------------------------------------------------------
+    // Newly-wired offboarding primitives delegated to googleWorkspaceService:
+    // auto-reply (vacation responder), future-event cancellation, add-to-group,
+    // move-to-OU, and guarded/deferrable account deletion. The Google service is
+    // mocked; these prove the orchestrator invokes the right primitive with the
+    // right args, gates each on its config flag, and fails a step gracefully
+    // without aborting the offboard.
+    // ---------------------------------------------------------------------
+
+    describe('setAutoReply (vacation responder wiring)', () => {
+      it('sets the vacation responder via googleWorkspaceService, impersonating the departing user', async () => {
+        primeGoogleDb();
+        mockSetVacationResponder.mockResolvedValue({ success: true });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          emailAction: 'auto_reply',
+          emailAutoReplyMessage: 'I have left the company. Please contact my manager.',
+          emailAutoReplySubject: 'No longer with the company',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('set_auto_reply');
+        expect(mockSetVacationResponder).toHaveBeenCalledWith(
+          testOrgId,
+          'departing@obilabs.dev',
+          expect.objectContaining({
+            subject: 'No longer with the company',
+            body: 'I have left the company. Please contact my manager.',
+          })
+        );
+      });
+
+      it('marks the auto-reply step failed (without aborting) when the vacation responder fails', async () => {
+        primeGoogleDb();
+        mockSetVacationResponder.mockResolvedValue({ success: false, error: 'user suspended' });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          emailAction: 'auto_reply',
+          emailAutoReplyMessage: 'Gone.',
+          emailAutoReplySubject: 'Gone',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsFailed).toContain('set_auto_reply');
+        expect(result.success).toBe(false);
+        expect(result.stepsCompleted).toContain('finalize');
+      });
+
+      it('skips auto-reply when emailAction is not auto_reply', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('set_auto_reply');
+        expect(mockSetVacationResponder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('cancelFutureEvents wiring', () => {
+      it('cancels future calendar events when cancelFutureEvents is set', async () => {
+        primeGoogleDb();
+        mockCancelFutureEvents.mockResolvedValue({ success: true, cancelledCount: 2, declinedCount: 3 });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          cancelFutureEvents: true,
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('cancel_future_events');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+      });
+
+      it('also runs via the pre-existing (previously inert) calendarDeclineFutureMeetings flag', async () => {
+        primeGoogleDb();
+        mockCancelFutureEvents.mockResolvedValue({ success: true, cancelledCount: 0, declinedCount: 0 });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          calendarDeclineFutureMeetings: true,
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('cancel_future_events');
+        expect(mockCancelFutureEvents).toHaveBeenCalledTimes(1);
+      });
+
+      it('skips calendar cancellation when neither flag is set', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('cancel_future_events');
+        expect(mockCancelFutureEvents).not.toHaveBeenCalled();
+      });
+
+      it('marks the calendar step failed without aborting when the sweep errors', async () => {
+        primeGoogleDb();
+        mockCancelFutureEvents.mockResolvedValue({ success: false, error: 'calendar api down' });
+
+        const config: OffboardingConfig = { ...baseConfig, cancelFutureEvents: true };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsFailed).toContain('cancel_future_events');
+        expect(result.stepsCompleted).toContain('finalize');
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('addToOffboardedGroup wiring', () => {
+      it('adds the departing user to the configured offboarded group', async () => {
+        primeGoogleDb();
+        mockAddUserToGroup.mockResolvedValue({ success: true });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          offboardedGroupEmail: 'offboarded@obilabs.dev',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('add_to_offboarded_group');
+        expect(mockAddUserToGroup).toHaveBeenCalledWith(
+          testOrgId,
+          'departing@obilabs.dev',
+          'offboarded@obilabs.dev'
+        );
+      });
+
+      it('skips when no offboarded group is configured', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('add_to_offboarded_group');
+        expect(mockAddUserToGroup).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('moveToOrgUnit wiring', () => {
+      it('moves the departing user into the configured org unit', async () => {
+        primeGoogleDb();
+        mockSetOrgUnit.mockResolvedValue({ success: true });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          orgUnitPath: '/Offboarded',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('move_to_org_unit');
+        expect(mockSetOrgUnit).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', '/Offboarded');
+      });
+
+      it('skips when no org unit is configured', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('move_to_org_unit');
+        expect(mockSetOrgUnit).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('account deletion (opt-in, guarded, deferrable)', () => {
+      it('DEFERS deletion by default: records intent and never calls deleteUser', async () => {
+        primeGoogleDb();
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          deleteAccount: true,
+          deleteAfterDays: 30,
+          // deleteImmediately not set -> deferral
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('schedule_account_deletion');
+        expect(result.stepsCompleted).not.toContain('delete_account');
+        expect(mockDeleteUser).not.toHaveBeenCalled();
+        // Intent recorded in the audit log with the scheduled deletion window.
+        expect(mockLogSuccess).toHaveBeenCalledWith(
+          testOrgId,
+          'offboard',
+          'schedule_account_deletion',
+          expect.objectContaining({
+            details: expect.objectContaining({ deferred: true, deleteAfterDays: 30 }),
+          })
+        );
+      });
+
+      it('HARD-DELETES inline only with the explicit immediate flag', async () => {
+        primeGoogleDb();
+        mockDeleteUser.mockResolvedValue({ success: true });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          deleteAccount: true,
+          deleteImmediately: true,
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('delete_account');
+        expect(mockDeleteUser).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+      });
+
+      it('skips deletion entirely when deleteAccount is false (suspend remains the default)', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('delete_account');
+        expect(mockDeleteUser).not.toHaveBeenCalled();
+      });
+
+      it('marks the delete step failed (without aborting) when deleteUser fails', async () => {
+        primeGoogleDb();
+        mockDeleteUser.mockResolvedValue({ success: false, error: 'protected admin' });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          deleteAccount: true,
+          deleteImmediately: true,
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsFailed).toContain('delete_account');
+        expect(result.success).toBe(false);
+        expect(result.stepsCompleted).toContain('finalize');
+      });
+    });
+
     describe('executeFromTemplate', () => {
       it('should execute offboarding from template', async () => {
         // Mock getTemplate
@@ -1070,6 +1343,194 @@ describe('UserOffboardingService', () => {
 
         expect(result.success).toBe(false);
         expect(result.errors).toContain('User not found');
+      });
+    });
+
+    // ---------------------------------------------------------------------
+    // Two-tier offboarding knobs: an org POLICY supplies defaults that a
+    // per-offboard config overrides. The orchestrator merges the policy into the
+    // config (pure, no extra DB read) and honors the effective values.
+    // ---------------------------------------------------------------------
+
+    describe('resolveOffboardingPolicy', () => {
+      it('returns the built-in defaults when no policy is stored', async () => {
+        mockQuery.mockResolvedValueOnce({ rows: [] });
+
+        const policy = await userOffboardingService.resolveOffboardingPolicy(testOrgId);
+
+        expect(policy.deleteAfterDays).toBe(90);
+        expect(policy.cancelFutureEvents).toBe(false);
+        expect(policy.targetOrgUnitPath).toBeUndefined();
+        expect(policy.offboardedGroupEmail).toBeUndefined();
+      });
+
+      it('merges a stored policy over the defaults', async () => {
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ value: JSON.stringify({ targetOrgUnitPath: '/Gone', deleteAfterDays: 7 }) }],
+        });
+
+        const policy = await userOffboardingService.resolveOffboardingPolicy(testOrgId);
+
+        expect(policy.targetOrgUnitPath).toBe('/Gone');
+        expect(policy.deleteAfterDays).toBe(7);
+        // Fields the stored policy did not set keep their defaults.
+        expect(policy.cancelFutureEvents).toBe(false);
+      });
+
+      it('falls back to defaults when the settings read throws', async () => {
+        mockQuery.mockRejectedValueOnce(new Error('db down'));
+
+        const policy = await userOffboardingService.resolveOffboardingPolicy(testOrgId);
+
+        expect(policy.deleteAfterDays).toBe(90);
+        expect(policy.cancelFutureEvents).toBe(false);
+      });
+    });
+
+    describe('offboarding policy (two-tier knobs)', () => {
+      const policy = {
+        targetOrgUnitPath: '/Offboarded',
+        offboardedGroupEmail: 'offboarded@obilabs.dev',
+        autoReplyTemplate: 'Policy auto-reply body',
+        autoReplySubject: 'Policy subject',
+        deleteAfterDays: 30,
+        cancelFutureEvents: true,
+      };
+
+      it('fills unset config fields from the policy and honors them (OU move, group, cancel-events)', async () => {
+        primeGoogleDb();
+
+        // baseConfig leaves orgUnitPath / offboardedGroupEmail / cancelFutureEvents unset.
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig, { policy });
+
+        expect(result.stepsCompleted).toContain('move_to_org_unit');
+        expect(mockSetOrgUnit).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', '/Offboarded');
+
+        expect(result.stepsCompleted).toContain('add_to_offboarded_group');
+        expect(mockAddUserToGroup).toHaveBeenCalledWith(
+          testOrgId,
+          'departing@obilabs.dev',
+          'offboarded@obilabs.dev'
+        );
+
+        expect(result.stepsCompleted).toContain('cancel_future_events');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+      });
+
+      it('uses the policy auto-reply template when the config leaves the message unset', async () => {
+        primeGoogleDb();
+
+        const config: OffboardingConfig = { ...baseConfig, emailAction: 'auto_reply' };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config, { policy });
+
+        expect(result.stepsCompleted).toContain('set_auto_reply');
+        expect(mockSetVacationResponder).toHaveBeenCalledWith(
+          testOrgId,
+          'departing@obilabs.dev',
+          expect.objectContaining({ subject: 'Policy subject', body: 'Policy auto-reply body' })
+        );
+      });
+
+      it('lets a per-offboard value OVERRIDE the policy default', async () => {
+        primeGoogleDb();
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          orgUnitPath: '/ExplicitOU', // beats policy.targetOrgUnitPath
+          cancelFutureEvents: false, // explicit false beats policy true
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config, { policy });
+
+        expect(mockSetOrgUnit).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', '/ExplicitOU');
+        expect(result.stepsSkipped).toContain('cancel_future_events');
+        expect(mockCancelFutureEvents).not.toHaveBeenCalled();
+      });
+
+      it('records the policy deleteAfterDays window on a deferred deletion', async () => {
+        primeGoogleDb();
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          deleteAccount: true,
+          deleteAfterDays: undefined, // policy (30) fills it; deferred (no immediate flag)
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config, { policy });
+
+        expect(result.stepsCompleted).toContain('schedule_account_deletion');
+        expect(mockLogSuccess).toHaveBeenCalledWith(
+          testOrgId,
+          'offboard',
+          'schedule_account_deletion',
+          expect.objectContaining({
+            details: expect.objectContaining({ deferred: true, deleteAfterDays: 30 }),
+          })
+        );
+      });
+    });
+
+    describe('executeOffboardingFromConfig (raw config path)', () => {
+      it('rejects input without a userEmail', async () => {
+        const result = await userOffboardingService.executeOffboardingFromConfig(
+          testOrgId,
+          { userEmail: '' } as any
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.errors).toContain('User email is required');
+      });
+
+      it('resolves the Helios userId from the email, applies policy, and runs the guarded orchestrator', async () => {
+        // Route DB reads by SQL text so the entrypoint's extra lookups (userId,
+        // policy) coexist with the orchestrator's credential/admin reads.
+        mockQuery.mockImplementation(async (text: string) => {
+          if (typeof text === 'string' && text.includes('SELECT id FROM organization_users')) {
+            return { rows: [{ id: 'resolved-user-id' }] };
+          }
+          if (typeof text === 'string' && text.includes('FROM organization_settings')) {
+            return { rows: [{ value: JSON.stringify({ targetOrgUnitPath: '/Offboarded' }) }] };
+          }
+          if (typeof text === 'string' && text.includes('service_account_key')) {
+            return { rows: [{ service_account_key: SA_KEY_JSON }] };
+          }
+          if (typeof text === 'string' && text.includes('admin_email')) {
+            return { rows: [{ admin_email: 'admin@obilabs.dev' }] };
+          }
+          return { rows: [] };
+        });
+
+        const result = await userOffboardingService.executeOffboardingFromConfig(
+          testOrgId,
+          { userEmail: 'departing@obilabs.dev', accountAction: 'suspend_immediately' },
+          { triggeredBy: 'user' }
+        );
+
+        // Suspend (the default) is honored...
+        expect(result.stepsCompleted).toContain('suspend_account');
+        expect(mockUsersUpdate).toHaveBeenCalledWith({
+          userKey: 'departing@obilabs.dev',
+          requestBody: { suspended: true },
+        });
+
+        // ...and the org policy OU move is applied even though the raw config
+        // never set orgUnitPath (two-tier defaulting through the entrypoint).
+        expect(result.stepsCompleted).toContain('move_to_org_unit');
+        expect(mockSetOrgUnit).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', '/Offboarded');
+      });
+
+      it('keeps deletion OFF by default (suspend-only) on a bare raw config', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboardingFromConfig(
+          testOrgId,
+          { userEmail: 'departing@obilabs.dev' },
+          { triggeredBy: 'user' }
+        );
+
+        expect(result.stepsSkipped).toContain('delete_account');
+        expect(mockDeleteUser).not.toHaveBeenCalled();
       });
     });
   });

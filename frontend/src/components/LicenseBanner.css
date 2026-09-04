@@ -1,0 +1,46 @@
+.license-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.license-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  border: 1px solid;
+}
+
+.license-banner svg { flex-shrink: 0; }
+.license-banner-msg { flex: 1; }
+
+.license-banner.near { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.license-banner.at   { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+.license-banner.over { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+
+.license-banner-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.65;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+}
+.license-banner-dismiss:hover { opacity: 1; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .license-banner.near { background: #3a2e0a; border-color: #78560f; color: #fde68a; }
+  :root:not([data-theme="light"]) .license-banner.at   { background: #3a220a; border-color: #7c3f12; color: #fed7aa; }
+  :root:not([data-theme="light"]) .license-banner.over { background: #3a1414; border-color: #7f1d1d; color: #fecaca; }
+}
+:root[data-theme="dark"] .license-banner.near { background: #3a2e0a; border-color: #78560f; color: #fde68a; }
+:root[data-theme="dark"] .license-banner.at   { background: #3a220a; border-color: #7c3f12; color: #fed7aa; }
+:root[data-theme="dark"] .license-banner.over { background: #3a1414; border-color: #7f1d1d; color: #fecaca; }

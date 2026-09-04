@@ -8,6 +8,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
+import { microsoftGraphService } from '../services/microsoft-graph.service.js';
 import { activityTracker } from '../services/activity-tracker.service.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 import {
@@ -541,7 +542,14 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     if (userType) {
       // Map 'guests' to 'guest' for frontend compatibility
       const dbUserType = userType === 'guests' ? 'guest' : userType === 'contacts' ? 'contact' : userType;
-      statusCondition += ` AND ou.user_type = '${dbUserType}'`;
+      if (dbUserType === 'staff') {
+        // The Staff tab represents internal humans, which includes locally-created
+        // (Helios-native) accounts stored as user_type='local'. Without this they
+        // are unreachable anywhere in the admin Users page.
+        statusCondition += " AND ou.user_type IN ('staff','local')";
+      } else {
+        statusCondition += ` AND ou.user_type = '${dbUserType}'`;
+      }
     } else if (guestOnly) {
       // Fallback to old guest filter for backwards compatibility
       statusCondition += " AND ou.is_guest = true";
@@ -613,6 +621,11 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
       ORDER BY ou.first_name, ou.last_name, ou.email
     `, [organizationId]);
 
+    // Secondary index by Google link id, so a synced cache row whose email
+    // differs from the canonical organization_users email still resolves to the
+    // SAME identity instead of spawning a duplicate directory row.
+    const googleIdMap = new Map<string, any>();
+
     // Add local users to the map
     localUsersResult.rows.forEach((user: any) => {
       // Determine platforms based on platform IDs
@@ -628,10 +641,13 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         source: user.googleWorkspaceId ? 'google_workspace' : (user.microsoft365Id ? 'microsoft_365' : 'local')
       };
       userEmailMap.set(user.email.toLowerCase(), userData);
+      if (user.googleWorkspaceId) googleIdMap.set(user.googleWorkspaceId, userData);
     });
 
-    // If Google Workspace is enabled, also fetch synced users
-    if (googleWorkspaceEnabled) {
+    // If Google Workspace is enabled, also fetch synced users — but only when the
+    // platform filter actually includes Google. Otherwise (e.g. platform=microsoft_365
+    // or =local) this merge would pull Google-cache users past the filter.
+    if (googleWorkspaceEnabled && (platformFilter === 'all' || platformFilter === 'google_workspace')) {
       logger.info('Fetching users from Google Workspace cache');
       const gwUsersResult = await db.query(`
         SELECT
@@ -669,9 +685,11 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         // Use explicit department field, or extract from OU path as fallback
         const gwDepartment = user.department || extractDepartmentFromOUPath(user.org_unit_path);
 
-        // If user already exists locally, add google_workspace to their platforms if not already present
-        if (userEmailMap.has(email)) {
-          const existingUser = userEmailMap.get(email);
+        // Resolve to an existing identity by email OR by the Google link id, so
+        // a linked person is never split into a second row when their cache
+        // email differs from their organization_users email.
+        const existingUser = userEmailMap.get(email) || googleIdMap.get(user.external_id);
+        if (existingUser) {
           if (!existingUser.platforms.includes('google_workspace')) {
             existingUser.platforms.push('google_workspace');
             // Remove 'local' if we now have a real platform
@@ -767,11 +785,16 @@ router.get('/users/count', authenticateToken, async (req: Request, res: Response
 
     logger.info('Fetching user count', { organizationId, userType, dbUserType });
 
-    // Count users by type (exclude soft-deleted)
+    // Count users by type (exclude soft-deleted). Staff includes 'local'
+    // (Helios-native) accounts so the count matches the Staff tab listing.
+    const typeCondition = dbUserType === 'staff'
+      ? "user_type IN ('staff','local')"
+      : 'user_type = $2';
+    const countParams = dbUserType === 'staff' ? [organizationId] : [organizationId, dbUserType];
     const result = await db.query(
       `SELECT COUNT(*) as count FROM organization_users
-       WHERE organization_id = $1 AND user_type = $2 AND status != 'deleted'`,
-      [organizationId, dbUserType]
+       WHERE organization_id = $1 AND ${typeCondition} AND status != 'deleted'`,
+      countParams
     );
 
     const count = parseInt(result.rows[0].count) || 0;
@@ -841,19 +864,23 @@ router.get('/users/export', authenticateToken, async (req: Request, res: Respons
       }
     }
 
-    // Build query
-    let whereClause = 'WHERE organization_id = $1 AND user_type = $2';
-    const params: any[] = [organizationId, userType];
+    // Build query. Map frontend tab values and make Staff inclusive of 'local'
+    // (Helios-native) accounts, matching the Users list + count endpoints.
+    const dbUserType = userType === 'guests' ? 'guest' : userType === 'contacts' ? 'contact' : userType;
+    const params: any[] = [organizationId];
+    let whereClause: string;
+    if (dbUserType === 'staff') {
+      whereClause = "WHERE organization_id = $1 AND user_type IN ('staff','local')";
+    } else {
+      whereClause = 'WHERE organization_id = $1 AND user_type = $2';
+      params.push(dbUserType);
+    }
 
-    // Add status filter if provided
+    // Add status filter if provided (use the next positional parameter)
     if (status && status !== 'all') {
-      if (status === 'pending') {
-        whereClause += ' AND status = $3';
-        params.push('staged');
-      } else {
-        whereClause += ' AND status = $3';
-        params.push(status);
-      }
+      const idx = params.length + 1;
+      whereClause += ` AND status = $${idx}`;
+      params.push(status === 'pending' ? 'staged' : status);
     }
 
     const result = await db.query(`
@@ -1486,11 +1513,108 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       }
     }
 
-    // TODO: Microsoft 365 user creation
-    // if (createInMicrosoft) { /* Create user in Microsoft 365 */ }
+    // Microsoft 365 user creation (+ optional license). Best-effort like Google:
+    // the Helios user already exists, so a Graph failure only records an error.
+    let microsoft365UserId: string | null = null;
+    let microsoftCreationError: string | null = null;
+    let microsoftLicenseAssigned = false;
+    let microsoftLicenseError: string | null = null;
 
-    // TODO: License assignment
-    // if (licenseId) { /* Assign license to user */ }
+    if (createInMicrosoft) {
+      try {
+        const initialized = await microsoftGraphService.initialize(organizationId);
+        if (!initialized) {
+          microsoftCreationError = 'Microsoft 365 not configured';
+        } else {
+          const localPart = email.split('@')[0];
+          const emailDomain = (email.split('@')[1] || '').toLowerCase();
+          // UPN must be on a VERIFIED tenant domain: use the email if its domain
+          // is verified, else the local part on the default verified domain.
+          let upn = email.toLowerCase();
+          try {
+            const domains = await microsoftGraphService.getVerifiedDomains();
+            const verifiedNames = domains.filter(d => d.isVerified).map(d => d.name.toLowerCase());
+            if (!verifiedNames.includes(emailDomain)) {
+              const def = domains.find(d => d.isDefault) || domains[0];
+              if (def) upn = `${localPart}@${def.name}`;
+            }
+          } catch (dErr) {
+            logger.warn('Could not resolve verified domains for M365 UPN; using email as UPN', { error: (dErr as Error).message });
+          }
+
+          const tempPassword = crypto.randomBytes(16).toString('base64').slice(0, 16) + 'Aa1!';
+          const created: any = await microsoftGraphService.createUser({
+            displayName: `${firstName} ${lastName}`.trim(),
+            mailNickname: localPart,
+            userPrincipalName: upn,
+            password: tempPassword,
+            accountEnabled: true,
+            jobTitle: jobTitle || undefined,
+            department: department || undefined,
+          });
+          microsoft365UserId = created?.id || null;
+
+          if (microsoft365UserId) {
+            await db.query(
+              `UPDATE organization_users
+               SET microsoft_365_id = $1, microsoft_365_upn = $2,
+                   microsoft_365_sync_status = 'synced', microsoft_365_last_sync = NOW()
+               WHERE id = $3`,
+              [microsoft365UserId, upn, newUser.id]
+            );
+            // Mirror into ms_synced_users so group/license routes (which resolve
+            // ms_synced_users.id -> ms_id) can act on the new user before the next sync.
+            try {
+              await db.query(
+                `INSERT INTO ms_synced_users (organization_id, ms_id, upn, display_name, email, is_account_enabled, last_sync_at)
+                 VALUES ($1,$2,$3,$4,$5,true,NOW())
+                 ON CONFLICT (organization_id, ms_id) DO UPDATE SET
+                   upn = EXCLUDED.upn, display_name = EXCLUDED.display_name, email = EXCLUDED.email, last_sync_at = NOW()`,
+                [organizationId, microsoft365UserId, upn, `${firstName} ${lastName}`.trim(), email.toLowerCase()]
+              );
+            } catch (mirrErr) {
+              logger.warn('M365 user created but ms_synced_users mirror failed', { error: (mirrErr as Error).message });
+            }
+
+            // Optional license assignment (licenseId may be an ms_licenses.id or a raw sku_id).
+            if (licenseId) {
+              try {
+                const lic = await db.query(
+                  'SELECT sku_id, available_units FROM ms_licenses WHERE organization_id = $1 AND (id::text = $2 OR sku_id = $2)',
+                  [organizationId, String(licenseId)]
+                );
+                const skuId = lic.rows[0]?.sku_id;
+                if (skuId) {
+                  // Graph rejects assignLicense for a user with no usageLocation —
+                  // set it from the tenant country first (best-effort).
+                  try {
+                    const country = await microsoftGraphService.getTenantCountry();
+                    if (country) {
+                      await microsoftGraphService.updateUser(microsoft365UserId, { usageLocation: country } as any);
+                    }
+                  } catch (locErr) {
+                    logger.warn('Could not set usageLocation before license assignment', { error: (locErr as Error).message });
+                  }
+                  await microsoftGraphService.assignLicense(microsoft365UserId, [skuId]);
+                  microsoftLicenseAssigned = true;
+                } else {
+                  microsoftLicenseError = 'Selected license not found for this tenant';
+                }
+              } catch (licErr) {
+                microsoftLicenseError = (licErr as Error).message;
+                logger.warn('M365 user created but license assignment failed', { error: microsoftLicenseError });
+              }
+            }
+            logger.info('User created in Microsoft 365 and linked to Helios', { userId: newUser.id, microsoft365Id: microsoft365UserId, upn });
+          } else {
+            microsoftCreationError = 'Microsoft 365 create returned no id';
+          }
+        }
+      } catch (msErr: any) {
+        microsoftCreationError = msErr?.message || 'Unknown error creating Microsoft 365 user';
+        logger.warn('Failed to create user in Microsoft 365', { userId: newUser.id, error: microsoftCreationError });
+      }
+    }
 
     // Build response message based on what was created
     let message = 'User created successfully';
@@ -1498,6 +1622,11 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       message = 'User created in Helios and Google Workspace';
     } else if (createInGoogle && googleCreationError) {
       message = 'User created in Helios. Google Workspace creation failed: ' + googleCreationError;
+    }
+    if (createInMicrosoft && microsoft365UserId) {
+      message += (message.includes('Google Workspace') ? ' and Microsoft 365' : ' in Helios and Microsoft 365');
+    } else if (createInMicrosoft && microsoftCreationError) {
+      message += '. Microsoft 365 creation failed: ' + microsoftCreationError;
     }
 
     res.status(201).json({
@@ -1524,8 +1653,12 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
           } : null,
           microsoft: createInMicrosoft ? {
             requested: true,
-            success: false,
-            error: 'Microsoft 365 user creation not yet implemented'
+            success: !!microsoft365UserId,
+            userId: microsoft365UserId,
+            error: microsoftCreationError,
+            licenseRequested: !!licenseId,
+            licenseAssigned: microsoftLicenseAssigned,
+            licenseError: microsoftLicenseError
           } : null
         }
       }
@@ -1647,6 +1780,14 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
       externalAdminValue = newRole === 'admin' ? isExternalAdmin : false;
     }
 
+    // Manager: the UI sends `managerId`; some callers send `reportingManagerId`.
+    // Accept either, and only write the column when one was actually provided —
+    // a partial update that omits it must NOT wipe the existing manager. (The
+    // historical bug bound the always-undefined `reportingManagerId` to a
+    // non-COALESCE assignment, so every save from the UI nulled the manager.)
+    const managerProvided = req.body.managerId !== undefined || reportingManagerId !== undefined;
+    const managerIdValue = (req.body.managerId !== undefined ? req.body.managerId : reportingManagerId) || null;
+
     // Update user
     const result = await db.query(
       `UPDATE organization_users SET
@@ -1659,7 +1800,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         department = COALESCE($7, department),
         organizational_unit = COALESCE($8, organizational_unit),
         location = COALESCE($9, location),
-        reporting_manager_id = $10,
+        reporting_manager_id = CASE WHEN $32 THEN $10 ELSE reporting_manager_id END,
         employee_id = COALESCE($11, employee_id),
         employee_type = COALESCE($12, employee_type),
         cost_center = COALESCE($13, cost_center),
@@ -1692,7 +1833,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         department,
         organizationalUnit,
         location,
-        reportingManagerId,
+        managerIdValue,
         employeeId,
         employeeType,
         costCenter,
@@ -1713,7 +1854,8 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         avatarUrl,
         externalAdminValue,
         userId,
-        organizationId
+        organizationId,
+        managerProvided
       ]
     );
 
@@ -1721,7 +1863,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
 
     // Sync to Google Workspace if the user is linked
     const userDetailsResult = await db.query(
-      'SELECT google_workspace_id, email FROM organization_users WHERE id = $1',
+      'SELECT google_workspace_id, microsoft_365_id, email FROM organization_users WHERE id = $1',
       [userId]
     );
 
@@ -1770,6 +1912,80 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         // Continue - don't fail the whole request if Google sync fails
       } else {
         logger.info('User synced to Google Workspace', { userId, googleWorkspaceId });
+      }
+    }
+
+    // Sync to Microsoft 365 / Entra ID if the user is linked (parity with the
+    // Google branch above — editing an M365-linked user must reach Entra, not
+    // just the local row). Best-effort: a Graph failure logs a warning and does
+    // not fail the request. Manager is written via the dedicated $ref endpoints.
+    const linkedMs365Id = userDetailsResult.rows[0]?.microsoft_365_id;
+    if (linkedMs365Id) {
+      try {
+        await microsoftGraphService.initialize(organizationId);
+
+        const graphUpdate: Record<string, unknown> = {};
+        if (jobTitle !== undefined) graphUpdate['jobTitle'] = jobTitle;
+        if (department !== undefined) graphUpdate['department'] = department;
+        if (location !== undefined) graphUpdate['officeLocation'] = location;
+        if (mobilePhone !== undefined) graphUpdate['mobilePhone'] = mobilePhone;
+        if (firstName !== undefined) graphUpdate['givenName'] = firstName;
+        if (lastName !== undefined) graphUpdate['surname'] = lastName;
+        if (Object.keys(graphUpdate).length > 0) {
+          await microsoftGraphService.updateUser(linkedMs365Id, graphUpdate as any);
+        }
+
+        // Custom fields (pronouns / certifications / professional designations)
+        // have no native Graph field — push them into a stable open extension.
+        // Read the stored values (pronouns column + custom_fields JSONB; both
+        // exist live). professional_designations may be absent on some installs,
+        // so read it defensively from JSONB, not the bare column.
+        try {
+          const cf = await db.query(
+            'SELECT pronouns, custom_fields FROM organization_users WHERE id = $1 AND organization_id = $2',
+            [userId, organizationId]
+          );
+          const row = cf.rows[0] || {};
+          const custom = (row.custom_fields && typeof row.custom_fields === 'object') ? row.custom_fields : {};
+          const extProps: Record<string, unknown> = {};
+          if (row.pronouns) extProps['pronouns'] = row.pronouns;
+          if (custom.certifications) extProps['certifications'] = custom.certifications;
+          const designation = custom.professional_designation ?? custom.professionalDesignations ?? custom.professional_designations;
+          if (designation) extProps['professionalDesignations'] = designation;
+          // Spread any remaining custom_fields keys (excluding the ones already mapped).
+          for (const [k, v] of Object.entries(custom)) {
+            if (v == null || v === '') continue;
+            if (['certifications', 'professional_designation', 'professionalDesignations', 'professional_designations'].includes(k)) continue;
+            extProps[k] = v;
+          }
+          if (Object.keys(extProps).length > 0) {
+            await microsoftGraphService.upsertUserOpenExtension(linkedMs365Id, extProps);
+          }
+        } catch (extErr) {
+          logger.warn('Failed to push custom fields to M365 open extension', { userId, error: (extErr as Error).message });
+        }
+
+        // Manager: set to the target user's M365 id, or clear it.
+        if (req.body.managerId !== undefined) {
+          if (req.body.managerId) {
+            const mgr = await db.query(
+              'SELECT microsoft_365_id FROM organization_users WHERE id = $1 AND organization_id = $2',
+              [req.body.managerId, organizationId]
+            );
+            const managerMsId = mgr.rows[0]?.microsoft_365_id;
+            if (managerMsId) {
+              await microsoftGraphService.setUserManager(linkedMs365Id, managerMsId);
+            } else {
+              logger.warn('M365 manager not set: manager has no microsoft_365_id', { userId, managerId: req.body.managerId });
+            }
+          } else {
+            await microsoftGraphService.removeUserManager(linkedMs365Id);
+          }
+        }
+        logger.info('User synced to Microsoft 365', { userId, microsoft365Id: linkedMs365Id });
+      } catch (err) {
+        logger.warn('Failed to sync user update to Microsoft 365', { userId, error: (err as Error).message });
+        // Continue - don't fail the whole request if the Graph sync fails
       }
     }
 
@@ -3839,6 +4055,126 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
   } catch (error: any) {
     logger.error('Error updating email settings', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to update email settings' });
+  }
+});
+
+/**
+ * GET /organization/delegations
+ * Org-wide Gmail delegation overview: for each Google-linked mailbox, its
+ * delegates. Returns only mailboxes that HAVE at least one delegate. Iterates the
+ * directory (one Gmail API call per mailbox), which is fine at typical org sizes;
+ * a very large org would want caching/pagination.
+ */
+router.get('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const users = await db.query(
+      `SELECT email FROM organization_users
+        WHERE organization_id = $1 AND google_workspace_id IS NOT NULL
+        ORDER BY email`,
+      [organizationId]
+    );
+    const delegations: Array<{ mailbox: string; delegates: Array<{ email: string; verificationStatus: string }> }> = [];
+    const errors: Array<{ mailbox: string; error: string }> = [];
+    for (const u of users.rows) {
+      const r = await googleWorkspaceService.listGmailDelegates(organizationId, u.email);
+      if (r.success) {
+        if (r.delegates && r.delegates.length) delegations.push({ mailbox: u.email, delegates: r.delegates });
+      } else if (r.error) {
+        errors.push({ mailbox: u.email, error: r.error });
+      }
+    }
+    return res.json({ success: true, data: { delegations, mailboxesChecked: users.rows.length, errors } });
+  } catch (error: any) {
+    logger.error('Failed to list org delegations', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to list delegations' });
+  }
+});
+
+/** POST /organization/delegations { mailbox, delegateEmail } — add a Gmail delegate. */
+router.post('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { mailbox, delegateEmail } = req.body || {};
+    if (!organizationId || !mailbox || !delegateEmail) {
+      return res.status(400).json({ success: false, error: 'mailbox and delegateEmail are required' });
+    }
+    const result = await googleWorkspaceService.addGmailDelegate(organizationId, mailbox, delegateEmail);
+    if (!result.success) return res.status(400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { mailbox, delegateEmail } });
+  } catch (error: any) {
+    logger.error('Failed to add delegate', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to add delegate' });
+  }
+});
+
+/** DELETE /organization/delegations { mailbox, delegateEmail } — remove a Gmail delegate. */
+router.delete('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const { mailbox, delegateEmail } = req.body || {};
+    if (!organizationId || !mailbox || !delegateEmail) {
+      return res.status(400).json({ success: false, error: 'mailbox and delegateEmail are required' });
+    }
+    const result = await googleWorkspaceService.removeGmailDelegate(organizationId, mailbox, delegateEmail);
+    if (!result.success) return res.status(400).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { mailbox, delegateEmail } });
+  } catch (error: any) {
+    logger.error('Failed to remove delegate', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to remove delegate' });
+  }
+});
+
+/**
+ * GET /organization/license-limits — the admin-configured "available licenses"
+ * per platform, used to drive the dashboard license cards + limit banners.
+ * null means "use the provider-reported total" (or, for Google whose total is
+ * not reliably reported, means "not tracked"). Stored as a single JSON setting.
+ */
+router.get('/license-limits', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const result = await db.query(
+      `SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'license_limits'`,
+      [organizationId]
+    );
+    let limits: { google: number | null; microsoft: number | null } = { google: null, microsoft: null };
+    if (result.rows[0]?.value) {
+      try { limits = { ...limits, ...JSON.parse(result.rows[0].value) }; } catch { /* keep defaults */ }
+    }
+    return res.json({ success: true, data: limits });
+  } catch (error: any) {
+    logger.error('Failed to get license limits', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to get license limits' });
+  }
+});
+
+/** PUT /organization/license-limits { google, microsoft } — set the per-platform
+ * available-license counts. null/empty clears a platform (falls back to provider
+ * total). This is display-only guidance and NEVER enforces a hard cap. */
+router.put('/license-limits', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(400).json({ success: false, error: 'Organization not found' });
+    const norm = (v: any): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return Math.floor(n);
+    };
+    const value = JSON.stringify({ google: norm(req.body?.google), microsoft: norm(req.body?.microsoft) });
+    await db.query(
+      `INSERT INTO organization_settings (organization_id, key, value)
+       VALUES ($1, 'license_limits', $2)
+       ON CONFLICT (organization_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [organizationId, value]
+    );
+    return res.json({ success: true, data: JSON.parse(value) });
+  } catch (error: any) {
+    logger.error('Failed to set license limits', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to set license limits' });
   }
 });
 

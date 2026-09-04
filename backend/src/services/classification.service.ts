@@ -105,23 +105,30 @@ export class ClassificationService {
     // Build domain list for SQL IN clause
     const domainPlaceholders = orgDomains.map((_, i) => `$${i + 2}`).join(', ')
 
-    // Update users with matching domains to 'user'
+    // Domain reclassification ONLY flips between the two domain-derived types,
+    // staff (internal) and guest (external). It must never touch 'contact'
+    // (shared mailboxes / unlicensed accounts) or 'local' (Helios-native
+    // accounts) — those are deliberate classifications, not domain-derived.
+    // (Historic bug: this wrote the dead value 'user', which no view queries,
+    // and clobbered contact/local for every domain-matching row.)
+
+    // Users on an org domain that were mis-tagged as guests become staff.
     const userResult = await db.query(
       `UPDATE organization_users
-       SET user_type = 'user', is_guest = false, updated_at = NOW()
+       SET user_type = 'staff', is_guest = false, updated_at = NOW()
        WHERE organization_id = $1
          AND LOWER(SPLIT_PART(email, '@', 2)) IN (${domainPlaceholders})
-         AND (user_type != 'user' OR user_type IS NULL)`,
+         AND (user_type = 'guest' OR user_type IS NULL)`,
       [organizationId, ...orgDomains]
     )
 
-    // Update users with non-matching domains to 'guest'
+    // Users NOT on an org domain that were tagged staff become guests.
     const guestResult = await db.query(
       `UPDATE organization_users
        SET user_type = 'guest', is_guest = true, updated_at = NOW()
        WHERE organization_id = $1
          AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN (${domainPlaceholders})
-         AND (user_type != 'guest' OR user_type IS NULL)`,
+         AND (user_type = 'staff' OR user_type IS NULL)`,
       [organizationId, ...orgDomains]
     )
 

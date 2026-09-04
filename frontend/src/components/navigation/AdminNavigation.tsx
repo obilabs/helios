@@ -24,6 +24,10 @@ import {
   Zap,
   AppWindow,
   Key,
+  Building2,
+  Layers,
+  ArrowRightLeft,
+  MailPlus,
 } from 'lucide-react';
 import { useLabels } from '../../contexts/LabelsContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagsContext';
@@ -127,6 +131,46 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
         >
           <Network size={16} className="nav-icon" />
           <span>Org Chart</span>
+        </button>
+
+        {/* Org Units - organizational unit management (used for licensing + policy) */}
+        <button
+          className={`nav-item ${currentPage === 'orgUnits' ? 'active' : ''}`}
+          onClick={() => onNavigate('orgUnits')}
+          data-testid="nav-org-units"
+        >
+          <Building2 size={16} className="nav-icon" />
+          <span>{labels[ENTITIES.POLICY_CONTAINER]?.plural || 'Org Units'}</span>
+        </button>
+
+        {/* Bulk Operations - mass user/group changes via CSV */}
+        <button
+          className={`nav-item ${currentPage === 'bulk-operations' ? 'active' : ''}`}
+          onClick={() => onNavigate('bulk-operations')}
+          data-testid="nav-bulk-operations"
+        >
+          <Layers size={16} className="nav-icon" />
+          <span>Bulk Operations</span>
+        </button>
+
+        {/* Migration - Microsoft 365 -> Google Workspace */}
+        <button
+          className={`nav-item ${currentPage === 'migration' ? 'active' : ''}`}
+          onClick={() => onNavigate('migration')}
+          data-testid="nav-migration"
+        >
+          <ArrowRightLeft size={16} className="nav-icon" />
+          <span>Migration</span>
+        </button>
+
+        {/* Email Delegations - Gmail delegate access across the workspace */}
+        <button
+          className={`nav-item ${currentPage === 'delegations' ? 'active' : ''}`}
+          onClick={() => onNavigate('delegations')}
+          data-testid="nav-delegations"
+        >
+          <MailPlus size={16} className="nav-icon" />
+          <span>Delegations</span>
         </button>
       </div>
 

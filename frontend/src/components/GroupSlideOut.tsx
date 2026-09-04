@@ -77,6 +77,8 @@ interface Group {
 
 interface GroupSlideOutProps {
   groupId: string;
+  /** Platform of the clicked group; 'microsoft_365' routes ops to the M365 API. */
+  platform?: string;
   organizationId: string;
   onClose: () => void;
   onGroupUpdated?: () => void;
@@ -110,7 +112,8 @@ const OPERATOR_OPTIONS: { value: DynamicGroupOperator; label: string }[] = [
   { value: 'is_under', label: 'Is under (hierarchy)' }
 ];
 
-export function GroupSlideOut({ groupId, organizationId: _organizationId, onClose, onGroupUpdated }: GroupSlideOutProps) {
+export function GroupSlideOut({ groupId, platform, organizationId: _organizationId, onClose, onGroupUpdated }: GroupSlideOutProps) {
+  const isMicrosoft = platform === 'microsoft_365';
   const [activeTab, setActiveTab] = useTabPersistence<TabType>('helios_group_slideout_tab', 'overview');
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<Group | null>(null);
@@ -162,12 +165,20 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
     fetchDepartments();
   }, [groupId]);
 
+  // Rules (dynamic membership) don't apply to M365 groups — the tab is hidden,
+  // but the persisted tab key is shared, so a stored 'rules' tab would otherwise
+  // fire access-groups rule calls against the M365 (foreign) id-space. Reset it.
+  useEffect(() => {
+    if (isMicrosoft && activeTab === 'rules') setActiveTab('overview');
+  }, [isMicrosoft, activeTab]);
+
   // Fetch rules when switching to rules tab or when group membership type is dynamic
   useEffect(() => {
+    if (isMicrosoft) return;
     if (group?.membership_type === 'dynamic' || activeTab === 'rules') {
       fetchRules();
     }
-  }, [group?.membership_type, activeTab, groupId]);
+  }, [group?.membership_type, activeTab, groupId, isMicrosoft]);
 
   const fetchDepartments = async () => {
     try {
@@ -188,6 +199,36 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
     setLoading(true);
     setError(null);
     try {
+      // Microsoft 365 groups live in a separate table/id-space and are served by
+      // the /microsoft endpoints — the access-groups route would 404 for them.
+      if (isMicrosoft) {
+        const response = await authFetch(`/api/v1/microsoft/groups/${groupId}`);
+        if (!response.ok) throw new Error('Failed to fetch group details');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error?.message || data.error ||'Failed to fetch group details');
+        const g = data.data;
+        const isUnified = Array.isArray(g.group_types) && g.group_types.includes('Unified');
+        const mapped: Group = {
+          id: g.id, organization_id: _organizationId, name: g.display_name,
+          description: g.description ?? null, email: g.mail ?? null, platform: 'microsoft_365',
+          group_type: isUnified ? 'Microsoft 365' : 'Security', membership_type: 'static',
+          external_id: g.ms_id ?? null, external_url: null, allow_external_members: false,
+          is_public: false, is_active: true, metadata: {}, created_at: '', created_by: null,
+          updated_at: '', synced_at: g.last_sync_at ?? null,
+        };
+        setGroup(mapped);
+        setEditedGroup(mapped);
+        setMembers((g.members || []).map((m: any) => {
+          const [first, ...rest] = String(m.display_name || m.email || '').split(' ');
+          return {
+            id: m.id, user_id: m.id, email: m.email || '',
+            first_name: first || '', last_name: rest.join(' '),
+            member_type: 'member', is_active: true, joined_at: '',
+          } as GroupMember;
+        }));
+        return;
+      }
+
       const response = await authFetch(`/api/v1/organization/access-groups/${groupId}`);
 
       if (!response.ok) {
@@ -200,7 +241,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         setMembers(data.data.members || []);
         setEditedGroup(data.data.group);
       } else {
-        throw new Error(data.error || 'Failed to fetch group details');
+        throw new Error(data.error?.message || data.error ||'Failed to fetch group details');
       }
     } catch (err: any) {
       setError(err.message);
@@ -214,20 +255,21 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
 
     setIsSaving(true);
     try {
-      const response = await authFetch(
-        `/api/v1/organization/access-groups/${groupId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: editedGroup.name,
-            description: editedGroup.description,
-            email: editedGroup.email
+      const response = isMicrosoft
+        ? await authFetch(`/api/v1/microsoft/groups/${groupId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ displayName: editedGroup.name, description: editedGroup.description }),
           })
-        }
-      );
+        : await authFetch(`/api/v1/organization/access-groups/${groupId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: editedGroup.name,
+              description: editedGroup.description,
+              email: editedGroup.email,
+            }),
+          });
 
       const data = await response.json();
       if (data.success) {
@@ -235,7 +277,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         setIsEditing(false);
         onGroupUpdated?.();
       } else {
-        throw new Error(data.error || 'Failed to update group');
+        throw new Error(data.error?.message || data.error ||'Failed to update group');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -257,16 +299,26 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
 
     setSearchLoading(true);
     try {
-      const response = await authFetch(
-        `/api/v1/organization/users?search=${encodeURIComponent(query)}&status=active`
-      );
+      // M365 members come from ms_synced_users (a different id space); search that
+      // directory and normalize to {id, first_name, last_name, email}.
+      const response = isMicrosoft
+        ? await authFetch(`/api/v1/microsoft/users?search=${encodeURIComponent(query)}`)
+        : await authFetch(`/api/v1/organization/users?search=${encodeURIComponent(query)}&status=active`);
 
       if (response.ok) {
         const data = await response.json();
-        // Filter out users who are already members
         const memberIds = new Set(members.map(m => m.user_id));
-        const filtered = (data.data || []).filter((u: any) => !memberIds.has(u.id));
-        setAvailableUsers(filtered);
+        let rows = (data.data || []);
+        if (isMicrosoft) {
+          const q = query.toLowerCase();
+          rows = rows
+            .filter((u: any) => `${u.display_name || ''} ${u.email || ''} ${u.upn || ''}`.toLowerCase().includes(q))
+            .map((u: any) => {
+              const [first, ...rest] = String(u.display_name || u.email || '').split(' ');
+              return { id: u.id, first_name: first || '', last_name: rest.join(' '), email: u.email || u.upn || '' };
+            });
+        }
+        setAvailableUsers(rows.filter((u: any) => !memberIds.has(u.id)));
       }
     } catch (err) {
       console.error('Error searching users:', err);
@@ -287,16 +339,17 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
   const handleAddMember = async (userId: string) => {
     setAddingUserId(userId);
     try {
-      const response = await authFetch(
-        `/api/v1/organization/access-groups/${groupId}/members`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ userId, memberType: 'member' })
-        }
-      );
+      const response = isMicrosoft
+        ? await authFetch(`/api/v1/microsoft/groups/${groupId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId }),
+          })
+        : await authFetch(`/api/v1/organization/access-groups/${groupId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, memberType: 'member' }),
+          });
 
       const data = await response.json();
       if (data.success) {
@@ -305,7 +358,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         setAvailableUsers([]);
         onGroupUpdated?.();
       } else {
-        throw new Error(data.error || 'Failed to add member');
+        throw new Error(data.error?.message || data.error ||'Failed to add member');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -322,8 +375,9 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
     if (!memberToRemove) return;
 
     try {
+      const base = isMicrosoft ? '/api/v1/microsoft/groups' : '/api/v1/organization/access-groups';
       const response = await authFetch(
-        `/api/v1/organization/access-groups/${groupId}/members/${memberToRemove.userId}`,
+        `${base}/${groupId}/members/${memberToRemove.userId}`,
         {
           method: 'DELETE'
         }
@@ -334,7 +388,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         await fetchGroupDetails();
         onGroupUpdated?.();
       } else {
-        throw new Error(data.error || 'Failed to remove member');
+        throw new Error(data.error?.message || data.error ||'Failed to remove member');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -345,8 +399,9 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
   const handleDeleteGroup = async () => {
     setIsDeleting(true);
     try {
+      const base = isMicrosoft ? '/api/v1/microsoft/groups' : '/api/v1/organization/access-groups';
       const response = await authFetch(
-        `/api/v1/organization/access-groups/${groupId}`,
+        `${base}/${groupId}`,
         {
           method: 'DELETE'
         }
@@ -357,7 +412,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         onGroupUpdated?.();
         onClose();
       } else {
-        throw new Error(data.error || 'Failed to delete group');
+        throw new Error(data.error?.message || data.error ||'Failed to delete group');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -418,7 +473,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         setNewRule({ field: 'department', operator: 'equals', value: '' });
         setPreviewResult(null);
       } else {
-        throw new Error(data.error || 'Failed to add rule');
+        throw new Error(data.error?.message || data.error ||'Failed to add rule');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -447,7 +502,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         await fetchRules();
         setPreviewResult(null);
       } else {
-        throw new Error(data.error || 'Failed to delete rule');
+        throw new Error(data.error?.message || data.error ||'Failed to delete rule');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -476,7 +531,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
           users: data.data.matchingUsers || []
         });
       } else {
-        throw new Error(data.error || 'Failed to evaluate rules');
+        throw new Error(data.error?.message || data.error ||'Failed to evaluate rules');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -506,7 +561,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
         await fetchGroupDetails();
         onGroupUpdated?.();
       } else {
-        throw new Error(data.error || 'Failed to apply rules');
+        throw new Error(data.error?.message || data.error ||'Failed to apply rules');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -553,7 +608,7 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
           setActiveTab('rules');
         }
       } else {
-        throw new Error(data.error || 'Failed to update membership type');
+        throw new Error(data.error?.message || data.error ||'Failed to update membership type');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -844,8 +899,8 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
             </div>
           )}
 
-          {/* Rules Tab */}
-          {activeTab === 'rules' && (
+          {/* Rules Tab (dynamic membership — Google/manual only, not M365) */}
+          {activeTab === 'rules' && !isMicrosoft && (
             <div className="tab-content">
               <div className="tab-header">
                 <h3>Membership Rules</h3>
@@ -1094,11 +1149,31 @@ export function GroupSlideOut({ groupId, organizationId: _organizationId, onClos
                   <div className="sync-platform-header">
                     <PlatformIcon platform="microsoft" size={24} />
                     <span>Microsoft 365</span>
-                    <span className="coming-soon-badge">Not Configured</span>
                   </div>
-                  <div className="sync-status disabled">
-                    <p className="text-muted">Enable Microsoft 365 integration in Settings to sync groups.</p>
-                  </div>
+                  {isMicrosoft ? (
+                    <div className="sync-status">
+                      <div className="sync-status-row">
+                        <span className="status-label">Status:</span>
+                        <span className="status-value connected">Synced</span>
+                      </div>
+                      {group.external_id && (
+                        <div className="sync-status-row">
+                          <span className="status-label">External ID:</span>
+                          <span className="status-value">{group.external_id}</span>
+                        </div>
+                      )}
+                      {group.synced_at && (
+                        <div className="sync-status-row">
+                          <span className="status-label">Last Sync:</span>
+                          <span className="status-value">{new Date(group.synced_at).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="sync-status">
+                      <p className="text-muted">This group is not synced from Microsoft 365.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
