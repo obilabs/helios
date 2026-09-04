@@ -103,7 +103,11 @@ class PeopleService {
 
     try {
       // Build WHERE conditions
-      const conditions: string[] = ['ou.organization_id = $1', 'ou.is_active = true'];
+      // The People directory is the internal colleague finder: show staff and
+      // locally-created employees only. Guests (external #EXT#) and contacts
+      // (shared mailboxes / unlicensed) have their own admin Users tabs and must
+      // not clutter the colleague directory.
+      const conditions: string[] = ['ou.organization_id = $1', 'ou.is_active = true', "ou.user_type IN ('staff','local')"];
       const params: any[] = [organizationId];
       let paramIndex = 2;
 
@@ -385,7 +389,11 @@ class PeopleService {
     const { limit = 10, searchFields = ['name', 'skills', 'interests'] } = options;
 
     try {
-      const conditions: string[] = ['ou.organization_id = $1', 'ou.is_active = true'];
+      // The People directory is the internal colleague finder: show staff and
+      // locally-created employees only. Guests (external #EXT#) and contacts
+      // (shared mailboxes / unlicensed) have their own admin Users tabs and must
+      // not clutter the colleague directory.
+      const conditions: string[] = ['ou.organization_id = $1', 'ou.is_active = true', "ou.user_type IN ('staff','local')"];
       const searchConditions: string[] = [];
       const params: any[] = [organizationId, `%${query.toLowerCase()}%`];
 
@@ -478,13 +486,13 @@ class PeopleService {
       const [deptResult, locResult] = await Promise.all([
         db.query(
           `SELECT DISTINCT department FROM organization_users
-           WHERE organization_id = $1 AND is_active = true AND department IS NOT NULL
+           WHERE organization_id = $1 AND is_active = true AND user_type IN ('staff','local') AND department IS NOT NULL
            ORDER BY department`,
           [organizationId]
         ),
         db.query(
           `SELECT DISTINCT location FROM organization_users
-           WHERE organization_id = $1 AND is_active = true AND location IS NOT NULL
+           WHERE organization_id = $1 AND is_active = true AND user_type IN ('staff','local') AND location IS NOT NULL
            ORDER BY location`,
           [organizationId]
         ),
@@ -521,7 +529,7 @@ class PeopleService {
           CASE WHEN ou.start_date >= NOW() - INTERVAL '30 days' THEN true ELSE false END as is_new_joiner
         FROM organization_users ou
         JOIN user_expertise_topics uet ON uet.user_id = ou.id
-        WHERE ou.organization_id = $1 AND ou.is_active = true
+        WHERE ou.organization_id = $1 AND ou.is_active = true AND ou.user_type IN ('staff','local')
           AND LOWER(uet.topic) LIKE LOWER($2)
         ORDER BY
           CASE uet.skill_level

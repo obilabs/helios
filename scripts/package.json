@@ -1,0 +1,5 @@
+{
+  "//": "Scopes repo-root scripts/ to ES modules so migrate-m365-to-google.ts runs under tsx/ts-node as ESM (it uses import.meta.url to detect direct invocation). Affects only .js/.ts here; the sibling .mjs scripts are ESM regardless, and .sh/.ps1 are untouched. This dir is not part of any tsc/Docker build (backend compiles backend/src only).",
+  "type": "module",
+  "private": true
+}

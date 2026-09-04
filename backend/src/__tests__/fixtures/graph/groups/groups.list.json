@@ -1,0 +1,84 @@
+{
+  "family": "groups",
+  "name": "groups.list",
+  "recordedAt": "2026-08-31T01:15:47.732Z",
+  "request": {
+    "method": "GET",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/groups",
+    "query": {
+      "$select": "id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes",
+      "$top": "100"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#groups(id,displayName,description,mail,mailEnabled,securityEnabled,groupTypes)",
+      "value": [
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "displayName": "REDACTED",
+          "description": null,
+          "mail": null,
+          "mailEnabled": false,
+          "securityEnabled": true,
+          "groupTypes": []
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000002",
+          "displayName": "REDACTED",
+          "description": null,
+          "mail": null,
+          "mailEnabled": false,
+          "securityEnabled": true,
+          "groupTypes": []
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000003",
+          "displayName": "REDACTED",
+          "description": "This is the default group for everyone in the network",
+          "mail": "REDACTED",
+          "mailEnabled": true,
+          "securityEnabled": false,
+          "groupTypes": [
+            "Unified"
+          ]
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000004",
+          "displayName": "REDACTED",
+          "description": null,
+          "mail": "REDACTED",
+          "mailEnabled": true,
+          "securityEnabled": false,
+          "groupTypes": [
+            "Unified"
+          ]
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000005",
+          "displayName": "REDACTED",
+          "description": null,
+          "mail": null,
+          "mailEnabled": false,
+          "securityEnabled": true,
+          "groupTypes": []
+        }
+      ]
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "content-encoding": "gzip",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "date": "Mon, 31 Aug 2026 01:15:47 GMT",
+      "odata-version": "4.0",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"000\",\"RoleInstance\":\"CO1PEPF000157A8\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}

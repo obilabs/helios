@@ -622,10 +622,12 @@ router.delete('/:id/members/:userId', async (req: Request, res: Response): Promi
       return;
     }
 
-    // Remove member (soft delete by setting is_active = false)
+    // Remove member (soft delete). NB: access_group_members has removed_at, NOT
+    // updated_at — writing updated_at here threw at runtime and 500'd every
+    // group member removal (the Google push below never ran either).
     await db.query(
       `UPDATE access_group_members
-       SET is_active = false, updated_at = CURRENT_TIMESTAMP
+       SET is_active = false, removed_at = NOW()
        WHERE access_group_id = $1 AND user_id = $2`,
       [id, userId]
     );

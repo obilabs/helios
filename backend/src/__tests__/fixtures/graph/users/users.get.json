@@ -1,0 +1,40 @@
+{
+  "family": "users",
+  "name": "users.get",
+  "recordedAt": "2026-08-31T01:15:45.096Z",
+  "request": {
+    "method": "GET",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users/2a123f8a-2baf-499e-b322-28b5bd39709f",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+      "businessPhones": [],
+      "displayName": "REDACTED",
+      "givenName": null,
+      "jobTitle": null,
+      "mail": "REDACTED",
+      "mobilePhone": null,
+      "officeLocation": null,
+      "preferredLanguage": null,
+      "surname": null,
+      "userPrincipalName": "REDACTED",
+      "id": "00000000-0000-0000-0000-000000000001"
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "transfer-encoding": "chunked",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "vary": "Accept-Encoding",
+      "strict-transport-security": "max-age=31536000",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"000\",\"RoleInstance\":\"CO1PEPF0000FA3C\"}}",
+      "x-ms-resource-unit": "1",
+      "odata-version": "4.0",
+      "date": "Mon, 31 Aug 2026 01:15:43 GMT"
+    }
+  }
+}

@@ -1,10 +1,11 @@
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
+import { skuHasVault } from '../config/google-license-skus.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
-import { REQUIRED_SCOPES, SCOPE_DETAILS } from '../config/google-scopes.js';
+import { REQUIRED_SCOPES, SCOPE_DETAILS, DELEGATION_SCOPES, DELEGATION_SCOPE_DETAILS } from '../config/google-scopes.js';
 
 export interface ServiceAccountCredentials {
   type: string;
@@ -53,6 +54,38 @@ export interface ConnectionTestResult {
     adminUsers?: number;
   };
   error?: string;
+}
+
+/**
+ * One failed data-migration item (a CRAWL_FAILURE event), surfaced so an admin can
+ * see WHAT failed — not just the failure count.
+ */
+export interface MigrationFailureDetail {
+  timestamp?: string;
+  executionId?: string;
+  user?: string;
+  source?: string;
+  target?: string;
+  reason?: string;
+  params: Record<string, any>;
+}
+
+/**
+ * Per-migrated-user progress rollup so the UI can show status per user rather than
+ * only an aggregate. The DMS audit tags per-object events with the MAILBOX OWNER
+ * (SOURCE_NAME, or the email embedded in the `users/<email>/…` resource paths) —
+ * NOT a stable per-user id — so we derive the user email as the group key. (Grouping
+ * by TARGET_IDENTIFIER would explode: it is `users/<email>/messages/<id>`, unique
+ * per message.)
+ */
+export interface MigrationUserProgress {
+  user: string;
+  executionId: string | null;
+  total: number;
+  failures: number;
+  byName: Record<string, number>;
+  firstActivity?: string;
+  lastActivity?: string;
 }
 
 export class GoogleWorkspaceService {
@@ -285,6 +318,113 @@ export class GoogleWorkspaceService {
     });
 
     return google.admin({ version: 'directory_v1', auth: jwtClient });
+  }
+
+  /**
+   * Create an authenticated Google Vault (eDiscovery) client via Domain-Wide
+   * Delegation. Separate from the admin client because Vault needs the
+   * `ediscovery` scope and a Vault-privileged admin subject.
+   */
+  private createVaultClient(credentials: ServiceAccountCredentials, adminEmail: string) {
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/ediscovery'],
+      subject: adminEmail,
+    });
+    return google.vault({ version: 'v1', auth: jwtClient });
+  }
+
+  /**
+   * Preserve a (departing) user's Mail + Drive with Google Vault BEFORE deletion.
+   * Vault is a Business Plus+ entitlement, so this is GATED: if the org holds no
+   * Vault-eligible SKU we return skipped=true with a reason rather than surface a
+   * raw Google 403. Creates a matter, then a MAIL hold and a DRIVE hold (Vault
+   * allows one corpus per hold) covering the account. A hold survives account
+   * deletion — that is the point: the data is retained even after the user is
+   * removed. Callers should record the returned matterId/holdIds.
+   */
+  async preserveUserWithVault(
+    organizationId: string,
+    userEmail: string,
+    opts: { matterName?: string } = {}
+  ): Promise<{
+    success: boolean;
+    skipped?: boolean;
+    reason?: string;
+    matterId?: string;
+    holdIds?: string[];
+    error?: string;
+  }> {
+    try {
+      // Tier gate — the org must hold a Vault-eligible license.
+      const inv = await this.getLicenseInventory(organizationId);
+      if (inv.success && Array.isArray(inv.licenses)) {
+        const vaultCapable = inv.licenses.some((l: any) => skuHasVault(l.skuId));
+        if (!vaultCapable) {
+          return {
+            success: false,
+            skipped: true,
+            reason: 'Vault preservation requires Business Plus or a higher Vault-eligible edition.',
+          };
+        }
+      }
+
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, error: 'Google Workspace credentials not found.' };
+      }
+      const credRow = await db.query(
+        'SELECT admin_email, domain FROM gw_credentials WHERE organization_id = $1',
+        [organizationId]
+      );
+      if (credRow.rows.length === 0) {
+        return { success: false, error: 'No Google Workspace credentials for this organization.' };
+      }
+      const { admin_email, domain } = credRow.rows[0];
+      const adminEmail = admin_email || `admin@${domain}`;
+      const vault = this.createVaultClient(credentials, adminEmail);
+
+      const matterName = opts.matterName || `Offboarding hold - ${userEmail}`;
+      const matterRes = await vault.matters.create({
+        requestBody: {
+          name: matterName,
+          description: `Retention hold created by Helios during offboarding of ${userEmail}.`,
+        },
+      });
+      const matterId = matterRes.data.matterId;
+      if (!matterId) {
+        return { success: false, error: 'Vault did not return a matter id.' };
+      }
+
+      const holdIds: string[] = [];
+      for (const corpus of ['MAIL', 'DRIVE'] as const) {
+        const holdRes = await vault.matters.holds.create({
+          matterId,
+          requestBody: {
+            name: `${corpus} hold - ${userEmail}`,
+            corpus,
+            accounts: [{ email: userEmail }],
+          },
+        });
+        if (holdRes.data.holdId) holdIds.push(holdRes.data.holdId);
+      }
+
+      logger.info('Vault preservation holds created', {
+        organizationId,
+        userEmail,
+        matterId,
+        holdCount: holdIds.length,
+      });
+      return { success: true, matterId, holdIds };
+    } catch (error: any) {
+      logger.error('Vault preservation failed', {
+        organizationId,
+        userEmail,
+        error: error?.message,
+      });
+      return { success: false, error: error?.message || 'Vault preservation failed' };
+    }
   }
 
   /**
@@ -543,17 +683,21 @@ export class GoogleWorkspaceService {
     scopeDetails: { scope: string; reason: string }[];
     setupInstructions: string[];
   } {
-    // Single source of truth: config/google-scopes.ts. The previous inline list
-    // advertised only 5 of the 17 scopes the code actually requests, so admins
-    // authorised a partial set and every unlisted feature silently 403'd.
-    const requiredScopes = REQUIRED_SCOPES;
+    // Single source of truth: config/google-scopes.ts. Advertise the FULL
+    // delegation set (base + optional, e.g. Vault's ediscovery) so a one-time
+    // authorisation covers every current feature — required-now and
+    // optional-but-may-be-used-later — and a later release that lights up an
+    // optional feature needs no re-authorisation. (The proxy still only *mints*
+    // the base REQUIRED_SCOPES, so an un-authorised optional scope never
+    // blanket-401s the tenant — that one feature just fails until authorised.)
+    const requiredScopes = DELEGATION_SCOPES;
 
     return {
       clientId: process.env.GOOGLE_CLIENT_ID || null,
       serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null,
       requiredScopes,
       requiredScopesCsv: requiredScopes.join(','),
-      scopeDetails: SCOPE_DETAILS,
+      scopeDetails: DELEGATION_SCOPE_DETAILS,
       setupInstructions: [
         'Create a service account in Google Cloud Console',
         'Download the service account JSON file',
@@ -3069,6 +3213,256 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Fetch DATA MIGRATION activity from the Google Reports API (applicationName
+   * 'data_migration'). This is how migration progress is TRACKED read-only:
+   * Google's cross-cloud Data Migration is console-triggered (no start API), but
+   * it emits setup events (CREATE_CONNECTION, START_MIGRATION) and per-object
+   * MIGRATION events (CREATE_GMAIL_MESSAGE, CREATE_CALENDAR_EVENT, CREATE_CONTACT,
+   * CREATE_FILE, plus CRAWL_FAILURE) with EXECUTION_ID/SOURCE/TARGET/status.
+   * Uses the admin.reports.audit.readonly scope Helios already holds.
+   *
+   * ACCURATE TOTALS: the Reports API caps a single page at `maxResults` (≤1000),
+   * so a large migration (e.g. 6,198 mail objects) would only surface the most
+   * recent page. We PAGE THROUGH `nextPageToken` and aggregate counts across every
+   * page so the summary reflects the true totals, bounded by `maxPages` to keep
+   * quota/latency in check. If the cap is hit, `summary.truncated` is set and the
+   * counts become a lower bound (logged, never silently dropped).
+   *
+   * Returns, alongside the light summary (counts by event name + failure count):
+   *   - `events`   — a bounded, most-recent SAMPLE (raw event dropped to slim the
+   *                  payload); the full stream is aggregated, not returned.
+   *   - `failures` — per-item detail for every CRAWL_FAILURE (user/source/target/
+   *                  reason) so an admin can see WHAT failed, not just how many.
+   *   - `byUser`   — a per-migrated-user breakdown (grouped by the derived mailbox
+   *                  owner email) with counts and failure totals, so the UI can
+   *                  show status per user.
+   */
+  async fetchDataMigrationActivity(
+    organizationId: string,
+    options: { startTime?: Date; endTime?: Date; maxResults?: number; maxPages?: number } = {}
+  ): Promise<{
+    success: boolean;
+    events: any[];
+    failures: MigrationFailureDetail[];
+    byUser: MigrationUserProgress[];
+    summary?: {
+      total: number;
+      failures: number;
+      byName: Record<string, number>;
+      windowStart: string;
+      windowEnd: string;
+      pagesFetched: number;
+      truncated: boolean;
+    };
+    error?: string;
+  }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, events: [], failures: [], byUser: [], error: 'No credentials found' };
+      }
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!adminEmail) {
+        return { success: false, events: [], failures: [], byUser: [], error: 'No admin email configured' };
+      }
+
+      // Default to the last 7 days (migrations run over hours/days).
+      const endTime = options.endTime || new Date();
+      const startTime = options.startTime || new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
+      // Reports API hard-caps a page at 1000; page count is what bounds cost.
+      const perPage = Math.min(options.maxResults || 1000, 1000);
+      const maxPages = Math.min(Math.max(options.maxPages || 30, 1), 100);
+
+      // Retention bounds — aggregate across every page, but never hold the full
+      // stream in memory or ship it to the client.
+      const SAMPLE_LIMIT = 100; // most-recent events kept for the activity feed
+      const FAILURE_LIMIT = 500; // failed-item detail kept for display
+      const GROUP_LIMIT = 2000; // distinct target/execution groups kept
+
+      const reportsClient = this.createReportsClient(credentials, adminEmail);
+
+      const byName: Record<string, number> = {};
+      const byUserMap = new Map<string, MigrationUserProgress>();
+      const sample: any[] = [];
+      const failures: MigrationFailureDetail[] = [];
+      let total = 0;
+      let failureCount = 0;
+      let pagesFetched = 0;
+      let truncated = false;
+      let groupsTruncated = false;
+      let pageToken: string | undefined = undefined;
+
+      do {
+        const response = await reportsClient.activities.list({
+          userKey: 'all',
+          applicationName: 'data_migration',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          maxResults: perPage,
+          pageToken,
+        });
+
+        const items = response.data.items || [];
+        for (const item of items) {
+          const ev = (item.events && item.events[0]) || {};
+          const params: Record<string, any> = {};
+          for (const p of ev.parameters || []) {
+            params[p.name] = p.value ?? p.boolValue ?? p.intValue ?? (p.multiValue ? p.multiValue.join(',') : undefined);
+          }
+          const timestamp: string | undefined = item.id?.time;
+          const name: string | undefined = ev.name;
+          const source = params.SOURCE_IDENTIFIER || params.SOURCE_URI;
+          const target = params.TARGET_IDENTIFIER || params.TARGET_URI;
+          const status = params.EVENT_STATUS || params.STATUS;
+          const executionId = params.EXECUTION_ID;
+          const isFailure = name === 'CRAWL_FAILURE';
+          // The mailbox owner email — the natural per-user grouping key.
+          const user = this.deriveMigrationUser(params);
+
+          // ---- accurate totals: count every event across every page ----
+          total++;
+          if (name) byName[name] = (byName[name] || 0) + 1;
+          if (isFailure) failureCount++;
+
+          // ---- bounded, most-recent activity sample (rawEvent dropped) ----
+          if (sample.length < SAMPLE_LIMIT) {
+            sample.push({ timestamp, actor: item.actor?.email, name, type: ev.type, executionId, source, target, status, params });
+          }
+
+          // ---- per-item failure detail ----
+          if (isFailure && failures.length < FAILURE_LIMIT) {
+            failures.push({
+              timestamp,
+              executionId,
+              user,
+              source,
+              target,
+              // DMS failures carry the reason in MIGRATION_ERROR_TITLE/_CODE; other
+              // event families use different names. Fall through the likely ones and
+              // keep the raw params so nothing is lost.
+              reason:
+                params.MIGRATION_ERROR_TITLE ||
+                params.MIGRATION_ERROR_CODE ||
+                params.FAILURE_REASON ||
+                params.ERROR_MESSAGE ||
+                params.MESSAGE ||
+                params.STATUS_DETAIL ||
+                params.REASON ||
+                status ||
+                undefined,
+              params,
+            });
+          }
+
+          // ---- per-migrated-user breakdown (keyed by mailbox owner email) ----
+          if (user) {
+            let group = byUserMap.get(user);
+            if (!group) {
+              if (byUserMap.size >= GROUP_LIMIT) {
+                groupsTruncated = true;
+              } else {
+                group = { user, executionId: executionId || null, total: 0, failures: 0, byName: {}, firstActivity: timestamp, lastActivity: timestamp };
+                byUserMap.set(user, group);
+              }
+            }
+            if (group) {
+              group.total++;
+              if (isFailure) group.failures++;
+              if (name) group.byName[name] = (group.byName[name] || 0) + 1;
+              if (executionId && !group.executionId) group.executionId = executionId;
+              // Reports API returns newest-first, so first-seen is the latest.
+              if (timestamp) {
+                if (!group.lastActivity || timestamp > group.lastActivity) group.lastActivity = timestamp;
+                if (!group.firstActivity || timestamp < group.firstActivity) group.firstActivity = timestamp;
+              }
+            }
+          }
+        }
+
+        pagesFetched++;
+        pageToken = response.data.nextPageToken || undefined;
+        if (pageToken && pagesFetched >= maxPages) {
+          truncated = true;
+          break;
+        }
+      } while (pageToken);
+
+      if (truncated) {
+        logger.warn('Data migration activity capped at maxPages — counts are a lower bound', {
+          organizationId,
+          pagesFetched,
+          maxPages,
+          countedEvents: total,
+        });
+      }
+      if (groupsTruncated) {
+        logger.warn('Data migration per-user breakdown capped at GROUP_LIMIT groups', {
+          organizationId,
+          groupLimit: GROUP_LIMIT,
+        });
+      }
+
+      const byUser = Array.from(byUserMap.values()).sort((a, b) => b.total - a.total);
+
+      logger.info('Fetched data migration activity from Google Workspace', {
+        organizationId,
+        eventCount: total,
+        pagesFetched,
+        failures: failureCount,
+        users: byUser.length,
+        truncated,
+      });
+
+      return {
+        success: true,
+        events: sample,
+        failures,
+        byUser,
+        summary: {
+          total,
+          failures: failureCount,
+          byName,
+          windowStart: startTime.toISOString(),
+          windowEnd: endTime.toISOString(),
+          pagesFetched,
+          truncated,
+        },
+      };
+    } catch (error: any) {
+      logger.error('Failed to fetch data migration activity', {
+        organizationId,
+        error: error.message,
+      });
+      return { success: false, events: [], failures: [], byUser: [], error: error.message };
+    }
+  }
+
+  /**
+   * Derive the migrated user's email (the mailbox owner) from a `data_migration`
+   * event's parameters, for per-user grouping. DMS tags per-object events with
+   * SOURCE_NAME (already the email) and embeds the email in the resource-path
+   * identifiers (`users/<email>/messages/<id>`, `mailboxes/<email>/…`,
+   * `drives/<email>`). Message-ID URIs (SOURCE_URI/TARGET_URI) also contain an `@`
+   * but are NOT user emails, so they are deliberately excluded. Setup events
+   * (CREATE_CONNECTION, etc.) resolve to no user and are left out of the per-user
+   * rollup (they are still counted in the global summary).
+   */
+  private deriveMigrationUser(params: Record<string, any>): string | undefined {
+    const name = params.SOURCE_NAME;
+    if (typeof name === 'string' && /^[^@\s]+@[^@\s]+$/.test(name)) {
+      return name.toLowerCase();
+    }
+    const emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+    for (const path of [params.TARGET_IDENTIFIER, params.SOURCE_IDENTIFIER]) {
+      if (typeof path === 'string') {
+        const m = path.match(emailRe);
+        if (m) return m[0].toLowerCase();
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Extract login type from event parameters
    */
   private extractLoginType(events: any[]): string {
@@ -3442,14 +3836,23 @@ export class GoogleWorkspaceService {
         {
           productId: 'Google-Apps',
           productName: 'Google Workspace',
+          // Canonical SKU ids/names — see config/google-license-skus.ts.
+          // (The previous list mislabeled 1010020025=Business Plus as "Enterprise
+          // Plus" and 1010020020=Enterprise Plus as "Enterprise Standard".)
           skus: [
-            { id: 'Google-Apps-For-Business', name: 'Business Starter' },
-            { id: 'Google-Apps-Unlimited', name: 'Business Standard' },
-            { id: 'Google-Apps-For-Postini', name: 'Business Plus' },
-            { id: '1010020020', name: 'Enterprise Standard' },
-            { id: '1010020025', name: 'Enterprise Plus' },
-            { id: '1010060003', name: 'Frontline Starter' },
-            { id: '1010060001', name: 'Frontline Standard' },
+            { id: '1010020027', name: 'Business Starter' },
+            { id: '1010020028', name: 'Business Standard' },
+            { id: '1010020025', name: 'Business Plus' },
+            { id: '1010020029', name: 'Enterprise Starter' },
+            { id: '1010020026', name: 'Enterprise Standard' },
+            { id: '1010020020', name: 'Enterprise Plus' },
+            { id: '1010060003', name: 'Enterprise Essentials' },
+            { id: '1010060005', name: 'Enterprise Essentials Plus' },
+            { id: '1010020030', name: 'Frontline Starter' },
+            { id: '1010020031', name: 'Frontline Standard' },
+            { id: '1010020034', name: 'Frontline Plus' },
+            { id: 'Google-Apps-For-Business', name: 'G Suite Basic (legacy)' },
+            { id: 'Google-Apps-Unlimited', name: 'G Suite Business (legacy)' },
           ]
         },
         {
@@ -3594,6 +3997,125 @@ export class GoogleWorkspaceService {
       return { success: true, acl };
     } catch (error: any) {
       logger.error('Failed to list calendar ACL', { organizationId, calendarId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Cancel/decline a user's FUTURE calendar events during offboarding.
+   *
+   * Impersonates the user (domain-wide delegation `subject = userEmail`) and pages
+   * through their primary calendar's upcoming events (`timeMin = now`,
+   * `singleEvents=true` so recurring series expand into individual instances,
+   * `maxResults=250`, following `nextPageToken`). For each event:
+   *   - the user is the ORGANIZER   → DELETE the event (cancels it for everyone),
+   *   - the user is only an ATTENDEE → PATCH their own attendee entry to
+   *     `responseStatus='declined'` (frees their calendar without cancelling the
+   *     event for the other attendees).
+   *
+   * Per-event failures are logged and skipped so one bad event never aborts the
+   * whole sweep. Requires the `https://www.googleapis.com/auth/calendar` scope
+   * (present in REQUIRED_SCOPES). This is the offboarding primitive the console
+   * path had but the audited orchestrator was missing.
+   */
+  async cancelFutureEvents(
+    organizationId: string,
+    userEmail: string
+  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, error: 'Google Workspace not configured' };
+      }
+
+      // Calendar events live in the departing user's own calendar, so impersonate
+      // that user directly (not the admin).
+      const jwtClient = new JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/calendar'],
+        subject: userEmail
+      });
+
+      const calendar = google.calendar({ version: 'v3', auth: jwtClient });
+
+      const nowISO = new Date().toISOString();
+      const targetEmail = userEmail.toLowerCase();
+      let cancelledCount = 0;
+      let declinedCount = 0;
+      let pageToken: string | undefined = undefined;
+
+      do {
+        const listResp = await calendar.events.list({
+          calendarId: userEmail,
+          timeMin: nowISO,
+          singleEvents: true,
+          maxResults: 250,
+          pageToken
+        });
+
+        const events = listResp.data.items || [];
+
+        for (const event of events) {
+          const eventId = event.id;
+          if (!eventId) continue;
+          // Already-cancelled instances need no action.
+          if (event.status === 'cancelled') continue;
+
+          const isOrganizer =
+            event.organizer?.self === true ||
+            (event.organizer?.email || '').toLowerCase() === targetEmail;
+
+          try {
+            if (isOrganizer) {
+              // The user owns the event → delete it (cancels for all attendees).
+              await calendar.events.delete({ calendarId: userEmail, eventId });
+              cancelledCount++;
+            } else {
+              // The user is (at most) an attendee → decline their own invite.
+              const attendees = event.attendees || [];
+              const self = attendees.find(
+                (a: any) => a.self === true || (a.email || '').toLowerCase() === targetEmail
+              );
+              if (!self) {
+                // Not an attendee (e.g. a subscribed/public calendar entry) →
+                // nothing to decline.
+                continue;
+              }
+              const updatedAttendees = attendees.map((a: any) =>
+                a === self ? { ...a, responseStatus: 'declined' } : a
+              );
+              await calendar.events.patch({
+                calendarId: userEmail,
+                eventId,
+                requestBody: { attendees: updatedAttendees }
+              });
+              declinedCount++;
+            }
+          } catch (eventError: any) {
+            logger.error('Failed to cancel/decline a calendar event during offboarding', {
+              userEmail,
+              eventId,
+              error: eventError.message
+            });
+          }
+        }
+
+        pageToken = listResp.data.nextPageToken || undefined;
+      } while (pageToken);
+
+      logger.info('Cancelled/declined future calendar events during offboarding', {
+        userEmail,
+        cancelledCount,
+        declinedCount
+      });
+
+      return { success: true, cancelledCount, declinedCount };
+    } catch (error: any) {
+      logger.error('Failed to cancel future calendar events', {
+        userEmail,
+        error: error.message
+      });
       return { success: false, error: error.message };
     }
   }

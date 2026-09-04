@@ -64,6 +64,14 @@ jest.unstable_mockModule('../services/feature-flags.service.js', () => ({
   featureFlagsService: { isEnabled: mockIsEnabled },
 }));
 
+// The impersonation guard now authorizes against the tenant's verified domain
+// SET (primary + secondaries), sourced from this service. Mock it so the test is
+// hermetic (no real Google call) and can assert secondary-domain behavior.
+const mockListDomains = jest.fn<(orgId: string) => Promise<any>>();
+jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
+  googleWorkspaceService: { listGoogleWorkspaceDomains: mockListDomains },
+}));
+
 // jwt.sign is real (jsonwebtoken) but our private key is fake; stub the signer
 // and capture the payload so we can assert on `sub`.
 const mockSign = jest.fn((_payload: any, _key: any, _opts: any) => 'signed-jwt');
@@ -74,7 +82,9 @@ jest.unstable_mockModule('jsonwebtoken', () => ({
 // NOTE: axios is deliberately NOT mocked — the replay harness intercepts the
 // two Google calls instead.
 
-const { default: transparentProxyRouter } = await import('../middleware/transparent-proxy.js');
+const { default: transparentProxyRouter, __resetImpersonationDomainCache } = await import(
+  '../middleware/transparent-proxy.js'
+);
 const { useGoogleReplay, resetGoogleReplay } = await import('../testing/google-replay.js');
 
 // ---- fixtures / helpers ----
@@ -154,7 +164,16 @@ function auditDescription(): string {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  __resetImpersonationDomainCache(); // module-level cache must not leak across cases
   mockIsEnabled.mockResolvedValue(false); // relay flag OFF => legacy passthrough
+  // Tenant owns its primary plus one verified secondary/alias domain.
+  mockListDomains.mockResolvedValue({
+    success: true,
+    domains: [
+      { domainName: ORG_DOMAIN, verified: true, isPrimary: true },
+      { domainName: 'secondary.test', verified: true },
+    ],
+  });
   primeDb();
 });
 
@@ -230,6 +249,44 @@ describe('cross-domain impersonation guard', () => {
       .expect(200);
 
     expect(signedPayload()?.sub).toBe('Alice@CORP.TEST');
+  });
+
+  it('allows a target on a verified SECONDARY/alias domain of the same tenant', async () => {
+    // sam@secondary.test is NOT the primary domain, but IS a verified domain of
+    // this workspace — the multi-domain guard must permit it.
+    useGoogleReplay(vacationFixture('sam@secondary.test') as any);
+
+    await request(buildApp())
+      .get(vacationPath('sam@secondary.test'))
+      .set('X-Impersonate-User', 'sam@secondary.test')
+      .expect(200);
+
+    expect(signedPayload()?.sub).toBe('sam@secondary.test');
+  });
+
+  it('fails CLOSED to the primary domain when the live domain lookup errors', async () => {
+    mockListDomains.mockRejectedValue(new Error('google unreachable'));
+
+    // Primary-domain user still works (fallback keeps the known-good primary)...
+    useGoogleReplay(vacationFixture(TARGET_USER) as any);
+    await request(buildApp())
+      .get(vacationPath(TARGET_USER))
+      .set('X-Impersonate-User', TARGET_USER)
+      .expect(200);
+    expect(signedPayload()?.sub).toBe(TARGET_USER);
+
+    // ...but a secondary-domain user is REJECTED rather than allowed blindly.
+    __resetImpersonationDomainCache();
+    jest.clearAllMocks();
+    mockIsEnabled.mockResolvedValue(false);
+    mockListDomains.mockRejectedValue(new Error('google unreachable'));
+    primeDb();
+    const res = await request(buildApp())
+      .get(vacationPath('sam@secondary.test'))
+      .set('X-Impersonate-User', 'sam@secondary.test')
+      .expect(403);
+    expect(res.body.success).toBe(false);
+    expect(mockSign).not.toHaveBeenCalled();
   });
 });
 

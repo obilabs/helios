@@ -1,0 +1,17 @@
+# Overlay for RECORDING live Microsoft Graph write fixtures. Not for normal runs.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.record.yml up -d backend
+#   docker compose exec -e HELIOS_GRAPH_RECORD=1 \
+#     backend node dist/scripts/record-m365-writes.js <organizationId>
+#
+# Fixtures are written to ./.record-fixtures/graph/<family>/<name>.json on the
+# host. Review + leak-grep before copying into
+# backend/src/__tests__/fixtures/graph/. See backend/src/scripts/record-m365-writes.ts.
+services:
+  backend:
+    environment:
+      # Point the replay harness at a writable bind mount (avoids the read-only
+      # /app/dist EACCES that HELIOS_GRAPH_RECORD hit on 2026-08-30).
+      HELIOS_GRAPH_FIXTURES_DIR: /fixtures
+    volumes:
+      - ./.record-fixtures/graph:/fixtures

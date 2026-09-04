@@ -60,6 +60,13 @@ jest.unstable_mockModule('../services/feature-flags.service.js', () => ({
   featureFlagsService: { isEnabled: mockIsEnabled },
 }));
 
+// transparent-proxy imports this for the multi-domain impersonation guard. These
+// tests use admin context (no X-Impersonate-User), so it is never called — a
+// minimal stub keeps the module graph resolvable.
+jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
+  googleWorkspaceService: { listGoogleWorkspaceDomains: jest.fn() },
+}));
+
 const mockSign = jest.fn<(payload: any, key: any, options?: any) => string>(() => 'signed-jwt');
 jest.unstable_mockModule('jsonwebtoken', () => ({
   default: { sign: mockSign },

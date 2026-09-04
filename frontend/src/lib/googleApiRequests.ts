@@ -235,6 +235,48 @@ export function gmailDeleteSendAs(userId: string, sendAsEmail: string): GoogleAp
 }
 
 // ===========================================================================
+// Gmail — message import  (M365 -> Google migration)
+// ===========================================================================
+
+/**
+ * Gmail: users.messages.import —
+ * POST /gmail/v1/users/{userId}/messages/import?internalDateSource=dateHeader&neverMarkSpam=true
+ *
+ * Replays a single migrated RFC822 message straight into {userId}'s mailbox
+ * WITHOUT sending it — the write-path primitive for an M365 -> Google mailbox
+ * migration. `raw` is the base64url-encoded RFC822 message.
+ *
+ * Query params (per Google's REST API) — folded into the PATH, not passed as a
+ * separate field:
+ *   - internalDateSource=dateHeader → Gmail takes each message's internal date
+ *     from its own `Date:` header, so the migrated copy keeps its ORIGINAL
+ *     received date instead of the import time ("now").
+ *   - neverMarkSpam=true            → a migrated message is never diverted to
+ *     Spam by import-time classification.
+ *
+ * WHY the query lives in the path: the transparent proxy and `runGoogle` forward
+ * only `path` + `body` + the `X-Impersonate-User` header (see the module header
+ * and DeveloperConsole.runGoogle). A stray `query` field would be silently
+ * dropped and never reach Google — the same trap that made Drive options no-ops
+ * before. `withQuery` encodes them into the path exactly like the Drive builders.
+ *
+ * Import runs in the TARGET user's own context, so the proxy impersonates
+ * {userId} (domain-wide delegation `sub`); the message then lands in — and is
+ * owned by — that user's own mailbox.
+ */
+export function gmailImport(userId: string, raw: string): GoogleApiRequest {
+  return {
+    method: 'POST',
+    path: withQuery(`${GMAIL_BASE}/users/${seg(userId)}/messages/import`, {
+      internalDateSource: 'dateHeader',
+      neverMarkSpam: true,
+    }),
+    body: { raw },
+    impersonate: impersonationSubject(userId),
+  };
+}
+
+// ===========================================================================
 // Calendar  (www.googleapis.com / calendar/v3)
 // ===========================================================================
 
@@ -312,6 +354,77 @@ export function calendarDeleteAcl(
 /** Build the Calendar ACL rule id for a user scope: `user:{email}`. */
 export function calendarUserRuleId(email: string): string {
   return `user:${email}`;
+}
+
+// ----- Calendar: events (offboarding — cancel/decline future events) -----
+// Events run in the calendar owner's context, so the proxy impersonates the
+// calendarId (usually the owner's email), like the ACL builders above. Query
+// params are folded into the PATH — the proxy forwards no separate `query` field.
+// The params type is written inline (not a named interface) so it carries the
+// implicit index signature `withQuery` needs, exactly like `driveListFiles`.
+
+/**
+ * Calendar: events.list —
+ * GET /calendar/v3/calendars/{calendarId}/events?{timeMin,singleEvents,maxResults,pageToken}
+ * Runs in the calendar owner's context (impersonate `calendarId`, or override).
+ *   - timeMin: RFC3339 lower bound (e.g. now) — only events ending after it.
+ *   - singleEvents: expand recurring series into individual instances.
+ *   - pageToken: continuation token from a prior page's `nextPageToken`.
+ *   - orderBy: startTime | updated (startTime requires singleEvents=true).
+ */
+export function calendarEventsList(
+  calendarId: string,
+  params: {
+    timeMin?: string;
+    singleEvents?: boolean;
+    maxResults?: number;
+    pageToken?: string;
+    orderBy?: string;
+  } = {},
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'GET',
+    path: withQuery(`${CALENDAR_BASE}/calendars/${seg(calendarId)}/events`, params),
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
+}
+
+/**
+ * Calendar: events.delete —
+ * DELETE /calendar/v3/calendars/{calendarId}/events/{eventId}
+ * Deletes (cancels) an event the impersonated user organizes.
+ */
+export function calendarEventsDelete(
+  calendarId: string,
+  eventId: string,
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'DELETE',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/events/${seg(eventId)}`,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
+}
+
+/**
+ * Calendar: events.patch —
+ * PATCH /calendar/v3/calendars/{calendarId}/events/{eventId}
+ * Partial update — used during offboarding to set the departing user's own
+ * attendee `responseStatus` to `declined` on events they don't organize.
+ */
+export function calendarEventsPatch(
+  calendarId: string,
+  eventId: string,
+  patch: Record<string, unknown>,
+  impersonateUser?: string,
+): GoogleApiRequest {
+  return {
+    method: 'PATCH',
+    path: `${CALENDAR_BASE}/calendars/${seg(calendarId)}/events/${seg(eventId)}`,
+    body: patch,
+    impersonate: impersonationSubject(impersonateUser ?? calendarId),
+  };
 }
 
 // ===========================================================================
@@ -498,6 +611,54 @@ export function usersUndelete(userKey: string, orgUnitPath = '/'): GoogleApiRequ
     path: `${DIRECTORY_BASE}/users/${seg(userKey)}/undelete`,
     body: { orgUnitPath },
   };
+}
+
+// ----- Users: security / access revocation (offboarding hard-kill) -----
+
+/**
+ * Directory: tokens.list — GET /admin/directory/v1/users/{userKey}/tokens
+ * The third-party OAuth apps a user has granted, with clientId + scopes.
+ * Admin-context (not impersonated). GAM: `gam user <email> show tokens`.
+ */
+export function usersTokensList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/tokens` };
+}
+
+/**
+ * Directory: tokens.delete — DELETE .../users/{userKey}/tokens/{clientId}
+ * Revoke one third-party app's access. On offboarding this matters more than
+ * suspend — issued OAuth tokens survive a password change / suspension.
+ */
+export function usersTokensDelete(userKey: string, clientId: string): GoogleApiRequest {
+  return { method: 'DELETE', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/tokens/${seg(clientId)}` };
+}
+
+/**
+ * Directory: asps.list — GET .../users/{userKey}/asps
+ * App-specific passwords bypass 2SV; a suspended user's live ASPs are a residual
+ * access hole. GAM: `gam user <email> show asps`.
+ */
+export function usersAspsList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/asps` };
+}
+
+/** Directory: asps.delete — DELETE .../users/{userKey}/asps/{codeId}. Revoke one ASP. */
+export function usersAspsDelete(userKey: string, codeId: string): GoogleApiRequest {
+  return { method: 'DELETE', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/asps/${seg(codeId)}` };
+}
+
+/** Directory: verificationCodes.list — GET .../users/{userKey}/verificationCodes (2SV backup codes). */
+export function usersVerificationCodesList(userKey: string): GoogleApiRequest {
+  return { method: 'GET', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/verificationCodes` };
+}
+
+/**
+ * Directory: verificationCodes.invalidate — POST .../users/{userKey}/verificationCodes/invalidate
+ * Invalidate ALL backup verification codes — another 2SV-bypass residual hole to
+ * close on offboarding.
+ */
+export function usersVerificationCodesInvalidate(userKey: string): GoogleApiRequest {
+  return { method: 'POST', path: `${DIRECTORY_BASE}/users/${seg(userKey)}/verificationCodes/invalidate` };
 }
 
 /**

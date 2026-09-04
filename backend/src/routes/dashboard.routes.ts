@@ -109,7 +109,9 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         db.query('SELECT COUNT(*) as count FROM access_groups WHERE organization_id = $1', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NOT NULL', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NULL', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_guest = true', [organizationId]),
+        // Guest users are classified by user_type ('guest'); the legacy is_guest
+        // boolean is not maintained by the sync path, so count on user_type.
+        db.query("SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND user_type = 'guest'", [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND role = \'admin\'', [organizationId]),
         // Orphaned users: no manager assigned, not CEO, active
         db.query(`
@@ -131,6 +133,40 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
 
       const isGoogleConfigured = gwConfig.rows[0].count > 0;
 
+      // Check if Microsoft 365 is configured, and count its synced users.
+      // Mirrors the Google branch: the M365 population lives in organization_users
+      // keyed by microsoft_365_id (written by the M365 reconcile). The creds live
+      // in ms_credentials (NOT microsoft365_credentials — that helper is stale).
+      let isMicrosoftConfigured = false;
+      let microsoftStats = { total: 0, suspended: 0, admins: 0, lastSync: null as string | null };
+      try {
+        const msConfig = await db.query(
+          'SELECT COUNT(*) as count FROM ms_credentials WHERE organization_id = $1',
+          [organizationId]
+        );
+        isMicrosoftConfigured = parseInt(msConfig.rows[0].count) > 0;
+        if (isMicrosoftConfigured) {
+          const msUsers = await db.query(
+            `SELECT COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE is_active = false) as suspended,
+                    COUNT(*) FILTER (WHERE role = 'admin') as admins,
+                    MAX(microsoft_365_last_sync) as last_sync
+             FROM organization_users
+             WHERE organization_id = $1 AND microsoft_365_id IS NOT NULL`,
+            [organizationId]
+          );
+          const r = msUsers.rows[0];
+          microsoftStats = {
+            total: parseInt(r.total) || 0,
+            suspended: parseInt(r.suspended) || 0,
+            admins: parseInt(r.admins) || 0,
+            lastSync: r.last_sync || null,
+          };
+        }
+      } catch (err) {
+        logger.debug('Failed to get Microsoft 365 stats for dashboard', { error: (err as Error).message });
+      }
+
       // Get last sync time if Google Workspace is configured
       // Use gw_synced_users updated_at as a proxy for last sync
       let lastSync: string | null = null;
@@ -143,43 +179,124 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         lastSync = syncResult.rows[0]?.last_sync || null;
       }
 
-      // Get security stats (unified 2FA across all sources + OAuth)
-      let securityStats = null;
+      // License detection + configurable per-platform limits. `licenses.total` is
+      // the admin-configured available-seat limit when set, else the provider-
+      // reported total (real for M365 via Graph subscribedSkus; not reliably
+      // reported for Google, so its limit must be configured). Display-only —
+      // Helios never enforces a hard cap.
+      let licenseLimits: { google: number | null; microsoft: number | null } = { google: null, microsoft: null };
       try {
-        // Get unified 2FA status from all sources (Helios, Google, M365)
-        const unified2FAData = await oauthTokenSyncService.getUnified2FAStatus(organizationId);
+        const ll = await db.query(
+          `SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'license_limits'`,
+          [organizationId]
+        );
+        if (ll.rows[0]?.value) licenseLimits = { ...licenseLimits, ...JSON.parse(ll.rows[0].value) };
+      } catch (err) {
+        logger.debug('Failed to read license_limits for dashboard', { error: (err as Error).message });
+      }
 
-        // Get OAuth apps data if Google is configured
-        let oauthAppsData = null;
-        if (isGoogleConfigured) {
-          oauthAppsData = await oauthTokenSyncService.getOAuthApps(organizationId, {
+      // Google: assigned seats = users with a Google account (matches the
+      // directory). Provider total is unreliable, so the configured limit is the
+      // denominator when present (null otherwise -> card shows N/A, no banner).
+      let googleLicenses: { used: number; total: number | null; providerTotal: number | null; reportDate: string | null } | null = null;
+      if (isGoogleConfigured) {
+        googleLicenses = {
+          used: parseInt(googleUsers.rows[0].count) || 0,
+          total: licenseLimits.google ?? null,
+          providerTotal: null,
+          reportDate: lastSync,
+        };
+      }
+
+      // Microsoft: each SKU is a SEPARATE license pool, so we must NOT sum across
+      // them — a huge auto-provisioned free SKU (FLOW_FREE ~10k, Power BI ~1M
+      // seats) would dilute the ratio and mask an exhausted paid SKU (the "healthy
+      // 0%" silent-failure). Default headline = the MOST-CONSTRAINED SKU by
+      // utilization, so free pools (near-0% used) can never win over a full paid
+      // pool. If the admin sets an explicit aggregate limit, honor that instead.
+      let microsoftLicenses:
+        | { used: number; total: number | null; providerTotal: number | null; reportDate: string | null; skuName?: string | null; skus?: Array<{ name: string; used: number; total: number; available: number }> }
+        | null = null;
+      if (isMicrosoftConfigured) {
+        try {
+          const msl = await db.query(
+            `SELECT sku_part_number, display_name, total_units, consumed_units, last_sync_at
+             FROM ms_licenses WHERE organization_id = $1`,
+            [organizationId]
+          );
+          const skus: Array<{ name: string; used: number; total: number; available: number }> = msl.rows.map((r: any) => {
+            const total = parseInt(r.total_units) || 0;
+            const used = parseInt(r.consumed_units) || 0;
+            return { name: r.display_name || r.sku_part_number || 'Unknown SKU', total, used, available: Math.max(0, total - used) };
+          });
+          let reportDate: string | null = null;
+          for (const r of msl.rows) {
+            if (r.last_sync_at && (!reportDate || r.last_sync_at > reportDate)) reportDate = r.last_sync_at;
+          }
+          if (licenseLimits.microsoft != null) {
+            // Admin chose to track an explicit aggregate seat total.
+            const used = skus.reduce((n, s) => n + s.used, 0);
+            const providerTotal = skus.reduce((n, s) => n + s.total, 0);
+            microsoftLicenses = { used, total: licenseLimits.microsoft, providerTotal: providerTotal > 0 ? providerTotal : null, reportDate, skus };
+          } else {
+            const withTotals = skus.filter(s => s.total > 0);
+            const tightest = withTotals.length
+              ? withTotals.reduce((a, b) => (b.used / b.total > a.used / a.total ? b : a))
+              : null;
+            microsoftLicenses = tightest
+              ? { used: tightest.used, total: tightest.total, providerTotal: tightest.total, reportDate, skuName: tightest.name, skus }
+              : { used: 0, total: null, providerTotal: null, reportDate, skus };
+          }
+        } catch (err) {
+          logger.debug('Failed to aggregate ms_licenses for dashboard', { error: (err as Error).message });
+        }
+      }
+
+      // Get security stats (unified 2FA across all sources + OAuth apps).
+      // 2FA and OAuth-apps are collected independently so a failure in one
+      // source (e.g. a missing table) doesn't blank BOTH cards. Failures are
+      // logged at warn — a silently-swallowed error here previously showed as
+      // an unexplained "N/A" on the dashboard.
+      let twoFactorStats = null;
+      try {
+        const unified2FAData = await oauthTokenSyncService.getUnified2FAStatus(organizationId);
+        twoFactorStats = {
+          total: unified2FAData.summary.total,
+          enrolled: unified2FAData.summary.enrolled,
+          notEnrolled: unified2FAData.summary.notEnrolled,
+          percentage: unified2FAData.summary.percentage,
+          bySource: unified2FAData.summary.bySource
+        };
+      } catch (err) {
+        logger.warn('Failed to get 2FA stats for dashboard', { organizationId, error: (err as Error).message });
+      }
+
+      let oauthAppsStats = null;
+      if (isGoogleConfigured) {
+        try {
+          const oauthAppsData = await oauthTokenSyncService.getOAuthApps(organizationId, {
             sortBy: 'userCount',
             sortOrder: 'desc',
             limit: 5
           });
+          if (oauthAppsData) {
+            oauthAppsStats = {
+              totalApps: oauthAppsData.total,
+              totalGrants: oauthAppsData.totalGrants,
+              topApps: oauthAppsData.apps.map(app => ({
+                displayName: app.displayName || 'Unknown App',
+                userCount: app.userCount
+              }))
+            };
+          }
+        } catch (err) {
+          logger.warn('Failed to get OAuth apps stats for dashboard', { organizationId, error: (err as Error).message });
         }
-
-        securityStats = {
-          twoFactor: {
-            total: unified2FAData.summary.total,
-            enrolled: unified2FAData.summary.enrolled,
-            notEnrolled: unified2FAData.summary.notEnrolled,
-            percentage: unified2FAData.summary.percentage,
-            bySource: unified2FAData.summary.bySource
-          },
-          oauthApps: oauthAppsData ? {
-            totalApps: oauthAppsData.total,
-            totalGrants: oauthAppsData.totalGrants,
-            topApps: oauthAppsData.apps.map(app => ({
-              displayName: app.displayName || 'Unknown App',
-              userCount: app.userCount
-            }))
-          } : null
-        };
-      } catch (err) {
-        // Security stats are optional, don't fail the whole request
-        logger.debug('Failed to get security stats for dashboard', { error: (err as Error).message });
       }
+
+      const securityStats = (twoFactorStats || oauthAppsStats)
+        ? { twoFactor: twoFactorStats, oauthApps: oauthAppsStats }
+        : null;
 
       return {
         google: isGoogleConfigured ? {
@@ -187,13 +304,15 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           totalUsers: parseInt(googleUsers.rows[0].count),
           suspendedUsers: parseInt(suspendedUsers.rows[0].count),
           adminUsers: parseInt(admins.rows[0].count),
-          lastSync: lastSync
+          lastSync: lastSync,
+          licenses: googleLicenses
         } : {
           connected: false,
           totalUsers: 0,
           suspendedUsers: 0,
           adminUsers: 0,
-          lastSync: null as string | null
+          lastSync: null as string | null,
+          licenses: null
         },
         helios: {
           totalUsers: parseInt(localUsers.rows[0].count),
@@ -201,11 +320,12 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           orphanedUsers: parseInt(orphanedUsers.rows[0].count)
         },
         microsoft: {
-          connected: false,
-          totalUsers: 0,
-          disabledUsers: 0,
-          adminUsers: 0,
-          lastSync: null as string | null
+          connected: isMicrosoftConfigured,
+          totalUsers: microsoftStats.total,
+          disabledUsers: microsoftStats.suspended,
+          adminUsers: microsoftStats.admins,
+          lastSync: microsoftStats.lastSync,
+          licenses: microsoftLicenses
         },
         security: securityStats
       };

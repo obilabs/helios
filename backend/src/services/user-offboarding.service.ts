@@ -12,10 +12,15 @@ import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
+import { googleWorkspaceService } from './google-workspace.service.js';
+import { microsoftGraphService } from './microsoft-graph.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
 import {
   OffboardingTemplate,
   OffboardingConfig,
+  OffboardingConfigInput,
+  OffboardingPolicy,
+  DEFAULT_OFFBOARDING_POLICY,
   CreateOffboardingTemplateDTO,
   UpdateOffboardingTemplateDTO,
   OFFBOARDING_STEPS,
@@ -301,8 +306,21 @@ class UserOffboardingService {
       actionId?: string;
       triggeredBy?: string;
       triggeredByUserId?: string;
+      /**
+       * Org OFFBOARDING POLICY defaults. When provided, they fill any config
+       * field the caller left unset (two-tier: per-offboard override wins over
+       * policy default). The merge is a pure, DB-free operation, so it never
+       * disturbs the step-by-step audit sequence.
+       */
+      policy?: OffboardingPolicy;
     } = {}
   ): Promise<OffboardingResult> {
+    // Apply org-policy defaults before anything else touches the config, so every
+    // downstream step (and the audit log) sees the effective, policy-merged value.
+    if (options.policy) {
+      config = this.mergePolicyDefaults(config, options.policy);
+    }
+
     const result: OffboardingResult = {
       success: true,
       errors: [],
@@ -447,9 +465,9 @@ class UserOffboardingService {
         stepOrder++;
         const delegateStart = Date.now();
         try {
-          const delegateEmail = await this.resolveForwardTarget(config);
+          const delegateEmail = await this.resolveDelegateTarget(config);
           if (!delegateEmail) {
-            throw new Error('No delegate address available (manager or forward user email missing)');
+            throw new Error('No delegate address available (delegate, forward, manager, or forward user email missing)');
           }
           const delegationDetails = await this.setupMailboxDelegation(
             organizationId,
@@ -511,6 +529,52 @@ class UserOffboardingService {
         result.stepsSkipped.push('set_auto_reply');
       }
 
+      // Step 4b: Cancel/decline the departing user's future calendar events.
+      // Organizer events are deleted; attendee events are declined. This is the
+      // one genuinely-missing offboarding primitive. Activated by the explicit
+      // `cancelFutureEvents` flag OR the pre-existing (previously inert)
+      // `calendarDeclineFutureMeetings` template flag.
+      if (config.cancelFutureEvents || config.calendarDeclineFutureMeetings) {
+        stepOrder++;
+        const calStart = Date.now();
+        try {
+          const cancelResult = await googleWorkspaceService.cancelFutureEvents(
+            organizationId,
+            config.userEmail
+          );
+          if (!cancelResult.success) {
+            throw new Error(cancelResult.error || 'Failed to cancel future calendar events');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'cancel_future_events',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - calStart,
+              details: {
+                cancelledCount: cancelResult.cancelledCount ?? 0,
+                declinedCount: cancelResult.declinedCount ?? 0,
+              },
+            }
+          );
+          result.stepsCompleted.push('cancel_future_events');
+        } catch (error: any) {
+          result.errors.push(`Failed to cancel future calendar events: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'cancel_future_events',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - calStart }
+          );
+          result.stepsFailed.push('cancel_future_events');
+        }
+      } else {
+        result.stepsSkipped.push('cancel_future_events');
+      }
+
       // Step 5: Remove from groups
       if (config.removeFromAllGroups) {
         stepOrder++;
@@ -537,6 +601,48 @@ class UserOffboardingService {
         }
       } else {
         result.stepsSkipped.push('remove_from_groups');
+      }
+
+      // Step 5b: Add the departing user to a designated "offboarded" group (in
+      // ADDITION to removeFromAllGroups). Common pattern for applying a
+      // restricted group policy / retaining the mailbox under group control.
+      if (config.offboardedGroupEmail) {
+        stepOrder++;
+        const addGroupStart = Date.now();
+        try {
+          const addResult = await googleWorkspaceService.addUserToGroup(
+            organizationId,
+            config.userEmail,
+            config.offboardedGroupEmail
+          );
+          if (!addResult.success) {
+            throw new Error(addResult.error || 'Failed to add user to offboarded group');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'add_to_offboarded_group',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - addGroupStart,
+              details: { group: config.offboardedGroupEmail },
+            }
+          );
+          result.stepsCompleted.push('add_to_offboarded_group');
+        } catch (error: any) {
+          result.errors.push(`Failed to add user to offboarded group: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'add_to_offboarded_group',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - addGroupStart }
+          );
+          result.stepsFailed.push('add_to_offboarded_group');
+        }
+      } else {
+        result.stepsSkipped.push('add_to_offboarded_group');
       }
 
       // Step 6: Revoke OAuth tokens
@@ -623,6 +729,48 @@ class UserOffboardingService {
         result.stepsSkipped.push('reset_password');
       }
 
+      // Step 8b: Move the departing user into an offboarding org unit (e.g.
+      // "/Offboarded") so OU-scoped policies apply. Runs BEFORE suspension so the
+      // OU move still succeeds on an active account.
+      if (config.orgUnitPath) {
+        stepOrder++;
+        const ouStart = Date.now();
+        try {
+          const ouResult = await googleWorkspaceService.setOrgUnit(
+            organizationId,
+            config.userEmail,
+            config.orgUnitPath
+          );
+          if (!ouResult.success) {
+            throw new Error(ouResult.error || 'Failed to move user to org unit');
+          }
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'move_to_org_unit',
+            {
+              ...logOptions,
+              stepOrder,
+              durationMs: Date.now() - ouStart,
+              details: { orgUnitPath: config.orgUnitPath },
+            }
+          );
+          result.stepsCompleted.push('move_to_org_unit');
+        } catch (error: any) {
+          result.errors.push(`Failed to move user to org unit: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'move_to_org_unit',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - ouStart }
+          );
+          result.stepsFailed.push('move_to_org_unit');
+        }
+      } else {
+        result.stepsSkipped.push('move_to_org_unit');
+      }
+
       // Step 9: Suspend account (if immediate)
       if (config.accountAction === 'suspend_immediately') {
         stepOrder++;
@@ -654,6 +802,198 @@ class UserOffboardingService {
         result.stepsSkipped.push('suspend_account'); // Will be handled by scheduler
       } else {
         result.stepsSkipped.push('suspend_account');
+      }
+
+      // Step 9a1: Microsoft 365 offboard — disable / remove-license / delete,
+      // parallel to the Google suspend/delete above. This is the FIRST consumer
+      // of config.licenseAction. Skips cleanly when the user has no M365 link or
+      // M365 isn't configured; its own try/catch so an M365 failure never rolls
+      // back completed Google steps.
+      {
+        stepOrder++;
+        const msStart = Date.now();
+        try {
+          const msRow = await db.query(
+            'SELECT microsoft_365_id FROM organization_users WHERE (id = $1 OR email = $2) AND organization_id = $3 LIMIT 1',
+            [config.userId, config.userEmail, organizationId]
+          );
+          const msId = msRow.rows[0]?.microsoft_365_id;
+          const initialized = msId ? await microsoftGraphService.initialize(organizationId) : false;
+          if (!msId || !initialized) {
+            result.stepsSkipped.push('m365_offboard');
+          } else {
+            const willDelete = config.deleteAccount && !!config.deleteImmediately;
+            // Each sub-op is independent: a redundant license-removal failure
+            // (e.g. a group-inherited SKU Graph refuses to strip) must NOT block
+            // the requested account delete, which is the operation of record.
+            const subErrors: string[] = [];
+            if (config.accountAction === 'suspend_immediately') {
+              try { await microsoftGraphService.disableUser(msId); }
+              catch (e: any) { subErrors.push(`disable: ${e.message}`); }
+            }
+            // Skip license removal entirely when deleting — Graph strips direct
+            // assignments on user deletion, so removing first is pointless and can
+            // fail on group-inherited licenses.
+            if (!willDelete && (config.licenseAction === 'remove_immediately' ||
+                (config.licenseAction === 'remove_on_suspension' && config.accountAction === 'suspend_immediately'))) {
+              try {
+                const lics = await microsoftGraphService.getUserLicenses(msId);
+                const skuIds = lics.map((l: any) => l.skuId).filter(Boolean);
+                if (skuIds.length) await microsoftGraphService.removeLicense(msId, skuIds);
+              } catch (e: any) { subErrors.push(`removeLicense: ${e.message}`); }
+            }
+            if (willDelete) {
+              try { await microsoftGraphService.deleteUser(msId); }
+              catch (e: any) { subErrors.push(`delete: ${e.message}`); }
+            }
+            if (subErrors.length) {
+              throw new Error(subErrors.join('; '));
+            }
+            await lifecycleLogService.logSuccess(
+              organizationId, 'offboard', 'm365_offboard',
+              { ...logOptions, stepOrder, durationMs: Date.now() - msStart }
+            );
+            result.stepsCompleted.push('m365_offboard');
+          }
+        } catch (error: any) {
+          result.errors.push(`Failed M365 offboard: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId, 'offboard', 'm365_offboard', error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - msStart }
+          );
+          result.stepsFailed.push('m365_offboard');
+        }
+      }
+
+      // Step 9a2: Vault preservation — OPT-IN (config.preserveWithVault). Runs
+      // BEFORE any deletion so the departing user's Mail + Drive survive account
+      // removal (a Vault hold is retained even after the account is deleted).
+      // GATED to Vault-eligible editions (Business Plus+); on lower tiers it is
+      // SKIPPED with a reason rather than failing the offboard.
+      if (config.preserveWithVault) {
+        stepOrder++;
+        const preserveStart = Date.now();
+        try {
+          const vaultRes = await googleWorkspaceService.preserveUserWithVault(
+            organizationId,
+            config.userEmail,
+            { matterName: config.vaultMatterName }
+          );
+          if (vaultRes.success) {
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'preserve_vault',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - preserveStart,
+                details: { matterId: vaultRes.matterId, holdIds: vaultRes.holdIds },
+              }
+            );
+            result.stepsCompleted.push('preserve_vault');
+          } else if (vaultRes.skipped) {
+            // Not an error — the org isn't on a Vault-eligible edition.
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'preserve_vault',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - preserveStart,
+                details: { skipped: true, reason: vaultRes.reason },
+              }
+            );
+            result.stepsSkipped.push('preserve_vault');
+          } else {
+            throw new Error(vaultRes.error || 'Vault preservation failed');
+          }
+        } catch (error: any) {
+          result.errors.push(`Failed to preserve with Vault: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'preserve_vault',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - preserveStart }
+          );
+          result.stepsFailed.push('preserve_vault');
+        }
+      } else {
+        result.stepsSkipped.push('preserve_vault');
+      }
+
+      // Step 9b: Account deletion — OPT-IN (config.deleteAccount) and GUARDED.
+      // Suspension (above) is the safe default; deletion is irreversible and frees
+      // the license.
+      //   - deleteImmediately === true → HARD-DELETE inline now via
+      //     googleWorkspaceService.deleteUser, which itself re-runs the admin
+      //     self-lockout guard (assertNotProtectedAdmin) before deleting.
+      //   - otherwise → DEFERRED: record the intent + scheduled date
+      //     (now + deleteAfterDays) in the audit log; a scheduler performs the
+      //     actual deletion later. Nothing is deleted inline.
+      if (config.deleteAccount) {
+        stepOrder++;
+        const deleteStart = Date.now();
+        const deleteStep = config.deleteImmediately ? 'delete_account' : 'schedule_account_deletion';
+        try {
+          if (config.deleteImmediately) {
+            const deleteResult = await googleWorkspaceService.deleteUser(
+              organizationId,
+              config.userEmail
+            );
+            if (!deleteResult.success) {
+              throw new Error(deleteResult.error || 'Failed to delete account');
+            }
+            await this.updateHeliosUserStatus(config.userId, 'deleted');
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'delete_account',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - deleteStart,
+                details: { deleted: true, deferred: false },
+              }
+            );
+            result.stepsCompleted.push('delete_account');
+          } else {
+            // Deferral: record intent only. The audit log IS the durable record of
+            // the scheduled deletion; nothing is deleted inline.
+            const days = config.deleteAfterDays ?? 90;
+            const scheduledFor = new Date(
+              Date.now() + days * 24 * 60 * 60 * 1000
+            ).toISOString();
+            await lifecycleLogService.logSuccess(
+              organizationId,
+              'offboard',
+              'schedule_account_deletion',
+              {
+                ...logOptions,
+                stepOrder,
+                durationMs: Date.now() - deleteStart,
+                details: { deleted: false, deferred: true, deleteAfterDays: days, scheduledFor },
+              }
+            );
+            result.stepsCompleted.push('schedule_account_deletion');
+          }
+        } catch (error: any) {
+          result.errors.push(
+            `Failed to ${config.deleteImmediately ? 'delete account' : 'schedule account deletion'}: ${error.message}`
+          );
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            deleteStep,
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - deleteStart }
+          );
+          result.stepsFailed.push(deleteStep);
+        }
+      } else {
+        result.stepsSkipped.push('delete_account');
       }
 
       // Step 10: Send notifications
@@ -728,6 +1068,8 @@ class UserOffboardingService {
       triggeredByUserId?: string;
       lastDay?: Date;
       configOverrides?: Partial<OffboardingConfig>;
+      /** Pre-resolved org policy; resolved from the DB when omitted. */
+      policy?: OffboardingPolicy;
     } = {}
   ): Promise<OffboardingResult> {
     const template = await this.getTemplate(templateId);
@@ -828,7 +1170,208 @@ class UserOffboardingService {
       ...options.configOverrides,
     };
 
-    return this.executeOffboarding(organizationId, config, options);
+    // Two-tier knobs: resolve the org policy (unless the caller pre-resolved it)
+    // and hand it to the orchestrator, which fills any field the template/config
+    // left unset. Template/config values always win over policy defaults.
+    const policy = options.policy ?? (await this.resolveOffboardingPolicy(organizationId));
+
+    return this.executeOffboarding(organizationId, config, {
+      actionId: options.actionId,
+      triggeredBy: options.triggeredBy,
+      triggeredByUserId: options.triggeredByUserId,
+      policy,
+    });
+  }
+
+  /**
+   * Execute offboarding from a RAW config assembled by a caller (the developer
+   * console's `gw offboard` command, or a direct API client) rather than from a
+   * stored template. This is the single audited + guarded entrypoint the console
+   * uses instead of running its own ad-hoc Google sequence.
+   *
+   * Only `userEmail` is required on the input:
+   *   - `userId` is resolved from the email against organization_users when the
+   *     caller omits it (the console works with Google emails). A missing Helios
+   *     row is non-fatal — the Google-side steps only need the email, and the
+   *     Helios status update simply matches nothing.
+   *   - every other field is defaulted by `normalizeConfig`, then org-policy
+   *     defaults are applied (per-offboard override wins).
+   */
+  async executeOffboardingFromConfig(
+    organizationId: string,
+    input: OffboardingConfigInput,
+    options: {
+      actionId?: string;
+      triggeredBy?: string;
+      triggeredByUserId?: string;
+      /** Pre-resolved org policy; resolved from the DB when omitted. */
+      policy?: OffboardingPolicy;
+    } = {}
+  ): Promise<OffboardingResult> {
+    if (!input || !input.userEmail) {
+      return {
+        success: false,
+        errors: ['User email is required'],
+        stepsCompleted: [],
+        stepsFailed: ['validate_config'],
+        stepsSkipped: [],
+      };
+    }
+
+    // Resolve the Helios user id from the email when the caller didn't supply one.
+    let userId = input.userId;
+    if (!userId) {
+      try {
+        const r = await db.query(
+          'SELECT id FROM organization_users WHERE email = $1 AND organization_id = $2',
+          [input.userEmail, organizationId]
+        );
+        userId = r.rows[0]?.id;
+      } catch {
+        // Fall through to the email placeholder below.
+      }
+    }
+
+    const config = this.normalizeConfig({
+      ...input,
+      userId: userId || input.userEmail,
+    });
+
+    const policy = options.policy ?? (await this.resolveOffboardingPolicy(organizationId));
+
+    return this.executeOffboarding(organizationId, config, {
+      actionId: options.actionId,
+      triggeredBy: options.triggeredBy,
+      triggeredByUserId: options.triggeredByUserId,
+      policy,
+    });
+  }
+
+  /**
+   * Resolve an organization's OFFBOARDING POLICY from
+   * `organization_settings.settings.offboardingPolicy`, merged over the built-in
+   * defaults. Never throws — an unreadable/absent policy yields the defaults so
+   * offboarding is never blocked by a missing policy row.
+   */
+  async resolveOffboardingPolicy(organizationId: string): Promise<OffboardingPolicy> {
+    try {
+      // organization_settings is a key/value store (key, value text) — not a
+      // JSON blob. The policy lives in the row key='offboarding.policy'.
+      const result = await db.query(
+        "SELECT value FROM organization_settings WHERE organization_id = $1 AND key = 'offboarding.policy'",
+        [organizationId]
+      );
+      const raw = result?.rows?.[0]?.value;
+      const stored = raw ? JSON.parse(raw) : null;
+      if (stored && typeof stored === 'object') {
+        return { ...DEFAULT_OFFBOARDING_POLICY, ...stored };
+      }
+    } catch (error: any) {
+      logger.warn('Failed to load offboarding policy; using defaults', {
+        organizationId,
+        error: error?.message,
+      });
+    }
+    return { ...DEFAULT_OFFBOARDING_POLICY };
+  }
+
+  /**
+   * Fill any policy-governed config field the caller left unset with the org
+   * policy default. Per-offboard values always win (nullish-coalescing, so an
+   * explicit `false`/`0` overrides the policy). Pure — no DB, no mutation of the
+   * input.
+   */
+  private mergePolicyDefaults(
+    config: OffboardingConfig,
+    policy: OffboardingPolicy
+  ): OffboardingConfig {
+    return {
+      ...config,
+      orgUnitPath: config.orgUnitPath ?? policy.targetOrgUnitPath,
+      offboardedGroupEmail: config.offboardedGroupEmail ?? policy.offboardedGroupEmail,
+      emailAutoReplyMessage: config.emailAutoReplyMessage ?? policy.autoReplyTemplate,
+      emailAutoReplySubject: config.emailAutoReplySubject ?? policy.autoReplySubject,
+      deleteAfterDays: config.deleteAfterDays ?? policy.deleteAfterDays,
+      cancelFutureEvents: config.cancelFutureEvents ?? policy.cancelFutureEvents,
+    };
+  }
+
+  /**
+   * Turn a loose `OffboardingConfigInput` into a fully-populated
+   * `OffboardingConfig` with conservative, suspend-by-default values. Deletion
+   * stays opt-in (`deleteAccount` defaults false); the account action defaults to
+   * immediate suspension.
+   */
+  private normalizeConfig(
+    input: OffboardingConfigInput & { userId: string }
+  ): OffboardingConfig {
+    return {
+      userId: input.userId,
+      userEmail: input.userEmail,
+      managerId: input.managerId,
+      managerEmail: input.managerEmail,
+      lastDay: input.lastDay,
+
+      // Drive
+      driveAction: input.driveAction ?? 'keep',
+      driveTransferToUserId: input.driveTransferToUserId,
+      driveArchiveSharedDriveId: input.driveArchiveSharedDriveId,
+
+      // Email
+      emailAction: input.emailAction ?? 'keep',
+      emailForwardToUserId: input.emailForwardToUserId,
+      emailForwardDurationDays: input.emailForwardDurationDays ?? 30,
+      emailAutoReplyMessage: input.emailAutoReplyMessage,
+      emailAutoReplySubject: input.emailAutoReplySubject,
+      emailForwardAddress: input.emailForwardAddress,
+      delegateEmail: input.delegateEmail,
+
+      // Calendar
+      calendarDeclineFutureMeetings: input.calendarDeclineFutureMeetings ?? false,
+      calendarTransferMeetingOwnership: input.calendarTransferMeetingOwnership ?? false,
+      calendarTransferToUserId: input.calendarTransferToUserId,
+      cancelFutureEvents: input.cancelFutureEvents,
+
+      // Access revocation
+      removeFromAllGroups: input.removeFromAllGroups ?? false,
+      removeFromSharedDrives: input.removeFromSharedDrives ?? false,
+      revokeOauthTokens: input.revokeOauthTokens ?? false,
+      revokeAppPasswords: input.revokeAppPasswords ?? false,
+      signOutAllDevices: input.signOutAllDevices ?? false,
+      resetPassword: input.resetPassword ?? false,
+      offboardedGroupEmail: input.offboardedGroupEmail,
+
+      // Signature
+      removeSignature: input.removeSignature ?? false,
+      setOffboardingSignature: input.setOffboardingSignature ?? false,
+      offboardingSignatureText: input.offboardingSignatureText,
+
+      // Mobile
+      wipeMobileDevices: input.wipeMobileDevices ?? false,
+
+      // Org unit
+      orgUnitPath: input.orgUnitPath,
+
+      // Data preservation (Vault) — opt-in, Business Plus+ gated at runtime
+      preserveWithVault: input.preserveWithVault ?? false,
+      vaultMatterName: input.vaultMatterName,
+
+      // Account — suspend by default, delete opt-in
+      accountAction: input.accountAction ?? 'suspend_immediately',
+      deleteAccount: input.deleteAccount ?? false,
+      deleteAfterDays: input.deleteAfterDays,
+      deleteImmediately: input.deleteImmediately,
+
+      // License
+      licenseAction: input.licenseAction ?? 'remove_on_suspension',
+
+      // Notifications
+      notifyManager: input.notifyManager ?? false,
+      notifyItAdmin: input.notifyItAdmin ?? false,
+      notifyHr: input.notifyHr ?? false,
+      notificationEmailAddresses: input.notificationEmailAddresses ?? [],
+      notificationMessage: input.notificationMessage,
+    };
   }
 
   // ==========================================
@@ -1034,27 +1577,64 @@ class UserOffboardingService {
   }
 
   /**
-   * Resolve the email the departing user's mail is forwarded/delegated to:
-   * the explicit `emailForwardToUserId` (looked up) for `forward_user`, else
-   * the manager's email.
+   * Resolve the email the departing user's mail is forwarded to, in precedence
+   * order: the explicit `emailForwardAddress` (the `--forward=` console flag),
+   * then the looked-up `emailForwardToUserId` (`forward_user`), then the
+   * manager's email.
    */
   private async resolveForwardTarget(config: OffboardingConfig): Promise<string | null> {
+    if (config.emailForwardAddress) {
+      return config.emailForwardAddress;
+    }
     if (config.emailForwardToUserId) {
       return this.getUserEmail(config.emailForwardToUserId);
     }
     return config.managerEmail ?? null;
   }
 
+  /**
+   * Resolve the Gmail delegate target, in precedence order: the explicit
+   * `delegateEmail` (the `--delegate=` console flag), then whatever the mail is
+   * forwarded to (so the successor who receives forwarded mail can also read the
+   * historical mailbox).
+   */
+  private async resolveDelegateTarget(config: OffboardingConfig): Promise<string | null> {
+    if (config.delegateEmail) {
+      return config.delegateEmail;
+    }
+    return this.resolveForwardTarget(config);
+  }
+
+  /**
+   * Set the departing user's Gmail vacation responder (auto-reply) to the stored
+   * offboarding message. Delegates to the working, user-impersonating
+   * googleWorkspaceService.setVacationResponder — Gmail
+   * users.settings.updateVacation IS supported, so the previous stub was a wiring
+   * gap, not an API gap. The vacation responder impersonates the departing user
+   * (their mailbox owns the setting). Throws on failure so the orchestrator
+   * records the step as failed.
+   */
   private async setAutoReply(
     organizationId: string,
     config: OffboardingConfig
   ): Promise<void> {
-    logger.info('Auto-reply would be set', {
+    const res = await googleWorkspaceService.setVacationResponder(
+      organizationId,
+      config.userEmail,
+      {
+        subject: config.emailAutoReplySubject || 'Out of office',
+        body: config.emailAutoReplyMessage || '',
+      }
+    );
+
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to set vacation responder');
+    }
+
+    logger.info('Auto-reply (vacation responder) set', {
       userEmail: config.userEmail,
       subject: config.emailAutoReplySubject,
     });
-
-    // TODO: Implement actual vacation responder setup
   }
 
   private async removeFromAllGroups(
@@ -1213,9 +1793,16 @@ class UserOffboardingService {
     );
   }
 
+  /**
+   * NO-OP (deliberately out of scope): sending offboarding notification emails
+   * requires mail-delivery infrastructure (SMTP / transactional provider) that
+   * this offboarding path does not own. This method intentionally sends NOTHING —
+   * it only logs that a notification WOULD be sent, so the step reports success
+   * without silently implying mail was delivered. Building real notification mail
+   * delivery is tracked as a follow-up.
+   */
   private async sendNotifications(config: OffboardingConfig): Promise<void> {
-    // TODO: Implement actual email notifications
-    logger.info('Notifications would be sent', {
+    logger.info('send_notifications is a no-op (mail infrastructure out of scope); no email sent', {
       userEmail: config.userEmail,
       notifyManager: config.notifyManager,
       notifyItAdmin: config.notifyItAdmin,

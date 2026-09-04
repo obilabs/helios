@@ -102,7 +102,7 @@ export class OAuthTokenSyncService {
       const credResult = await db.query(`
         SELECT service_account_key, admin_email, domain
         FROM gw_credentials
-        WHERE organization_id = $1 AND is_active = true
+        WHERE organization_id = $1
         LIMIT 1
       `, [organizationId]);
 
@@ -701,6 +701,32 @@ export class OAuthTokenSyncService {
     let googleTotal = 0, googleEnrolled = 0;
     let m365Total = 0, m365Enrolled = 0;
 
+    // One identity per person, keyed by lower(email). The bySource counters
+    // above stay per-source (that breakdown is legitimate), but the headline
+    // total/enrolled and the users[] list must be DEDUPED — a person linked to
+    // both Google and M365 is ONE user with platform flags, not two/three rows.
+    // A person counts as enrolled if 2FA is on in ANY of their linked sources.
+    type Identity = {
+      email: string; firstName: string | null; lastName: string | null;
+      source: 'helios' | 'google' | 'm365'; isEnrolled: boolean;
+      isEnforced?: boolean; updatedAt?: Date | null;
+    };
+    const identityMap = new Map<string, Identity>();
+    const mergeIdentity = (row: Identity) => {
+      const key = (row.email || '').toLowerCase();
+      const existing = identityMap.get(key);
+      if (!existing) {
+        identityMap.set(key, { ...row });
+        return;
+      }
+      // First-seen source (helios processed first) stays the primary source.
+      existing.firstName = existing.firstName || row.firstName;
+      existing.lastName = existing.lastName || row.lastName;
+      if (row.isEnrolled) existing.isEnrolled = true;
+      if (row.isEnforced) existing.isEnforced = true;
+      if (row.updatedAt) existing.updatedAt = row.updatedAt;
+    };
+
     // Helios 2FA (better-auth two_factor table)
     if (source === 'all' || source === 'helios') {
       let heliosQuery = `
@@ -730,11 +756,8 @@ export class OAuthTokenSyncService {
         const isEnrolled = row.is_enrolled === true;
         if (isEnrolled) heliosEnrolled++;
 
-        // Apply filter
-        if (filter === 'enrolled' && !isEnrolled) continue;
-        if (filter === 'not-enrolled' && isEnrolled) continue;
-
-        users.push({
+        // Merge into the identity map (dedup + filter happen after all sources).
+        mergeIdentity({
           email: row.email,
           firstName: row.first_name,
           lastName: row.last_name,
@@ -774,11 +797,8 @@ export class OAuthTokenSyncService {
         const isEnrolled = row.is_enrolled_2sv === true;
         if (isEnrolled) googleEnrolled++;
 
-        // Apply filter
-        if (filter === 'enrolled' && !isEnrolled) continue;
-        if (filter === 'not-enrolled' && isEnrolled) continue;
-
-        users.push({
+        // Merge into the identity map (dedup + filter happen after all sources).
+        mergeIdentity({
           email: row.email,
           firstName: row.first_name,
           lastName: row.last_name,
@@ -798,11 +818,21 @@ export class OAuthTokenSyncService {
       m365Enrolled = 0;
     }
 
-    // Calculate totals (deduplicated by email when showing 'all')
-    const total = heliosTotal + googleTotal + m365Total;
-    const enrolled = heliosEnrolled + googleEnrolled + m365Enrolled;
+    // Headline totals are DEDUPED by identity (one person = one row), so the
+    // denominator equals the count of unique people, not the sum of per-source
+    // buckets (which double-counts anyone linked to more than one platform).
+    const identities = [...identityMap.values()];
+    const total = identities.length;
+    const enrolled = identities.filter(i => i.isEnrolled).length;
     const notEnrolled = total - enrolled;
     const percentage = total > 0 ? Math.round((enrolled / total) * 100) : 0;
+
+    // users[] is the deduped identity list, honoring the enrolled/not-enrolled filter.
+    for (const identity of identities) {
+      if (filter === 'enrolled' && !identity.isEnrolled) continue;
+      if (filter === 'not-enrolled' && identity.isEnrolled) continue;
+      users.push(identity);
+    }
 
     return {
       summary: {

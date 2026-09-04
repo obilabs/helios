@@ -77,22 +77,31 @@ export class GoogleDriveService {
   }
 
   /**
-   * Get authenticated Drive client for an organization
+   * Get authenticated Drive client for an organization.
+   *
+   * `subject` is the domain-wide-delegation user the JWT impersonates. When
+   * omitted the client acts AS the org admin — the original behavior every
+   * existing caller relies on. Callers may pass a specific user (e.g. the TARGET
+   * mailbox during an M365 -> Google migration) so uploaded files land in, and
+   * are owned by, that user's own My Drive rather than the admin's. The proxy /
+   * migration layer is responsible for validating the subject belongs to the
+   * org's own domain before calling this.
    */
-  async getDriveClient(organizationId: string): Promise<drive_v3.Drive | null> {
+  async getDriveClient(organizationId: string, subject?: string): Promise<drive_v3.Drive | null> {
     const credentials = await this.getCredentials(organizationId);
     if (!credentials) {
       logger.error('No credentials found', { organizationId });
       return null;
     }
 
-    const adminEmail = await this.getAdminEmail(organizationId);
-    if (!adminEmail) {
-      logger.error('No admin email found', { organizationId });
+    // Explicit subject wins; otherwise fall back to the org admin (default).
+    const impersonationSubject = subject || (await this.getAdminEmail(organizationId));
+    if (!impersonationSubject) {
+      logger.error('No impersonation subject found (no admin email)', { organizationId });
       return null;
     }
 
-    return this.createDriveClient(credentials, adminEmail);
+    return this.createDriveClient(credentials, impersonationSubject);
   }
 
   /**
@@ -249,17 +258,24 @@ export class GoogleDriveService {
   }
 
   /**
-   * Upload a file to Google Drive
+   * Upload a file to Google Drive.
+   *
+   * `subject` (optional) is the domain-wide-delegation user the upload runs AS.
+   * Omit it (the default) to preserve today's behavior — the file is created by
+   * the org admin. Pass a specific user (e.g. the TARGET user of an M365 ->
+   * Google migration) to have the file created in, and owned by, that user's own
+   * My Drive. Existing callers pass nothing and are unaffected.
    */
   async uploadFile(
     organizationId: string,
     fileBuffer: Buffer,
     filename: string,
     mimeType: string,
-    parentFolderId?: string
+    parentFolderId?: string,
+    subject?: string
   ): Promise<{ success: boolean; result?: StorageUploadResult; error?: string }> {
     try {
-      const drive = await this.getDriveClient(organizationId);
+      const drive = await this.getDriveClient(organizationId, subject);
       if (!drive) {
         return { success: false, error: 'No credentials configured' };
       }
