@@ -18,8 +18,13 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
-import axios from 'axios';
 import { telemetryService } from '../services/telemetry.service.js';
+import { REQUIRED_SCOPES } from '../config/google-scopes.js';
+// Record/replay seam for the two outbound Google calls below. In production
+// (and any test that does not opt in) this is a straight passthrough to axios —
+// no behavior change. Tests activate replay via useGoogleReplay(); setting
+// HELIOS_GOOGLE_RECORD=1 captures sanitized fixtures. See testing/google-replay.ts.
+import { googleHttp } from '../testing/google-replay.js';
 import {
   enforceRelayAuthorization,
   type RelayAuditRecord,
@@ -81,6 +86,9 @@ interface GoogleCredentials {
   client_email: string;
   private_key: string;
   admin_email: string;
+  /** The org's verified Workspace domain (gw_credentials.domain). Used to
+   *  reject cross-domain impersonation — see the X-Impersonate-User gate. */
+  domain: string;
 }
 
 // ===== MAIN PROXY ROUTE =====
@@ -158,17 +166,35 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
     const apiName = apiParts.slice(0, 3).join('.');
     telemetryService.trackApiCall(apiName);
 
+    // 1.5 PER-USER IMPERSONATION TARGET
+    // The caller may ask the proxy to act AS another user (domain-wide
+    // delegation `sub`) by supplying an X-Impersonate-User header. This is what
+    // makes per-user Gmail/Calendar settings (forwarding, vacation, signature,
+    // delegates, calendar sharing) for user X work — without it every such call
+    // runs as the admin and 403s. When absent, the proxy acts as the admin,
+    // exactly as before. The target's domain is validated against the org's
+    // verified domain below (getGoogleCredentials), BEFORE anything is forwarded.
+    const impersonateHeaderRaw = req.headers['x-impersonate-user'];
+    const impersonateSubject =
+      typeof impersonateHeaderRaw === 'string' && impersonateHeaderRaw.trim()
+        ? impersonateHeaderRaw.trim()
+        : null;
+
     // 2. EXTRACT ACTOR INFORMATION
     const actor = extractActor(req);
 
     // 3. CREATE AUDIT LOG ENTRY (START)
+    // The impersonated subject is recorded on the audit row from the outset, so
+    // it is captured even when the request is later rejected (cross-domain) or
+    // fails — an attempted impersonation is itself audit-worthy.
     auditLogId = await createAuditLogEntry({
       organizationId: req.user?.organizationId,
       actor,
       method: req.method,
       path: googleApiPath,
       body: req.body,
-      query: req.query
+      query: req.query,
+      impersonatedSubject: impersonateSubject
     });
 
     // 3.5 RELAY AUTHORIZATION (OpenSpec: secure-api-relay-authorization)
@@ -236,17 +262,56 @@ transparentProxyRouter.all('/api/google/*', combinedAuth, async (req: Request, r
       });
     }
 
+    // 4.5 CROSS-DOMAIN IMPERSONATION GUARD (SECURITY)
+    // If the caller asked to impersonate a user, that user MUST belong to this
+    // org's own verified Workspace domain. Impersonating an address in any other
+    // domain is refused OUTRIGHT — no token is minted, nothing is forwarded to
+    // Google — which prevents a caller from using the org's domain-wide
+    // delegation to act as someone outside the tenant. A malformed target (no
+    // parseable domain) is treated the same as a mismatch.
+    if (impersonateSubject) {
+      const targetDomain = impersonateSubject.includes('@')
+        ? impersonateSubject.split('@').pop()!.toLowerCase()
+        : null;
+      const orgDomain = (googleCreds.domain || '').toLowerCase();
+
+      if (!targetDomain || !orgDomain || targetDomain !== orgDomain) {
+        logger.warn('Cross-domain impersonation rejected', {
+          organizationId: req.user?.organizationId,
+          impersonateSubject,
+          orgDomain
+        });
+
+        await updateAuditLogEntry(auditLogId, {
+          status: 'failure',
+          statusCode: 403,
+          error: `impersonation-denied: target '${impersonateSubject}' is not in org domain '${orgDomain}'`,
+          duration: Date.now() - startTime
+        });
+
+        return res.status(403).json({
+          success: false,
+          error: 'Cross-domain impersonation is not allowed',
+          reason: 'The impersonation target must belong to this organization\'s domain'
+        });
+      }
+    }
+
     // 5. PROXY TO GOOGLE
     // Under enforcement ('forward'), mint ONLY the scopes the matched
     // capability needs (design §6, ceiling 2). Flag off ('passthrough') =>
     // null => the legacy broad scopes, exactly as before.
+    //
+    // `impersonateSubject` (validated same-domain above) becomes the JWT `sub`
+    // so Gmail/Calendar act as that user; null => the service account acts as
+    // the admin, exactly as before.
     const googleResponse = await proxyToGoogle({
       method: req.method,
       path: googleApiPath,
       body: req.body,
       query: req.query,
       headers: req.headers
-    }, googleCreds, relayVerdict.mode === 'forward' ? relayVerdict.scopes : null);
+    }, googleCreds, relayVerdict.mode === 'forward' ? relayVerdict.scopes : null, impersonateSubject);
 
     // 6. INTELLIGENT SYNC
     await intelligentSync({
@@ -353,7 +418,7 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
 
   try {
     const result = await db.query(
-      'SELECT service_account_key, admin_email FROM gw_credentials WHERE organization_id = $1',
+      'SELECT service_account_key, admin_email, domain FROM gw_credentials WHERE organization_id = $1',
       [organizationId]
     );
 
@@ -366,7 +431,8 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
     return {
       client_email: serviceAccountKey.client_email,
       private_key: serviceAccountKey.private_key,
-      admin_email: result.rows[0].admin_email
+      admin_email: result.rows[0].admin_email,
+      domain: result.rows[0].domain
     };
   } catch (error) {
     logger.error('Failed to get Google credentials', { organizationId, error });
@@ -375,16 +441,22 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
 }
 
 /**
- * LEGACY broad scopes — what the proxy has always minted when the relay
- * feature flag is off. Under enforcement these are never used; the verdict's
- * per-capability minimal scopes are minted instead.
+ * Map a Google API request PATH (e.g. "gmail/v1/users/me/settings/forwarding")
+ * to the correct Google API HOST. Google splits its APIs across hostnames:
+ * Admin SDK (directory / datatransfer / reports) on admin.googleapis.com, Gmail
+ * on gmail.googleapis.com, Calendar & Drive on www.googleapis.com, Licensing on
+ * licensing.googleapis.com. The proxy is otherwise generic — no per-endpoint
+ * code — so routing the host by path is what lets every API family work.
  */
-const LEGACY_BROAD_SCOPES = [
-  'https://www.googleapis.com/auth/admin.directory.user',
-  'https://www.googleapis.com/auth/admin.directory.group',
-  'https://www.googleapis.com/auth/admin.directory.orgunit',
-  'https://www.googleapis.com/auth/admin.directory.domain'
-];
+function googleHostForPath(path: string): string {
+  const p = String(path || '').replace(/^\/+/, '');
+  if (p.startsWith('gmail/')) return 'https://gmail.googleapis.com';
+  if (p.startsWith('calendar/')) return 'https://www.googleapis.com';
+  if (p.startsWith('drive/')) return 'https://www.googleapis.com';
+  if (p.startsWith('apps/licensing/') || p.startsWith('licensing/')) return 'https://licensing.googleapis.com';
+  // admin/directory, admin/datatransfer, admin/reports, and anything else
+  return 'https://admin.googleapis.com';
+}
 
 /**
  * Proxy request to Google Admin SDK
@@ -393,23 +465,30 @@ const LEGACY_BROAD_SCOPES = [
  * `scopes`: the OAuth scopes to mint. `null` = legacy behavior (broad
  * directory scopes, relay flag off). Under enforcement the caller passes the
  * minimal scopes selected for the matched capability.
+ *
+ * `subject`: the user to impersonate via domain-wide delegation (the JWT `sub`).
+ * When omitted, the service account acts as the org admin (`admin_email`) — the
+ * legacy behavior. Per-user Gmail/Calendar settings for a DIFFERENT user require
+ * `sub` to be that user, which the caller supplies (validated same-domain first).
  */
 async function proxyToGoogle(
   proxyRequest: ProxyRequest,
   credentials: GoogleCredentials,
-  scopes: string[] | null = null
+  scopes: string[] | null = null,
+  subject?: string | null
 ): Promise<{ status: number; data: any; headers: any }> {
 
   // Use manual JWT token generation to avoid Google Auth Library bugs
   // Build JWT manually and exchange for access token
+  const impersonatedSubject = subject || credentials.admin_email;
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
     iss: credentials.client_email,
-    scope: (scopes ?? LEGACY_BROAD_SCOPES).join(' '),
+    scope: (scopes ?? REQUIRED_SCOPES).join(' '),
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
-    sub: credentials.admin_email
+    sub: impersonatedSubject
   };
 
   const signedJWT = jwt.sign(jwtPayload, credentials.private_key, {
@@ -417,12 +496,12 @@ async function proxyToGoogle(
   });
 
   logger.info('JWT signed', {
-    subject: credentials.admin_email,
+    subject: impersonatedSubject,
     scopes: jwtPayload.scope
   });
 
-  // Exchange JWT for access token
-  const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+  // Exchange JWT for access token (via the record/replay seam)
+  const tokenResponse = await googleHttp.post('https://oauth2.googleapis.com/token', {
     grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
     assertion: signedJWT
   });
@@ -438,11 +517,12 @@ async function proxyToGoogle(
     expiresIn: tokenResponse.data.expires_in
   });
 
-  // Build URL for Google Admin API
-  const baseUrl = 'https://admin.googleapis.com';
+  // Build URL — route to the correct Google API host by path (see googleHostForPath)
+  const baseUrl = googleHostForPath(proxyRequest.path);
   const url = `${baseUrl}/${proxyRequest.path}`;
 
-  logger.info('Proxying to Google Admin API', {
+  logger.info('Proxying to Google API', {
+    host: baseUrl,
     method: proxyRequest.method,
     url,
     hasBody: !!proxyRequest.body,
@@ -477,7 +557,7 @@ async function proxyToGoogle(
       hasData: !!requestConfig.data
     });
 
-    const response = await axios(requestConfig);
+    const response = await googleHttp(requestConfig);
 
     logger.info('Google API request successful', {
       status: response.status,
@@ -518,6 +598,8 @@ async function createAuditLogEntry(params: {
   path: string;
   body: any;
   query: any;
+  /** The user impersonated via X-Impersonate-User, if any (recorded for audit). */
+  impersonatedSubject?: string | null;
 }): Promise<string> {
   // Determine user_id, actor_id, and actor_type based on actor type
   let userId = null;
@@ -567,13 +649,17 @@ async function createAuditLogEntry(params: {
     `google_api_${params.method.toLowerCase()}`,
     'google_api',
     params.path,
-    `${params.method} ${params.path} via ${params.actor.type} (${params.actor.name})`,
+    `${params.method} ${params.path} via ${params.actor.type} (${params.actor.name})` +
+      (params.impersonatedSubject ? ` impersonating ${params.impersonatedSubject}` : ''),
     JSON.stringify({
       method: params.method,
       path: params.path,
       body: params.body,
       query: params.query,
-      status: 'in_progress'
+      status: 'in_progress',
+      // Records WHO the proxy was asked to act as (domain-wide delegation `sub`).
+      // Reuses the existing metadata jsonb column — no new table/column.
+      ...(params.impersonatedSubject ? { impersonatedSubject: params.impersonatedSubject } : {})
     }),
     null, // IP address (can be extracted from req if needed)
     null, // User agent

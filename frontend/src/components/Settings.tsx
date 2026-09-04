@@ -11,6 +11,7 @@ import { ApiKeyShowOnce } from './integrations/ApiKeyShowOnce';
 import { MasterDataSection } from './settings/MasterDataSection';
 import { TrackingSettings } from './settings/TrackingSettings';
 import { FeatureFlagsSettings } from './settings/FeatureFlagsSettings';
+import { RelayAccessSettings } from './settings/RelayAccessSettings';
 import { EntityLabelSettings } from './settings/EntityLabelSettings';
 import { useTabPersistence } from '../hooks/useTabPersistence';
 import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link } from 'lucide-react';
@@ -829,6 +830,9 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                     SSO configuration requires enterprise setup. Contact support for assistance.
                   </div>
                 </div>
+
+                {/* API Relay Access — least-privilege gate on the Google API proxy */}
+                <RelayAccessSettings />
               </div>
             </div>
           )}

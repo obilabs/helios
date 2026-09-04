@@ -1383,6 +1383,31 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       [req.user?.userId, organizationId, newUser.id, req.ip, req.get('User-Agent') || 'Unknown']
     );
 
+    // AUDIT TRAIL: surface user creation in the compliance audit trail
+    // (`audit_logs_unified`). activityTracker/audit_logs above write to
+    // security_events / the legacy audit_logs table, neither of which is in the
+    // unified view — this hash-chained security_audit_logs row is.
+    await securityAudit.log({
+      action: AuditActions.USER_CREATE,
+      actionCategory: 'admin',
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorIp: req.ip || undefined,
+      actorUserAgent: req.get('User-Agent') || undefined,
+      targetType: 'user',
+      targetId: newUser.id,
+      targetIdentifier: newUser.email,
+      organizationId,
+      outcome: 'success',
+      changesAfter: {
+        email: newUser.email,
+        role: userRole,
+        passwordSetupMethod: method,
+        createInGoogle: createInGoogle || false,
+        createInMicrosoft: createInMicrosoft || false,
+      },
+    });
+
     // Send password setup email if method is email_link
     let emailSent = false;
     if (method === 'email_link' && alternateEmail) {
@@ -1755,6 +1780,26 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
       [req.user?.userId, organizationId, userId, req.ip, req.get('User-Agent') || 'Unknown']
     );
 
+    // AUDIT TRAIL: surface the profile/role/status edit in `audit_logs_unified`.
+    await securityAudit.log({
+      action: AuditActions.USER_UPDATE,
+      actionCategory: 'admin',
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorIp: req.ip || undefined,
+      actorUserAgent: req.get('User-Agent') || undefined,
+      targetType: 'user',
+      targetId: updatedUser.id,
+      targetIdentifier: updatedUser.email,
+      organizationId,
+      outcome: 'success',
+      changesAfter: {
+        role: updatedUser.role,
+        isActive: updatedUser.is_active,
+        isExternalAdmin: updatedUser.is_external_admin || false,
+      },
+    });
+
     logger.info('User updated successfully', {
       userId: updatedUser.id,
       email: updatedUser.email,
@@ -2021,6 +2066,25 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
         userEmail: userResult.rows[0].email
       }
     );
+
+    // AUDIT TRAIL: activityTracker above writes to security_events (not in the
+    // unified view). Also record the access-affecting status change in
+    // `audit_logs_unified` via the hash-chained security_audit_logs path.
+    await securityAudit.log({
+      action: status === 'suspended' ? AuditActions.USER_SUSPEND : AuditActions.USER_ACTIVATE,
+      actionCategory: 'admin',
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorIp: req.ip || undefined,
+      actorUserAgent: req.get('User-Agent') || undefined,
+      targetType: 'user',
+      targetId: userId,
+      targetIdentifier: userResult.rows[0].email,
+      organizationId,
+      outcome: 'success',
+      changesBefore: { status: oldStatus },
+      changesAfter: { status },
+    });
 
     logger.info('User status changed', {
       userId,
@@ -2525,6 +2589,23 @@ router.post('/admins/promote/:userId', authenticateToken, requireAdmin, async (r
       [req.user?.userId, organizationId, userId, req.ip, req.get('User-Agent') || 'Unknown']
     );
 
+    // AUDIT TRAIL: surface the privilege elevation in `audit_logs_unified`
+    // (the legacy audit_logs row above is not in that view).
+    await securityAudit.log({
+      action: AuditActions.USER_ROLE_CHANGE,
+      actionCategory: 'admin',
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorIp: req.ip || undefined,
+      actorUserAgent: req.get('User-Agent') || undefined,
+      targetType: 'user',
+      targetId: userId,
+      targetIdentifier: result.rows[0].email,
+      organizationId: organizationId as string,
+      outcome: 'success',
+      changesAfter: { role: 'admin', change: 'promoted_to_admin' },
+    });
+
     await activityTracker.trackUserChange(
       organizationId as string,
       userId,
@@ -2619,6 +2700,23 @@ router.post('/admins/demote/:userId', authenticateToken, requireAdmin, async (re
        VALUES ($1, $2, 'demote_admin', 'organization_user', $3, $4, $5)`,
       [req.user?.userId, organizationId, userId, req.ip, req.get('User-Agent') || 'Unknown']
     );
+
+    // AUDIT TRAIL: surface the privilege demotion in `audit_logs_unified`
+    // (the legacy audit_logs row above is not in that view).
+    await securityAudit.log({
+      action: AuditActions.USER_ROLE_CHANGE,
+      actionCategory: 'admin',
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorIp: req.ip || undefined,
+      actorUserAgent: req.get('User-Agent') || undefined,
+      targetType: 'user',
+      targetId: userId,
+      targetIdentifier: result.rows[0].email,
+      organizationId: organizationId as string,
+      outcome: 'success',
+      changesAfter: { role: 'user', change: 'demoted_from_admin' },
+    });
 
     logger.info('Admin demoted to user', {
       demotedUserId: userId,
