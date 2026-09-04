@@ -24,17 +24,21 @@ flag "claims to be an internal person but isn't." Helios already holds that dire
 **build phishing templates and run simulated campaigns against the org's own users**, then
 measure who catches them. Two things make this a moat:
 
-- **Workspace-native delivery, no mail server.** Because Helios has Workspace admin
-  access, it **injects** the simulated message straight into users' mailboxes via the
-  Gmail API (`insert` / `import`) instead of *sending* over SMTP. That means no mail
-  infrastructure, any `From` address, any link — and it **bypasses SPF/DKIM/DMARC, spam
-  filtering, and allowlisting entirely**, which is the single biggest operational headache
-  with GoPhish / KnowBe4 / Proofpoint. A Workspace-integrated tool sidesteps all of it; a
-  generic one can't.
-- **Org-wide visibility, not per-admin silos.** Prior tools in this space silo each admin
-  ("each admin is effectively a separate tenant"), so no admin sees another's campaigns or
-  setup. Helios makes campaigns, templates, and results a **single org-wide view** — the
-  accountability / single-source-of-truth default, applied to security training.
+- **Workspace-native delivery, no mail server.** Helios has Workspace admin access, so it
+  **injects** the simulated message straight into mailboxes via the Gmail API
+  (`insert` / `import`) instead of *sending* over SMTP — no mail infra, any `From`, any link,
+  and (with `insert`) no SPF/DKIM/DMARC/allowlisting gauntlet. **This is NOT a moat** —
+  KnowBe4, Microsoft, and Hoxhunt already inject via API; it's table stakes. The real edge is
+  **ownership + self-hosted + no per-seat + explainability**, plus foregrounding the delivery
+  method in the UX where incumbents bury it. (The SMTP/allowlisting pain is real specifically
+  vs **GoPhish** and other SMTP-based tools.)
+- **Org-wide, directory-native visibility.** A shared org-wide view + RBAC derived from the
+  Workspace directory (not from which admin connected OAuth), self-hosted, no per-seat. This
+  beats **GoPhish** (siloed per login, no cross-admin view), **Google-native** (aggregate-only,
+  reporters not even identified), and lightweight Marketplace add-ons — **not** KnowBe4 /
+  Defender / Hoxhunt, which already share org views (don't claim otherwise). Directory-derived
+  OU / department / manager roll-ups on every table are the concrete thing the siloed tools
+  can't produce.
 
 **Growth funnel:** the free detection button drives Helios adoption; a larger Helios
 installed base grows the pool of orgs an MSP would manage through **MTP**. Button → Helios
