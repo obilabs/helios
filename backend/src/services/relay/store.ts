@@ -132,3 +132,112 @@ export async function seedRelayRule(
   );
   return result.rows[0].id;
 }
+
+// ---------------------------------------------------------------------------
+// Admin authoring surface (relay.routes.ts). These back the GET/PUT config and
+// list/create/delete rules endpoints. They are the ONLY writers besides the
+// test seed helpers above, and every one is org-scoped so an admin can never
+// touch another organization's rules.
+// ---------------------------------------------------------------------------
+
+/** A relay rule as presented to the admin UI (camelCase, full row). */
+export interface StoredRelayRule {
+  id: string;
+  effect: 'allow' | 'deny';
+  matchPattern: string;
+  subjectAllowPrivileged: boolean;
+  subjectOrgUnits: string[] | null;
+  expiresAt: string | null;
+  accessGroupId: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+}
+
+interface StoredRelayRuleRow extends RelayRuleRow {
+  access_group_id: string | null;
+  created_by: string | null;
+  created_at: string | Date | null;
+}
+
+function rowToStoredRule(row: StoredRelayRuleRow): StoredRelayRule {
+  return {
+    id: row.id,
+    effect: row.effect,
+    matchPattern: row.match_pattern,
+    subjectAllowPrivileged: row.subject_allow_privileged === true,
+    subjectOrgUnits: Array.isArray(row.subject_org_units) ? row.subject_org_units : null,
+    expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+    accessGroupId: row.access_group_id ?? null,
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+  };
+}
+
+/** Input shape for authoring a rule from the admin surface. */
+export interface CreateRelayRuleInput {
+  effect: 'allow' | 'deny';
+  matchPattern: string;
+  subjectAllowPrivileged?: boolean;
+  subjectOrgUnits?: string[] | null;
+  /** ISO-8601 string or null (no expiry). */
+  expiresAt?: string | null;
+  accessGroupId?: string | null;
+}
+
+/** List an organization's relay rules (deny rules first, then newest allows). */
+export async function listRelayRules(organizationId: string): Promise<StoredRelayRule[]> {
+  const result = await db.query(
+    `SELECT id, effect, match_pattern, subject_allow_privileged, subject_org_units,
+            expires_at, access_group_id, created_by, created_at
+       FROM relay_rules
+      WHERE organization_id = $1
+      ORDER BY effect DESC, created_at DESC`,
+    [organizationId],
+  );
+  return result.rows.map((row: StoredRelayRuleRow) => rowToStoredRule(row));
+}
+
+/** Create a relay rule for an organization. Returns the stored row. */
+export async function createRelayRule(
+  organizationId: string,
+  input: CreateRelayRuleInput,
+  createdBy?: string | null,
+): Promise<StoredRelayRule> {
+  const result = await db.query(
+    `INSERT INTO relay_rules
+       (organization_id, effect, match_pattern, subject_allow_privileged,
+        subject_org_units, expires_at, access_group_id, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, effect, match_pattern, subject_allow_privileged, subject_org_units,
+               expires_at, access_group_id, created_by, created_at`,
+    [
+      organizationId,
+      input.effect,
+      input.matchPattern,
+      input.subjectAllowPrivileged === true,
+      input.subjectOrgUnits && input.subjectOrgUnits.length > 0
+        ? JSON.stringify(input.subjectOrgUnits)
+        : null,
+      input.expiresAt ? new Date(input.expiresAt) : null,
+      input.accessGroupId ?? null,
+      createdBy ?? null,
+    ],
+  );
+  return rowToStoredRule(result.rows[0]);
+}
+
+/**
+ * Delete one relay rule, scoped to the organization. Returns true if a row was
+ * removed (false = not found / belongs to another org — never a cross-org
+ * delete).
+ */
+export async function deleteRelayRule(
+  organizationId: string,
+  ruleId: string,
+): Promise<boolean> {
+  const result = await db.query(
+    'DELETE FROM relay_rules WHERE id = $1 AND organization_id = $2',
+    [ruleId, organizationId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}

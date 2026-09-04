@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { HelpCircle, BookOpen, Trash2, X, PanelLeftOpen, PanelRightOpen, ExternalLink, Minimize2, Copy, Download, Check } from 'lucide-react';
 import { ConsoleHelpPanel } from '../components/ConsoleHelpPanel';
 import { authFetch } from '../config/api';
+import * as google from '../lib/googleApiRequests';
 import './DeveloperConsole.css';
 
 interface ConsoleOutput {
@@ -252,8 +253,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     return organizationId;
   };
 
-  const apiRequest = async (method: string, path: string, body?: any): Promise<any> => {
-    const headers: Record<string, string> = {};
+  const apiRequest = async (
+    method: string,
+    path: string,
+    body?: any,
+    extraHeaders?: Record<string, string>
+  ): Promise<any> => {
+    const headers: Record<string, string> = { ...(extraHeaders || {}) };
     if (body) {
       headers['Content-Type'] = 'application/json';
     }
@@ -298,6 +304,22 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
     return data;
   };
+
+  // Execute a Google API request built by ../lib/googleApiRequests.
+  // Centralizing method/path/body construction there keeps the correct-request
+  // logic pure and unit-testable (googleApiRequests.test.ts).
+  //
+  // When the builder marked the request with an impersonation target (per-user
+  // Gmail/Calendar settings for user X), forward it as X-Impersonate-User so the
+  // proxy acts AS that user via domain-wide delegation. The backend validates
+  // the target is in the org's own domain before minting anything.
+  const runGoogle = (req: google.GoogleApiRequest): Promise<any> =>
+    apiRequest(
+      req.method,
+      req.path,
+      req.body,
+      req.impersonate ? { 'X-Impersonate-User': req.impersonate } : undefined
+    );
 
   // Log command execution to audit log (fire-and-forget)
   const logCommandToAudit = async (
@@ -1885,7 +1907,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const handleGoogleWorkspaceCommand = async (args: string[]) => {
     if (args.length === 0) {
       addOutput('error', 'Usage: helios gw <resource> <action> [options]');
-      addOutput('info', 'Resources: users, groups, orgunits, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
+      addOutput('info', 'Resources: users, groups, orgunits, schemas, domains, delegates, drive, shared-drives, transfer, forwarding, vacation, sync');
       return;
     }
 
@@ -1902,6 +1924,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       case 'orgunits':
         await handleGWOrgUnits(action, restArgs);
+        break;
+      case 'schemas':
+      case 'schema':
+        await handleGWSchemas(action, restArgs);
         break;
       case 'delegates':
         await handleGWDelegates(action, restArgs);
@@ -2472,9 +2498,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const alias = args[1];
 
-        await apiRequest('POST', `/api/google/admin/directory/v1/users/${email}/aliases`, {
-          alias: alias
-        });
+        await runGoogle(google.userAliasesInsert(email, alias));
 
         addOutput('success', `[OK]Added alias ${alias} to ${email}`);
         break;
@@ -2488,7 +2512,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const alias = args[1];
 
-        await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${email}/aliases/${alias}`);
+        await runGoogle(google.userAliasesDelete(email, alias));
 
         addOutput('success', `[OK]Removed alias ${alias} from ${email}`);
         break;
@@ -2646,12 +2670,6 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `[OFFBOARD]Starting offboarding for ${email}...`);
         addOutput('info', '');
 
-        const APPLICATION_IDS: Record<string, string> = {
-          drive: '435070579839',
-          calendar: '55656082996',
-          sites: '529327477839'
-        };
-
         let stepNum = 0;
         const results: { step: string; success: boolean; message: string }[] = [];
 
@@ -2661,11 +2679,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             stepNum++;
             addOutput('info', `[STEP]Step ${stepNum}: Setting vacation responder...`);
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, {
+              await runGoogle(google.gmailUpdateVacation(email, {
                 enableAutoReply: true,
                 responseBodyPlainText: params.vacation,
                 responseBodyHtml: `<p>${params.vacation.replace(/\n/g, '<br>')}</p>`
-              });
+              }));
               results.push({ step: 'Vacation responder', success: true, message: 'Enabled' });
               addOutput('success', `   Vacation responder set`);
             } catch (e: any) {
@@ -2680,15 +2698,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             stepNum++;
             addOutput('info', `[STEP]Step ${stepNum}: Initiating data transfer to ${transferTo}...`);
             try {
-              const transferResponse = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+              const transferResponse = await runGoogle(google.dataTransferInsert({
                 oldOwnerUserId: email,
                 newOwnerUserId: transferTo,
-                applicationDataTransfers: [
-                  { applicationId: APPLICATION_IDS.drive, applicationTransferParams: [] },
-                  { applicationId: APPLICATION_IDS.calendar, applicationTransferParams: [] },
-                  { applicationId: APPLICATION_IDS.sites, applicationTransferParams: [] }
+                applicationIds: [
+                  google.DATA_TRANSFER_APPLICATION_IDS.drive,
+                  google.DATA_TRANSFER_APPLICATION_IDS.calendar,
+                  google.DATA_TRANSFER_APPLICATION_IDS.sites
                 ]
-              });
+              }));
               results.push({ step: 'Data transfer', success: true, message: `Transfer ID: ${transferResponse.id}` });
               addOutput('success', `   Transfer initiated (ID: ${transferResponse.id})`);
             } catch (e: any) {
@@ -2705,19 +2723,17 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             try {
               // Add forwarding address first
               try {
-                await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/forwardingAddresses`, {
-                  forwardingEmail: forwardTo
-                });
+                await runGoogle(google.gmailCreateForwardingAddress(email, forwardTo));
               } catch {
                 // May already exist, ignore
               }
 
               // Enable auto-forwarding
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
+              await runGoogle(google.gmailUpdateAutoForwarding(email, {
                 enabled: true,
                 emailAddress: forwardTo,
                 disposition: 'leaveInInbox'
-              });
+              }));
               results.push({ step: 'Email forwarding', success: true, message: `Forwarding to ${forwardTo}` });
               addOutput('success', `   Forwarding enabled`);
             } catch (e: any) {
@@ -2806,8 +2822,94 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       }
 
+      case 'undelete': {
+        // Restore a user DELETED within Google's ~20-day recovery window.
+        // NOTE: undelete needs the immutable user ID, not the primary email
+        // (the email stops resolving once the account is deleted).
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users undelete <userId> [--ou=</Path>]');
+          addOutput('info', 'Restores a recently-deleted user. Use the immutable 21-digit user ID (not the email).');
+          addOutput('info', 'Find deleted-user IDs with: helios api GET /api/google/admin/directory/v1/users?customer=my_customer&showDeleted=true');
+          return;
+        }
+        const userId = args[0];
+        const params = parseArgs(args.slice(1));
+        await runGoogle(google.usersUndelete(userId, params.ou || '/'));
+        addOutput('success', `User undeleted into ${params.ou || '/'}: ${userId}`);
+        break;
+      }
+
+      case 'list-aliases':
+      case 'aliases': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw users list-aliases <email>');
+          return;
+        }
+        const email = args[0];
+        const data = await runGoogle(google.userAliasesList(email));
+        const aliases = (data?.aliases || []).map((a: any) => `  ${a.alias || a}`);
+        if (aliases.length === 0) {
+          addOutput('info', `No aliases for ${email}`);
+        } else {
+          addOutput('success', `Aliases for ${email}:\n${aliases.join('\n')}`);
+        }
+        break;
+      }
+
+      case 'get-schema':
+      case 'schemas': {
+        // Read a user's custom-schema (custom attribute) values. A plain
+        // "gw users get" omits them (projection=basic); this uses projection
+        // full/custom so the customSchemas block comes back.
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users get-schema <email> [schemaName]');
+          addOutput('info', 'Omit schemaName to return every custom schema on the user.');
+          return;
+        }
+        const email = args[0];
+        const schemaName = args[1] && !args[1].startsWith('--') ? args[1] : undefined;
+        const data = await runGoogle(google.usersGetCustomSchemas(email, schemaName));
+        if (data?.customSchemas) {
+          addOutput('success', `Custom schemas for ${email}:\n${JSON.stringify(data.customSchemas, null, 2)}`);
+        } else {
+          addOutput('info', `No custom schema values set on ${email}${schemaName ? ` for schema "${schemaName}"` : ''}`);
+        }
+        break;
+      }
+
+      case 'set-schema': {
+        // helios gw users set-schema <email> <schemaName> <field=value> [<field=value>...]
+        if (args.length < 3 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw users set-schema <email> <schemaName> <field=value> [<field=value> ...]');
+          addOutput('info', 'Example: helios gw users set-schema john@company.com HR employeeId=E-1042 costCenter=RD');
+          addOutput('info', 'Values that look like true/false or a number are coerced; everything else is sent as text.');
+          return;
+        }
+        const email = args[0];
+        const schemaName = args[1];
+        const fields: Record<string, unknown> = {};
+        for (const pair of args.slice(2)) {
+          if (pair.startsWith('--')) continue;
+          const eq = pair.indexOf('=');
+          if (eq === -1) {
+            addOutput('error', `Invalid field (expected field=value): ${pair}`);
+            return;
+          }
+          const key = pair.substring(0, eq);
+          const raw = pair.substring(eq + 1);
+          let value: unknown = raw;
+          if (raw === 'true') value = true;
+          else if (raw === 'false') value = false;
+          else if (raw !== '' && !isNaN(Number(raw))) value = Number(raw);
+          fields[key] = value;
+        }
+        await runGoogle(google.usersSetCustomSchema(email, schemaName, fields));
+        addOutput('success', `Set ${Object.keys(fields).length} field(s) on schema "${schemaName}" for ${email}`);
+        break;
+      }
+
       default:
-        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, suspend, restore, delete, move, groups, reset-password, add-alias, remove-alias, make-admin, offboard`);
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, suspend, restore, undelete, delete, move, groups, reset-password, add-alias, remove-alias, list-aliases, get-schema, set-schema, make-admin, offboard`);
     }
   };
 
@@ -3295,8 +3397,74 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         break;
       }
 
+      case 'list-aliases':
+      case 'aliases': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw groups list-aliases <group-email>');
+          return;
+        }
+        const groupEmail = args[0];
+        const data = await runGoogle(google.groupAliasesList(groupEmail));
+        const aliases = (data?.aliases || []).map((a: any) => `  ${a.alias || a}`);
+        if (aliases.length === 0) {
+          addOutput('info', `No aliases for ${groupEmail}`);
+        } else {
+          addOutput('success', `Aliases for ${groupEmail}:\n${aliases.join('\n')}`);
+        }
+        break;
+      }
+
+      case 'add-alias': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups add-alias <group-email> <alias>');
+          return;
+        }
+        const groupEmail = args[0];
+        const alias = args[1];
+        await runGoogle(google.groupAliasesInsert(groupEmail, alias));
+        addOutput('success', `[OK]Added alias ${alias} to group ${groupEmail}`);
+        break;
+      }
+
+      case 'remove-alias': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups remove-alias <group-email> <alias>');
+          return;
+        }
+        const groupEmail = args[0];
+        const alias = args[1];
+        await runGoogle(google.groupAliasesDelete(groupEmail, alias));
+        addOutput('success', `[OK]Removed alias ${alias} from group ${groupEmail}`);
+        break;
+      }
+
+      case 'get-member': {
+        if (args.length < 2) {
+          addOutput('error', 'Usage: helios gw groups get-member <group-email> <member-email>');
+          return;
+        }
+        const groupEmail = args[0];
+        const memberEmail = args[1];
+        const data = await runGoogle(google.groupMembersGet(groupEmail, memberEmail));
+        addOutput('success', JSON.stringify(data, null, 2));
+        break;
+      }
+
+      case 'set-member-role': {
+        if (args.length < 3) {
+          addOutput('error', 'Usage: helios gw groups set-member-role <group-email> <member-email> <MEMBER|MANAGER|OWNER>');
+          return;
+        }
+        const groupEmail = args[0];
+        const memberEmail = args[1];
+        const role = args[2].toUpperCase();
+        await runGoogle(google.groupMembersSetRole(groupEmail, memberEmail, role));
+        addOutput('success', `Set ${memberEmail} role to ${role} in ${groupEmail}`);
+        break;
+      }
+
       default:
-        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete, members, add-member, remove-member`);
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete, members, add-member, remove-member, get-member, set-member-role, add-alias, remove-alias, list-aliases`);
     }
   };
 
@@ -3382,6 +3550,104 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
   };
 
+  // ----- Google Workspace: Custom Schemas (custom attributes) -----
+  const handleGWSchemas = async (action: string, args: string[]) => {
+    switch (action) {
+      case 'list': {
+        const data = await runGoogle(google.schemasList());
+        const schemas = data?.schemas || [];
+        if (schemas.length === 0) {
+          addOutput('info', 'No custom schemas defined');
+          break;
+        }
+        const rows = schemas.map((s: any) => {
+          const name = (s.schemaName || '').padEnd(25);
+          const display = (s.displayName || '').padEnd(25);
+          const fields = (s.fields || []).map((f: any) => f.fieldName).join(', ');
+          return `${name} ${display} ${fields}`;
+        }).join('\n');
+        addOutput('success', `\nSCHEMA${' '.repeat(19)}DISPLAY${' '.repeat(18)}FIELDS\n${'='.repeat(80)}\n${rows}`);
+        break;
+      }
+
+      case 'get': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw schemas get <schemaName>');
+          return;
+        }
+        const data = await runGoogle(google.schemasGet(args[0]));
+        addOutput('success', JSON.stringify(data, null, 2));
+        break;
+      }
+
+      case 'create': {
+        // helios gw schemas create <schemaName> <field:type> [<field:type> ...]
+        //   type in STRING|INT64|BOOL|DATE|DOUBLE|EMAIL|PHONE (default STRING)
+        //   append ":multi" to a field to make it multi-valued, e.g. certs:STRING:multi
+        if (args.length < 2 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw schemas create <schemaName> <field:type> [<field:type> ...]');
+          addOutput('info', 'Types: STRING (default), INT64, BOOL, DATE, DOUBLE, EMAIL, PHONE');
+          addOutput('info', 'Append ":multi" for a multi-valued field, e.g. certifications:STRING:multi');
+          addOutput('info', 'Example: helios gw schemas create HR employeeId:STRING costCenter:STRING startDate:DATE');
+          return;
+        }
+        const params = parseArgs(args.slice(1));
+        const positional = args.slice(1).filter((a) => !a.startsWith('--'));
+        const schemaName = positional[0];
+        const fields = positional.slice(1).map((spec) => {
+          const [fieldName, type, multi] = spec.split(':');
+          return {
+            fieldName,
+            fieldType: (type || 'STRING').toUpperCase(),
+            ...(multi === 'multi' ? { multiValued: true } : {}),
+          };
+        });
+        if (fields.length === 0) {
+          addOutput('error', 'At least one <field:type> is required');
+          return;
+        }
+        await runGoogle(google.schemasInsert({
+          schemaName,
+          displayName: params.display || schemaName,
+          fields,
+        }));
+        addOutput('success', `Schema created: ${schemaName} (${fields.length} field(s))`);
+        break;
+      }
+
+      case 'update':
+      case 'rename': {
+        // Merge-patch a schema's display name (schemas.patch is a merge patch,
+        // so sending only displayName leaves the fields untouched).
+        if (args.length === 0 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw schemas update <schemaName> --display="New Display Name"');
+          return;
+        }
+        const params = parseArgs(args.slice(1));
+        if (!params.display) {
+          addOutput('error', 'Provide --display="New Display Name"');
+          return;
+        }
+        await runGoogle(google.schemasPatch(args[0], { displayName: params.display }));
+        addOutput('success', `Schema updated: ${args[0]}`);
+        break;
+      }
+
+      case 'delete': {
+        if (args.length === 0) {
+          addOutput('error', 'Usage: helios gw schemas delete <schemaName>');
+          return;
+        }
+        await runGoogle(google.schemasDelete(args[0]));
+        addOutput('success', `Schema deleted: ${args[0]}`);
+        break;
+      }
+
+      default:
+        addOutput('error', `Unknown action: ${action}. Use: list, get, create, update, delete`);
+    }
+  };
+
   // ----- Google Workspace: Email Delegation -----
   const handleGWDelegates = async (action: string, args: string[]) => {
     const orgId = getOrganizationId();
@@ -3425,7 +3691,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           return;
         }
         const userEmail = args[0];
-        const data = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/delegates`);
+        const data = await runGoogle(google.gmailListDelegates(userEmail));
         if (data.delegates) {
           const delegates = data.delegates.map((d: any) => d.delegateEmail).join('\n');
           addOutput('success', `\nDelegates for ${userEmail}:\n${delegates}`);
@@ -3486,9 +3752,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/delegates`, {
-                delegateEmail: delegateEmail
-              });
+              await runGoogle(google.gmailAddDelegate(email, delegateEmail));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -3515,11 +3779,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
         const delegateEmail = args[1];
 
-        const body = {
-          delegateEmail: delegateEmail
-        };
-
-        await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/delegates`, body);
+        await runGoogle(google.gmailAddDelegate(userEmail, delegateEmail));
         addOutput('success', `Added delegate ${delegateEmail} for ${userEmail}`);
         break;
       }
@@ -3579,7 +3839,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('DELETE', `/api/google/gmail/v1/users/${email}/settings/delegates/${delegateEmail}`);
+              await runGoogle(google.gmailRemoveDelegate(email, delegateEmail));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -3601,7 +3861,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
         const delegateEmail = args[1];
 
-        await apiRequest('DELETE', `/api/google/gmail/v1/users/${userEmail}/settings/delegates/${delegateEmail}`);
+        await runGoogle(google.gmailRemoveDelegate(userEmail, delegateEmail));
         addOutput('success', `Removed delegate ${delegateEmail} from ${userEmail}`);
         break;
       }
@@ -3718,11 +3978,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         try {
           // Step 1: Get all files owned by fromEmail
           addOutput('info', '[STEP]Step 1/2: Finding files...');
-          const files = await apiRequest('GET', '/api/google/drive/v3/files', {
+          const files = await runGoogle(google.driveListFiles({
             q: `'${fromEmail}' in owners and trashed=false`,
             fields: 'files(id,name,owners)',
             pageSize: 1000
-          });
+          }));
 
           if (!files.files || files.files.length === 0) {
             addOutput('info', `[OK]No files found owned by ${fromEmail}`);
@@ -3739,12 +3999,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
           for (const file of files.files) {
             try {
-              await apiRequest('POST', `/api/google/drive/v3/files/${file.id}/permissions`, {
-                role: 'owner',
-                type: 'user',
-                emailAddress: toEmail,
-                transferOwnership: true
-              });
+              await runGoogle(google.driveTransferFileOwnership(file.id, toEmail));
               transferred++;
 
               if (transferred % 10 === 0) {
@@ -3788,10 +4043,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         // Generate unique request ID
         const requestId = `helios-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-        const data = await apiRequest('POST', '/api/google/drive/v3/drives', {
-          requestId: requestId,
-          name: params.name
-        });
+        const data = await runGoogle(google.driveCreateSharedDrive(requestId, params.name));
 
         addOutput('success', `[OK]Created shared drive: ${params.name}`);
         addOutput('info', `   Drive ID: ${data.id}`);
@@ -3799,9 +4051,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       }
 
       case 'list': {
-        const data = await apiRequest('GET', '/api/google/drive/v3/drives', {
-          pageSize: 100
-        });
+        const data = await runGoogle(google.driveListSharedDrives(100));
 
         if (data.drives && data.drives.length > 0) {
           const drives = data.drives.map((d: any) => {
@@ -3824,7 +4074,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        const data = await apiRequest('GET', `/api/google/drive/v3/drives/${driveId}`);
+        const data = await runGoogle(google.driveGetSharedDrive(driveId));
         addOutput('success', JSON.stringify(data, null, 2));
         break;
       }
@@ -3840,12 +4090,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const params = parseArgs(args.slice(2));
         const role = params.role || 'writer';
 
-        await apiRequest('POST', `/api/google/drive/v3/files/${driveId}/permissions`, {
+        await runGoogle(google.driveAddPermission(driveId, {
           role: role,
           type: 'user',
-          emailAddress: email,
-          supportsAllDrives: true
-        });
+          emailAddress: email
+        }));
 
         addOutput('success', `[OK]Added ${email} to shared drive as ${role}`);
         break;
@@ -3859,10 +4108,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        const data = await apiRequest('GET', `/api/google/drive/v3/files/${driveId}/permissions`, {
-          supportsAllDrives: true,
-          fields: 'permissions(emailAddress,displayName,role,type)'
-        });
+        const data = await runGoogle(google.driveListPermissions(driveId));
 
         if (data.permissions && data.permissions.length > 0) {
           const perms = data.permissions.map((p: any) => {
@@ -3887,7 +4133,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const driveId = args[0];
 
-        await apiRequest('DELETE', `/api/google/drive/v3/drives/${driveId}`);
+        await runGoogle(google.driveDeleteSharedDrive(driveId));
         addOutput('success', `[OK]Shared drive deleted: ${driveId}`);
         addOutput('info', '[WARN]All files in the shared drive have been permanently deleted');
         break;
@@ -3900,13 +4146,8 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
   // ----- Google Workspace: Data Transfer -----
   const handleGWTransfer = async (action: string, args: string[]) => {
-    // Application IDs for Google Data Transfer API
-    const APPLICATION_IDS: Record<string, string> = {
-      drive: '435070579839',
-      calendar: '55656082996',
-      sites: '529327477839',
-      groups: '588034504559'
-    };
+    // Canonical Google application IDs (see lib/googleApiRequests).
+    const APPLICATION_IDS = google.DATA_TRANSFER_APPLICATION_IDS;
 
     switch (action) {
       case 'drive': {
@@ -3930,14 +4171,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // Use Google Data Transfer API via transparent proxy
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [{
-              applicationId: APPLICATION_IDS.drive,
-              applicationTransferParams: []
-            }]
-          });
+            applicationIds: [APPLICATION_IDS.drive]
+          }));
 
           addOutput('success', `[OK]Drive transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -3970,14 +4208,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `   To: ${toEmail}`);
 
         try {
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [{
-              applicationId: APPLICATION_IDS.calendar,
-              applicationTransferParams: []
-            }]
-          });
+            applicationIds: [APPLICATION_IDS.calendar]
+          }));
 
           addOutput('success', `[OK]Calendar transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -4009,15 +4244,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', `   Applications: Drive, Calendar, Sites`);
 
         try {
-          const response = await apiRequest('POST', '/api/google/admin/datatransfer/v1/transfers', {
+          const response = await runGoogle(google.dataTransferInsert({
             oldOwnerUserId: fromEmail,
             newOwnerUserId: toEmail,
-            applicationDataTransfers: [
-              { applicationId: APPLICATION_IDS.drive, applicationTransferParams: [] },
-              { applicationId: APPLICATION_IDS.calendar, applicationTransferParams: [] },
-              { applicationId: APPLICATION_IDS.sites, applicationTransferParams: [] }
+            applicationIds: [
+              APPLICATION_IDS.drive,
+              APPLICATION_IDS.calendar,
+              APPLICATION_IDS.sites
             ]
-          });
+          }));
 
           addOutput('success', `[OK]Full data transfer initiated!`);
           addOutput('info', `   Transfer ID: ${response.id}`);
@@ -4037,7 +4272,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const transferId = args[0];
 
         try {
-          const response = await apiRequest('GET', `/api/google/admin/datatransfer/v1/transfers/${transferId}`);
+          const response = await runGoogle(google.dataTransferGet(transferId));
 
           const formatField = (label: string, value: any) => {
             return value ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4074,7 +4309,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', '[SYNC]Fetching recent data transfers...');
 
         try {
-          const response = await apiRequest('GET', '/api/google/admin/datatransfer/v1/transfers?maxResults=20');
+          const response = await runGoogle(google.dataTransferList(20));
 
           if (response.dataTransfers && response.dataTransfers.length > 0) {
             addOutput('success', '\nRecent Data Transfers:');
@@ -4147,7 +4382,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // Get auto-forwarding settings
-          const settings = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`);
+          const settings = await runGoogle(google.gmailGetAutoForwarding(userEmail));
 
           const formatField = (label: string, value: any) => {
             return value !== undefined ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4226,9 +4461,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             try {
               // Add forwarding address
               try {
-                await apiRequest('POST', `/api/google/gmail/v1/users/${email}/settings/forwardingAddresses`, {
-                  forwardingEmail: forwardTo
-                });
+                await runGoogle(google.gmailCreateForwardingAddress(email, forwardTo));
               } catch (e: any) {
                 // May already exist, which is fine
                 if (!e.message?.includes('already exists') && !e.message?.includes('409')) {
@@ -4237,11 +4470,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               }
 
               // Enable forwarding
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
+              await runGoogle(google.gmailUpdateAutoForwarding(email, {
                 enabled: true,
                 emailAddress: forwardTo,
                 disposition: disposition
-              });
+              }));
 
               addOutput('success', `  ✓ ${email}`);
               successCount++;
@@ -4267,9 +4500,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           addOutput('info', `[STEP]Step 1/2: Adding forwarding address ${forwardTo}...`);
 
           try {
-            await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/forwardingAddresses`, {
-              forwardingEmail: forwardTo
-            });
+            await runGoogle(google.gmailCreateForwardingAddress(userEmail, forwardTo));
             addOutput('success', `   Forwarding address added`);
           } catch (e: any) {
             // May already exist, which is fine
@@ -4283,11 +4514,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           // Then enable auto-forwarding
           addOutput('info', `[STEP]Step 2/2: Enabling auto-forwarding...`);
 
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`, {
+          await runGoogle(google.gmailUpdateAutoForwarding(userEmail, {
             enabled: true,
             emailAddress: forwardTo,
             disposition: disposition
-          });
+          }));
 
           addOutput('success', `[OK]Forwarding enabled for ${userEmail}`);
           addOutput('info', `   Forward to: ${forwardTo}`);
@@ -4338,9 +4569,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/autoForwarding`, {
-                enabled: false
-              });
+              await runGoogle(google.gmailUpdateAutoForwarding(email, { enabled: false }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4362,9 +4591,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/autoForwarding`, {
-            enabled: false
-          });
+          await runGoogle(google.gmailUpdateAutoForwarding(userEmail, { enabled: false }));
 
           addOutput('success', `[OK]Forwarding disabled for ${userEmail}`);
         } catch (error: any) {
@@ -4422,7 +4649,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const settings = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`);
+          const settings = await runGoogle(google.gmailGetVacation(userEmail));
 
           const formatField = (label: string, value: any) => {
             return value !== undefined ? `  ${label.padEnd(20)}: ${value}` : '';
@@ -4510,7 +4737,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, body);
+              await runGoogle(google.gmailUpdateVacation(email, body));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4531,7 +4758,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`, buildBody());
+          await runGoogle(google.gmailUpdateVacation(userEmail, buildBody()));
 
           addOutput('success', `[OK]Vacation responder enabled for ${userEmail}`);
           if (params.subject) addOutput('info', `   Subject: ${params.subject}`);
@@ -4576,9 +4803,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PUT', `/api/google/gmail/v1/users/${email}/settings/vacation`, {
-                enableAutoReply: false
-              });
+              await runGoogle(google.gmailUpdateVacation(email, { enableAutoReply: false }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4600,9 +4825,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PUT', `/api/google/gmail/v1/users/${userEmail}/settings/vacation`, {
-            enableAutoReply: false
-          });
+          await runGoogle(google.gmailUpdateVacation(userEmail, { enableAutoReply: false }));
 
           addOutput('success', `[OK]Vacation responder disabled for ${userEmail}`);
         } catch (error: any) {
@@ -4660,7 +4883,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const sendAsData = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`);
+          const sendAsData = await runGoogle(google.gmailGetSendAs(userEmail, userEmail));
 
           addOutput('success', `\nSignature for ${userEmail}:`);
           addOutput('info', '='.repeat(60));
@@ -4725,9 +4948,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PATCH', `/api/google/gmail/v1/users/${email}/settings/sendAs/${email}`, {
-                signature: signature
-              });
+              await runGoogle(google.gmailPatchSendAs(email, email, { signature }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4748,9 +4969,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PATCH', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`, {
-            signature: signature
-          });
+          await runGoogle(google.gmailPatchSendAs(userEmail, userEmail, { signature }));
 
           addOutput('success', `[OK]Signature updated for ${userEmail}`);
         } catch (error: any) {
@@ -4791,9 +5010,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           for (const u of matchingUsers) {
             const email = u.email || u.primaryEmail;
             try {
-              await apiRequest('PATCH', `/api/google/gmail/v1/users/${email}/settings/sendAs/${email}`, {
-                signature: ''
-              });
+              await runGoogle(google.gmailPatchSendAs(email, email, { signature: '' }));
               addOutput('success', `  ✓ ${email}`);
               successCount++;
             } catch (err: any) {
@@ -4814,9 +5031,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          await apiRequest('PATCH', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${userEmail}`, {
-            signature: ''
-          });
+          await runGoogle(google.gmailPatchSendAs(userEmail, userEmail, { signature: '' }));
 
           addOutput('success', `[OK]Signature cleared for ${userEmail}`);
         } catch (error: any) {
@@ -4842,7 +5057,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs`);
+          const data = await runGoogle(google.gmailListSendAs(userEmail));
 
           addOutput('success', `\nSend-As Addresses for ${userEmail}:`);
           addOutput('info', '='.repeat(70));
@@ -4876,10 +5091,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const displayName = params.name || sendAsEmail.split('@')[0];
 
         try {
-          await apiRequest('POST', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs`, {
+          await runGoogle(google.gmailCreateSendAs(userEmail, {
             sendAsEmail: sendAsEmail,
             displayName: displayName
-          });
+          }));
 
           addOutput('success', `[OK]Added send-as address ${sendAsEmail} for ${userEmail}`);
           addOutput('info', `   Display name: ${displayName}`);
@@ -4900,7 +5115,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const sendAsEmail = args[1];
 
         try {
-          await apiRequest('DELETE', `/api/google/gmail/v1/users/${userEmail}/settings/sendAs/${sendAsEmail}`);
+          await runGoogle(google.gmailDeleteSendAs(userEmail, sendAsEmail));
 
           addOutput('success', `[OK]Removed send-as address ${sendAsEmail} from ${userEmail}`);
         } catch (error: any) {
@@ -4926,7 +5141,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const userEmail = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/calendar/v3/users/${userEmail}/calendarList`);
+          // Calendar API exposes only the authenticated user's list under the
+          // literal `me`; the target user is selected by proxy impersonation
+          // (X-Impersonate-User), so pass userEmail as the impersonation target.
+          const data = await runGoogle(google.calendarListCalendars(userEmail));
 
           addOutput('success', `\nCalendars for ${userEmail}:`);
           addOutput('info', '='.repeat(80));
@@ -4958,7 +5176,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const calendarId = args[0];
 
         try {
-          const data = await apiRequest('GET', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl`);
+          const data = await runGoogle(google.calendarListAcl(calendarId));
 
           addOutput('success', `\nCalendar ACL for ${calendarId}:`);
           addOutput('info', '='.repeat(70));
@@ -4994,13 +5212,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const role = params.role || 'reader';
 
         try {
-          await apiRequest('POST', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl`, {
+          await runGoogle(google.calendarInsertAcl(calendarId, {
             role: role,
             scope: {
               type: 'user',
               value: shareWith
             }
-          });
+          }));
 
           addOutput('success', `[OK]Shared calendar with ${shareWith} as ${role}`);
         } catch (error: any) {
@@ -5020,8 +5238,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         try {
           // ACL rule ID format is typically "user:email"
-          const ruleId = `user:${removeUser}`;
-          await apiRequest('DELETE', `/api/google/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl/${encodeURIComponent(ruleId)}`);
+          await runGoogle(google.calendarDeleteAcl(calendarId, google.calendarUserRuleId(removeUser)));
 
           addOutput('success', `[OK]Removed ${removeUser} from calendar`);
         } catch (error: any) {
@@ -6126,6 +6343,30 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                       <td className="command-desc">List all groups that this user belongs to</td>
                     </tr>
                     <tr>
+                      <td className="command-name">gw users undelete &lt;userId&gt; [--ou=/Path]</td>
+                      <td className="command-desc">Restore a recently-deleted user (needs the immutable user ID, not the email)</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users list-aliases &lt;email&gt;</td>
+                      <td className="command-desc">List a user's email aliases</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users add-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Add an email alias to a user</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users remove-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Remove an email alias from a user</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users get-schema &lt;email&gt; [schemaName]</td>
+                      <td className="command-desc">Read a user's custom-schema (custom attribute) values</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw users set-schema &lt;email&gt; &lt;schema&gt; &lt;field=value&gt; ...</td>
+                      <td className="command-desc">Set custom-attribute values on a user for a given schema</td>
+                    </tr>
+                    <tr>
                       <td className="command-name">gw users initial-password &lt;email&gt;</td>
                       <td className="command-desc">Reveal the auto-generated initial password for a newly created user</td>
                     </tr>
@@ -6193,6 +6434,55 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                     <tr>
                       <td className="command-name">gw groups remove-member &lt;group&gt; --filter="..." [--confirm]</td>
                       <td className="command-desc">Batch remove members matching filter from a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups get-member &lt;group&gt; &lt;member&gt;</td>
+                      <td className="command-desc">Get a single group member's role and status</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups set-member-role &lt;group&gt; &lt;member&gt; &lt;MEMBER|MANAGER|OWNER&gt;</td>
+                      <td className="command-desc">Change an existing member's role in a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups list-aliases &lt;email&gt;</td>
+                      <td className="command-desc">List a group's email aliases</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups add-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Add an email alias to a group</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw groups remove-alias &lt;email&gt; &lt;alias&gt;</td>
+                      <td className="command-desc">Remove an email alias from a group</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Custom Schemas */}
+              <div className="help-section">
+                <h3>Custom Schemas (custom attributes)</h3>
+                <table className="command-table">
+                  <tbody>
+                    <tr>
+                      <td className="command-name">gw schemas list</td>
+                      <td className="command-desc">List all custom schemas defined for the organization</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas get &lt;schemaName&gt;</td>
+                      <td className="command-desc">Get a custom schema's fields and metadata</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas create &lt;schemaName&gt; &lt;field:type&gt; ...</td>
+                      <td className="command-desc">Create a schema. Types: STRING, INT64, BOOL, DATE, DOUBLE, EMAIL, PHONE. Append :multi for multi-valued.</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas update &lt;schemaName&gt; --display="New Name"</td>
+                      <td className="command-desc">Rename a schema's display name</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">gw schemas delete &lt;schemaName&gt;</td>
+                      <td className="command-desc">Delete a custom schema</td>
                     </tr>
                   </tbody>
                 </table>
