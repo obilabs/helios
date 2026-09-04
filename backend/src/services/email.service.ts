@@ -2,8 +2,12 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import crypto from 'crypto';
+import { resolveEncryptionKey } from '../config/encryption-key.js';
 
-const ENCRYPTION_KEY = process.env.EMAIL_ENCRYPTION_KEY || 'your-32-character-encryption-key!!';
+// Fails fast in production if unset/weak; stable dev key otherwise. Previously
+// fell back to a hardcoded, world-readable key ('your-32-character-...'), so SMTP
+// passwords were encrypted under a key published in source.
+const ENCRYPTION_KEY = resolveEncryptionKey('EMAIL_ENCRYPTION_KEY');
 const ENCRYPTION_ALGORITHM = 'aes-256-cbc';
 
 interface EmailOptions {

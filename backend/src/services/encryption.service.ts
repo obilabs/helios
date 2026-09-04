@@ -1,7 +1,10 @@
 import crypto from 'crypto';
+import { resolveEncryptionKey } from '../config/encryption-key.js';
 
-// Encryption key for sensitive data (service account credentials, API secrets, etc.)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// Encryption key for sensitive data (service account credentials, API secrets, etc.).
+// Fails fast in production if unset/weak; uses a stable dev key otherwise (never a
+// per-process random key, which silently destroyed stored secrets on restart).
+const ENCRYPTION_KEY = resolveEncryptionKey('ENCRYPTION_KEY');
 const IV_LENGTH = 16;
 
 /**
