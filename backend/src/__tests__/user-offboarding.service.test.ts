@@ -38,8 +38,17 @@ const mockTokensList = jest.fn<(...args: any[]) => Promise<any>>();
 const mockTokensDelete = jest.fn<(...args: any[]) => Promise<any>>();
 const mockUsersUpdate = jest.fn<(...args: any[]) => Promise<any>>();
 const mockUsersSignOut = jest.fn<(...args: any[]) => Promise<any>>();
+// Data Transfer + directory-lookup mocks (drive/calendar transfer step).
+const mockUsersGet = jest.fn<(...args: any[]) => Promise<any>>();
+const mockTransfersInsert = jest.fn<(...args: any[]) => Promise<any>>();
+// Gmail forwarding + delegation mocks.
+const mockForwardingAddressesCreate = jest.fn<(...args: any[]) => Promise<any>>();
+const mockUpdateAutoForwarding = jest.fn<(...args: any[]) => Promise<any>>();
+const mockDelegatesCreate = jest.fn<(...args: any[]) => Promise<any>>();
 jest.unstable_mockModule('googleapis', () => ({
   google: {
+    // `google.admin(...)` returns the same shape for every version (directory_v1
+    // and datatransfer_v1 in this service); expose every method both clients use.
     admin: jest.fn(() => ({
       groups: {
         list: mockGroupsList,
@@ -54,11 +63,22 @@ jest.unstable_mockModule('googleapis', () => ({
       users: {
         update: mockUsersUpdate,
         signOut: mockUsersSignOut,
+        get: mockUsersGet,
+      },
+      transfers: {
+        insert: mockTransfersInsert,
       },
     })),
     gmail: jest.fn(() => ({
       users: {
         settings: {
+          forwardingAddresses: {
+            create: mockForwardingAddressesCreate,
+          },
+          updateAutoForwarding: mockUpdateAutoForwarding,
+          delegates: {
+            create: mockDelegatesCreate,
+          },
           sendAs: {
             update: jest.fn(),
           },
@@ -682,6 +702,247 @@ describe('UserOffboardingService', () => {
         const result = await userOffboardingService.executeOffboarding(testOrgId, config);
 
         expect(result.stepsSkipped).toContain('suspend_account');
+      });
+    });
+
+    // ---------------------------------------------------------------------
+    // Google-touching lifecycle steps: Drive/Calendar Data Transfer, Gmail
+    // forwarding, and Gmail mailbox delegation. The Google layer is mocked;
+    // these prove the CORRECT request shapes (incl. the Data Transfer
+    // application IDs, historically swapped) and graceful per-step failure.
+    // ---------------------------------------------------------------------
+
+    // Route DB reads by SQL text so query ordering across steps stays robust.
+    const SA_KEY_JSON = JSON.stringify({
+      type: 'service_account',
+      client_email: 'sa@project.iam.gserviceaccount.com',
+      private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----',
+    });
+    function primeGoogleDb(): void {
+      mockQuery.mockImplementation(async (text: string) => {
+        if (typeof text === 'string' && text.includes('service_account_key')) {
+          return { rows: [{ service_account_key: SA_KEY_JSON }] };
+        }
+        if (typeof text === 'string' && text.includes('admin_email')) {
+          return { rows: [{ admin_email: 'admin@obilabs.dev' }] };
+        }
+        if (typeof text === 'string' && text.includes('FROM organization_users')) {
+          return { rows: [{ email: 'successor@obilabs.dev' }] };
+        }
+        return { rows: [] };
+      });
+    }
+    function primeUserIds(): void {
+      const ids: Record<string, string> = {
+        'departing@obilabs.dev': '1001',
+        'manager@obilabs.dev': '2002',
+        'successor@obilabs.dev': '3003',
+      };
+      mockUsersGet.mockImplementation(async ({ userKey }: any) => ({
+        data: { id: ids[userKey] ?? '9999' },
+      }));
+    }
+
+    describe('handleDriveTransfer (Data Transfer API)', () => {
+      it('transfers Drive AND Calendar to the manager with the correct application IDs', async () => {
+        primeGoogleDb();
+        primeUserIds();
+        mockTransfersInsert.mockResolvedValue({ data: { id: 'transfer-123' } });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          driveAction: 'transfer_manager',
+          calendarTransferMeetingOwnership: true,
+          managerEmail: 'manager@obilabs.dev',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('transfer_drive_files');
+        expect(mockTransfersInsert).toHaveBeenCalledTimes(1);
+
+        const requestBody = mockTransfersInsert.mock.calls[0][0].requestBody;
+        // Owners keyed by immutable numeric ID (resolved via directory users.get).
+        expect(requestBody.oldOwnerUserId).toBe('1001');
+        expect(requestBody.newOwnerUserId).toBe('2002');
+
+        const appIds = requestBody.applicationDataTransfers.map((a: any) => a.applicationId);
+        // Regression guard for the swap bug: Drive is 55656082996, NOT 435070579839.
+        expect(appIds).toContain('55656082996'); // Drive
+        expect(appIds).toContain('435070579839'); // Calendar
+        expect(appIds).not.toContain(undefined);
+
+        const drive = requestBody.applicationDataTransfers.find(
+          (a: any) => a.applicationId === '55656082996'
+        );
+        expect(drive.applicationTransferParams).toEqual([
+          { key: 'PRIVACY_LEVEL', value: ['PRIVATE', 'SHARED'] },
+        ]);
+      });
+
+      it('transfers Drive only (no Calendar) to an explicit user when calendar transfer is off', async () => {
+        primeGoogleDb();
+        primeUserIds();
+        mockTransfersInsert.mockResolvedValue({ data: { id: 'transfer-xyz' } });
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          driveAction: 'transfer_user',
+          driveTransferToUserId: 'successor-user-id',
+          calendarTransferMeetingOwnership: false,
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('transfer_drive_files');
+        const requestBody = mockTransfersInsert.mock.calls[0][0].requestBody;
+        const appIds = requestBody.applicationDataTransfers.map((a: any) => a.applicationId);
+        expect(appIds).toEqual(['55656082996']); // Drive only
+        expect(requestBody.newOwnerUserId).toBe('3003'); // resolved successor
+      });
+
+      it('marks the drive step failed WITHOUT aborting the offboard when the transfer API errors', async () => {
+        primeGoogleDb();
+        primeUserIds();
+        mockTransfersInsert.mockRejectedValueOnce(new Error('transfer quota exceeded'));
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          driveAction: 'transfer_manager',
+          managerEmail: 'manager@obilabs.dev',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.success).toBe(false);
+        expect(result.stepsFailed).toContain('transfer_drive_files');
+        expect(result.errors.some((e) => e.includes('transfer quota exceeded'))).toBe(true);
+        expect(mockLogFailure).toHaveBeenCalledWith(
+          testOrgId,
+          'offboard',
+          'transfer_drive_files',
+          expect.any(Error),
+          expect.any(Object)
+        );
+        // The offboard still ran to completion rather than aborting.
+        expect(result.stepsCompleted).toContain('finalize');
+      });
+
+      it('does not call the Data Transfer API for a non-transfer drive action (archive)', async () => {
+        primeGoogleDb();
+        primeUserIds();
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          driveAction: 'archive',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        // Step runs (driveAction !== 'keep') but archive has no Data Transfer mapping.
+        expect(result.stepsCompleted).toContain('transfer_drive_files');
+        expect(mockTransfersInsert).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('setupEmailForwarding + mailbox delegation', () => {
+      it('registers a forwarding address, enables auto-forwarding, and delegates the mailbox to the manager', async () => {
+        primeGoogleDb();
+        mockForwardingAddressesCreate.mockResolvedValue({});
+        mockUpdateAutoForwarding.mockResolvedValue({});
+        mockDelegatesCreate.mockResolvedValue({});
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          emailAction: 'forward_manager',
+          managerEmail: 'manager@obilabs.dev',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('setup_email_forwarding');
+        expect(result.stepsCompleted).toContain('setup_mailbox_delegation');
+
+        // Gmail settings impersonate the DEPARTING user (userId), never the admin.
+        expect(mockForwardingAddressesCreate).toHaveBeenCalledWith({
+          userId: 'departing@obilabs.dev',
+          requestBody: { forwardingEmail: 'manager@obilabs.dev' },
+        });
+        expect(mockUpdateAutoForwarding).toHaveBeenCalledWith({
+          userId: 'departing@obilabs.dev',
+          requestBody: expect.objectContaining({
+            enabled: true,
+            emailAddress: 'manager@obilabs.dev',
+            disposition: 'leaveInInbox',
+          }),
+        });
+        expect(mockDelegatesCreate).toHaveBeenCalledWith({
+          userId: 'departing@obilabs.dev',
+          requestBody: { delegateEmail: 'manager@obilabs.dev' },
+        });
+      });
+
+      it('forwards + delegates to the explicit forward-user when emailAction is forward_user', async () => {
+        primeGoogleDb();
+        mockForwardingAddressesCreate.mockResolvedValue({});
+        mockUpdateAutoForwarding.mockResolvedValue({});
+        mockDelegatesCreate.mockResolvedValue({});
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          emailAction: 'forward_user',
+          emailForwardToUserId: 'successor-user-id',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(mockForwardingAddressesCreate).toHaveBeenCalledWith({
+          userId: 'departing@obilabs.dev',
+          requestBody: { forwardingEmail: 'successor@obilabs.dev' },
+        });
+        expect(mockDelegatesCreate).toHaveBeenCalledWith({
+          userId: 'departing@obilabs.dev',
+          requestBody: { delegateEmail: 'successor@obilabs.dev' },
+        });
+        expect(result.stepsCompleted).toContain('setup_mailbox_delegation');
+      });
+
+      it('fails forwarding gracefully — delegation still runs and the offboard finalizes', async () => {
+        primeGoogleDb();
+        mockForwardingAddressesCreate.mockRejectedValueOnce(new Error('forwarding not permitted'));
+        mockDelegatesCreate.mockResolvedValue({});
+
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          emailAction: 'forward_manager',
+          managerEmail: 'manager@obilabs.dev',
+        };
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsFailed).toContain('setup_email_forwarding');
+        // Independent step: delegation is unaffected by the forwarding failure.
+        expect(result.stepsCompleted).toContain('setup_mailbox_delegation');
+        expect(result.stepsCompleted).toContain('finalize');
+        expect(result.success).toBe(false);
+        expect(mockLogFailure).toHaveBeenCalledWith(
+          testOrgId,
+          'offboard',
+          'setup_email_forwarding',
+          expect.any(Error),
+          expect.any(Object)
+        );
+      });
+
+      it('skips forwarding and delegation entirely when emailAction is keep', async () => {
+        primeGoogleDb();
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, baseConfig);
+
+        expect(result.stepsSkipped).toContain('setup_email_forwarding');
+        expect(result.stepsSkipped).toContain('setup_mailbox_delegation');
+        expect(mockForwardingAddressesCreate).not.toHaveBeenCalled();
+        expect(mockDelegatesCreate).not.toHaveBeenCalled();
       });
     });
 

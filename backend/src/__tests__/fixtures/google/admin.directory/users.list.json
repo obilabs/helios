@@ -1,0 +1,83 @@
+{
+  "family": "admin.directory",
+  "name": "users.list",
+  "recordedAt": "2026-08-25T00:00:00.000Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users",
+    "query": {
+      "domain": "example.com",
+      "maxResults": "100",
+      "orderBy": "email"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#users",
+      "etag": "\"replay-etag-collection\"",
+      "users": [
+        {
+          "kind": "admin#directory#user",
+          "id": "100000000000000000001",
+          "etag": "\"replay-etag-user-1\"",
+          "primaryEmail": "user1@example.com",
+          "name": {
+            "givenName": "Ada",
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace"
+          },
+          "isAdmin": true,
+          "isDelegatedAdmin": false,
+          "creationTime": "2026-01-04T12:00:00.000Z",
+          "suspended": false,
+          "archived": false,
+          "orgUnitPath": "/",
+          "isMailboxSetup": true,
+          "customerId": "C00replay1"
+        },
+        {
+          "kind": "admin#directory#user",
+          "id": "100000000000000000002",
+          "etag": "\"replay-etag-user-2\"",
+          "primaryEmail": "user2@example.com",
+          "name": {
+            "givenName": "Alan",
+            "familyName": "Turing",
+            "fullName": "Alan Turing"
+          },
+          "isAdmin": false,
+          "isDelegatedAdmin": false,
+          "creationTime": "2026-02-11T09:30:00.000Z",
+          "suspended": false,
+          "archived": false,
+          "orgUnitPath": "/Engineering",
+          "isMailboxSetup": true,
+          "customerId": "C00replay1"
+        },
+        {
+          "kind": "admin#directory#user",
+          "id": "100000000000000000003",
+          "etag": "\"replay-etag-user-3\"",
+          "primaryEmail": "user3@example.com",
+          "name": {
+            "givenName": "Grace",
+            "familyName": "Hopper",
+            "fullName": "Grace Hopper"
+          },
+          "isAdmin": false,
+          "isDelegatedAdmin": false,
+          "creationTime": "2026-03-22T16:45:00.000Z",
+          "suspended": true,
+          "archived": false,
+          "orgUnitPath": "/Engineering",
+          "isMailboxSetup": true,
+          "customerId": "C00replay1"
+        }
+      ],
+      "nextPageToken": "replay-next-page-token"
+    }
+  }
+}

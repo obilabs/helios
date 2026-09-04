@@ -604,6 +604,7 @@ export const OFFBOARDING_STEPS = [
   'validate_config',
   'transfer_drive_files',
   'setup_email_forwarding',
+  'setup_mailbox_delegation',
   'set_auto_reply',
   'decline_future_meetings',
   'transfer_calendar_events',

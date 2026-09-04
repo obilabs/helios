@@ -6,8 +6,39 @@ import { db } from '../database/connection.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
+import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 
 const router = Router();
+
+/**
+ * AUDIT TRAIL: every mutating directory operation in this router (create/update
+ * user, group create/update, group membership changes, and credential setup)
+ * must land in the compliance audit trail (`audit_logs_unified`, which UNIONs
+ * `activity_logs` + `security_audit_logs`). Historically these Google-side
+ * mutations wrote nothing of their own, so only the generic app-wide
+ * auditMiddleware row (low-detail, wrong target_type) recorded them.
+ *
+ * `securityAudit.log()` writes a semantic, hash-chained row to
+ * `security_audit_logs` and swallows its own errors, so a logging failure can
+ * never break the mutation it records. Derive the actor from the authenticated
+ * session (this whole router is behind `authenticateToken`).
+ */
+function auditActor(req: Request): {
+  actorId?: string;
+  actorEmail?: string;
+  actorIp?: string;
+  actorUserAgent?: string;
+  organizationId?: string;
+} {
+  const user = (req as any).user || {};
+  return {
+    actorId: user.userId || user.id || undefined,
+    actorEmail: user.email || undefined,
+    actorIp: req.ip || undefined,
+    actorUserAgent: req.get('User-Agent') || undefined,
+    organizationId: user.organizationId || undefined,
+  };
+}
 
 /**
  * SECURITY: deny by default.
@@ -128,6 +159,27 @@ router.post('/setup', requireAdmin, [
     );
 
     if (result.success) {
+      // AUDIT: storing/overwriting service-account credentials is a
+      // security-critical credential change — record it in the audit trail.
+      const actor = auditActor(req);
+      await securityAudit.log({
+        action: AuditActions.SERVICE_ACCOUNT_CONFIGURE,
+        actionCategory: 'security',
+        actorId: actor.actorId,
+        actorEmail: actor.actorEmail,
+        actorIp: actor.actorIp,
+        actorUserAgent: actor.actorUserAgent,
+        targetType: 'service_account',
+        targetIdentifier: `google_workspace:${domain}`,
+        organizationId,
+        outcome: 'success',
+        changesAfter: {
+          domain,
+          adminEmail: adminEmail || null,
+          serviceAccountEmail: credentials?.client_email || null,
+        },
+      });
+
       // Trigger initial sync after successful setup (do not wait for it)
       logger.info('Triggering initial sync after Google Workspace setup', { organizationId, domain });
       syncScheduler.manualSync(organizationId).then((syncResult) => {
@@ -637,6 +689,24 @@ router.post('/groups/:groupId/members', [
       role || 'MEMBER'
     );
 
+    if (result?.success) {
+      const actor = auditActor(req);
+      await securityAudit.log({
+        action: AuditActions.GROUP_MEMBER_ADD,
+        actionCategory: 'admin',
+        actorId: actor.actorId,
+        actorEmail: actor.actorEmail,
+        actorIp: actor.actorIp,
+        actorUserAgent: actor.actorUserAgent,
+        targetType: 'group',
+        targetId: groupId,
+        targetIdentifier: groupId,
+        organizationId,
+        outcome: 'success',
+        changesAfter: { memberEmail: email, role: role || 'MEMBER' },
+      });
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('Failed to add group member', { error: error.message });
@@ -671,6 +741,24 @@ router.delete('/groups/:groupId/members/:memberEmail', async (req: Request, res:
       memberEmail
     );
 
+    if (result?.success) {
+      const actor = auditActor(req);
+      await securityAudit.log({
+        action: AuditActions.GROUP_MEMBER_REMOVE,
+        actionCategory: 'admin',
+        actorId: actor.actorId,
+        actorEmail: actor.actorEmail,
+        actorIp: actor.actorIp,
+        actorUserAgent: actor.actorUserAgent,
+        targetType: 'group',
+        targetId: groupId,
+        targetIdentifier: groupId,
+        organizationId: organizationId as string,
+        outcome: 'success',
+        changesBefore: { memberEmail },
+      });
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('Failed to remove group member', { error: error.message });
@@ -703,6 +791,24 @@ router.post('/groups', [
       description || ''
     );
 
+    if (result?.success) {
+      const actor = auditActor(req);
+      await securityAudit.log({
+        action: AuditActions.GROUP_CREATE,
+        actionCategory: 'admin',
+        actorId: actor.actorId,
+        actorEmail: actor.actorEmail,
+        actorIp: actor.actorIp,
+        actorUserAgent: actor.actorUserAgent,
+        targetType: 'group',
+        targetId: (result as any)?.data?.id || (result as any)?.group?.id || undefined,
+        targetIdentifier: email,
+        organizationId,
+        outcome: 'success',
+        changesAfter: { email, name, description: description || '' },
+      });
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('Failed to create group', { error: error.message });
@@ -733,6 +839,24 @@ router.patch('/groups/:groupId', [
       groupId,
       { name, description }
     );
+
+    if (result?.success) {
+      const actor = auditActor(req);
+      await securityAudit.log({
+        action: AuditActions.GROUP_UPDATE,
+        actionCategory: 'admin',
+        actorId: actor.actorId,
+        actorEmail: actor.actorEmail,
+        actorIp: actor.actorIp,
+        actorUserAgent: actor.actorUserAgent,
+        targetType: 'group',
+        targetId: groupId,
+        targetIdentifier: groupId,
+        organizationId,
+        outcome: 'success',
+        changesAfter: { name, description },
+      });
+    }
 
     res.json(result);
   } catch (error: any) {
@@ -970,6 +1094,30 @@ router.post('/users', async (req: Request, res: Response) => {
         email
       });
     }
+
+    // AUDIT: a new identity was provisioned in the Google directory.
+    const actor = auditActor(req);
+    await securityAudit.log({
+      action: AuditActions.USER_CREATE,
+      actionCategory: 'admin',
+      actorId: actor.actorId,
+      actorEmail: actor.actorEmail,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      targetType: 'user',
+      targetId: gwResult.userId || heliosUserId || undefined,
+      targetIdentifier: email.toLowerCase(),
+      organizationId,
+      outcome: 'success',
+      changesAfter: {
+        provider: 'google_workspace',
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        orgUnitPath: orgUnitPath || '/',
+        linkedHeliosUserId: heliosUserId || null,
+      },
+    });
 
     res.status(201).json({
       success: true,

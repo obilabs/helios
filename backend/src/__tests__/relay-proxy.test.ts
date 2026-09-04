@@ -77,14 +77,14 @@ jest.unstable_mockModule('axios', () => ({
 }));
 
 const { default: transparentProxyRouter } = await import('../middleware/transparent-proxy.js');
+const { REQUIRED_SCOPES } = await import('../config/google-scopes.js');
 
 // ---- fixtures ----
 
-const LEGACY_SCOPES =
-  'https://www.googleapis.com/auth/admin.directory.user ' +
-  'https://www.googleapis.com/auth/admin.directory.group ' +
-  'https://www.googleapis.com/auth/admin.directory.orgunit ' +
-  'https://www.googleapis.com/auth/admin.directory.domain';
+// Flag OFF mints the FULL set of DWD-authorized scopes (the generic-proxy
+// default — every API family reachable). This used to be only the 4 broad
+// admin.directory scopes; it was widened when the proxy became host-generic.
+const FLAG_OFF_SCOPES = REQUIRED_SCOPES.join(' ');
 
 const READONLY_USER_SCOPE = 'https://www.googleapis.com/auth/admin.directory.user.readonly';
 
@@ -150,7 +150,7 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
     mockIsEnabled.mockResolvedValue(false);
   });
 
-  it('forwards a GET to Google and mints the legacy BROAD scopes', async () => {
+  it('forwards a GET to Google and mints the full flag-off scopes', async () => {
     const res = await request(buildApp()).get('/api/google/admin/directory/v1/users').expect(200);
     expect(res.body).toEqual({ ok: true });
     expect(mockAxiosPost).toHaveBeenCalledTimes(1); // token exchange happened
@@ -158,7 +158,7 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
     expect(mockAxiosForward.mock.calls[0][0].url).toBe(
       'https://admin.googleapis.com/admin/directory/v1/users',
     );
-    expect(lastMintedScope()).toBe(LEGACY_SCOPES);
+    expect(lastMintedScope()).toBe(FLAG_OFF_SCOPES);
   });
 
   it('even a DELETE with zero configured rules passes through (no enforcement)', async () => {
@@ -166,7 +166,7 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
       .delete('/api/google/admin/directory/v1/users/x%40e.com')
       .expect(200);
     expect(mockAxiosForward).toHaveBeenCalledTimes(1);
-    expect(lastMintedScope()).toBe(LEGACY_SCOPES);
+    expect(lastMintedScope()).toBe(FLAG_OFF_SCOPES);
   });
 });
 
