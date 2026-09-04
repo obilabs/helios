@@ -119,3 +119,26 @@ L1/L2 button              Helios (per-org, L3+)                    MTP
 - Track B needs new Gmail scopes (`insert` / `import`) via DWD — a research + consent item
   (adding to `REQUIRED_SCOPES` is all-or-nothing across connected orgs; treat as opt-in).
 - No spec/schema changes proposed yet — deferred post-research.
+
+## Positioning (post-Phase-0 research — see `research/`)
+
+Sharpened by the KnowBe4 + tracking research:
+
+- **Headline differentiator = security posture, not injection.** KnowBe4 *already* ships
+  `gmail.insert` injection for Google, so injection is **parity / table-stakes**, not a moat.
+  What no incumbent offers: **self-hosted — the DWD credential lives in the org's own
+  tenant/server**, least-privilege, per-campaign, immutable log — vs KnowBe4's DMI that
+  bypasses safety features, keeps a persistent US-console connection, and lets vendor staff
+  impersonate customer admins. This is Principle Product-1 (the security/compliance edge).
+- **Accuracy** — no allowlisting for anything (sims / training / notifications) + scanner-
+  confidence heuristics — kills the #1 KnowBe4 gripe (*"click rate measures the spam filter"*;
+  Safe Links / Defender detonation inflate click rates).
+- **Non-punitive** (report-rate + time-to-first-report as the headline metric, not a shame
+  wall); **directory-native**; **no per-seat / no sales call**.
+- **Beachhead: SMB / K-12 / nonprofits / MSP Google shops** — Workspace-first, budget-tight,
+  underserved by the O365-first incumbents. NOT enterprise (KnowBe4 "Defend for Google
+  Workspace" is landing there).
+- **Don't fight the content library** (KnowBe4's conceded moat) — lightweight KB-article +
+  **Rubric-quiz** remediation via Aegis, not a video LMS. Remediation content is authored in
+  Rubric (Python, git-native Markdown); Aegis consumes the compiled-JSON bank and renders it
+  type-dispatched with a graceful default (unknown types never break).
