@@ -58,12 +58,37 @@ function auditActor(req: Request): {
 router.use(authenticateToken);
 
 /**
- * Validation middleware
+ * Single-organization portal: the caller's organization IS the organization.
+ * Several handlers below were written to read organizationId from the body
+ * and the UI never sends it (Groups -> Create Group 400'd on 2026-09-07 with a
+ * blank "Failed to create group"). Default it from the session; a body value
+ * that disagrees with the session is refused rather than trusted.
+ */
+router.use((req: Request, res: Response, next: NextFunction) => {
+  const sessionOrg = req.user?.organizationId;
+  if (!sessionOrg) return next();
+  if (req.body && typeof req.body === 'object') {
+    if (req.body.organizationId && req.body.organizationId !== sessionOrg) {
+      return res.status(403).json({ success: false, error: 'organizationId does not match your session' });
+    }
+    if (!req.body.organizationId) req.body.organizationId = sessionOrg;
+  }
+  return next();
+});
+
+/**
+ * Validation middleware — returns a readable `error` string so the UI can show
+ * the reason instead of a generic failure.
  */
 const validateRequest = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    const list = errors.array();
+    return res.status(400).json({
+      success: false,
+      error: list.map((e: any) => e.msg).join('; '),
+      errors: list,
+    });
   }
   return next();
 };
