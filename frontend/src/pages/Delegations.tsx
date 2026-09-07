@@ -96,7 +96,7 @@ export default function Delegations() {
       {error && <div className="deleg-error"><AlertTriangle size={16} /> {error}</div>}
 
       <div className="deleg-add">
-        <input className="deleg-input" placeholder="Mailbox (e.g. todd@example.net)" value={mailbox} onChange={(e) => setMailbox(e.target.value)} />
+        <input className="deleg-input" placeholder="Mailbox (e.g. todd@example.org)" value={mailbox} onChange={(e) => setMailbox(e.target.value)} />
         <input className="deleg-input" placeholder="Delegate email (who gets access)" value={delegateEmail} onChange={(e) => setDelegateEmail(e.target.value)} />
         <button className="btn-primary" onClick={add} disabled={busy || !mailbox.trim() || !delegateEmail.trim()}>
           <UserPlus size={16} /> Add delegate
