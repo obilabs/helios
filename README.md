@@ -1,6 +1,7 @@
 # Helios
 
-**Self-hosted Google Workspace & Microsoft 365 administration for organizations that own their data.**
+**Self-hosted Google Workspace administration for organizations that own their data.**
+Microsoft 365 alongside: users, groups and licences.
 
 A [ObiLabs](https://obilabs.dev) project. Free and open source (AGPL-3.0) — self-host it for as long as you like.
 
@@ -44,6 +45,10 @@ Google Workspace is the primary platform. Microsoft 365 support covers users, gr
 | **Lifecycle Automation** | Onboarding/offboarding templates and workflows. |
 | **API Proxy Console** | Direct Google Workspace API access with full audit trail. |
 | **Asset Sharing** | Proxy files from private Drive with branded URLs. |
+
+### Why Helios exists
+
+[GAM](https://github.com/GAM-team/GAM) and [PSGSuite](https://github.com/SCRT-HQ/PSGSuite) are excellent, and if you are comfortable in a terminal you should use them. Helios started as a web front end for them, for the admins who aren't. Working out what that interface needed — above all a tamper-evident audit trail on every action, and delegated access that is granted rather than shared — turned it into a ground-up build on the same Google APIs. Helios owes those projects its understanding of the problem.
 
 ### Why Self-Hosted?
 
@@ -167,7 +172,7 @@ Your instance talks to Google Workspace using your own service account. Optional
 | API Access | Full + Logged | Limited | Full |
 | Audit Trail | Every Action Logged | Varies | Manual |
 | Cost Model | Free or Fixed | $30-60/user/year | Free |
-| Setup | Docker Compose | SaaS Signup | Complex Auth |
+| Setup | Docker Compose | SaaS signup | OAuth/service-account setup |
 
 ---
 
