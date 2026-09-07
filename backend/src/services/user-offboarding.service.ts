@@ -771,8 +771,26 @@ class UserOffboardingService {
         result.stepsSkipped.push('move_to_org_unit');
       }
 
+      // Google steps below apply only to users who exist in Google Workspace. A
+      // user known to be Microsoft-only (M365 id, no Google id — resolved by the
+      // entrypoints into config.platformHint) is SKIPPED with an audit entry
+      // instead of failing on a "Not Authorized" Google call (recorded live
+      // 2026-09-07). No hint = unknown = fail OPEN so a real Google error stays
+      // visible in the log.
+      const microsoftOnly = !!config.platformHint && config.platformHint.microsoft && !config.platformHint.google;
+
       // Step 9: Suspend account (if immediate)
-      if (config.accountAction === 'suspend_immediately') {
+      if (config.accountAction === 'suspend_immediately' && microsoftOnly) {
+        stepOrder++;
+        await lifecycleLogService.logSkipped(
+          organizationId,
+          'offboard',
+          'suspend_account',
+          'User has no Google Workspace account (Microsoft 365 only); handled by m365_offboard',
+          { ...logOptions, stepOrder }
+        );
+        result.stepsSkipped.push('suspend_account');
+      } else if (config.accountAction === 'suspend_immediately') {
         stepOrder++;
         const suspendStart = Date.now();
         try {
@@ -933,7 +951,17 @@ class UserOffboardingService {
       //   - otherwise → DEFERRED: record the intent + scheduled date
       //     (now + deleteAfterDays) in the audit log; a scheduler performs the
       //     actual deletion later. Nothing is deleted inline.
-      if (config.deleteAccount) {
+      if (config.deleteAccount && config.deleteImmediately && microsoftOnly) {
+        stepOrder++;
+        await lifecycleLogService.logSkipped(
+          organizationId,
+          'offboard',
+          'delete_account',
+          'User has no Google Workspace account (Microsoft 365 only); handled by m365_offboard',
+          { ...logOptions, stepOrder }
+        );
+        result.stepsSkipped.push('delete_account');
+      } else if (config.deleteAccount) {
         stepOrder++;
         const deleteStart = Date.now();
         const deleteStep = config.deleteImmediately ? 'delete_account' : 'schedule_account_deletion';
@@ -1085,7 +1113,7 @@ class UserOffboardingService {
 
     // Get user details
     const userResult = await db.query(
-      `SELECT email, reporting_manager_id FROM organization_users WHERE id = $1`,
+      `SELECT email, reporting_manager_id, google_workspace_id, microsoft_365_id FROM organization_users WHERE id = $1`,
       [userId]
     );
 
@@ -1115,6 +1143,7 @@ class UserOffboardingService {
     const config: OffboardingConfig = {
       userId,
       userEmail: user.email,
+      platformHint: { google: !!user.google_workspace_id, microsoft: !!user.microsoft_365_id },
       managerId: user.reporting_manager_id,
       managerEmail,
       lastDay: options.lastDay,
@@ -1220,13 +1249,18 @@ class UserOffboardingService {
 
     // Resolve the Helios user id from the email when the caller didn't supply one.
     let userId = input.userId;
-    if (!userId) {
+    let platformHint = input.platformHint;
+    if (!userId || !platformHint) {
       try {
         const r = await db.query(
-          'SELECT id FROM organization_users WHERE email = $1 AND organization_id = $2',
+          'SELECT id, google_workspace_id, microsoft_365_id FROM organization_users WHERE email = $1 AND organization_id = $2',
           [input.userEmail, organizationId]
         );
-        userId = r.rows[0]?.id;
+        const row = r.rows[0];
+        if (row) {
+          userId = userId || row.id;
+          platformHint = platformHint || { google: !!row.google_workspace_id, microsoft: !!row.microsoft_365_id };
+        }
       } catch {
         // Fall through to the email placeholder below.
       }
@@ -1235,6 +1269,7 @@ class UserOffboardingService {
     const config = this.normalizeConfig({
       ...input,
       userId: userId || input.userEmail,
+      platformHint,
     });
 
     const policy = options.policy ?? (await this.resolveOffboardingPolicy(organizationId));
@@ -1308,6 +1343,7 @@ class UserOffboardingService {
     return {
       userId: input.userId,
       userEmail: input.userEmail,
+      platformHint: input.platformHint,
       managerId: input.managerId,
       managerEmail: input.managerEmail,
       lastDay: input.lastDay,
