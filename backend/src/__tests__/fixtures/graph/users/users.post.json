@@ -1,0 +1,53 @@
+{
+  "family": "users",
+  "name": "users.post",
+  "recordedAt": "2026-09-07T08:35:49.591Z",
+  "request": {
+    "method": "POST",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users",
+    "query": null,
+    "body": {
+      "displayName": "REDACTED",
+      "mailNickname": "REDACTED",
+      "userPrincipalName": "REDACTED",
+      "passwordProfile": {
+        "forceChangePasswordNextSignIn": true,
+        "password": "REDACTED"
+      },
+      "accountEnabled": true,
+      "jobTitle": "Fixture Capture",
+      "department": "Engineering"
+    }
+  },
+  "response": {
+    "status": 201,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+      "id": "00000000-0000-0000-0000-000000000001",
+      "businessPhones": [],
+      "displayName": "REDACTED",
+      "givenName": null,
+      "jobTitle": "Fixture Capture",
+      "mail": null,
+      "mobilePhone": null,
+      "officeLocation": null,
+      "preferredLanguage": null,
+      "surname": null,
+      "userPrincipalName": "REDACTED"
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "content-encoding": "gzip",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "date": "Mon, 07 Sep 2026 08:35:51 GMT",
+      "location": "https://graph.microsoft.com/v1.0/00000000-0000-0000-0000-000000000002/directoryObjects/00000000-0000-0000-0000-000000000001/Microsoft.DirectoryServices.User",
+      "odata-version": "4.0",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"003\",\"RoleInstance\":\"CO1PEPF000172AB\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}

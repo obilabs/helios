@@ -1,0 +1,45 @@
+{
+  "family": "users",
+  "name": "extensions.post",
+  "recordedAt": "2026-09-07T08:38:31.603Z",
+  "request": {
+    "method": "POST",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users/00000000-0000-0000-0000-000000000001/extensions",
+    "query": null,
+    "body": {
+      "@odata.type": "microsoft.graph.openTypeExtension",
+      "extensionName": "com.obilabs.helios",
+      "pronouns": "they/them",
+      "certifications": [
+        "CompTIA CySA+"
+      ],
+      "professionalDesignations": "CISSP"
+    }
+  },
+  "response": {
+    "status": 201,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('00000000-0000-0000-0000-000000000001')/extensions/$entity",
+      "@odata.type": "#microsoft.graph.openTypeExtension",
+      "extensionName": "com.obilabs.helios",
+      "pronouns": "they/them",
+      "certifications": [
+        "CompTIA CySA+"
+      ],
+      "professionalDesignations": "CISSP",
+      "id": "com.obilabs.helios"
+    },
+    "headers": {
+      "content-encoding": "gzip",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "date": "Mon, 07 Sep 2026 08:38:33 GMT",
+      "location": "https://graph.microsoft.com",
+      "odata-version": "4.0",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"003\",\"RoleInstance\":\"CO1PEPF00005D53\"}}"
+    }
+  }
+}
