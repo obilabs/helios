@@ -231,7 +231,9 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
 
     try {
       const [usersRes, templatesRes] = await Promise.all([
-        authFetch('/api/v1/users?is_active=true'),
+        // The wizard used to call /api/v1/users, which does not exist (404) — the page
+        // then rendered "No users found" with no error. The staff list lives here.
+        authFetch('/api/v1/organization/users?status=active&userType=staff'),
         authFetch('/api/v1/lifecycle/offboarding-templates'),
       ]);
 
