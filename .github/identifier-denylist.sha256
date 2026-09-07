@@ -1,4 +1,4 @@
-# sha256(lowercase token) — real customer/tenant/personal identifiers that must never appear in tracked files.
+# sha256(lowercase token) of non-example identifiers that must not appear in tracked files.
 # Add one: node scripts/check-no-identifiers.mjs --hash <token>
 a464cf7804ca74a64252564c3a9039ce325810283efc205ec59094f1cff3d832
 ff308516dc320b3340bc4f70ef4c7bed1ab01db0ab666d50f9823c7ece982fea
