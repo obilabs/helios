@@ -1,0 +1,49 @@
+{
+  "family": "users",
+  "name": "assignLicense.post",
+  "recordedAt": "2026-09-07T08:37:23.878Z",
+  "request": {
+    "method": "POST",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users/00000000-0000-0000-0000-000000000001/assignLicense",
+    "query": null,
+    "body": {
+      "addLicenses": [
+        {
+          "skuId": "f245ecc8-75af-4f8e-b61f-27d8114de5f3"
+        }
+      ],
+      "removeLicenses": []
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+      "businessPhones": [],
+      "displayName": "REDACTED",
+      "givenName": null,
+      "jobTitle": "Fixture Capture",
+      "mail": "REDACTED",
+      "mobilePhone": null,
+      "officeLocation": null,
+      "preferredLanguage": null,
+      "surname": null,
+      "userPrincipalName": "REDACTED",
+      "id": "00000000-0000-0000-0000-000000000001"
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "content-encoding": "gzip",
+      "content-type": "application/json;odata.metadata=minimal;odata.streaming=true;IEEE754Compatible=false;charset=utf-8",
+      "date": "Mon, 07 Sep 2026 08:37:25 GMT",
+      "location": "https://graph.microsoft.com",
+      "odata-version": "4.0",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"003\",\"RoleInstance\":\"CO1PEPF000172AB\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}

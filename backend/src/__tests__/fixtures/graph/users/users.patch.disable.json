@@ -1,0 +1,25 @@
+{
+  "family": "users",
+  "name": "users.patch",
+  "recordedAt": "2026-09-07T08:42:30.820Z",
+  "request": {
+    "method": "PATCH",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users/00000000-0000-0000-0000-000000000001",
+    "query": null,
+    "body": {
+      "accountEnabled": false
+    }
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "cache-control": "no-cache",
+      "date": "Mon, 07 Sep 2026 08:42:30 GMT",
+      "strict-transport-security": "max-age=31536000",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"001\",\"RoleInstance\":\"MW2PEPF00013BA8\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}
