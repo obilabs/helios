@@ -497,6 +497,13 @@ export interface OffboardingConfig {
   // User info
   userId: string;
   userEmail: string;
+  /**
+   * Which platforms the Helios row is linked to, resolved by the entrypoints
+   * from organization_users (google_workspace_id / microsoft_365_id). Lets the
+   * orchestrator SKIP Google steps for a Microsoft-only user instead of failing
+   * them. Absent = unknown = run every step (fail open).
+   */
+  platformHint?: { google: boolean; microsoft: boolean };
   managerId?: string;
   managerEmail?: string;
   lastDay?: Date;

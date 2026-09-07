@@ -1486,8 +1486,8 @@ describe('UserOffboardingService', () => {
         // Route DB reads by SQL text so the entrypoint's extra lookups (userId,
         // policy) coexist with the orchestrator's credential/admin reads.
         mockQuery.mockImplementation(async (text: string) => {
-          if (typeof text === 'string' && text.includes('SELECT id FROM organization_users')) {
-            return { rows: [{ id: 'resolved-user-id' }] };
+          if (typeof text === 'string' && text.includes('FROM organization_users WHERE email')) {
+            return { rows: [{ id: 'resolved-user-id', google_workspace_id: 'gw-123', microsoft_365_id: null }] };
           }
           if (typeof text === 'string' && text.includes('FROM organization_settings')) {
             return { rows: [{ value: JSON.stringify({ targetOrgUnitPath: '/Offboarded' }) }] };
@@ -1518,6 +1518,36 @@ describe('UserOffboardingService', () => {
         // never set orgUnitPath (two-tier defaulting through the entrypoint).
         expect(result.stepsCompleted).toContain('move_to_org_unit');
         expect(mockSetOrgUnit).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', '/Offboarded');
+      });
+
+      it('SKIPS the Google suspend/delete steps for a Microsoft-only user (no google id) and still runs m365_offboard', async () => {
+        // Recorded live 2026-09-07: an M365-only user's offboard failed its Google
+        // steps with "Not Authorized" instead of skipping them.
+        mockQuery.mockImplementation(async (text: string) => {
+          if (typeof text === 'string' && text.includes('FROM organization_users WHERE email')) {
+            return { rows: [{ id: 'ms-only-user', google_workspace_id: null, microsoft_365_id: 'ms-guid' }] };
+          }
+          if (typeof text === 'string' && text.includes('SELECT microsoft_365_id FROM organization_users')) {
+            return { rows: [{ microsoft_365_id: 'ms-guid' }] };
+          }
+          return { rows: [] };
+        });
+
+        const result = await userOffboardingService.executeOffboardingFromConfig(
+          testOrgId,
+          { userEmail: 'msonly@obilabs.dev', accountAction: 'suspend_immediately', deleteAccount: true, deleteImmediately: true },
+          { triggeredBy: 'user' }
+        );
+
+        expect(result.stepsSkipped).toContain('suspend_account');
+        expect(result.stepsSkipped).toContain('delete_account');
+        expect(result.stepsFailed).not.toContain('suspend_account');
+        expect(result.stepsFailed).not.toContain('delete_account');
+        expect(mockUsersUpdate).not.toHaveBeenCalled();
+        expect(mockDeleteUser).not.toHaveBeenCalled();
+        // The skip is audited, not silent.
+        expect(mockLogSkipped).toHaveBeenCalledWith(testOrgId, 'offboard', 'suspend_account', expect.stringMatching(/Microsoft 365 only/), expect.any(Object));
+        expect(mockLogSkipped).toHaveBeenCalledWith(testOrgId, 'offboard', 'delete_account', expect.stringMatching(/Microsoft 365 only/), expect.any(Object));
       });
 
       it('keeps deletion OFF by default (suspend-only) on a bare raw config', async () => {

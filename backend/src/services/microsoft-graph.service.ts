@@ -117,6 +117,77 @@ const SKU_FRIENDLY_NAMES: Record<string, string> = {
  * Microsoft Graph API Service
  * Handles all interactions with Microsoft Graph API for Entra ID integration
  */
+/** A tenant domain as reported by GET /organization?$select=verifiedDomains. */
+export interface VerifiedDomain {
+  name: string;
+  isDefault: boolean;
+  isVerified: boolean;
+  authenticationType: 'Managed' | 'Federated';
+}
+
+/**
+ * Pick the domain for a NEW cloud user's userPrincipalName.
+ *   1. the email's own domain, if it is verified AND managed;
+ *   2. otherwise the tenant default domain, if managed;
+ *   3. otherwise the first managed domain;
+ *   4. otherwise the email's own domain (Graph will reject; the error surfaces).
+ * Returns the reason when the email domain was NOT used so callers can tell the admin.
+ */
+export function chooseUpnDomain(
+  emailDomain: string,
+  domains: VerifiedDomain[],
+): { domain: string; reason: string | null } {
+  const wanted = (emailDomain || '').toLowerCase();
+  const verified = domains.filter((d) => d.isVerified);
+  const own = verified.find((d) => d.name === wanted);
+  if (own && own.authenticationType === 'Managed') return { domain: wanted, reason: null };
+  const managed = verified.filter((d) => d.authenticationType === 'Managed');
+  const fallback = managed.find((d) => d.isDefault) || managed[0];
+  if (fallback) {
+    const reason = own
+      ? `${wanted} is a federated domain (cloud users need a SourceAnchor); created on ${fallback.name} instead`
+      : `${wanted} is not a verified domain of this tenant; created on ${fallback.name} instead`;
+    return { domain: fallback.name, reason };
+  }
+  return { domain: wanted, reason: null };
+}
+
+export interface ReplicationRetryOptions {
+  /** Attempts in total (default 6). */
+  attempts?: number;
+  /** Delay between attempts in ms (default 3000). */
+  delayMs?: number;
+}
+
+/** Graph's message when a just-patched usageLocation has not replicated yet. */
+export const USAGE_LOCATION_REPLICATION_RE = /invalid usage location/i;
+
+/**
+ * Retry `fn` while its error matches `retryOn` — Entra replication lag makes a
+ * freshly written property (or a freshly created object) invisible for a few
+ * seconds. Any other error is rethrown immediately.
+ */
+export async function withReplicationRetry<T>(
+  fn: () => Promise<T>,
+  retryOn: RegExp,
+  opts: ReplicationRetryOptions = {},
+): Promise<T> {
+  const attempts = Math.max(1, opts.attempts ?? 6);
+  const delayMs = opts.delayMs ?? 3000;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const msg = String(err?.message ?? err?.body ?? err ?? '');
+      if (!retryOn.test(msg) || attempt === attempts) throw err;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 export class MicrosoftGraphService {
   private graphClient: Client | null = null;
   private credentials: MicrosoftCredentials | null = null;
@@ -370,14 +441,22 @@ export class MicrosoftGraphService {
    * List the tenant's verified domains (with the default flagged) — needed to
    * build a valid userPrincipalName when creating an M365 user.
    */
-  async getVerifiedDomains(): Promise<Array<{ name: string; isDefault: boolean; isVerified: boolean }>> {
+  async getVerifiedDomains(): Promise<VerifiedDomain[]> {
     if (!this.graphClient) {
       throw new Error('Microsoft Graph client not initialized');
     }
     const res = await this.graphClient.api('/organization').select('verifiedDomains').get();
     const org = res?.value?.[0];
     const domains = org?.verifiedDomains || [];
-    return domains.map((d: any) => ({ name: d.name, isDefault: !!d.isDefault, isVerified: d.isVerified !== false }));
+    return domains.map((d: any) => ({
+      name: String(d.name || '').toLowerCase(),
+      isDefault: !!d.isDefault,
+      isVerified: d.isVerified !== false,
+      // Graph reports 'Managed' or 'Federated'. A FEDERATED domain cannot take a
+      // cloud-created user ("SourceAnchor is a required property for creation of
+      // a federated user") — recorded live 2026-09-07.
+      authenticationType: d.authenticationType === 'Federated' ? 'Federated' : 'Managed',
+    }));
   }
 
   /**
@@ -660,15 +739,20 @@ export class MicrosoftGraphService {
   /**
    * Assign licenses to a user
    */
-  async assignLicense(userId: string, skuIds: string[]): Promise<void> {
+  async assignLicense(userId: string, skuIds: string[], retry: ReplicationRetryOptions = {}): Promise<void> {
     if (!this.graphClient) {
       throw new Error('Microsoft Graph client not initialized');
     }
-
-    await this.graphClient.api(`/users/${userId}/assignLicense`).post({
-      addLicenses: skuIds.map((skuId) => ({ skuId })),
-      removeLicenses: [],
-    });
+    // A usageLocation PATCH issued moments earlier may not have replicated yet;
+    // Graph then rejects with "invalid usage location" (recorded live 2026-09-07).
+    await withReplicationRetry(
+      () => this.graphClient!.api(`/users/${userId}/assignLicense`).post({
+        addLicenses: skuIds.map((skuId) => ({ skuId })),
+        removeLicenses: [],
+      }),
+      USAGE_LOCATION_REPLICATION_RE,
+      retry,
+    );
   }
 
   /**
