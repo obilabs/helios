@@ -39,6 +39,24 @@ describe('googleapis SDK seam (gaxios fetch hook)', () => {
     void trap;
   });
 
+  it('REPLAY: the CommonJS gaxios build (what google-auth-library actually uses) is hooked too', async () => {
+    // The live sync on 2026-09-07 recorded nothing because only the ESM class was patched.
+    const { createRequire } = await import('node:module');
+    const req = createRequire(import.meta.url);
+    const CjsGaxios = (req('gaxios') as { Gaxios: typeof Gaxios }).Gaxios;
+    expect(CjsGaxios).not.toBe(Gaxios); // two builds, two prototypes — the whole point
+    const fixture = loadGoogleFixture('admin.directory', 'users.list');
+    useGoogleReplay(fixture);
+    installGoogleSdkSeam();
+    const gx = new CjsGaxios();
+    const res = (await Promise.race([
+      gx.request({ url: 'https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer', method: 'GET' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('CJS gaxios was not intercepted')), 3000)),
+    ])) as { status: number; data: unknown };
+    expect(res.status).toBe(fixture.response.status);
+    expect(res.data).toEqual(fixture.response.data);
+  });
+
   it('REPLAY: googleSdkFetch itself throws loudly on a fixture miss (never a silent empty 200)', async () => {
     useGoogleReplay(loadGoogleFixture('admin.directory', 'users.list'));
     await expect(

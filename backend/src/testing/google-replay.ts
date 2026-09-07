@@ -152,8 +152,29 @@ export default googleHttp;
 // that consults the same `google` instance the proxy uses. Token exchanges
 // (oauth2.googleapis.com) are never recorded and pass straight through.
 import { Gaxios } from 'gaxios';
+import { createRequire } from 'node:module';
 
 let sdkSeamInstalled = false;
+
+/**
+ * gaxios ships BOTH an ESM and a CommonJS build. This module (ESM) imports the
+ * ESM class, but google-auth-library and googleapis-common are CommonJS and
+ * `require('gaxios')`, so they instantiate the CJS class — a different
+ * prototype. Patching only one leaves every real SDK call unhooked (found live
+ * on 2026-09-07: a full directory sync recorded nothing). Patch every distinct
+ * prototype we can reach.
+ */
+function gaxiosPrototypes(): Array<{ request: (opts?: Record<string, unknown>) => Promise<unknown> }> {
+  const protos: unknown[] = [Gaxios.prototype];
+  try {
+    const req = createRequire(import.meta.url);
+    const cjs = req('gaxios') as { Gaxios?: { prototype: unknown } };
+    if (cjs?.Gaxios?.prototype) protos.push(cjs.Gaxios.prototype);
+  } catch {
+    /* CJS build not resolvable — ESM only */
+  }
+  return [...new Set(protos)] as Array<{ request: (opts?: Record<string, unknown>) => Promise<unknown> }>;
+}
 
 function toUrlString(input: unknown): string {
   if (typeof input === 'string') return input;
@@ -253,16 +274,15 @@ export async function googleSdkFetch(input: unknown, init?: RequestInit): Promis
 export function installGoogleSdkSeam(): void {
   if (sdkSeamInstalled) return;
   sdkSeamInstalled = true;
-  const proto = Gaxios.prototype as unknown as {
-    request: (opts?: Record<string, unknown>) => Promise<unknown>;
-  };
-  const original = proto.request;
-  proto.request = function patchedRequest(this: unknown, opts: Record<string, unknown> = {}) {
-    if (google.currentMode() !== 'off' && !opts.fetchImplementation) {
-      opts = { ...opts, fetchImplementation: googleSdkFetch as unknown as typeof fetch };
-    }
-    return original.call(this, opts);
-  };
+  for (const proto of gaxiosPrototypes()) {
+    const original = proto.request;
+    proto.request = function patchedRequest(this: unknown, opts: Record<string, unknown> = {}) {
+      if (google.currentMode() !== 'off' && !opts.fetchImplementation) {
+        opts = { ...opts, fetchImplementation: googleSdkFetch as unknown as typeof fetch };
+      }
+      return original.call(this, opts);
+    };
+  }
 }
 
 // Install on import: this module is loaded at boot by the transparent proxy and
