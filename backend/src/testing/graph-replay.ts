@@ -101,12 +101,35 @@ const GRAPH_REDACT_KEYS = new Set(
     'otherMails',
     'imAddresses',
     'mailNickname',
-    // Tenant-identifying: the verified-domains array (onmicrosoft.com + custom
-    // domains) and the license accountName reveal the real tenant.
-    'verifiedDomains',
+    // Tenant-identifying: the license accountName reveals the real tenant.
+    // (verifiedDomains is handled structurally below — the domain NAMES are
+    // aliased but isDefault / isVerified / authenticationType are kept, because
+    // the create-user path branches on them: a FEDERATED domain cannot take a
+    // cloud-created user.)
     'accountName',
+    // Free-text org/affiliation fields that carried a real company name.
+    'companyName',
   ].map((k) => k.toLowerCase()),
 );
+
+/**
+ * Alias a verified-domain entry: keep the shape, replace the name. onmicrosoft
+ * hosts become the stable synthetic tenant; custom domains become
+ * `domain-N.example` in first-seen order.
+ */
+export function makeDomainAliaser(): (name: string) => string {
+  const map = new Map<string, string>();
+  return (name: string) => {
+    const key = String(name || '').toLowerCase();
+    if (!key) return name;
+    if (/\.onmicrosoft\.com$/i.test(key)) return 'tenant.onmicrosoft.com';
+    const existing = map.get(key);
+    if (existing) return existing;
+    const alias = `domain-${map.size + 1}.example`;
+    map.set(key, alias);
+    return alias;
+  };
+}
 
 /** Replace any `<label>.onmicrosoft.com` host with a stable synthetic tenant. */
 function stripOnmicrosoftDomain(s: string): string {
@@ -123,28 +146,36 @@ function redactField(value: unknown): unknown {
   return 'REDACTED';
 }
 
-function graphSanitizeValue(
+export function graphSanitizeValue(
   value: unknown,
   aliasEmail: (s: string) => string,
   aliasGuid: (s: string) => string,
+  aliasDomain: (s: string) => string = makeDomainAliaser(),
 ): unknown {
   if (typeof value === 'string')
     return aliasGuid(aliasEmail(stripOnmicrosoftDomain(value)));
   if (Array.isArray(value))
-    return value.map((v) => graphSanitizeValue(v, aliasEmail, aliasGuid));
+    return value.map((v) => graphSanitizeValue(v, aliasEmail, aliasGuid, aliasDomain));
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       const lk = k.toLowerCase();
       if (SECRET_KEYS.has(lk)) {
         out[k] = 'REDACTED';
+      } else if (lk === 'verifieddomains' && Array.isArray(v)) {
+        // Structural: alias the names, keep the flags the code branches on.
+        out[k] = v.map((d) =>
+          d && typeof d === 'object'
+            ? { ...(d as Record<string, unknown>), name: aliasDomain(String((d as any).name ?? '')) }
+            : aliasDomain(String(d)),
+        );
       } else if (GRAPH_REDACT_KEYS.has(lk)) {
         out[k] = redactField(v);
       } else if (GRAPH_KEEP_KEYS.has(lk)) {
         // Public catalog id — keep the real value (do NOT GUID-alias it).
         out[k] = v;
       } else {
-        out[k] = graphSanitizeValue(v, aliasEmail, aliasGuid);
+        out[k] = graphSanitizeValue(v, aliasEmail, aliasGuid, aliasDomain);
       }
     }
     return out;
@@ -222,7 +253,8 @@ export const graph: HttpReplayInstance = createHttpReplay({
   createSanitizer: () => {
     const aliasEmail = makeEmailAliaser();
     const aliasGuid = makeGuidAliaser();
-    return (v: unknown) => graphSanitizeValue(v, aliasEmail, aliasGuid);
+    const aliasDomain = makeDomainAliaser();
+    return (v: unknown) => graphSanitizeValue(v, aliasEmail, aliasGuid, aliasDomain);
   },
   sanitizeHeaders: stripGraphHeaders,
 });
