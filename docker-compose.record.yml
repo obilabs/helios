@@ -13,5 +13,7 @@ services:
       # Point the replay harness at a writable bind mount (avoids the read-only
       # /app/dist EACCES that HELIOS_GRAPH_RECORD hit on 2026-08-30).
       HELIOS_GRAPH_FIXTURES_DIR: /fixtures
+      # Off unless the shell exports it; every Graph call records while it is on.
+      HELIOS_GRAPH_RECORD: ${HELIOS_GRAPH_RECORD:-0}
     volumes:
       - ./.record-fixtures/graph:/fixtures
