@@ -162,7 +162,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const fetchDropdownData = async () => {
     // Fetch available managers (all active users)
     try {
-      const managersResponse = await authFetch(`/api/v1/organization/users?status=active`);
+      const managersResponse = await authFetch(`/api/v1/organization/users?status=active&userType=staff`);
       if (managersResponse.ok) {
         const managersData = await managersResponse.json();
         setAvailableManagers(managersData.data || []);
@@ -178,9 +178,11 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       const orgUnitsResponse = await authFetch(`/api/v1/google-workspace/org-units/${organizationId}`);
       if (orgUnitsResponse.ok) {
         const orgUnitsData = await orgUnitsResponse.json();
-        if (orgUnitsData.success && orgUnitsData.data) {
-          setAvailableOrgUnits(orgUnitsData.data);
-        }
+        // The service wraps the list: { success, data: { orgUnits: [...] } }.
+        const list = Array.isArray(orgUnitsData?.data)
+          ? orgUnitsData.data
+          : orgUnitsData?.data?.orgUnits;
+        setAvailableOrgUnits(Array.isArray(list) ? list : []);
       }
     } catch (error) {
       console.error('Error fetching org units:', error);
@@ -188,12 +190,10 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
 
     // Fetch available departments
     try {
-      const deptResponse = await authFetch(`/api/v1/departments`);
+      const deptResponse = await authFetch(`/api/v1/organization/departments`);
       if (deptResponse.ok) {
         const deptData = await deptResponse.json();
-        if (deptData.success && deptData.data) {
-          setAvailableDepartments(deptData.data);
-        }
+        setAvailableDepartments(Array.isArray(deptData?.data) ? deptData.data : []);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);

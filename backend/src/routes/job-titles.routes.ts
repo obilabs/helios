@@ -86,18 +86,18 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
     const result = await db.query(`
       SELECT
         jt.id,
-        jt.name,
+        jt.title AS name,
         jt.description,
         jt.department_id as "departmentId",
         jt.is_active as "isActive",
         jt.created_at as "createdAt",
         jt.updated_at as "updatedAt",
         d.name as "departmentName",
-        (SELECT COUNT(*) FROM organization_users WHERE LOWER(job_title) = LOWER(jt.name) AND organization_id = $1) as "userCount"
+        (SELECT COUNT(*) FROM organization_users WHERE LOWER(job_title) = LOWER(jt.title) AND organization_id = $1) as "userCount"
       FROM job_titles jt
       LEFT JOIN departments d ON jt.department_id = d.id
       WHERE jt.organization_id = $1
-      ORDER BY jt.name
+      ORDER BY jt.title
     `, [organizationId]);
 
     successResponse(res, result.rows);
@@ -142,14 +142,14 @@ router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
     const result = await db.query(`
       SELECT
         jt.id,
-        jt.name,
+        jt.title AS name,
         jt.description,
         jt.department_id as "departmentId",
         jt.is_active as "isActive",
         jt.created_at as "createdAt",
         jt.updated_at as "updatedAt",
         d.name as "departmentName",
-        (SELECT COUNT(*) FROM organization_users WHERE LOWER(job_title) = LOWER(jt.name) AND organization_id = $2) as "userCount"
+        (SELECT COUNT(*) FROM organization_users WHERE LOWER(job_title) = LOWER(jt.title) AND organization_id = $2) as "userCount"
       FROM job_titles jt
       LEFT JOIN departments d ON jt.department_id = d.id
       WHERE jt.id = $1 AND jt.organization_id = $2
@@ -225,7 +225,7 @@ router.post('/',
 
       // Check if job title name already exists
       const existing = await db.query(
-        'SELECT id FROM job_titles WHERE organization_id = $1 AND LOWER(name) = LOWER($2)',
+        'SELECT id FROM job_titles WHERE organization_id = $1 AND LOWER(title) = LOWER($2)',
         [organizationId, name]
       );
 
@@ -236,7 +236,7 @@ router.post('/',
       const result = await db.query(`
         INSERT INTO job_titles (
           organization_id,
-          name,
+          title,
           description,
           department_id,
           created_by
@@ -244,7 +244,7 @@ router.post('/',
         VALUES ($1, $2, $3, $4, $5)
         RETURNING
           id,
-          name,
+          title AS name,
           description,
           department_id as "departmentId",
           is_active as "isActive",
@@ -346,7 +346,7 @@ router.put('/:id',
 
       const result = await db.query(`
         UPDATE job_titles SET
-          name = COALESCE($1, name),
+          title = COALESCE($1, title),
           description = COALESCE($2, description),
           department_id = COALESCE($3, department_id),
           is_active = COALESCE($4, is_active),
@@ -354,7 +354,7 @@ router.put('/:id',
         WHERE id = $5 AND organization_id = $6
         RETURNING
           id,
-          name,
+          title AS name,
           description,
           department_id as "departmentId",
           is_active as "isActive",
