@@ -40,7 +40,7 @@ User Details:
   Admin               : Yes
   Created             : 9/20/2025, 6:06:52 PM
   Last Login          : 11/6/2025, 8:24:57 PM
-  Recovery Email      : mike.c.agu@gmail.com
+  Recovery Email      : recovery@example.org
   Recovery Phone      : +15875010021
   2SV Enrolled        : No
   Mailbox Setup       : No

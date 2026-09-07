@@ -118,7 +118,7 @@ describe('GoogleWorkspaceService.fetchDataMigrationActivity', () => {
           // TARGET_IDENTIFIER, user derivable from the drives/<email> source path.
           evt('CRAWL_FAILURE', {
             MIGRATION_TYPE: 'Microsoft OneDrive Migration',
-            SOURCE_IDENTIFIER: 'drives/todd@dest.com',
+            SOURCE_IDENTIFIER: 'drives/alex@dest.com',
             TARGET_IDENTIFIER: '',
             MIGRATION_ERROR_TITLE: 'Item exceeded size limit',
             MIGRATION_ERROR_CODE: 'SIZE_LIMIT',
@@ -134,8 +134,8 @@ describe('GoogleWorkspaceService.fetchDataMigrationActivity', () => {
     expect(res.failures).toHaveLength(1);
     expect(res.failures[0]).toEqual(
       expect.objectContaining({
-        user: 'todd@dest.com',
-        source: 'drives/todd@dest.com',
+        user: 'alex@dest.com',
+        source: 'drives/alex@dest.com',
         reason: 'Item exceeded size limit', // MIGRATION_ERROR_TITLE wins the fallback chain
         executionId: 'ex9',
       })
@@ -148,9 +148,9 @@ describe('GoogleWorkspaceService.fetchDataMigrationActivity', () => {
     mockActivitiesList.mockResolvedValueOnce({
       data: {
         items: [
-          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/tubears@dest.com/messages/aaa', SOURCE_NAME: 'tubears@dest.com' }),
-          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/tubears@dest.com/messages/bbb', SOURCE_NAME: 'tubears@dest.com' }),
-          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/tubears@dest.com/messages/ccc', SOURCE_NAME: 'tubears@dest.com' }),
+          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/jamie@dest.com/messages/aaa', SOURCE_NAME: 'jamie@dest.com' }),
+          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/jamie@dest.com/messages/bbb', SOURCE_NAME: 'jamie@dest.com' }),
+          evt('CREATE_GMAIL_MESSAGE', { TARGET_IDENTIFIER: 'users/jamie@dest.com/messages/ccc', SOURCE_NAME: 'jamie@dest.com' }),
         ],
       },
     });
@@ -158,7 +158,7 @@ describe('GoogleWorkspaceService.fetchDataMigrationActivity', () => {
     const res = await googleWorkspaceService.fetchDataMigrationActivity(orgId);
 
     expect(res.byUser).toHaveLength(1);
-    expect(res.byUser[0].user).toBe('tubears@dest.com');
+    expect(res.byUser[0].user).toBe('jamie@dest.com');
     expect(res.byUser[0].total).toBe(3);
   });
 

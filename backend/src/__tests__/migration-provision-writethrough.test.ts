@@ -36,9 +36,9 @@ const svc = new MigrationPlanService();
 /** One M365 source on a verified workspace domain -> same-identity destination. */
 const MS_ROW = {
   microsoft_365_id: 'm1',
-  microsoft_365_upn: 'todd@tmscanada.ca',
+  microsoft_365_upn: 'todd@example.org',
   user_type: 'staff',
-  email: 'todd@tmscanada.ca',
+  email: 'todd@example.org',
   name: 'Todd Example',
 };
 
@@ -63,7 +63,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockListDomains.mockResolvedValue({
     success: true,
-    domains: [{ domainName: 'tmscanada.ca', verified: true }],
+    domains: [{ domainName: 'example.org', verified: true }],
   });
   mockCreateUser.mockResolvedValue({ success: true, userId: 'gid-new' });
 });
@@ -80,7 +80,7 @@ describe('provisioning write-through', () => {
     expect(insert).toBeTruthy();
     // The new Google id is written through onto the directory row.
     expect(insert![1]).toContain('gid-new');
-    expect(insert![1]).toContain('todd@tmscanada.ca');
+    expect(insert![1]).toContain('todd@example.org');
   });
 
   it('UPDATEs the existing same-identity row (links Google in place, keeps M365 side)', async () => {
