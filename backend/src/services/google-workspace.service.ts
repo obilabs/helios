@@ -1486,6 +1486,38 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Restore (un-suspend) a user in Google Workspace. Mirror of suspendUser.
+   */
+  async restoreUser(organizationId: string, googleWorkspaceId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) {
+        return { success: false, error: 'Google Workspace not configured' };
+      }
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!adminEmail) {
+        return { success: false, error: 'Admin email not configured' };
+      }
+      const jwtClient = new JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/admin.directory.user'],
+        subject: adminEmail
+      });
+      const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+      await admin.users.update({
+        userKey: googleWorkspaceId,
+        requestBody: { suspended: false }
+      });
+      logger.info('User restored in Google Workspace', { googleWorkspaceId });
+      return { success: true };
+    } catch (error: any) {
+      logger.error('Failed to restore user in Google Workspace', { googleWorkspaceId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Permanently delete a user from Google Workspace
    *
    * WARNING: This permanently deletes the user and frees the license.
