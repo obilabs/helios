@@ -47,3 +47,7 @@
 
 ## Phase 5 — MTP cross-org rollup (only on demand)
 - [ ] MTP rollup of detection + simulation across managed orgs.
+
+> **2026-09-04:** the data model / event stream / tracking token / Aegis wire contract from
+> `research/tracking-decision-v0.1.md` are now frozen in code — see
+> `openspec/changes/freeze-phishing-bones/` (migration 075 + `backend/src/lib/phishing/`).
