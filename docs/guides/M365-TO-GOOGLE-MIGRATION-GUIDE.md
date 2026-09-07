@@ -112,7 +112,7 @@ Google's importer **never creates accounts** — both source and destination mus
 exist first. Helios provisions them from the reconciled M365 directory:
 
 - Each M365 source is mapped to a **same-identity** destination when its domain is
-  a verified domain of your Google workspace (e.g. a `example.net` secondary
+  a verified domain of your Google workspace (e.g. a `example.org` secondary
   domain), and skipped when it isn't (external guests, `*.onmicrosoft.com`).
 - Regular users → a licensed **mailbox**. A **shared mailbox** offers a choice:
   a **delegated** licensed mailbox (keeps full history — required if you want the
@@ -160,9 +160,9 @@ applications.
 each M365 user to a Google account **by the local part of the address**, and it
 auto-selects the ones it matched (these will be the accounts Helios provisioned).
 **The trap:** a same-local-part source on a *different domain* (e.g.
-`tubears@example.org`) with no exact-domain Google target gets **mapped onto the
-wrong account** (`tubears@example.net`) — merging two people's data. The display
-**truncates the domain** (`tubears@tms…`), so you can't tell them apart at a
+`jamie@other-example.org`) with no exact-domain Google target gets **mapped onto the
+wrong account** (`jamie@example.org`) — merging two people's data. The display
+**truncates the domain** (`jamie@othe…`), so you can't tell them apart at a
 glance. **Before continuing, confirm every source→destination pair** (hover /
 inspect the full address) and **uncheck any cross-domain mis-map** and the
 `*.onmicrosoft.com` / external rows.
