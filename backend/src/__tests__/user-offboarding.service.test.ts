@@ -41,6 +41,9 @@ const mockUsersSignOut = jest.fn<(...args: any[]) => Promise<any>>();
 // Data Transfer + directory-lookup mocks (drive/calendar transfer step).
 const mockUsersGet = jest.fn<(...args: any[]) => Promise<any>>();
 const mockTransfersInsert = jest.fn<(...args: any[]) => Promise<any>>();
+// Completion polling: default to an immediately-completed transfer so the
+// existing insert-focused tests keep their meaning; specific tests override.
+const mockTransfersGet = jest.fn<(...args: any[]) => Promise<any>>();
 // Gmail forwarding + delegation mocks.
 const mockForwardingAddressesCreate = jest.fn<(...args: any[]) => Promise<any>>();
 const mockUpdateAutoForwarding = jest.fn<(...args: any[]) => Promise<any>>();
@@ -67,6 +70,7 @@ jest.unstable_mockModule('googleapis', () => ({
       },
       transfers: {
         insert: mockTransfersInsert,
+        get: mockTransfersGet,
       },
     })),
     gmail: jest.fn(() => ({
@@ -127,6 +131,10 @@ describe('UserOffboardingService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockQuery.mockReset();
+    mockTransfersGet.mockReset();
+    mockTransfersGet.mockResolvedValue({ data: { overallTransferStatusCode: 'completed', applicationDataTransfers: [{ applicationId: '55656082996', applicationTransferStatus: 'completed' }] } });
+    process.env.HELIOS_TRANSFER_POLL_INTERVAL_MS = '0';
+    process.env.HELIOS_TRANSFER_POLL_WINDOW_MS = '50';
     // Real pg never resolves undefined — an unmocked read is an EMPTY result.
     // (The M365 offboard step reads ms_synced_users before deciding to skip.)
     mockQuery.mockResolvedValue({ rows: [] });
@@ -1729,4 +1737,84 @@ describe('UserOffboardingService', () => {
       expect(result.stepsCompleted).toContain('send_notifications');
     });
   });
+  describe('Drive transfer completion polling (2026-09-07)', () => {
+    const SA_KEY_JSON = JSON.stringify({
+      type: 'service_account',
+      client_email: 'sa@project.iam.gserviceaccount.com',
+      private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----',
+    });
+    const baseTransferConfig = (): OffboardingConfig =>
+      ({
+        userId: 'user-to-offboard',
+        userEmail: 'departing@obilabs.dev',
+        managerId: 'manager-id',
+        managerEmail: 'manager@obilabs.dev',
+        driveAction: 'transfer_manager',
+        emailAction: 'keep',
+        emailForwardDurationDays: 30,
+        calendarDeclineFutureMeetings: false,
+        calendarTransferMeetingOwnership: false,
+        removeFromAllGroups: false,
+        removeFromSharedDrives: false,
+        revokeOauthTokens: false,
+        signOutAllDevices: false,
+        resetPassword: false,
+        removeSignature: false,
+        setOffboardingSignature: false,
+        wipeMobileDevices: false,
+        wipeRequiresConfirmation: true,
+        accountAction: 'keep_active',
+        deleteAccount: false,
+        deleteAfterDays: 90,
+        notifyManager: false,
+        notifyItAdmin: false,
+        notifyHr: false,
+        notificationEmailAddresses: [],
+      }) as unknown as OffboardingConfig;
+    const routeDb = () =>
+      mockQuery.mockImplementation(async (text: string) => {
+        if (typeof text === 'string' && text.includes('service_account_key')) return { rows: [{ service_account_key: SA_KEY_JSON }] };
+        if (typeof text === 'string' && text.includes('admin_email')) return { rows: [{ admin_email: 'admin@obilabs.dev' }] };
+        return { rows: [] };
+      });
+    const driveDetails = () =>
+      (mockLogSuccess.mock.calls.find((c: any[]) => c[2] === 'transfer_drive_files') as any[])[3].details;
+
+    it('polls transfers.get and records a CONFIRMED completion', async () => {
+      routeDb();
+      mockUsersGet.mockResolvedValue({ data: { id: '1001' } });
+      mockTransfersInsert.mockResolvedValue({ data: { id: 'transfer-1' } });
+      mockTransfersGet
+        .mockResolvedValueOnce({ data: { overallTransferStatusCode: 'inProgress', applicationDataTransfers: [] } })
+        .mockResolvedValueOnce({ data: { overallTransferStatusCode: 'completed', applicationDataTransfers: [{ applicationId: '55656082996', applicationTransferStatus: 'completed' }] } });
+      const result = await userOffboardingService.executeOffboarding(testOrgId, baseTransferConfig());
+      expect(result.stepsCompleted).toContain('transfer_drive_files');
+      expect(mockTransfersGet).toHaveBeenCalledTimes(2);
+      expect(driveDetails().transferConfirmed).toBe(true);
+      expect(driveDetails().transferStatus).toBe('completed');
+    });
+
+    it('marks the step FAILED when Google reports the transfer failed (never an assumed success)', async () => {
+      routeDb();
+      mockUsersGet.mockResolvedValue({ data: { id: '1001' } });
+      mockTransfersInsert.mockResolvedValue({ data: { id: 'transfer-2' } });
+      mockTransfersGet.mockResolvedValue({ data: { overallTransferStatusCode: 'failed', applicationDataTransfers: [{ applicationId: '55656082996', applicationTransferStatus: 'failed' }] } });
+      const result = await userOffboardingService.executeOffboarding(testOrgId, baseTransferConfig());
+      expect(result.stepsFailed).toContain('transfer_drive_files');
+      expect(result.errors.join(' ')).toMatch(/FAILED/);
+    });
+
+    it('records UNCONFIRMED (not completed) when the window elapses while still in progress', async () => {
+      routeDb();
+      mockUsersGet.mockResolvedValue({ data: { id: '1001' } });
+      mockTransfersInsert.mockResolvedValue({ data: { id: 'transfer-3' } });
+      mockTransfersGet.mockResolvedValue({ data: { overallTransferStatusCode: 'inProgress', applicationDataTransfers: [] } });
+      const result = await userOffboardingService.executeOffboarding(testOrgId, baseTransferConfig());
+      expect(result.stepsCompleted).toContain('transfer_drive_files');
+      expect(driveDetails().transferConfirmed).toBe(false);
+      expect(driveDetails().transferStatus).toBe('inProgress');
+      expect(driveDetails().transferId).toBe('transfer-3');
+    });
+  });
+
 });

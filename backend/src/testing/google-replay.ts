@@ -134,3 +134,158 @@ export const resetGoogleReplay = google.resetReplay;
 export const recordGoogleAs = google.recordAs;
 
 export default googleHttp;
+
+// ---------------------------------------------------------------------------
+// googleapis SDK seam (gaxios fetch hook) — added 2026-09-07
+// ---------------------------------------------------------------------------
+//
+// Until now only the transparent proxy (axios via `googleHttp`) went through the
+// harness. Every service that builds a `new JWT()` and calls `google.admin(...)`
+// / `google.gmail(...)` / `google.drive(...)` — the directory sync, the
+// offboarding orchestrator, Drive transfers, signatures — talked to Google
+// through googleapis' own transport (gaxios) and was invisible to record/replay.
+//
+// gaxios resolves its fetch as `config.fetchImplementation || defaults.fetchImplementation
+// || fetch`, and google-auth-library builds one Gaxios per auth client, so the
+// only global hook is Gaxios.prototype.request itself. We wrap it ONCE: when the
+// harness is OFF it is a pure passthrough; in RECORD/REPLAY it injects a fetch
+// that consults the same `google` instance the proxy uses. Token exchanges
+// (oauth2.googleapis.com) are never recorded and pass straight through.
+import { Gaxios } from 'gaxios';
+import { createRequire } from 'node:module';
+
+let sdkSeamInstalled = false;
+
+/**
+ * gaxios ships BOTH an ESM and a CommonJS build. This module (ESM) imports the
+ * ESM class, but google-auth-library and googleapis-common are CommonJS and
+ * `require('gaxios')`, so they instantiate the CJS class — a different
+ * prototype. Patching only one leaves every real SDK call unhooked (found live
+ * on 2026-09-07: a full directory sync recorded nothing). Patch every distinct
+ * prototype we can reach.
+ */
+function gaxiosPrototypes(): Array<{ request: (opts?: Record<string, unknown>) => Promise<unknown> }> {
+  const protos: unknown[] = [Gaxios.prototype];
+  try {
+    const req = createRequire(import.meta.url);
+    const cjs = req('gaxios') as { Gaxios?: { prototype: unknown } };
+    if (cjs?.Gaxios?.prototype) protos.push(cjs.Gaxios.prototype);
+  } catch {
+    /* CJS build not resolvable — ESM only */
+  }
+  return [...new Set(protos)] as Array<{ request: (opts?: Record<string, unknown>) => Promise<unknown> }>;
+}
+
+function toUrlString(input: unknown): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  const anyIn = input as { url?: string } | null;
+  return String(anyIn?.url ?? input);
+}
+
+function headersToRecord(h: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!h) return out;
+  try {
+    if (typeof (h as Headers).forEach === 'function') {
+      (h as Headers).forEach((v, k) => {
+        out[k] = v;
+      });
+      return out;
+    }
+    for (const [k, v] of Object.entries(h as Record<string, unknown>)) out[k] = String(v);
+  } catch {
+    /* best effort */
+  }
+  return out;
+}
+
+function parseBodyText(body: unknown): unknown {
+  if (body == null) return null;
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return body;
+    }
+  }
+  if (body instanceof URLSearchParams) return Object.fromEntries(body.entries());
+  return body;
+}
+
+function queryOf(url: string): Record<string, unknown> | null {
+  const u = new URL(url);
+  if ([...u.searchParams.keys()].length === 0) return null;
+  const q: Record<string, unknown> = {};
+  u.searchParams.forEach((v, k) => {
+    q[k] = v;
+  });
+  return q;
+}
+
+/**
+ * A `fetch`-compatible function implementing OFF / REPLAY / RECORD for any
+ * googleapis SDK call. Exported for tests; installed globally by
+ * `installGoogleSdkSeam()`.
+ */
+export async function googleSdkFetch(input: unknown, init?: RequestInit): Promise<Response> {
+  const realFetch = globalThis.fetch;
+  const mode = google.currentMode();
+  const url = toUrlString(input);
+  if (mode === 'off' || !/^https?:/.test(url)) return realFetch(input as string, init);
+  const { host, path } = google.splitUrl(url);
+  if (google.isTokenEndpoint(host, path)) return realFetch(input as string, init);
+  const method = String(init?.method || 'GET').toUpperCase();
+
+  if (mode === 'replay') {
+    const fx = google.replayLookup(method, host, path);
+    const noBody = fx.status === 204 || fx.status === 304;
+    const h = new Headers();
+    for (const [k, v] of Object.entries(fx.headers || {})) h.set(k, String(v));
+    if (!h.has('content-type')) h.set('content-type', 'application/json');
+    return new Response(noBody ? null : JSON.stringify(fx.data ?? null), { status: fx.status, headers: h });
+  }
+
+  // RECORD: real call, then persist the sanitized pair.
+  const res = await realFetch(input as string, init);
+  let data: unknown = null;
+  try {
+    const text = await res.clone().text();
+    data = text ? parseBodyText(text) : null;
+  } catch {
+    /* unreadable body — record null */
+  }
+  google.record({
+    method,
+    host,
+    path,
+    query: queryOf(url),
+    body: parseBodyText(init?.body),
+    response: { status: res.status, data, headers: headersToRecord(res.headers) },
+  });
+  return res;
+}
+
+/**
+ * Wrap Gaxios.prototype.request so every googleapis SDK call goes through
+ * `googleSdkFetch`. Idempotent. OFF mode adds one property assignment per call
+ * and nothing else — production behaviour is unchanged.
+ */
+export function installGoogleSdkSeam(): void {
+  if (sdkSeamInstalled) return;
+  sdkSeamInstalled = true;
+  for (const proto of gaxiosPrototypes()) {
+    const original = proto.request;
+    proto.request = function patchedRequest(this: unknown, opts: Record<string, unknown> = {}) {
+      if (google.currentMode() !== 'off' && !opts.fetchImplementation) {
+        opts = { ...opts, fetchImplementation: googleSdkFetch as unknown as typeof fetch };
+      }
+      return original.call(this, opts);
+    };
+  }
+}
+
+// Install on import: this module is loaded at boot by the transparent proxy and
+// by every test that touches the harness, so SDK calls are covered wherever the
+// proxy is. In OFF mode this is a no-op wrapper.
+installGoogleSdkSeam();

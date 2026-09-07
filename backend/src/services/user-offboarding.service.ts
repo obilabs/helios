@@ -1519,15 +1519,71 @@ class UserOffboardingService {
       applicationIds,
     });
 
+    // `transfers.insert` accepting the request is NOT the transfer completing.
+    // Google runs it asynchronously; a transfer can still fail afterwards
+    // (e.g. new owner suspended, quota). Poll `transfers.get` for a bounded
+    // window so the audit log records what actually happened, never an assumed
+    // success. Still-running after the window is recorded as UNCONFIRMED
+    // (confirmed:false) with the transfer id so it can be re-checked — the one
+    // honest state; it is not reported as completed.
+    const transferId = transferResponse.data.id ?? null;
+    const confirmation = transferId
+      ? await this.awaitTransferCompletion(datatransfer, transferId)
+      : { status: 'unknown', confirmed: false, applications: [] as Array<{ applicationId: string; status: string }> };
+    if (confirmation.status === 'failed') {
+      throw new Error(
+        `Data transfer ${transferId} FAILED (${confirmation.applications.map((a) => `${a.applicationId}:${a.status}`).join(', ') || 'no application status'})`
+      );
+    }
+    if (!confirmation.confirmed) {
+      logger.warn('Data transfer not yet confirmed complete within the polling window', {
+        transferId,
+        status: confirmation.status,
+        applications: confirmation.applications,
+      });
+    }
     return {
       action: config.driveAction,
       transferred: true,
       newOwnerEmail,
-      transferId: transferResponse.data.id ?? null,
+      transferId,
       applicationIds,
+      transferStatus: confirmation.status,
+      transferConfirmed: confirmation.confirmed,
+      applicationStatuses: confirmation.applications,
     };
   }
 
+  /**
+   * Poll the Data Transfer API until the transfer reports `completed` or
+   * `failed`, or the bounded window elapses. Interval / window are env-tunable
+   * (HELIOS_TRANSFER_POLL_INTERVAL_MS, HELIOS_TRANSFER_POLL_WINDOW_MS) so tests
+   * and small tenants can shorten them; defaults 5 s / 120 s.
+   */
+  private async awaitTransferCompletion(
+    datatransfer: { transfers: { get: (p: { dataTransferId: string }) => Promise<{ data: any }> } },
+    transferId: string
+  ): Promise<{ status: string; confirmed: boolean; applications: Array<{ applicationId: string; status: string }> }> {
+    const intervalMs = Math.max(0, parseInt(process.env.HELIOS_TRANSFER_POLL_INTERVAL_MS || '5000', 10));
+    const windowMs = Math.max(0, parseInt(process.env.HELIOS_TRANSFER_POLL_WINDOW_MS || '120000', 10));
+    const deadline = Date.now() + windowMs;
+    let status = 'unknown';
+    let applications: Array<{ applicationId: string; status: string }> = [];
+    for (;;) {
+      const res = await datatransfer.transfers.get({ dataTransferId: transferId });
+      status = String(res?.data?.overallTransferStatusCode || 'unknown');
+      applications = (res?.data?.applicationDataTransfers || []).map((a: any) => ({
+        applicationId: String(a.applicationId),
+        status: String(a.applicationTransferStatus || 'unknown'),
+      }));
+      if (status === 'completed') return { status, confirmed: true, applications };
+      if (status === 'failed' || applications.some((a) => a.status === 'failed')) {
+        return { status: 'failed', confirmed: false, applications };
+      }
+      if (Date.now() >= deadline) return { status, confirmed: false, applications };
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
   /**
    * Configure Gmail auto-forwarding for the departing user's mailbox.
    *
