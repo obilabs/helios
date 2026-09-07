@@ -1,0 +1,48 @@
+{
+  "family": "users",
+  "name": "users.post",
+  "recordedAt": "2026-09-07T08:23:07.789Z",
+  "request": {
+    "method": "POST",
+    "host": "graph.microsoft.com",
+    "path": "v1.0/users",
+    "query": null,
+    "body": {
+      "displayName": "REDACTED",
+      "mailNickname": "REDACTED",
+      "userPrincipalName": "REDACTED",
+      "passwordProfile": {
+        "forceChangePasswordNextSignIn": true,
+        "password": "REDACTED"
+      },
+      "accountEnabled": true,
+      "jobTitle": "Fixture Capture",
+      "department": "Engineering"
+    }
+  },
+  "response": {
+    "status": 400,
+    "data": {
+      "error": {
+        "code": "Request_BadRequest",
+        "message": "SourceAnchor is a required property for creation of a federated user.",
+        "innerError": {
+          "date": "2026-09-07T08:23:09",
+          "request-id": "00000000-0000-0000-0000-000000000001",
+          "client-request-id": "00000000-0000-0000-0000-000000000001"
+        }
+      }
+    },
+    "headers": {
+      "cache-control": "no-cache",
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+      "date": "Mon, 07 Sep 2026 08:23:08 GMT",
+      "strict-transport-security": "max-age=31536000",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ms-ags-diagnostic": "{\"ServerInfo\":{\"DataCenter\":\"West US 2\",\"Slice\":\"E\",\"Ring\":\"4\",\"ScaleUnit\":\"003\",\"RoleInstance\":\"CO1PEPF00016E6E\"}}",
+      "x-ms-resource-unit": "1"
+    }
+  }
+}
