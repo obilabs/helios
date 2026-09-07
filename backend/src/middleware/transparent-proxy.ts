@@ -419,7 +419,7 @@ function extractActor(req: Request): Actor {
  * The cross-domain guard must permit EVERY verified domain of the bound
  * workspace — not just the single primary stored in gw_credentials.domain — so
  * that a user on a SECONDARY/alias domain (e.g. a workspace whose primary is
- * foo.com but which also owns tmscanada.ca) can be impersonated. It must still
+ * foo.com but which also owns example.org) can be impersonated. It must still
  * REFUSE any address outside the tenant.
  *
  * The cache key includes the primary domain, so a rebind that changes the bound

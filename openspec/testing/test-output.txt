@@ -52,7 +52,7 @@ mike@obilabs.dev               mike
   "isEnrolledIn2Sv": false,
   "isEnforcedIn2Sv": false,
   "includeInGlobalAddressList": true,
-  "recoveryEmail": "mike.c.agu@gmail.com",
+  "recoveryEmail": "recovery@example.org",
   "recoveryPhone": "+15875010021"
 }
 
@@ -70,7 +70,7 @@ mike@obilabs.dev               mike
   "isEnrolledIn2Sv": false,
   "isEnforcedIn2Sv": false,
   "includeInGlobalAddressList": true,
-  "recoveryEmail": "mike.c.agu@gmail.com",
+  "recoveryEmail": "recovery@example.org",
   "recoveryPhone": "+15875010021"
 }[14:04:17]$ helios gw groups list[14:04:18]
 EMAIL                                   NAME                          MEMBERS

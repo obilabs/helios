@@ -5,7 +5,7 @@ proxy (`middleware/transparent-proxy.ts`) — the single choke point for every
 Google Workspace API call Helios makes (directory, Gmail, Calendar, Drive,
 Data Transfer, licensing).
 
-The live test tenant (gridworx.io) is Cloud Identity Free, so Gmail / Calendar /
+The live test tenant is Cloud Identity Free, so Gmail / Calendar /
 paid‑licensing calls **cannot** be live‑verified. Record a real response once
 (against any capable tenant), commit the sanitized fixture, and every other
 agent replays it with no network and no credentials.
