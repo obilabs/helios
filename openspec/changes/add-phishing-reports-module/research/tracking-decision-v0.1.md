@@ -230,7 +230,7 @@ Rules that make it freeze-worthy:
 
 ## 5. Open risks + what needs a LIVE test before locking
 
-The remaining uncertainty is empirical (what real traffic on a real tenant looks like), not answerable by more research. Use the existing live tenants (example.com / example.net from prior Helios binds) as the test bed.
+The remaining uncertainty is empirical (what real traffic on a real tenant looks like), not answerable by more research. Use the existing live tenants (the existing live test tenants from prior Helios binds) as the test bed.
 
 1. **DWD scope trap (blocking, engineering).** `users.messages.insert` needs the `gmail.insert` scope. Per your own hard-won gotcha, Google DWD is all-or-nothing and the transparent proxy mints the *full* `REQUIRED_SCOPES` on every call — so **adding `gmail.insert` to the blanket `REQUIRED_SCOPES` would silently 401 every already-connected workspace**. The phishing module MUST mint `gmail.insert` **per-call** (the `googleScopesForPath` pattern), never via the blanket set. Verify this before any live send.
 2. **"Unverified sender" grey question mark.** An injected message with a spoofed `From:` can draw Gmail's "Gmail can't verify it actually came from them" banner — a realism/tip-off risk that could depress click rates. Live-test how prominent it is and whether it undermines the exercise. (Realism, not schema — but it shapes whether injection is the right delivery for high-fidelity lures.)
