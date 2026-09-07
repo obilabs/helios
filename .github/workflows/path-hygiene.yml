@@ -27,3 +27,5 @@ jobs:
           node-version: 20
       - name: Scan tracked files for credentials
         run: node scripts/check-no-secrets.mjs
+      - name: Scan tracked files for real customer / personal identifiers (hash denylist)
+        run: node scripts/check-no-identifiers.mjs
