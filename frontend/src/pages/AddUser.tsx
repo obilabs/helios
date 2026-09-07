@@ -612,7 +612,10 @@ export function AddUser() {
 
       // Check for partial success (e.g., user created but GW creation failed)
       const hasGwWarning = data.providerStatus?.google?.requested && !data.providerStatus?.google?.success;
-      const hasMsWarning = data.providerStatus?.microsoft?.requested && !data.providerStatus?.microsoft?.success;
+      // A created account with a FAILED license assignment (or a substituted UPN
+      // domain) is a partial success too — say so instead of a green toast.
+      const ms = data.providerStatus?.microsoft;
+      const hasMsWarning = !!ms?.requested && (!ms.success || (ms.licenseRequested && !ms.licenseAssigned) || !!ms.upnNote);
 
       // Use server message which includes provider status details
       const message = data.message || `User ${formData.email} ${isEditMode ? 'updated' : 'created'} successfully!`;
