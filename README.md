@@ -1,6 +1,8 @@
 # Helios
 
-**Self-hosted Google Workspace administration portal.**
+**Self-hosted Google Workspace & Microsoft 365 administration for organizations that own their data.**
+
+A [ObiLabs](https://obilabs.dev) project. Free and open source (AGPL-3.0) — self-host it for as long as you like.
 
 🚧 Developer Preview (Alpha) 🚧
 
@@ -27,7 +29,9 @@ This project is currently in active development. Features, database schemas, and
 
 ## What is Helios?
 
-Helios is a web-based admin portal for Google Workspace. It gives you a modern UI for managing users, groups, email signatures, and more—while keeping all your data on your own infrastructure.
+Helios is a web-based admin portal for Google Workspace, with Microsoft 365 alongside it. It gives you a modern UI for managing users, groups, email signatures, lifecycle automation and licences — while keeping all your data, and the credentials that reach your tenant, on your own infrastructure. Every action is logged: who did what, when.
+
+Google Workspace is the primary platform. Microsoft 365 support covers users, groups and licences (create, update, licence, disable, delete) and is CLI-first; deeper Microsoft management (Exchange, mailboxes, SharePoint) is deliberately out of scope.
 
 ### Key Features
 
@@ -80,16 +84,9 @@ docker compose -f docker-compose.dev.yml up -d --build
 
 See [docs/guides/SETUP.md](docs/guides/SETUP.md) for complete setup including Google Workspace service account configuration.
 
-### Option 2: Hosted by Us
+### Option 2: Hosted by Us — coming soon
 
-Visit [obilabs.dev](https://obilabs.dev) to sign up.
-
-| Plan | Price | Includes |
-|------|-------|----------|
-| Starter | TBD | Hosting, backups, updates, email support |
-| Pro | TBD | + Custom domain, chat support, priority updates |
-
-**What hosted means:** We run the server infrastructure. You have full admin access. We never access your data.
+Not available yet. When it is: we run the server, you keep full admin access, and we never access your data. Watch [obilabs.dev](https://obilabs.dev). Paid setup and install help for your own server is available now — [info@obilabs.dev](mailto:info@obilabs.dev).
 
 ---
 
@@ -178,9 +175,12 @@ Your instance talks to Google Workspace using your own service account. Optional
 
 | Project | License | Purpose |
 |---------|---------|---------|
-| **helios** (this) | AGPL-3.0 | Single-organization admin portal |
-| [helios-mtp](https://github.com/obilabs/helios-mtp) | BSL | Multi-tenant portal for MSPs |
-| helios-web | Proprietary | Marketing site & hosting portal |
+| **helios** (this) | AGPL-3.0 | Google Workspace & Microsoft 365 administration, single organization |
+| [aegis](https://github.com/obilabs/aegis) | AGPL-3.0 | IT service management with an append-only, auditable record |
+| [obilabs-platform](https://github.com/obilabs/obilabs-platform) → MTP | BSL 1.1 | Multi-tenant portal for MSPs managing clients across ObiLabs products |
+| [rubric](https://github.com/obilabs/rubric) | Apache-2.0 | Git-native question-bank format; the quiz engine behind training content |
+
+Product clients (Helios, Aegis) are free and open source. MTP and services fund the work.
 
 ---
 
@@ -227,9 +227,9 @@ See [LICENSE](LICENSE) for details.
 
 ## About
 
-Built by [ObiLabs](https://obilabs.dev). We also offer:
-- **Managed Services:** We manage your Google Workspace for you
-- **helios-mtp:** Multi-tenant version for MSPs and IT providers
+Built by [ObiLabs](https://obilabs.dev) — self-hostable IT and security tools for organizations that want to own their data. We also offer:
+- **Setup & install services** for your own server
+- **MTP:** the multi-tenant portal for MSPs and IT providers who manage many Helios and Aegis installs
 
 Contact: [info@obilabs.dev](mailto:info@obilabs.dev)
 
