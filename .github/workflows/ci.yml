@@ -204,13 +204,33 @@ jobs:
                 ('user_fun_facts','display_order'),
                 ('user_expertise_topics','skill_level'),
                 ('user_media','organization_id'),
-                ('user_media','transcription_status')
+                ('user_media','transcription_status'),
+                -- 2026-09-07: the seed carried an older user_lifecycle_logs shape;
+                -- lifecycle-log.service.ts inserts these, so every onboarding /
+                -- offboarding orchestrator run failed before its first step on a
+                -- fresh install. Migration 076 reconciles.
+                ('user_lifecycle_logs','user_email'),
+                ('user_lifecycle_logs','action_type'),
+                ('user_lifecycle_logs','action_step'),
+                ('user_lifecycle_logs','step_order'),
+                ('user_lifecycle_logs','api_request'),
+                ('user_lifecycle_logs','triggered_by'),
+                ('user_lifecycle_logs','triggered_by_user_id'),
+                ('user_lifecycle_logs','executed_at')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
                 WHERE table_name = v.t AND column_name = v.c);
             IF missing IS NOT NULL THEN
               RAISE EXCEPTION 'post-migration schema is missing column(s): %', missing;
+            END IF;
+
+            -- The writer never sets the legacy step_name / step_type; they must be nullable.
+            PERFORM 1 FROM information_schema.columns
+              WHERE table_name='user_lifecycle_logs' AND column_name IN ('step_name','step_type')
+                AND is_nullable='NO';
+            IF FOUND THEN
+              RAISE EXCEPTION 'user_lifecycle_logs.step_name/step_type must be NULLABLE (migration 076)';
             END IF;
 
             IF NOT EXISTS (SELECT 1 FROM information_schema.tables
