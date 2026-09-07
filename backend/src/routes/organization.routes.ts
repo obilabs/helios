@@ -8,7 +8,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
-import { microsoftGraphService } from '../services/microsoft-graph.service.js';
+import { microsoftGraphService, chooseUpnDomain } from '../services/microsoft-graph.service.js';
 import { activityTracker } from '../services/activity-tracker.service.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 import {
@@ -1519,6 +1519,8 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     let microsoftCreationError: string | null = null;
     let microsoftLicenseAssigned = false;
     let microsoftLicenseError: string | null = null;
+    let microsoftUpnNote: string | null = null;
+    let upnForResponse: string | null = null;
 
     if (createInMicrosoft) {
       try {
@@ -1528,20 +1530,24 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
         } else {
           const localPart = email.split('@')[0];
           const emailDomain = (email.split('@')[1] || '').toLowerCase();
-          // UPN must be on a VERIFIED tenant domain: use the email if its domain
-          // is verified, else the local part on the default verified domain.
+          // UPN must be on a VERIFIED, MANAGED tenant domain. A verified-but-
+          // FEDERATED domain cannot take a cloud-created user (Graph: "SourceAnchor
+          // is a required property for creation of a federated user"), so prefer
+          // a managed domain and tell the admin when the email domain was not used.
           let upn = email.toLowerCase();
           try {
             const domains = await microsoftGraphService.getVerifiedDomains();
-            const verifiedNames = domains.filter(d => d.isVerified).map(d => d.name.toLowerCase());
-            if (!verifiedNames.includes(emailDomain)) {
-              const def = domains.find(d => d.isDefault) || domains[0];
-              if (def) upn = `${localPart}@${def.name}`;
+            const choice = chooseUpnDomain(emailDomain, domains);
+            if (choice.domain !== emailDomain) upn = `${localPart}@${choice.domain}`;
+            if (choice.reason) {
+              microsoftUpnNote = choice.reason;
+              logger.warn('M365 UPN domain substituted', { email, upn, reason: choice.reason });
             }
           } catch (dErr) {
             logger.warn('Could not resolve verified domains for M365 UPN; using email as UPN', { error: (dErr as Error).message });
           }
 
+          upnForResponse = upn;
           const tempPassword = crypto.randomBytes(16).toString('base64').slice(0, 16) + 'Aa1!';
           const created: any = await microsoftGraphService.createUser({
             displayName: `${firstName} ${lastName}`.trim(),
@@ -1625,6 +1631,10 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     }
     if (createInMicrosoft && microsoft365UserId) {
       message += (message.includes('Google Workspace') ? ' and Microsoft 365' : ' in Helios and Microsoft 365');
+      if (microsoftUpnNote) message += ` (${microsoftUpnNote})`;
+      if (licenseId && !microsoftLicenseAssigned) {
+        message += `. Microsoft 365 license NOT assigned: ${microsoftLicenseError || 'unknown error'}`;
+      }
     } else if (createInMicrosoft && microsoftCreationError) {
       message += '. Microsoft 365 creation failed: ' + microsoftCreationError;
     }
@@ -1658,7 +1668,9 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
             error: microsoftCreationError,
             licenseRequested: !!licenseId,
             licenseAssigned: microsoftLicenseAssigned,
-            licenseError: microsoftLicenseError
+            licenseError: microsoftLicenseError,
+            upn: microsoft365UserId ? upnForResponse : null,
+            upnNote: microsoftUpnNote
           } : null
         }
       }
