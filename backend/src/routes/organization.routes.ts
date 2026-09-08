@@ -689,6 +689,22 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         return segments.length > 0 ? segments[segments.length - 1] : null;
       };
 
+      // Every organization_users row (not just the filtered page), so a cache
+      // row is never emitted with the gw_synced_users id when a real identity
+      // exists. Until 2026-09-08 a Google user whose org row fell outside the
+      // current filter (e.g. user_type=contact on the Staff tab) came back with
+      // the CACHE id, and every per-user action on that row 404'd.
+      const allOrgRows = await db.query(
+        `SELECT id, LOWER(email) AS email, google_workspace_id FROM organization_users WHERE organization_id = $1`,
+        [organizationId]
+      );
+      const orgIdByEmail = new Map<string, string>();
+      const orgIdByGoogleId = new Map<string, string>();
+      for (const r of allOrgRows.rows) {
+        orgIdByEmail.set(r.email, r.id);
+        if (r.google_workspace_id) orgIdByGoogleId.set(String(r.google_workspace_id), r.id);
+      }
+
       gwUsersResult.rows.forEach((user: any) => {
         const email = user.email.toLowerCase();
         const platforms = ['google_workspace'];
@@ -721,6 +737,10 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
             existingUser.status = 'suspended';
             existingUser.isActive = false;
           }
+        } else if (orgIdByEmail.has(email) || orgIdByGoogleId.has(String(user.external_id))) {
+          // A real identity exists but the current filter excluded it: respect
+          // the filter rather than re-adding the person under the cache id.
+          return;
         } else if (statusFilter === 'all' || includeDeleted) {
           // Only add GW-only users when not filtering by a specific status
           // When filtering by active/deleted/suspended/etc, only show users
