@@ -556,14 +556,18 @@ function AppContent() {
           setStep('setup'); // Go directly to account setup
         }
       } else {
-        setStep('setup');
+        // The probe failed (rate limit, 5xx, proxy down). That is NOT evidence
+        // the install is unconfigured: on 2026-09-07 a 429 rendered the
+        // first-run wizard over a fully configured install. Only an explicit
+        // "not set up" answer opens the wizard; anything else goes to login.
+        console.warn('Setup status probe failed with HTTP', checkResponse.status, '- showing login');
+        setStep('login');
       }
 
     } catch (err) {
       console.error('Config check failed:', err);
-      // On error, default to setup page rather than welcome
-      // This prevents the flash of welcome page on network errors
-      setStep('setup');
+      // Network error: same reasoning — never open the setup wizard on a guess.
+      setStep('login');
     } finally {
       setLoading(false);
     }
