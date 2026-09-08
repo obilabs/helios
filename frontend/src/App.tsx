@@ -517,9 +517,37 @@ function AppContent() {
       try {
         const session = await getSession();
 
-        if (session?.session && storedOrg) {
+        // A valid cookie session with no localStorage copy (cleared by a
+        // transient probe failure, a new browser profile, or storage reset)
+        // used to land on the login screen even though the user WAS signed in
+        // (2026-09-08). Rebuild the UI-only copies from the session itself,
+        // exactly as LoginPage does after sign-in.
+        let effectiveOrg = storedOrg;
+        if (session?.session && session.user && !effectiveOrg && (session.user as any).organizationId) {
+          const u: any = session.user;
+          localStorage.setItem('helios_user', JSON.stringify({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            role: u.role,
+            organizationId: u.organizationId,
+            isExternalAdmin: u.isExternalAdmin,
+            defaultView: u.defaultView,
+            isActive: u.isActive,
+            department: u.department,
+          }));
+          effectiveOrg = JSON.stringify({
+            organizationId: u.organizationId,
+            organizationName: 'Organization',
+            domain: (u.email || '').split('@')[1] || '',
+          });
+          localStorage.setItem('helios_organization', effectiveOrg);
+        }
+
+        if (session?.session && effectiveOrg) {
           // User has an active session, set up dashboard
-          const orgData = JSON.parse(storedOrg);
+          const orgData = JSON.parse(effectiveOrg);
           setConfig({
             organizationId: orgData.organizationId,
             domain: orgData.domain,
@@ -528,8 +556,9 @@ function AppContent() {
           });
 
           // Load user data
-          if (storedUser) {
-            setCurrentUser(JSON.parse(storedUser));
+          const userJson = storedUser || localStorage.getItem('helios_user');
+          if (userJson) {
+            setCurrentUser(JSON.parse(userJson));
           }
 
           setStep('dashboard');
@@ -538,10 +567,15 @@ function AppContent() {
           return;
         }
       } catch (err) {
+        // A thrown session check (network error, 429, 5xx) is not proof the
+        // session is gone. Keep the stored copies and show login; a real
+        // sign-out clears them explicitly.
         console.warn('Session check failed:', err);
+        setStep('login');
+        return;
       }
 
-      // No valid session, clear stored data
+      // The server answered and there is no session: clear stored data.
       localStorage.removeItem('helios_organization');
       localStorage.removeItem('helios_user');
 
