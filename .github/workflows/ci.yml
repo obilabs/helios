@@ -225,7 +225,9 @@ jobs:
                 ('ai_config','custom_system_prompt'),
                 ('ai_config','ai_role'),
                 -- 2026-09-08: Create Template 500'd on a fresh install (migration 078).
-                ('signature_templates','mobile_html_content')
+                ('signature_templates','mobile_html_content'),
+                -- 2026-09-08: both group-member sync paths SET this in ON CONFLICT (migration 080).
+                ('access_group_members','updated_at')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
@@ -250,6 +252,11 @@ jobs:
             -- labels/with-availability calls this on every page load (migration 077).
             IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_available_entities') THEN
               RAISE EXCEPTION 'post-migration schema is missing function get_available_entities';
+            END IF;
+
+            -- GET /lifecycle/logs reads these views (migration 080).
+            IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'lifecycle_activity_feed') THEN
+              RAISE EXCEPTION 'post-migration schema is missing view lifecycle_activity_feed';
             END IF;
 
             RAISE NOTICE 'Post-migration contract OK';
