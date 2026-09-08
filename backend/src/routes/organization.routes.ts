@@ -1696,6 +1696,37 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       }
     }
 
+    // Group memberships chosen in the form. Local row always; Google group when
+    // both sides are Google-bound. Until 2026-09-08 the array was ignored.
+    const requestedGroups: string[] = Array.isArray(req.body.groups) ? req.body.groups.filter((g: unknown) => typeof g === 'string' && g) : [];
+    const groupFailures: string[] = [];
+    let groupsAdded = 0;
+    for (const groupRef of requestedGroups) {
+      try {
+        const gRes = await db.query(
+          `SELECT id, name, email, platform, external_id FROM access_groups
+            WHERE organization_id = $1 AND (id::text = $2 OR LOWER(email) = LOWER($2) OR LOWER(name) = LOWER($2))
+            LIMIT 1`,
+          [organizationId, groupRef]
+        );
+        const grp = gRes.rows[0];
+        if (!grp) { groupFailures.push(`${groupRef}: group not found`); continue; }
+        await db.query(
+          `INSERT INTO access_group_members (access_group_id, user_id, member_type, joined_at, is_active)
+           VALUES ($1, $2, 'member', NOW(), true)
+           ON CONFLICT (access_group_id, user_id) DO UPDATE SET is_active = true, updated_at = NOW()`,
+          [grp.id, newUser.id]
+        );
+        if (grp.platform === 'google_workspace' && grp.external_id && googleWorkspaceUserId) {
+          const gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          if (!gw.success) { groupFailures.push(`${grp.name}: Google rejected the membership (${gw.error})`); continue; }
+        }
+        groupsAdded++;
+      } catch (e: any) {
+        groupFailures.push(`${groupRef}: ${e?.message || 'failed'}`);
+      }
+    }
+
     // Build response message based on what was created
     let message = 'User created successfully';
     if (createInGoogle && googleWorkspaceUserId) {
@@ -1705,6 +1736,10 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       }
     } else if (createInGoogle && googleCreationError) {
       message = 'User created in Helios. Google Workspace creation failed: ' + googleCreationError;
+    }
+    if (requestedGroups.length > 0) {
+      message += `. Groups: ${groupsAdded}/${requestedGroups.length} added`;
+      if (groupFailures.length > 0) message += ` (${groupFailures.join('; ')})`;
     }
     if (createInMicrosoft && microsoft365UserId) {
       message += (message.includes('Google Workspace') ? ' and Microsoft 365' : ' in Helios and Microsoft 365');
