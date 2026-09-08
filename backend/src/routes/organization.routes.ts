@@ -1524,7 +1524,21 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
         department: department || undefined,
         managerEmail: createManagerEmail,
         changePasswordAtNextLogin: true,
-        phones: mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : undefined
+        phones: [
+          ...(mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : []),
+          ...(workPhone ? [{ type: 'work', value: workPhoneExtension ? `${workPhone} ext. ${workPhoneExtension}` : workPhone }] : []),
+        ].length ? [
+          ...(mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : []),
+          ...(workPhone ? [{ type: 'work', value: workPhoneExtension ? `${workPhone} ext. ${workPhoneExtension}` : workPhone }] : []),
+        ] : undefined,
+        location: location || undefined,
+        secondaryEmails: Array.isArray(req.body.secondaryEmails) ? req.body.secondaryEmails : undefined,
+        externalIds: [
+          { customType: 'github', value: githubUsername || '' },
+          { customType: 'slack', value: slackUserId || '' },
+          { customType: 'jumpcloud', value: jumpcloudUserId || '' },
+          { customType: 'associate_id', value: associateId || '' },
+        ].filter(x => x.value)
       });
 
       if (gwResult.success && gwResult.userId) {
@@ -1976,7 +1990,15 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
           managerEmail,
           location: location !== undefined ? location : undefined,
           organizationalUnit,
-          phones: phones.length > 0 ? phones : undefined
+          phones: phones.length > 0 ? phones : undefined,
+          externalIds: (githubUsername !== undefined || slackUserId !== undefined || jumpcloudUserId !== undefined || associateId !== undefined)
+            ? [
+                { customType: 'github', value: githubUsername || '' },
+                { customType: 'slack', value: slackUserId || '' },
+                { customType: 'jumpcloud', value: jumpcloudUserId || '' },
+                { customType: 'associate_id', value: associateId || '' },
+              ]
+            : undefined
         }
       );
 
