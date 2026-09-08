@@ -1157,7 +1157,7 @@ export class GoogleWorkspaceService {
   /**
    * Update group settings
    */
-  async updateGroup(organizationId: string, groupId: string, updates: { name?: string; description?: string }): Promise<any> {
+  async updateGroup(organizationId: string, groupId: string, updates: { name?: string; description?: string; email?: string }): Promise<any> {
     try {
       const credResult = await db.query(
         'SELECT service_account_key, admin_email FROM gw_credentials WHERE organization_id = $1',
@@ -1513,6 +1513,30 @@ export class GoogleWorkspaceService {
       return { success: true };
     } catch (error: any) {
       logger.error('Failed to restore user in Google Workspace', { googleWorkspaceId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete a group in Google Workspace (groups.delete). Mirrors updateGroup.
+   */
+  async deleteGroup(organizationId: string, groupKey: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credResult = await db.query(
+        'SELECT service_account_key, admin_email FROM gw_credentials WHERE organization_id = $1',
+        [organizationId]
+      );
+      if (credResult.rows.length === 0) {
+        return { success: false, error: 'No credentials found for this organization' };
+      }
+      const { service_account_key, admin_email } = credResult.rows[0];
+      const credentials = decodeServiceAccountKey(service_account_key);
+      const adminClient = this.createAdminClient(credentials, admin_email);
+      await adminClient.groups.delete({ groupKey });
+      logger.info('Deleted group in Google Workspace', { organizationId, groupKey });
+      return { success: true };
+    } catch (error: any) {
+      logger.error('Failed to delete group in Google Workspace', { organizationId, groupKey, error: error.message });
       return { success: false, error: error.message };
     }
   }
