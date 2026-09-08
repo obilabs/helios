@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "groups.03ygebqi2qpwo7u.members.delete",
-  "recordedAt": "2026-09-08T01:18:36.124Z",
+  "recordedAt": "2026-09-08T09:07:01.414Z",
   "request": {
     "method": "DELETE",
     "host": "admin.googleapis.com",

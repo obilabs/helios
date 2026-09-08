@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "users.post",
-  "recordedAt": "2026-09-07T23:37:42.253Z",
+  "recordedAt": "2026-09-08T08:21:49.788Z",
   "request": {
     "method": "POST",
     "host": "admin.googleapis.com",
@@ -11,14 +11,14 @@
       "primaryEmail": "user1@example.com",
       "name": {
         "givenName": "E2E",
-        "familyName": "Departing"
+        "familyName": "ReportOne"
       },
       "password": "REDACTED",
       "changePasswordAtNextLogin": true,
       "orgUnitPath": "/",
       "organizations": [
         {
-          "title": "Analyst",
+          "title": "Engineer",
           "department": "Engineering",
           "primary": true
         }
@@ -26,30 +26,21 @@
     }
   },
   "response": {
-    "status": 200,
+    "status": 412,
     "data": {
-      "kind": "admin#directory#user",
-      "id": "108421628909948645847",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/qbWiNT9dBgiGSwQfjXcCe4fT_M0\"",
-      "primaryEmail": "user1@example.com",
-      "name": {
-        "givenName": "E2E",
-        "familyName": "Departing"
-      },
-      "isAdmin": false,
-      "isDelegatedAdmin": false,
-      "creationTime": "2026-09-07T23:37:42.000Z",
-      "changePasswordAtNextLogin": true,
-      "organizations": [
-        {
-          "title": "Analyst",
-          "primary": true,
-          "department": "Engineering"
-        }
-      ],
-      "customerId": "C028vt14i",
-      "orgUnitPath": "/",
-      "isMailboxSetup": false
+      "error": {
+        "code": 412,
+        "message": "Domain user limit reached. Start paid subscription.",
+        "errors": [
+          {
+            "message": "Domain user limit reached. Start paid subscription.",
+            "domain": "global",
+            "reason": "limitExceeded",
+            "location": "If-Match",
+            "locationType": "header"
+          }
+        ]
+      }
     },
     "headers": {
       "content-type": "application/json; charset=UTF-8"

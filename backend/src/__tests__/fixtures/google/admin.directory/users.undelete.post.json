@@ -1,13 +1,15 @@
 {
   "family": "admin.directory",
-  "name": "users.signOut.post",
-  "recordedAt": "2026-09-08T09:07:02.180Z",
+  "name": "users.undelete.post",
+  "recordedAt": "2026-09-08T08:18:45.971Z",
   "request": {
     "method": "POST",
     "host": "admin.googleapis.com",
-    "path": "admin/directory/v1/users/departing%40example.com/signOut",
+    "path": "admin/directory/v1/users/108421628909948645847/undelete",
     "query": null,
-    "body": null
+    "body": {
+      "orgUnitPath": "/Engineering"
+    }
   },
   "response": {
     "status": 204,

@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.me.settings.sendAs.put",
-  "recordedAt": "2026-09-08T01:18:34.616Z",
+  "recordedAt": "2026-09-08T09:06:59.635Z",
   "request": {
     "method": "PUT",
     "host": "gmail.googleapis.com",

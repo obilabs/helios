@@ -1,65 +1,45 @@
 {
   "family": "admin.directory",
   "name": "users.get",
-  "recordedAt": "2026-09-08T01:20:27.832Z",
+  "recordedAt": "2026-09-08T09:07:27.668Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",
-    "path": "admin/directory/v1/users/108421628909948645847",
-    "query": {
-      "projection": "basic"
-    },
+    "path": "admin/directory/v1/users/user1@example.com",
+    "query": null,
     "body": null
   },
   "response": {
     "status": 200,
     "data": {
       "kind": "admin#directory#user",
-      "id": "108421628909948645847",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/gjGCjea-I1RQHmqop015smm5gmc\"",
+      "id": "117076889648580922730",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/VUaZVYOrgkgU8rJip2ZniPAMtrg\"",
       "primaryEmail": "user1@example.com",
       "name": {
-        "givenName": "E2E",
-        "familyName": "Departing",
-        "fullName": "E2E Departing"
+        "givenName": "TuBears",
+        "familyName": "Bryant",
+        "fullName": "TuBears Bryant"
       },
       "isAdmin": false,
       "isDelegatedAdmin": false,
-      "lastLoginTime": "1970-01-01T00:00:00.000Z",
-      "creationTime": "2026-09-07T23:37:42.000Z",
-      "agreedToTerms": false,
-      "suspended": true,
-      "suspensionReason": "ADMIN",
+      "lastLoginTime": "2026-08-31T22:28:29.000Z",
+      "creationTime": "2026-08-31T11:46:51.000Z",
+      "agreedToTerms": true,
+      "suspended": false,
       "archived": false,
-      "changePasswordAtNextLogin": true,
+      "changePasswordAtNextLogin": false,
       "ipWhitelisted": false,
       "emails": [
         {
           "address": "user1@example.com",
           "primary": true
-        },
-        {
-          "address": "user2@example.com"
         }
       ],
       "relations": [
         {
-          "value": "user3@example.com",
+          "value": "user2@example.com",
           "type": "manager"
-        }
-      ],
-      "organizations": [
-        {
-          "title": "Senior Analyst",
-          "primary": true,
-          "customType": "",
-          "department": "Engineering"
-        }
-      ],
-      "phones": [
-        {
-          "value": "+2348012345678",
-          "type": "mobile"
         }
       ],
       "languages": [
@@ -68,17 +48,13 @@
           "preference": "preferred"
         }
       ],
-      "nonEditableAliases": [
-        "user2@example.com"
-      ],
       "customerId": "C028vt14i",
-      "orgUnitPath": "/Engineering",
+      "orgUnitPath": "/",
       "isMailboxSetup": true,
       "isEnrolledIn2Sv": false,
       "isEnforcedIn2Sv": false,
       "includeInGlobalAddressList": true,
-      "isGuestUser": false,
-      "suspensionTime": "2026-09-08T01:18:42.165Z"
+      "isGuestUser": false
     },
     "headers": {
       "content-type": "application/json; charset=UTF-8"

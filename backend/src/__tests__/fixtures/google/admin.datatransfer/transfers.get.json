@@ -1,11 +1,11 @@
 {
   "family": "admin.datatransfer",
   "name": "transfers.get",
-  "recordedAt": "2026-09-08T01:18:32.615Z",
+  "recordedAt": "2026-09-08T09:06:55.128Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",
-    "path": "admin/datatransfer/v1/transfers/AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+    "path": "admin/datatransfer/v1/transfers/AKrEtIY_e_ni078ToxzSbLSxT9zCLCfTx1TC-fssM_WMnsypZet4l-pjg76SJIUKxb-4AVKYoudJQVXOiBzf5MwQWCNAjZE9Bg",
     "query": null,
     "body": null
   },
@@ -13,10 +13,10 @@
     "status": 200,
     "data": {
       "kind": "admin#datatransfer#DataTransfer",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/Zkp8aN9Wvna-6iW4D67K9wOlUoQ\"",
-      "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/fEvwk5l-FDKxr6ksgN7IxCXSNzY\"",
+      "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCLCfTx1TC-fssM_WMnsypZet4l-pjg76SJIUKxb-4AVKYoudJQVXOiBzf5MwQWCNAjZE9Bg",
       "oldOwnerUserId": "108421628909948645847",
-      "newOwnerUserId": "104954732959818622924",
+      "newOwnerUserId": "104133866875488011700",
       "applicationDataTransfers": [
         {
           "applicationId": "55656082996",
@@ -37,7 +37,7 @@
         }
       ],
       "overallTransferStatusCode": "completed",
-      "requestTime": "2026-09-08T01:18:22.360Z"
+      "requestTime": "2026-09-08T09:06:46.000Z"
     },
     "headers": {
       "content-type": "application/json; charset=UTF-8"

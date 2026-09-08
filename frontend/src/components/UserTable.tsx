@@ -81,6 +81,7 @@ export function UserTable({
   const [bulkConfirmAction, setBulkConfirmAction] = useState<'activate' | 'suspend' | 'delete' | null>(null);
   // Suspend is a platform write; ask first (2026-09-08).
   const [suspendConfirmUser, setSuspendConfirmUser] = useState<User | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 8 });
   const [restoreDeletedUser, setRestoreDeletedUser] = useState<User | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
@@ -308,6 +309,11 @@ export function UserTable({
         className="btn-ellipsis"
         onClick={(e) => {
           e.stopPropagation();
+          // The table scrolls horizontally, so an absolutely positioned menu
+          // is clipped by the scroll container at desktop widths (2026-09-08).
+          // Anchor it to the viewport instead.
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
           setActionMenuOpen(actionMenuOpen === user.id ? null : user.id);
         }}
       >
@@ -315,7 +321,7 @@ export function UserTable({
       </button>
 
       {actionMenuOpen === user.id && (
-        <div className="action-menu" onClick={(e) => e.stopPropagation()}>
+        <div className="action-menu" style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => { setSelectedUser(user); setShowViewModal(true); setActionMenuOpen(null); }}>
             <Eye size={14} /> View Details
           </button>
