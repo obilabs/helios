@@ -188,7 +188,7 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
         // A failed lookup must NOT read as "no direct reports" (2026-09-08: a
         // 500 here let an offboarding proceed with two reports left orphaned).
         setDirectReportsFailed(true);
-        setError('Could not load this user's direct reports. Fix the lookup before offboarding; nobody may be left without a manager.');
+        setError("Could not load this user's direct reports. Fix the lookup before offboarding; nobody may be left without a manager.");
         setDirectReports([]);
         return;
       }
