@@ -88,6 +88,77 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const [newDelegateEmail, setNewDelegateEmail] = useState('');
   const [delegateCandidates, setDelegateCandidates] = useState<Array<{ id: string; email: string; name: string }>>([]);
   const [delegateToRemove, setDelegateToRemove] = useState<string | null>(null);
+  // Google Workspace licence (Settings tab)
+  const [gLicenses, setGLicenses] = useState<Array<{ productId: string; skuId: string; skuName: string }> | null>(null);
+  const [gInventory, setGInventory] = useState<Array<{ skuId: string; displayName: string }>>([]);
+  const [gSkuChoice, setGSkuChoice] = useState('');
+  const [gBusy, setGBusy] = useState(false);
+  const [gLicenseError, setGLicenseError] = useState<string | null>(null);
+  const [gLicenseToRemove, setGLicenseToRemove] = useState<{ productId: string; skuId: string; skuName: string } | null>(null);
+
+  const fetchGoogleLicense = async () => {
+    if (!user.googleWorkspaceId) return;
+    setGLicenseError(null);
+    try {
+      const [mine, inv] = await Promise.all([
+        authFetch(`/api/v1/organization/users/${user.id}/google-license`),
+        authFetch(`/api/v1/organization/licenses`),
+      ]);
+      const mineData = await mine.json().catch(() => ({}));
+      if (!mine.ok || !mineData.success) {
+        setGLicenseError(mineData.error || 'Could not read the licence from Google');
+        setGLicenses([]);
+      } else {
+        setGLicenses(mineData.data?.licenses || []);
+      }
+      const invData = await inv.json().catch(() => ({}));
+      const google = (invData.data || invData.licenses || []).filter((l: any) => l.provider === 'google');
+      setGInventory(google.map((l: any) => ({ skuId: l.skuId, displayName: l.displayName })));
+    } catch (e: any) {
+      setGLicenseError(e?.message || 'Could not read the licence');
+    }
+  };
+
+  const applyGoogleLicense = async () => {
+    if (!gSkuChoice) return;
+    setGBusy(true);
+    try {
+      const response = await authFetch(`/api/v1/organization/users/${user.id}/google-license`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skuId: gSkuChoice }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || 'Failed to change the licence');
+      showSuccess(data.data?.action === 'unchanged' ? 'Licence already assigned' : 'Google licence updated');
+      setGSkuChoice('');
+      fetchGoogleLicense();
+      onUserUpdated?.();
+    } catch (e: any) {
+      showError(e.message);
+    } finally {
+      setGBusy(false);
+    }
+  };
+
+  const removeGoogleLicense = async (lic: { productId: string; skuId: string }) => {
+    setGBusy(true);
+    try {
+      const response = await authFetch(
+        `/api/v1/organization/users/${user.id}/google-license?skuId=${encodeURIComponent(lic.skuId)}&productId=${encodeURIComponent(lic.productId)}`,
+        { method: 'DELETE' }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || 'Failed to remove the licence');
+      showSuccess('Google licence removed');
+      fetchGoogleLicense();
+      onUserUpdated?.();
+    } catch (e: any) {
+      showError(e.message);
+    } finally {
+      setGBusy(false);
+    }
+  };
   const [addingDelegate, setAddingDelegate] = useState(false);
   const [removingDelegate, setRemovingDelegate] = useState<string | null>(null);
   const [showForwardingModal, setShowForwardingModal] = useState(false);
@@ -151,6 +222,8 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       fetchEmailSettings();
     } else if (activeTab === 'security') {
       fetchSecurityData();
+    } else if (activeTab === 'settings') {
+      fetchGoogleLicense();
     }
   }, [activeTab, user.id]);
 
@@ -1917,6 +1990,44 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                 </div>
               </div>
 
+              {user.googleWorkspaceId && (
+                <div className="settings-section">
+                  <h4>Google Workspace Licence</h4>
+                  <div className="setting-item">
+                    <label>Assigned</label>
+                    {gLicenseError ? (
+                      <div className="error-text">{gLicenseError}</div>
+                    ) : gLicenses === null ? (
+                      <div>Loading...</div>
+                    ) : gLicenses.length === 0 ? (
+                      <div>No licence assigned</div>
+                    ) : (
+                      <div className="license-list">
+                        {gLicenses.map((lic) => (
+                          <div key={`${lic.productId}-${lic.skuId}`} className="license-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span>{lic.skuName} <small style={{ color: '#6b7280' }}>({lic.skuId})</small></span>
+                            <button className="btn-secondary" disabled={gBusy} onClick={() => setGLicenseToRemove(lic)}>Remove</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="setting-item">
+                    <label>Assign or switch</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <select value={gSkuChoice} onChange={(e) => setGSkuChoice(e.target.value)} aria-label="Google licence">
+                        <option value="">Select a licence...</option>
+                        {gInventory.map((l) => (
+                          <option key={l.skuId} value={l.skuId}>{l.displayName}</option>
+                        ))}
+                      </select>
+                      <button className="btn-primary" disabled={gBusy || !gSkuChoice} onClick={applyGoogleLicense}>Apply</button>
+                    </div>
+                    <p className="form-hint">Google does not expose seat totals; a licence is assigned whenever the subscription allows it.</p>
+                  </div>
+                </div>
+              )}
+
               <div className="settings-section">
                 <h4>Role Management</h4>
                 <div className="setting-item">
@@ -2307,6 +2418,15 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       )}
 
       {/* Status Change Confirmation */}
+      <ConfirmDialog
+        isOpen={gLicenseToRemove !== null}
+        title="Remove Google licence"
+        message={gLicenseToRemove ? `Remove ${gLicenseToRemove.skuName} from ${user.email}? Google may restrict the mailbox and Drive once no licence is assigned.` : ''}
+        confirmText="Remove licence"
+        variant="danger"
+        onConfirm={async () => { const l = gLicenseToRemove; setGLicenseToRemove(null); if (l) await removeGoogleLicense(l); }}
+        onCancel={() => setGLicenseToRemove(null)}
+      />
       <ConfirmDialog
         isOpen={delegateToRemove !== null}
         title="Remove delegate"
