@@ -1,0 +1,46 @@
+{
+  "family": "admin.datatransfer",
+  "name": "transfers.get",
+  "recordedAt": "2026-09-08T01:18:32.615Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/datatransfer/v1/transfers/AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#datatransfer#DataTransfer",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/Zkp8aN9Wvna-6iW4D67K9wOlUoQ\"",
+      "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+      "oldOwnerUserId": "108421628909948645847",
+      "newOwnerUserId": "104954732959818622924",
+      "applicationDataTransfers": [
+        {
+          "applicationId": "55656082996",
+          "applicationTransferParams": [
+            {
+              "key": "PRIVACY_LEVEL",
+              "value": [
+                "PRIVATE",
+                "SHARED"
+              ]
+            }
+          ],
+          "applicationTransferStatus": "completed"
+        },
+        {
+          "applicationId": "435070579839",
+          "applicationTransferStatus": "completed"
+        }
+      ],
+      "overallTransferStatusCode": "completed",
+      "requestTime": "2026-09-08T01:18:22.360Z"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

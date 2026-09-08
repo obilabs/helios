@@ -1,0 +1,19 @@
+{
+  "family": "admin.directory",
+  "name": "groups.00gjdgxs0trarmx.delete",
+  "recordedAt": "2026-09-08T00:15:26.418Z",
+  "request": {
+    "method": "DELETE",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/groups/00gjdgxs0trarmx",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "content-type": "text/html"
+    }
+  }
+}

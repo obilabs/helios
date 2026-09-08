@@ -1,0 +1,50 @@
+{
+  "family": "admin.directory",
+  "name": "customer.my_customer.domains.list",
+  "recordedAt": "2026-09-08T01:19:06.663Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/domains",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#domains",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/B7Vw7dT19a-n4aHntYclI1_L-08\"",
+      "domains": [
+        {
+          "kind": "admin#directory#domain",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/YUJ_o1ho30lmM10C2YI0PSKfs1o\"",
+          "domainName": "example.com",
+          "domainAliases": [
+            {
+              "kind": "admin#directory#domainAlias",
+              "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/7upZte4vNPdj-5z7mvlBlZacE10\"",
+              "domainAliasName": "example.com.test-google-a.com",
+              "parentDomainName": "example.com",
+              "verified": true,
+              "creationTime": "1788161205325"
+            }
+          ],
+          "isPrimary": true,
+          "verified": true,
+          "creationTime": "1788161205325"
+        },
+        {
+          "kind": "admin#directory#domain",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/ychbdNlj-Hy5RZGyF6FX6Unn3Zg\"",
+          "domainName": "example.net",
+          "isPrimary": false,
+          "verified": true,
+          "creationTime": "1788163860618"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "family": "calendar",
+  "name": "calendars.primary.events.post",
+  "recordedAt": "2026-09-07T23:38:47.343Z",
+  "request": {
+    "method": "POST",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/primary/events",
+    "query": {
+      "sendUpdates": "none"
+    },
+    "body": {
+      "summary": "E2E future sync",
+      "start": {
+        "dateTime": "2026-09-14T14:00:00.000Z"
+      },
+      "end": {
+        "dateTime": "2026-09-14T15:00:00.000Z"
+      },
+      "attendees": [
+        {
+          "email": "user1@example.com"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#event",
+      "etag": "\"3577648658570366\"",
+      "id": "36jom7o9tbjj54ssvi1smcnirs",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=MzZqb203bzl0YmpqNTRzc3ZpMXNtY25pcnMgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
+      "created": "2026-09-07T23:38:49.000Z",
+      "updated": "2026-09-07T23:38:49.285Z",
+      "summary": "E2E future sync",
+      "creator": {
+        "email": "user2@example.com",
+        "self": true
+      },
+      "organizer": {
+        "email": "user2@example.com",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-09-14T14:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-14T15:00:00Z",
+        "timeZone": "UTC"
+      },
+      "iCalUID": "user3@example.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "user1@example.com",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

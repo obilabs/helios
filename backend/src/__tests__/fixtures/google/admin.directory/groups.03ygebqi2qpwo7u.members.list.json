@@ -1,0 +1,33 @@
+{
+  "family": "admin.directory",
+  "name": "groups.03ygebqi2qpwo7u.members.list",
+  "recordedAt": "2026-09-08T00:56:49.000Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/groups/03ygebqi2qpwo7u/members",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#members",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/OLmo0WD4XlG97c2dAotxd3EAI10\"",
+      "members": [
+        {
+          "kind": "admin#directory#member",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/5ASuM4UbQooQdwmEl4naafXQsO8\"",
+          "id": "108421628909948645847",
+          "email": "user1@example.com",
+          "role": "MEMBER",
+          "type": "USER",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

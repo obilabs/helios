@@ -1,0 +1,30 @@
+{
+  "family": "admin.directory",
+  "name": "groups.members.post",
+  "recordedAt": "2026-09-08T01:16:29.220Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/groups/user1@example.com/members",
+    "query": null,
+    "body": {
+      "email": "user2@example.com",
+      "role": "MEMBER"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#member",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/SIyTWUmnlZBHsTaLdKrXI6lwwto\"",
+      "id": "108421628909948645847",
+      "email": "user2@example.com",
+      "role": "MEMBER",
+      "type": "USER",
+      "status": "SUSPENDED"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

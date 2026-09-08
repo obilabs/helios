@@ -1,0 +1,26 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.delegates.list",
+  "recordedAt": "2026-09-08T01:19:07.507Z",
+  "request": {
+    "method": "GET",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/delegates",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "delegates": [
+        {
+          "delegateEmail": "user1@example.com",
+          "verificationStatus": "accepted"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

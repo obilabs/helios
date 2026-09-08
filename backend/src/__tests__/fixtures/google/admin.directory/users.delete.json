@@ -1,0 +1,19 @@
+{
+  "family": "admin.directory",
+  "name": "users.delete",
+  "recordedAt": "2026-09-08T01:20:28.396Z",
+  "request": {
+    "method": "DELETE",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users/108421628909948645847",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "content-type": "text/html"
+    }
+  }
+}
