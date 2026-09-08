@@ -1,0 +1,28 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.sendAs.put",
+  "recordedAt": "2026-09-08T01:18:34.616Z",
+  "request": {
+    "method": "PUT",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/sendAs/departing%40example.com",
+    "query": null,
+    "body": {
+      "signature": ""
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "sendAsEmail": "user1@example.com",
+      "displayName": "",
+      "replyToAddress": "",
+      "signature": "",
+      "isPrimary": true,
+      "isDefault": true
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

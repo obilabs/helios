@@ -1,0 +1,58 @@
+{
+  "family": "admin.directory",
+  "name": "users.post",
+  "recordedAt": "2026-09-07T23:37:42.253Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users",
+    "query": null,
+    "body": {
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "Departing"
+      },
+      "password": "REDACTED",
+      "changePasswordAtNextLogin": true,
+      "orgUnitPath": "/",
+      "organizations": [
+        {
+          "title": "Analyst",
+          "department": "Engineering",
+          "primary": true
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#user",
+      "id": "108421628909948645847",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/qbWiNT9dBgiGSwQfjXcCe4fT_M0\"",
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "Departing"
+      },
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "creationTime": "2026-09-07T23:37:42.000Z",
+      "changePasswordAtNextLogin": true,
+      "organizations": [
+        {
+          "title": "Analyst",
+          "primary": true,
+          "department": "Engineering"
+        }
+      ],
+      "customerId": "C028vt14i",
+      "orgUnitPath": "/",
+      "isMailboxSetup": false
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

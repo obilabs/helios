@@ -1,0 +1,39 @@
+{
+  "family": "calendar",
+  "name": "calendars.events.list",
+  "recordedAt": "2026-09-08T01:18:35.108Z",
+  "request": {
+    "method": "GET",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/departing%40example.com/events",
+    "query": {
+      "timeMin": "2026-09-08T01:18:34.655Z",
+      "singleEvents": "true",
+      "maxResults": "250"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#events",
+      "etag": "\"p33fp94krt3epc0o\"",
+      "summary": "user1@example.com",
+      "description": "",
+      "updated": "2026-09-08T01:18:33.384Z",
+      "timeZone": "UTC",
+      "accessRole": "owner",
+      "defaultReminders": [
+        {
+          "method": "popup",
+          "minutes": 10
+        }
+      ],
+      "nextSyncToken": "CN-Ukpvo3ZYDEN-Ukpvo3ZYDGAUg0MCgzwMo0MCgzwM=",
+      "items": []
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

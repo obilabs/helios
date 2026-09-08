@@ -2210,6 +2210,49 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
 });
 
 /**
+ * Apply a suspend/restore to every platform the user is bound to.
+ * Returns per-platform outcomes; ok=false if any bound platform failed.
+ */
+export async function applyStatusToPlatforms(
+  organizationId: string,
+  user: { email: string; google_workspace_id?: string | null; microsoft_365_id?: string | null },
+  status: 'suspended' | 'active',
+): Promise<{ ok: boolean; error?: string; platforms: Array<{ platform: 'google' | 'microsoft'; action: string; success: boolean; error?: string }> }> {
+  const platforms: Array<{ platform: 'google' | 'microsoft'; action: string; success: boolean; error?: string }> = [];
+  const action = status === 'suspended' ? 'suspend' : 'restore';
+
+  if (user.google_workspace_id) {
+    const r = status === 'suspended'
+      ? await googleWorkspaceService.suspendUser(organizationId, user.google_workspace_id)
+      : await googleWorkspaceService.restoreUser(organizationId, user.google_workspace_id);
+    platforms.push({ platform: 'google', action, success: r.success, error: r.error });
+  }
+
+  if (user.microsoft_365_id) {
+    try {
+      const initialized = await microsoftGraphService.initialize(organizationId);
+      if (!initialized) throw new Error('Microsoft 365 is not configured');
+      if (status === 'suspended') await microsoftGraphService.disableUser(user.microsoft_365_id);
+      else await microsoftGraphService.enableUser(user.microsoft_365_id);
+      platforms.push({ platform: 'microsoft', action, success: true });
+    } catch (e: any) {
+      platforms.push({ platform: 'microsoft', action, success: false, error: e?.message || String(e) });
+    }
+  }
+
+  const failed = platforms.filter(p => !p.success);
+  if (failed.length > 0) {
+    const names = failed.map(f => f.platform === 'google' ? 'Google Workspace' : 'Microsoft 365').join(' and ');
+    return {
+      ok: false,
+      error: 'Could not ' + action + ' ' + user.email + ' on ' + names + ': ' + failed.map(f => f.error).join('; '),
+      platforms,
+    };
+  }
+  return { ok: true, platforms };
+}
+
+/**
  * PATCH /api/organization/users/:userId/status
  * Change user status (active, staged, suspended)
  */
@@ -2246,7 +2289,8 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     // Get current user info
     const userResult = await db.query(
-      `SELECT id, email, status, role FROM organization_users WHERE id = $1 AND organization_id = $2 AND status != 'deleted'`,
+      `SELECT id, email, status, role, google_workspace_id, microsoft_365_id
+         FROM organization_users WHERE id = $1 AND organization_id = $2 AND status != 'deleted'`,
       [userId, organizationId]
     );
 
@@ -2258,6 +2302,22 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
     }
 
     const oldStatus = userResult.rows[0].status;
+
+    // Reach the bound platform(s) BEFORE touching the local row. Until
+    // 2026-09-07 this route only flipped the local status: "Suspend" in the
+    // Users list left the Google/Microsoft account fully active while Helios
+    // showed Suspended. A platform failure must surface, never be swallowed.
+    if (status === 'suspended' || status === 'active') {
+      const platformResult = await applyStatusToPlatforms(organizationId, userResult.rows[0], status);
+      if (!platformResult.ok) {
+        return res.status(502).json({
+          success: false,
+          error: platformResult.error,
+          data: { platforms: platformResult.platforms }
+        });
+      }
+      res.locals.platforms = platformResult.platforms;
+    }
 
     // LAST-ADMIN GUARD: suspending/staging the final remaining admin would
     // lock out administration — refuse.
@@ -2327,7 +2387,8 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
       data: {
         userId,
         status,
-        isActive
+        isActive,
+        platforms: res.locals.platforms ?? []
       }
     });
   } catch (error: any) {
@@ -3953,10 +4014,12 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
     // Handle forwarding
     if (forwarding !== undefined) {
       if (forwarding.enabled && forwarding.forwardTo) {
+        const allowed = ['leaveInInbox', 'archive', 'trash', 'markRead'];
         results.forwarding = await gwService.setupEmailForwarding(
           organizationId,
           user.email,
-          forwarding.forwardTo
+          forwarding.forwardTo,
+          allowed.includes(forwarding.disposition) ? forwarding.disposition : 'leaveInInbox'
         );
       } else if (forwarding.enabled === false) {
         results.forwarding = await gwService.disableEmailForwarding(

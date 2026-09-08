@@ -1,0 +1,24 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.forwardingAddresses.post",
+  "recordedAt": "2026-09-08T00:22:58.863Z",
+  "request": {
+    "method": "POST",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/forwardingAddresses",
+    "query": null,
+    "body": {
+      "forwardingEmail": "user1@example.com"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "forwardingEmail": "user1@example.com",
+      "verificationStatus": "accepted"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

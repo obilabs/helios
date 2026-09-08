@@ -456,9 +456,10 @@ router.post('/templates', requireAuth, requirePermission('admin'), async (req: R
         category,
         variables_used,
         is_active,
+        status,
         is_default,
         created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
       [
         organizationId,
@@ -471,6 +472,10 @@ router.post('/templates', requireAuth, requirePermission('admin'), async (req: R
         category || null,
         variables_used ? JSON.stringify(variables_used) : null,
         is_active,
+        // The effective-signature view filters on status = 'active' while the
+        // UI only knows is_active; the seed default 'draft' made every new
+        // template invisible to deployment (2026-09-08: "1 skipped").
+        is_active ? 'active' : 'draft',
         is_default,
         userId,
       ]
@@ -866,6 +871,9 @@ router.put('/templates/:templateId', requireAuth, requirePermission('admin'), as
     if (is_active !== undefined) {
       updates.push(`is_active = $${valueIndex++}`);
       values.push(is_active);
+      // Keep the view's status flag in step with is_active (see create).
+      updates.push(`status = $${valueIndex++}`);
+      values.push(is_active ? 'active' : 'draft');
     }
     if (is_default !== undefined) {
       updates.push(`is_default = $${valueIndex++}`);

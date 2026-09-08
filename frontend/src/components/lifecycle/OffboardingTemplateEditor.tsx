@@ -270,7 +270,9 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
 
   const fetchUsers = async () => {
     try {
-      const response = await authFetch('/api/v1/users');
+      // '/api/v1/users' never existed; every transfer/forward/calendar target
+      // list in this editor was empty (2026-09-08). Staff only, active only.
+      const response = await authFetch('/api/v1/organization/users?status=active&userType=staff&limit=200');
 
       if (response.ok) {
         const data = await response.json();

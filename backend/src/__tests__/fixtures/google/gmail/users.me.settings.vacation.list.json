@@ -1,0 +1,24 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.vacation.list",
+  "recordedAt": "2026-09-08T00:25:17.600Z",
+  "request": {
+    "method": "GET",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/vacation",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "enableAutoReply": false,
+      "responseSubject": "",
+      "restrictToContacts": false,
+      "restrictToDomain": false
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

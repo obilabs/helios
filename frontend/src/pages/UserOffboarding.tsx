@@ -136,6 +136,7 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [runOutcome, setRunOutcome] = useState<{ completed: string[]; failed: string[]; skipped: string[]; errors: string[] } | null>(null);
   const [success, setSuccess] = useState(false);
 
   // Direct reports management
@@ -388,11 +389,22 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || 'Failed to initiate offboarding');
       }
 
+      // The route answers 207 (still "ok" to fetch) when some steps failed.
+      // On 2026-09-08 three steps failed and this screen said "Offboarding
+      // Initiated" with nothing else. Surface what failed, loudly.
+      const failed: string[] = data?.data?.stepsFailed || [];
+      const errs: string[] = data?.errors || [];
+      setRunOutcome({
+        completed: data?.data?.stepsCompleted || [],
+        failed,
+        skipped: data?.data?.stepsSkipped || [],
+        errors: errs,
+      });
       setSuccess(true);
     } catch (err: any) {
       console.error('Error initiating offboarding:', err);
@@ -440,13 +452,31 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
           <div className="success-icon">
             <CheckCircle size={64} />
           </div>
-          <h2>Offboarding Initiated</h2>
+          <h2>{runOutcome && runOutcome.failed.length > 0 ? 'Offboarding Completed With Failures' : 'Offboarding Initiated'}</h2>
           <p>
             {customization.scheduleFor === 'now'
-              ? `${selectedUser?.firstName} ${selectedUser?.lastName}'s offboarding has started.`
+              ? `${selectedUser?.firstName} ${selectedUser?.lastName}'s offboarding has run.`
               : `Offboarding for ${selectedUser?.firstName} ${selectedUser?.lastName} has been scheduled.`
             }
           </p>
+          {runOutcome && customization.scheduleFor === 'now' && (
+            <div className="offboarding-outcome">
+              {runOutcome.failed.length > 0 && (
+                <div className="error-banner">
+                  <AlertCircle size={16} />
+                  <div>
+                    <strong>{runOutcome.failed.length} step{runOutcome.failed.length === 1 ? '' : 's'} failed:</strong>
+                    <ul>
+                      {runOutcome.errors.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              <p className="outcome-summary">
+                {runOutcome.completed.length} completed, {runOutcome.failed.length} failed, {runOutcome.skipped.length} skipped
+              </p>
+            </div>
+          )}
           {customization.notifyManager && selectedUser?.managerName && (
             <p className="success-email">
               {selectedUser.managerName} will be notified.

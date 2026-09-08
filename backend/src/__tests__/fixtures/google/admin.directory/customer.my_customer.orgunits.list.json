@@ -1,0 +1,46 @@
+{
+  "family": "admin.directory",
+  "name": "customer.my_customer.orgunits.list",
+  "recordedAt": "2026-09-07T23:55:28.088Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/orgunits",
+    "query": {
+      "type": "all"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#orgUnits",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/dQbp5w91x-SOfLfJeLW_BIhr3Gs\"",
+      "organizationUnits": [
+        {
+          "kind": "admin#directory#orgUnit",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/lxSfHPLwEmljF2f1Z6HSzIqE1EE\"",
+          "name": "Workspace Guests",
+          "description": "A dedicated Org Unit for external guests",
+          "orgUnitPath": "/Workspace Guests",
+          "orgUnitId": "id:03ph8a2z3h72hlh",
+          "parentOrgUnitPath": "/",
+          "parentOrgUnitId": "id:03ph8a2z4gp4fjs"
+        },
+        {
+          "kind": "admin#directory#orgUnit",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/C-rypVrNx-jUn8M36B8eEnU6494\"",
+          "name": "Engineering",
+          "description": "E2E run",
+          "orgUnitPath": "/Engineering",
+          "orgUnitId": "id:03ph8a2z453trn2",
+          "parentOrgUnitPath": "/",
+          "parentOrgUnitId": "id:03ph8a2z4gp4fjs"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

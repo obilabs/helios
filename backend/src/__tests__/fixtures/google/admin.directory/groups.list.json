@@ -1,0 +1,39 @@
+{
+  "family": "admin.directory",
+  "name": "groups.list",
+  "recordedAt": "2026-09-08T01:18:35.475Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/groups",
+    "query": {
+      "userKey": "user1@example.com"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#groups",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/-TQa2AAQSuJwqIqp2ylSVRcjcEE\"",
+      "groups": [
+        {
+          "kind": "admin#directory#group",
+          "id": "03ygebqi2qpwo7u",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/SXd9JGvGuzb75ovYITJzW69XDIU\"",
+          "email": "user2@example.com",
+          "name": "E2E Team (seed for offboarding)",
+          "directMembersCount": "1",
+          "description": "",
+          "adminCreated": true,
+          "nonEditableAliases": [
+            "user3@example.com"
+          ]
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

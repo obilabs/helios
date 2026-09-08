@@ -159,6 +159,12 @@ function getPageFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/console')) return 'console';
   // Automation routes
   if (pathname.startsWith('/admin/onboarding-templates')) return 'onboarding-templates';
+  // Editor pages must be matched BEFORE the list page prefix; without these
+  // "New Template" navigated to an unmapped page id and landed on the Dashboard (2026-09-08).
+  if (pathname.startsWith('/admin/offboarding-templates/new')) return 'new-offboarding-template';
+  if (pathname.startsWith('/admin/offboarding-templates/edit')) return 'edit-offboarding-template';
+  if (pathname.startsWith('/admin/onboarding-templates/new')) return 'new-onboarding-template';
+  if (pathname.startsWith('/admin/onboarding-templates/edit')) return 'edit-onboarding-template';
   if (pathname.startsWith('/admin/offboarding-templates')) return 'offboarding-templates';
   if (pathname.startsWith('/admin/scheduled-actions')) return 'scheduled-actions';
   if (pathname.startsWith('/admin/training')) return 'training';
@@ -254,6 +260,10 @@ function AppContent() {
       // Automation routes
       'onboarding-templates': '/admin/onboarding-templates',
       'offboarding-templates': '/admin/offboarding-templates',
+      'new-offboarding-template': '/admin/offboarding-templates/new',
+      'edit-offboarding-template': '/admin/offboarding-templates/edit',
+      'new-onboarding-template': '/admin/onboarding-templates/new',
+      'edit-onboarding-template': '/admin/onboarding-templates/edit',
       'scheduled-actions': '/admin/scheduled-actions',
       'tasks': '/admin/tasks',
       'training': '/admin/training',
@@ -517,9 +527,37 @@ function AppContent() {
       try {
         const session = await getSession();
 
-        if (session?.session && storedOrg) {
+        // A valid cookie session with no localStorage copy (cleared by a
+        // transient probe failure, a new browser profile, or storage reset)
+        // used to land on the login screen even though the user WAS signed in
+        // (2026-09-08). Rebuild the UI-only copies from the session itself,
+        // exactly as LoginPage does after sign-in.
+        let effectiveOrg = storedOrg;
+        if (session?.session && session.user && !effectiveOrg && (session.user as any).organizationId) {
+          const u: any = session.user;
+          localStorage.setItem('helios_user', JSON.stringify({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            role: u.role,
+            organizationId: u.organizationId,
+            isExternalAdmin: u.isExternalAdmin,
+            defaultView: u.defaultView,
+            isActive: u.isActive,
+            department: u.department,
+          }));
+          effectiveOrg = JSON.stringify({
+            organizationId: u.organizationId,
+            organizationName: 'Organization',
+            domain: (u.email || '').split('@')[1] || '',
+          });
+          localStorage.setItem('helios_organization', effectiveOrg);
+        }
+
+        if (session?.session && effectiveOrg) {
           // User has an active session, set up dashboard
-          const orgData = JSON.parse(storedOrg);
+          const orgData = JSON.parse(effectiveOrg);
           setConfig({
             organizationId: orgData.organizationId,
             domain: orgData.domain,
@@ -528,8 +566,9 @@ function AppContent() {
           });
 
           // Load user data
-          if (storedUser) {
-            setCurrentUser(JSON.parse(storedUser));
+          const userJson = storedUser || localStorage.getItem('helios_user');
+          if (userJson) {
+            setCurrentUser(JSON.parse(userJson));
           }
 
           setStep('dashboard');
@@ -538,10 +577,15 @@ function AppContent() {
           return;
         }
       } catch (err) {
+        // A thrown session check (network error, 429, 5xx) is not proof the
+        // session is gone. Keep the stored copies and show login; a real
+        // sign-out clears them explicitly.
         console.warn('Session check failed:', err);
+        setStep('login');
+        return;
       }
 
-      // No valid session, clear stored data
+      // The server answered and there is no session: clear stored data.
       localStorage.removeItem('helios_organization');
       localStorage.removeItem('helios_user');
 
@@ -556,14 +600,18 @@ function AppContent() {
           setStep('setup'); // Go directly to account setup
         }
       } else {
-        setStep('setup');
+        // The probe failed (rate limit, 5xx, proxy down). That is NOT evidence
+        // the install is unconfigured: on 2026-09-07 a 429 rendered the
+        // first-run wizard over a fully configured install. Only an explicit
+        // "not set up" answer opens the wizard; anything else goes to login.
+        console.warn('Setup status probe failed with HTTP', checkResponse.status, '- showing login');
+        setStep('login');
       }
 
     } catch (err) {
       console.error('Config check failed:', err);
-      // On error, default to setup page rather than welcome
-      // This prevents the flash of welcome page on network errors
-      setStep('setup');
+      // Network error: same reasoning — never open the setup wizard on a guess.
+      setStep('login');
     } finally {
       setLoading(false);
     }

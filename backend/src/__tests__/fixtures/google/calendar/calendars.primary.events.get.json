@@ -1,0 +1,36 @@
+{
+  "family": "calendar",
+  "name": "calendars.primary.events.get",
+  "recordedAt": "2026-09-08T00:59:29.610Z",
+  "request": {
+    "method": "GET",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/primary/events/36jom7o9tbjj54ssvi1smcnirs",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#event",
+      "etag": "\"3577658232400830\"",
+      "id": "36jom7o9tbjj54ssvi1smcnirs",
+      "status": "cancelled",
+      "htmlLink": "https://www.google.com/calendar/event?eid=MzZqb203bzl0YmpqNTRzc3ZpMXNtY25pcnMgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
+      "updated": "2026-09-08T00:58:36.200Z",
+      "start": {
+        "dateTime": "2000-01-01T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2000-01-02T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "transparency": "transparent",
+      "iCalUID": "user1@example.com"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

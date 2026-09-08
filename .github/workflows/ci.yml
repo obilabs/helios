@@ -216,7 +216,18 @@ jobs:
                 ('user_lifecycle_logs','api_request'),
                 ('user_lifecycle_logs','triggered_by'),
                 ('user_lifecycle_logs','triggered_by_user_id'),
-                ('user_lifecycle_logs','executed_at')
+                ('user_lifecycle_logs','executed_at'),
+                -- 2026-09-07 (Google UI run): three more page-load 500s from the
+                -- seed predating archived 036/057/058. Migration 077 reconciles.
+                ('user_dashboard_widgets','widget_id'),
+                ('ai_config','mcp_tools'),
+                ('ai_config','use_custom_prompt'),
+                ('ai_config','custom_system_prompt'),
+                ('ai_config','ai_role'),
+                -- 2026-09-08: Create Template 500'd on a fresh install (migration 078).
+                ('signature_templates','mobile_html_content'),
+                -- 2026-09-08: both group-member sync paths SET this in ON CONFLICT (migration 080).
+                ('access_group_members','updated_at')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
@@ -236,6 +247,16 @@ jobs:
             IF NOT EXISTS (SELECT 1 FROM information_schema.tables
                             WHERE table_name = 'user_signatures') THEN
               RAISE EXCEPTION 'post-migration schema is missing table user_signatures';
+            END IF;
+
+            -- labels/with-availability calls this on every page load (migration 077).
+            IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_available_entities') THEN
+              RAISE EXCEPTION 'post-migration schema is missing function get_available_entities';
+            END IF;
+
+            -- GET /lifecycle/logs reads these views (migration 080).
+            IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'lifecycle_activity_feed') THEN
+              RAISE EXCEPTION 'post-migration schema is missing view lifecycle_activity_feed';
             END IF;
 
             RAISE NOTICE 'Post-migration contract OK';

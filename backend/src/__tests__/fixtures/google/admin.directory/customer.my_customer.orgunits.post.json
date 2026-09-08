@@ -1,0 +1,32 @@
+{
+  "family": "admin.directory",
+  "name": "customer.my_customer.orgunits.post",
+  "recordedAt": "2026-09-07T23:38:39.775Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/orgunits",
+    "query": null,
+    "body": {
+      "name": "Engineering",
+      "parentOrgUnitPath": "/",
+      "description": "E2E run"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#orgUnit",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/C-rypVrNx-jUn8M36B8eEnU6494\"",
+      "name": "Engineering",
+      "description": "E2E run",
+      "orgUnitPath": "/Engineering",
+      "orgUnitId": "id:03ph8a2z453trn2",
+      "parentOrgUnitPath": "/",
+      "parentOrgUnitId": "id:03ph8a2z4gp4fjs"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}
