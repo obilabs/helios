@@ -15,6 +15,13 @@ import { assertNotProtectedAdmin } from './admin-protection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { microsoftGraphService } from './microsoft-graph.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
+
+/** Google's "already there" answers: HTTP 409, or the message says so. */
+function isAlreadyExists(error: any): boolean {
+  const code = error?.code ?? error?.response?.status;
+  const msg = String(error?.message || error?.response?.data?.error?.message || '');
+  return code === 409 || /already exists/i.test(msg);
+}
 import {
   OffboardingTemplate,
   OffboardingConfig,
@@ -1641,10 +1648,18 @@ class UserOffboardingService {
     const gmail = this.createGmailClient(credentials, config.userEmail);
 
     // 1. Register the forwarding address on the departing user's mailbox.
-    await gmail.users.settings.forwardingAddresses.create({
-      userId: config.userEmail,
-      requestBody: { forwardingEmail: forwardTo },
-    });
+    //    Google answers 409 "already exists" when it is already registered;
+    //    that IS the desired state (a re-run on 2026-09-08 reported the whole
+    //    step failed because of it), so treat it as done.
+    try {
+      await gmail.users.settings.forwardingAddresses.create({
+        userId: config.userEmail,
+        requestBody: { forwardingEmail: forwardTo },
+      });
+    } catch (error: any) {
+      if (!isAlreadyExists(error)) throw error;
+      logger.info('Forwarding address already registered', { from: config.userEmail, to: forwardTo });
+    }
 
     // 2. Enable auto-forwarding to it (leave a copy in the inbox).
     await gmail.users.settings.updateAutoForwarding({
@@ -1686,10 +1701,16 @@ class UserOffboardingService {
 
     const gmail = this.createGmailClient(credentials, config.userEmail);
 
-    await gmail.users.settings.delegates.create({
-      userId: config.userEmail,
-      requestBody: { delegateEmail },
-    });
+    try {
+      await gmail.users.settings.delegates.create({
+        userId: config.userEmail,
+        requestBody: { delegateEmail },
+      });
+    } catch (error: any) {
+      // "Delegate already exists (with any verification status)" — desired state.
+      if (!isAlreadyExists(error)) throw error;
+      logger.info('Mailbox delegate already present', { mailbox: config.userEmail, delegate: delegateEmail });
+    }
 
     logger.info('Mailbox delegation configured', {
       mailbox: config.userEmail,
