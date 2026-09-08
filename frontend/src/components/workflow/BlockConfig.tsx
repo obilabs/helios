@@ -44,7 +44,7 @@ export function BlockConfig({ block, onUpdate, onClose, readOnly }: BlockConfigP
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const response = await authFetch('/api/v1/users');
+      const response = await authFetch('/api/v1/organization/users?status=active&userType=staff&limit=200');
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
