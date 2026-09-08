@@ -96,15 +96,15 @@ async function main(): Promise<void> {
       if (!g.success) break;
     }
 
-    // 4. re-create. Google keeps a deleted user's primary address reserved for
-    // the 20-day undelete window, so a same-address re-create is refused with
-    // "Entity already exists" until then. That is exactly the case Restore
-    // handles (undelete is still possible). To prove the re-create mechanism
-    // today, fall back to a suffixed address when the original is reserved.
+    // 4. re-create under the same address. Observed 2026-09-08: a same-address
+    // insert ~8 s after the delete was refused with "Entity already exists"
+    // (the deletion had not propagated to reads yet); after the poll above it
+    // succeeded. The suffixed fallback only exists so the proof still exercises
+    // the re-create path if a tenant ever does reserve the address.
     let rc = await userSnapshotService.recreate(organizationId, snap.snapshot.id, {});
     let recreatedEmail = email;
     if (!rc.success && /already exists/i.test(rc.error || '')) {
-      console.log('NOTE  same-address re-create refused while the deleted user is inside the 20-day window (address reserved); re-creating under a suffixed address to prove the path');
+      console.log('NOTE  same-address re-create still refused after the deletion propagated; re-creating under a suffixed address to prove the path');
       recreatedEmail = `snap-proof-${stamp}-r@${domain}`;
       rc = await userSnapshotService.recreate(organizationId, snap.snapshot.id, { primaryEmailOverride: recreatedEmail });
     }
@@ -139,7 +139,6 @@ async function main(): Promise<void> {
       console.log(`cleanup delete ${cleanupId}: ${d.success ? 'ok' : d.error}`);
     }
     await db.query('DELETE FROM user_google_snapshots WHERE organization_id = $1 AND primary_email = $2', [organizationId, email]);
-    // The original address stays reserved by Google for 20 days; nothing to do about that.
   }
   return finish(failures);
 }

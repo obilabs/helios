@@ -207,7 +207,8 @@ export class UserSnapshotService {
     for (const l of body.licenses || []) {
       try {
         const a = await googleWorkspaceService.assignGoogleLicense(organizationId, email, l.skuId, l.productId);
-        if (a.success) licensesRestored++;
+        // Tenants with auto-licensing already hold the licence by the time we ask.
+        if (a.success || /already has a license/i.test(String(a.error || ''))) licensesRestored++;
         else failures.push(`licence ${l.skuId}: ${a.error || 'refused'}`);
       } catch (e: any) {
         failures.push(`licence ${l.skuId}: ${e?.message || e}`);

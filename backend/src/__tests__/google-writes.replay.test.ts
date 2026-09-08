@@ -55,6 +55,9 @@ const WRITE_FIXTURES: Fx[] = [
   { family: 'gmail', name: 'users.me.settings.vacation.put', method: 'PUT', okStatuses: [200] },
   { family: 'apps', name: 'licensing.product.Google-Apps.sku.user.get', method: 'GET', okStatuses: [200] },
   { family: 'apps', name: 'licensing.product.Google-Apps.sku.user.delete', method: 'DELETE', okStatuses: [400] }, // auto-assigned SKU: Google refuses per-user removal
+  // 2026-09-08 snapshot bone: re-create from a stored record; licence re-assign
+  { family: 'admin.directory', name: 'users.post.from-record', method: 'POST', okStatuses: [200] },
+  { family: 'apps', name: 'licensing.product.Google-Apps.sku.user.post', method: 'POST', okStatuses: [200] },
   // Seeds used by the run
   { family: 'drive', name: 'files.post', method: 'POST', okStatuses: [200] },
   { family: 'calendar', name: 'calendars.primary.events.post', method: 'POST', okStatuses: [200] },
@@ -102,6 +105,25 @@ describe('Google SDK replay of recorded writes (no network)', () => {
     ]);
     expect(res.status).toBe(fx.response.status);
     expect((res.data as { primaryEmail?: string }).primaryEmail).toBe((fx.response.data as { primaryEmail?: string }).primaryEmail);
+  });
+
+  it('users.insert from a snapshot record is served from the from-record fixture (Google echoes the primary and the manager relation)', async () => {
+    const fx = loadGoogleFixture('admin.directory', 'users.post.from-record');
+    useGoogleReplay(fx);
+    installGoogleSdkSeam();
+    const admin = google.admin({ version: 'directory_v1' });
+    const res = await Promise.race([
+      admin.users.insert({ requestBody: { primaryEmail: 'user3@example.com', name: { givenName: 'Snapshot', familyName: 'Proof' }, password: 'one-time', changePasswordAtNextLogin: true } }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('seam did not intercept')), 3000)),
+    ]);
+    expect(res.status).toBe(200);
+    const d = res.data as Record<string, any>;
+    expect(d.primaryEmail).toBe((fx.response.data as { primaryEmail?: string }).primaryEmail);
+    // Google's insert response echoes only part of the record; the full
+    // profile (phones, location, custom ids, alternate email) was verified by
+    // reading the account back in the live proof (prove-snapshot-restore.ts).
+    expect(d.relations?.some((r: any) => r.type === 'manager')).toBe(true);
+    expect(d.changePasswordAtNextLogin).toBe(true);
   });
 
   it('gmail delegates.create is served from the recorded fixture', async () => {
