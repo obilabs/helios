@@ -271,6 +271,23 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 
     const oldGroup = existing.rows[0];
 
+    // A Google-synced group must change in Google first; the local row is a
+    // cache that the next sync overwrites. Until 2026-09-07 this only renamed
+    // the local row, so Helios and Google disagreed until the rename was lost.
+    if (oldGroup.platform === 'google_workspace' && oldGroup.external_id) {
+      const updates: { name?: string; description?: string; email?: string } = {};
+      if (name && name !== oldGroup.name) updates.name = name;
+      if (description !== undefined && description !== oldGroup.description) updates.description = description;
+      if (email && email !== oldGroup.email) updates.email = email;
+      if (Object.keys(updates).length > 0) {
+        const gw = await googleWorkspaceService.updateGroup(organizationId!, oldGroup.external_id, updates);
+        if (!gw?.success) {
+          res.status(502).json({ success: false, error: `Google Workspace rejected the change: ${gw?.error || 'unknown error'}` });
+          return;
+        }
+      }
+    }
+
     // Update the group
     const result = await db.query(
       `UPDATE access_groups SET
@@ -376,6 +393,16 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
     }
 
     const group = existing.rows[0];
+
+    // A Google-synced group is deleted in Google as well; a local-only soft
+    // delete came straight back on the next sync, so "Delete" did nothing.
+    if (group.platform === 'google_workspace' && group.external_id) {
+      const gw = await googleWorkspaceService.deleteGroup(organizationId!, group.external_id);
+      if (!gw.success) {
+        res.status(502).json({ success: false, error: `Google Workspace rejected the delete: ${gw.error}` });
+        return;
+      }
+    }
 
     // Soft delete by setting is_active = false
     await db.query(

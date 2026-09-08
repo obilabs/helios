@@ -1236,7 +1236,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
                     <p>
                       Permanently delete this group and remove all member associations.
                       {group.platform === 'google_workspace' && (
-                        <strong> This will NOT delete the group in Google Workspace.</strong>
+                        <strong> This also deletes the group in Google Workspace.</strong>
                       )}
                     </p>
                   </div>
@@ -1322,6 +1322,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
                 <p>Are you sure you want to delete <strong>{group.name}</strong>?</p>
                 <p className="warning-text">
                   This action cannot be undone. All member associations will be removed.
+                  {group.platform === 'google_workspace' && ' The group is also deleted in Google Workspace.'}
                 </p>
               </div>
               <div className="modal-footer">
