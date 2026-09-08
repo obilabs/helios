@@ -817,6 +817,13 @@ router.post('/groups', [
     );
 
     if (result?.success) {
+      // The Groups page lists access_groups (local). Without this the new
+      // group exists in Google but is invisible in Helios until the next sync.
+      try {
+        await googleWorkspaceService.syncGroups(organizationId);
+      } catch (syncError: any) {
+        logger.warn('Group created in Google but local sync failed', { email, error: syncError?.message });
+      }
       const actor = auditActor(req);
       await securityAudit.log({
         action: AuditActions.GROUP_CREATE,
