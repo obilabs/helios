@@ -1542,6 +1542,42 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Restore a deleted Google Workspace user (users.undelete). Google keeps a
+   * deleted user for 20 days; after that the call fails and the caller must
+   * say so instead of pretending.
+   */
+  async undeleteUser(
+    organizationId: string,
+    googleWorkspaceId: string,
+    orgUnitPath: string
+  ): Promise<{ success: boolean; error?: string; pastWindow?: boolean }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) return { success: false, error: 'Google Workspace not configured' };
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!adminEmail) return { success: false, error: 'Admin email not configured' };
+      const jwtClient = new JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/admin.directory.user'],
+        subject: adminEmail
+      });
+      const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+      await admin.users.undelete({
+        userKey: googleWorkspaceId,
+        requestBody: { orgUnitPath: orgUnitPath || '/' }
+      });
+      logger.info('User restored in Google Workspace', { googleWorkspaceId, orgUnitPath });
+      return { success: true };
+    } catch (error: any) {
+      const code = error?.code ?? error?.response?.status;
+      const msg = String(error?.message || '');
+      logger.error('Failed to restore user in Google Workspace', { googleWorkspaceId, error: msg });
+      return { success: false, error: msg, pastWindow: code === 404 || /not found|deleted user/i.test(msg) };
+    }
+  }
+
+  /**
    * Permanently delete a user from Google Workspace
    *
    * WARNING: This permanently deletes the user and frees the license.
@@ -1649,6 +1685,8 @@ export class GoogleWorkspaceService {
       managerEmail?: string;
       organizationalUnit?: string;
       phones?: { type: string; value: string }[];
+      /** Free-text location; mapped to Google's locations[] (type desk, area). Empty string clears. */
+      location?: string | null;
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -1689,6 +1727,14 @@ export class GoogleWorkspaceService {
           department: updates.department,
           primary: true
         }];
+      }
+
+      // Location: Google keeps a structured locations[] list; we carry the
+      // free-text value as the area of a single 'desk' entry (2026-09-08).
+      if (updates.location !== undefined) {
+        requestBody.locations = updates.location
+          ? [{ type: 'desk', area: updates.location }]
+          : [];
       }
 
       // Update manager relationship

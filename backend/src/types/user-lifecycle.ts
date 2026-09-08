@@ -150,6 +150,10 @@ export interface OffboardingTemplate {
   emailForwardDurationDays: number;
   emailAutoReplyMessage: string;
   emailAutoReplySubject: string;
+  /** Send the auto-reply in ADDITION to forwarding / archiving (not only when emailAction is auto_reply). */
+  emailAutoReplyEnabled: boolean;
+  /** Grant the forwarding target Gmail delegate access to the mailbox (default true). */
+  emailDelegateEnabled: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings: boolean;
@@ -215,6 +219,8 @@ export interface CreateOffboardingTemplateDTO {
   emailForwardDurationDays?: number;
   emailAutoReplyMessage?: string;
   emailAutoReplySubject?: string;
+  emailAutoReplyEnabled?: boolean;
+  emailDelegateEnabled?: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings?: boolean;
@@ -519,6 +525,8 @@ export interface OffboardingConfig {
   emailForwardDurationDays: number;
   emailAutoReplyMessage?: string;
   emailAutoReplySubject?: string;
+  emailAutoReplyEnabled?: boolean;
+  emailDelegateEnabled?: boolean;
   /**
    * Explicit forwarding target email. Overrides the manager / forward-user
    * resolution when set — lets the caller (e.g. the `gw offboard --forward=`
