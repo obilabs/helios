@@ -9,7 +9,7 @@
  * - Row selection for bulk operations
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { VisibilityState, RowSelectionState } from '@tanstack/react-table';
 import {
@@ -40,6 +40,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { authFetch } from '../config/api';
 import './UserTable.css';
 
 // Column helper for type-safe column definitions
@@ -78,6 +79,11 @@ export function UserTable({
 
   // Bulk action confirmation state
   const [bulkConfirmAction, setBulkConfirmAction] = useState<'activate' | 'suspend' | 'delete' | null>(null);
+  // Suspend is a platform write; ask first (2026-09-08).
+  const [suspendConfirmUser, setSuspendConfirmUser] = useState<User | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 8 });
+  const [restoreDeletedUser, setRestoreDeletedUser] = useState<User | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   // Column visibility (persisted in localStorage)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -104,6 +110,15 @@ export function UserTable({
 
   // Fetch users with TanStack Query
   const { data: users = [], isLoading, error, refetch } = useUsers(filters);
+
+  // The slide-out receives a snapshot; refresh it when the list refetches so a
+  // save does not keep showing pre-save values (2026-09-08).
+  useEffect(() => {
+    if (!selectedUser) return;
+    const fresh = users.find((u) => u.id === selectedUser.id);
+    if (fresh && fresh !== selectedUser) setSelectedUser(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users]);
 
   // Fetch status counts and departments
   const { data: countsData } = useUserStatusCounts(apiUserType);
@@ -150,9 +165,34 @@ export function UserTable({
   }, [rowSelection]);
 
   // Action handlers
-  const handleQuickSuspend = async (user: User) => {
-    await updateStatusMutation.mutateAsync({ userId: user.id, status: 'suspended' });
+  const handleQuickSuspend = (user: User) => {
+    setSuspendConfirmUser(user);
     setActionMenuOpen(null);
+  };
+
+  const confirmQuickSuspend = async () => {
+    if (!suspendConfirmUser) return;
+    const target = suspendConfirmUser;
+    setSuspendConfirmUser(null);
+    await updateStatusMutation.mutateAsync({ userId: target.id, status: 'suspended' });
+  };
+
+  const confirmRestoreDeleted = async () => {
+    if (!restoreDeletedUser) return;
+    const target = restoreDeletedUser;
+    try {
+      const response = await authFetch(`/api/v1/organization/users/${target.id}/restore`, { method: 'PATCH' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        setRestoreError(data.error || 'Failed to restore user');
+        return;
+      }
+      setRestoreDeletedUser(null);
+      setRestoreError(null);
+      refetch();
+    } catch (e: any) {
+      setRestoreError(e?.message || 'Failed to restore user');
+    }
   };
 
   const handleQuickRestore = async (user: User) => {
@@ -269,6 +309,11 @@ export function UserTable({
         className="btn-ellipsis"
         onClick={(e) => {
           e.stopPropagation();
+          // The table scrolls horizontally, so an absolutely positioned menu
+          // is clipped by the scroll container at desktop widths (2026-09-08).
+          // Anchor it to the viewport instead.
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
           setActionMenuOpen(actionMenuOpen === user.id ? null : user.id);
         }}
       >
@@ -276,13 +321,17 @@ export function UserTable({
       </button>
 
       {actionMenuOpen === user.id && (
-        <div className="action-menu" onClick={(e) => e.stopPropagation()}>
+        <div className="action-menu" style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => { setSelectedUser(user); setShowViewModal(true); setActionMenuOpen(null); }}>
             <Eye size={14} /> View Details
           </button>
           <div className="menu-divider" />
 
-          {user.status !== 'suspended' ? (
+          {user.status === 'deleted' ? (
+            <button onClick={() => { setRestoreError(null); setRestoreDeletedUser(user); setActionMenuOpen(null); }}>
+              <PlayCircle size={14} /> Restore user...
+            </button>
+          ) : user.status !== 'suspended' ? (
             <button onClick={() => handleQuickSuspend(user)}>
               <PauseCircle size={14} /> Suspend
             </button>
@@ -648,6 +697,26 @@ export function UserTable({
       )}
 
       {/* Bulk Action Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={suspendConfirmUser !== null}
+        title="Suspend user"
+        message={suspendConfirmUser ? `Suspend ${suspendConfirmUser.email}? They lose access on every connected platform until restored.` : ''}
+        confirmText="Suspend"
+        variant="warning"
+        onConfirm={confirmQuickSuspend}
+        onCancel={() => setSuspendConfirmUser(null)}
+      />
+      <ConfirmDialog
+        isOpen={restoreDeletedUser !== null}
+        title="Restore deleted user"
+        message={restoreDeletedUser ? `Restore ${restoreDeletedUser.email}? A Google Workspace account is restored in Google as well (possible for 20 days after deletion).` : ''}
+        confirmText="Restore"
+        variant="info"
+        onConfirm={confirmRestoreDeleted}
+        onCancel={() => { setRestoreDeletedUser(null); setRestoreError(null); }}
+      >
+        {restoreError && <p className="text-red-600" style={{ marginTop: 8 }}>{restoreError}</p>}
+      </ConfirmDialog>
       <ConfirmDialog
         isOpen={bulkConfirmAction !== null}
         title={

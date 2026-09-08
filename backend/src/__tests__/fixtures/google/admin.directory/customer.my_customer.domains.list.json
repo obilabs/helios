@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "customer.my_customer.domains.list",
-  "recordedAt": "2026-09-08T01:19:06.663Z",
+  "recordedAt": "2026-09-08T09:07:28.135Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",

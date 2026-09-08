@@ -129,6 +129,8 @@ class UserOffboardingService {
         email_forward_duration_days,
         email_auto_reply_message,
         email_auto_reply_subject,
+        email_auto_reply_enabled,
+        email_delegate_enabled,
         calendar_decline_future_meetings,
         calendar_transfer_meeting_ownership,
         calendar_transfer_to_manager,
@@ -156,7 +158,7 @@ class UserOffboardingService {
         is_active,
         is_default,
         created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
       RETURNING *
     `;
 
@@ -173,6 +175,8 @@ class UserOffboardingService {
       dto.emailForwardDurationDays ?? 30,
       dto.emailAutoReplyMessage || null,
       dto.emailAutoReplySubject || null,
+      dto.emailAutoReplyEnabled ?? false,
+      dto.emailDelegateEnabled ?? true,
       dto.calendarDeclineFutureMeetings ?? true,
       dto.calendarTransferMeetingOwnership ?? true,
       dto.calendarTransferToManager ?? true,
@@ -232,6 +236,8 @@ class UserOffboardingService {
       emailForwardDurationDays: 'email_forward_duration_days',
       emailAutoReplyMessage: 'email_auto_reply_message',
       emailAutoReplySubject: 'email_auto_reply_subject',
+      emailAutoReplyEnabled: 'email_auto_reply_enabled',
+      emailDelegateEnabled: 'email_delegate_enabled',
       calendarDeclineFutureMeetings: 'calendar_decline_future_meetings',
       calendarTransferMeetingOwnership: 'calendar_transfer_meeting_ownership',
       calendarTransferToManager: 'calendar_transfer_to_manager',
@@ -468,7 +474,7 @@ class UserOffboardingService {
       // the departing user's historical mail (forwarding only covers NEW mail).
       // Independent of forwarding: its own try/catch so a delegation failure
       // never rolls back the forwarding that already succeeded, and vice-versa.
-      if (config.emailAction === 'forward_manager' || config.emailAction === 'forward_user') {
+      if ((config.emailAction === 'forward_manager' || config.emailAction === 'forward_user') && (config.emailDelegateEnabled ?? true)) {
         stepOrder++;
         const delegateStart = Date.now();
         try {
@@ -540,7 +546,7 @@ class UserOffboardingService {
       }
 
       // Step 4: Set auto-reply
-      if (config.emailAction === 'auto_reply' && config.emailAutoReplyMessage) {
+      if ((config.emailAction === 'auto_reply' || config.emailAutoReplyEnabled) && config.emailAutoReplyMessage) {
         stepOrder++;
         const autoReplyStart = Date.now();
         try {
@@ -1197,6 +1203,8 @@ class UserOffboardingService {
       emailForwardDurationDays: template.emailForwardDurationDays,
       emailAutoReplyMessage: template.emailAutoReplyMessage,
       emailAutoReplySubject: template.emailAutoReplySubject,
+      emailAutoReplyEnabled: template.emailAutoReplyEnabled,
+      emailDelegateEnabled: template.emailDelegateEnabled,
 
       // Calendar
       calendarDeclineFutureMeetings: template.calendarDeclineFutureMeetings,
@@ -1457,6 +1465,17 @@ class UserOffboardingService {
 
     if (!config.userId) errors.push('User ID is required');
     if (!config.userEmail) errors.push('User email is required');
+
+    // Fail BEFORE any step runs when the template relies on a manager the
+    // user does not have (2026-09-08: the run got 13 steps in, then the Drive
+    // transfer failed for want of a target).
+    const needsManager: string[] = [];
+    if (config.driveAction === 'transfer_manager') needsManager.push('Drive transfer');
+    if (config.emailAction === 'forward_manager' && !config.emailForwardAddress) needsManager.push('mail forwarding');
+    if (config.calendarTransferMeetingOwnership && !config.calendarTransferToUserId) needsManager.push('calendar transfer');
+    if (needsManager.length > 0 && !config.managerEmail) {
+      errors.push(`${config.userEmail} has no reporting manager, but the template sends ${needsManager.join(', ')} to the manager. Set a manager first or pick a template with a named target.`);
+    }
 
     return errors;
   }
@@ -1730,10 +1749,18 @@ class UserOffboardingService {
     if (config.emailForwardAddress) {
       return config.emailForwardAddress;
     }
-    if (config.emailForwardToUserId) {
+    // A stale emailForwardToUserId left on the template must not win over
+    // "forward to manager" (2026-09-08: it silently forwarded to a previous
+    // named user). The named target counts only when the action asks for it.
+    if (config.emailAction === 'forward_user' && config.emailForwardToUserId) {
       return this.getUserEmail(config.emailForwardToUserId);
     }
-    return config.managerEmail ?? null;
+    if (config.emailAction === 'forward_manager') {
+      return config.managerEmail ?? null;
+    }
+    return config.emailForwardToUserId
+      ? this.getUserEmail(config.emailForwardToUserId)
+      : (config.managerEmail ?? null);
   }
 
   /**
@@ -2092,6 +2119,8 @@ class UserOffboardingService {
       emailForwardDurationDays: row.email_forward_duration_days,
       emailAutoReplyMessage: row.email_auto_reply_message,
       emailAutoReplySubject: row.email_auto_reply_subject,
+      emailAutoReplyEnabled: row.email_auto_reply_enabled ?? false,
+      emailDelegateEnabled: row.email_delegate_enabled ?? true,
 
       // Calendar
       calendarDeclineFutureMeetings: row.calendar_decline_future_meetings,

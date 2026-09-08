@@ -58,6 +58,8 @@ interface OffboardingTemplate {
   emailForwardDurationDays: number;
   emailAutoReplyMessage: string;
   emailAutoReplySubject: string;
+  emailAutoReplyEnabled: boolean;
+  emailDelegateEnabled: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings: boolean;
@@ -128,6 +130,8 @@ const defaultTemplate: OffboardingTemplate = {
   emailForwardDurationDays: 30,
   emailAutoReplyMessage: `Thank you for your email. {{first_name}} {{last_name}} is no longer with {{company_name}}. For assistance, please contact {{manager_email}}.`,
   emailAutoReplySubject: 'Out of Office',
+  emailAutoReplyEnabled: false,
+  emailDelegateEnabled: true,
 
   // Calendar handling
   calendarDeclineFutureMeetings: true,
@@ -272,7 +276,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
     try {
       // '/api/v1/users' never existed; every transfer/forward/calendar target
       // list in this editor was empty (2026-09-08). Staff only, active only.
-      const response = await authFetch('/api/v1/organization/users?status=active&userType=staff&limit=200');
+      const response = await authFetch('/api/v1/organization/users?userType=staff&platform=google_workspace&limit=200');
 
       if (response.ok) {
         const data = await response.json();
@@ -564,6 +568,33 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
 
               {(template.emailAction === 'forward_manager' || template.emailAction === 'forward_user') && (
                 <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={template.emailDelegateEnabled}
+                      onChange={(e) => setTemplate((prev) => ({ ...prev, emailDelegateEnabled: e.target.checked }))}
+                    />
+                    <span>Also give the forwarding target delegate access to the mailbox (read and reply to old mail)</span>
+                  </label>
+                  <p className="form-hint">Delegated access only works while the departed account stays active. Suspending the account ends it.</p>
+                </div>
+              )}
+
+              {template.emailAction !== 'auto_reply' && (
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={template.emailAutoReplyEnabled}
+                      onChange={(e) => setTemplate((prev) => ({ ...prev, emailAutoReplyEnabled: e.target.checked }))}
+                    />
+                    <span>Also send an auto-reply to incoming mail</span>
+                  </label>
+                </div>
+              )}
+
+              {(template.emailAction === 'forward_manager' || template.emailAction === 'forward_user') && (
+                <div className="form-group">
                   <label htmlFor="forwardDuration">Forward for (days)</label>
                   <input
                     id="forwardDuration"
@@ -577,7 +608,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                 </div>
               )}
 
-              {template.emailAction === 'auto_reply' && (
+              {(template.emailAction === 'auto_reply' || template.emailAutoReplyEnabled) && (
                 <>
                   <div className="form-group">
                     <label htmlFor="autoReplySubject">Auto-reply Subject</label>

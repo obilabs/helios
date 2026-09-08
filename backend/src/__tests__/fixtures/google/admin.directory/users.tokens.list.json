@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "users.tokens.list",
-  "recordedAt": "2026-09-08T01:18:36.465Z",
+  "recordedAt": "2026-09-08T09:07:01.775Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",

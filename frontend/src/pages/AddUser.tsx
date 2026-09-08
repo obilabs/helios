@@ -34,6 +34,13 @@ export function AddUser() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [jobTitles, setJobTitles] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
+  // Google OUs (the list used to be four hard-coded local names that did not
+  // exist in Google — 2026-09-07 run). Empty until Google Workspace is connected.
+  const [googleOrgUnits, setGoogleOrgUnits] = useState<Array<{ id?: string; path: string }>>([]);
+  // Groups are picked from the org's list (house rule: select, never type);
+  // formData.groups holds access_groups ids. Until 2026-09-08 this was a free
+  // text box and the create route ignored the value.
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string; email?: string; platform?: string }>>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [licenses, setLicenses] = useState<any[]>([]);
   const [selectedLicenseId, setSelectedLicenseId] = useState('');
@@ -81,9 +88,39 @@ export function AddUser() {
       console.error('Error fetching job titles:', error);
     }
 
+    // Fetch groups for the picker
+    try {
+      const gResponse = await authFetch('/api/v1/organization/access-groups');
+      if (gResponse.ok) {
+        const gData = await gResponse.json();
+        const list = Array.isArray(gData?.data) ? gData.data : (gData?.data?.groups || []);
+        setAvailableGroups(list.filter((g: any) => g.is_active !== false && g.isActive !== false).map((g: any) => ({ id: g.id, name: g.name, email: g.email, platform: g.platform })));
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+
+    // Fetch Google organizational units for the OU picker
+    try {
+      const orgId = JSON.parse(localStorage.getItem('helios_organization') || '{}').organizationId;
+      if (orgId) {
+        const ouResponse = await authFetch(`/api/v1/google-workspace/org-units/${orgId}`);
+        if (ouResponse.ok) {
+          const ouData = await ouResponse.json();
+          const list = Array.isArray(ouData?.data) ? ouData.data : ouData?.data?.orgUnits;
+          if (Array.isArray(list)) {
+            const withRoot = list.some((o: any) => o.path === '/') ? list : [{ id: 'root', path: '/' }, ...list];
+            setGoogleOrgUnits(withRoot);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Google org units:', error);
+    }
+
     // Fetch managers (active users)
     try {
-      const managersResponse = await authFetch('/api/v1/organization/users?status=active&limit=100');
+      const managersResponse = await authFetch('/api/v1/organization/users?userType=staff&limit=200');
       if (managersResponse.ok) {
         const data = await managersResponse.json();
         setManagers(data.data || []);
@@ -925,10 +962,9 @@ export function AddUser() {
               disabled={isSubmitting}
             >
               <option value="">Select OU...</option>
-              <option value="/Engineering">Engineering</option>
-              <option value="/Sales">Sales</option>
-              <option value="/Marketing">Marketing</option>
-              <option value="/HR">HR</option>
+              {googleOrgUnits.map((ou) => (
+                <option key={ou.id || ou.path} value={ou.path}>{ou.path}</option>
+              ))}
             </select>
             <p className="field-hint">Where in your organization structure</p>
           </div>
@@ -942,7 +978,7 @@ export function AddUser() {
             disabled={isSubmitting}
           >
             <option value="">Select manager...</option>
-            {managers.filter((mgr: any) => (mgr.userStatus ?? mgr.status) === 'active' && mgr.userType !== 'guest' && mgr.userType !== 'contact').map((mgr: any) => (
+            {managers.filter((mgr: any) => (mgr.userStatus ?? mgr.status) !== 'deleted' && mgr.userType !== 'guest' && mgr.userType !== 'contact').map((mgr: any) => (
               <option key={mgr.id} value={mgr.id}>
                 {mgr.first_name || mgr.firstName} {mgr.last_name || mgr.lastName} ({mgr.email})
               </option>
@@ -1017,24 +1053,31 @@ export function AddUser() {
         <div className="form-group">
           <label>Groups</label>
           <div className="multi-input">
-            <input
-              type="text"
+            <select
               value={searchGroup}
               onChange={(e) => setSearchGroup(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGroup(searchGroup), setSearchGroup(''))}
-              placeholder="Start typing group name..."
               disabled={isSubmitting}
-            />
-            <button type="button" onClick={() => { addGroup(searchGroup); setSearchGroup(''); }} disabled={isSubmitting}>
+              aria-label="Group"
+            >
+              <option value="">Select a group...</option>
+              {availableGroups
+                .filter((g) => !formData.groups.includes(g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}{g.email ? ` (${g.email})` : ''}{g.platform === 'google_workspace' ? ' — Google' : g.platform === 'microsoft_365' ? ' — Microsoft' : ''}
+                  </option>
+                ))}
+            </select>
+            <button type="button" onClick={() => { if (searchGroup) { addGroup(searchGroup); setSearchGroup(''); } }} disabled={isSubmitting || !searchGroup}>
               Add
             </button>
           </div>
-          <p className="field-hint">Type to search and select groups</p>
+          <p className="field-hint">The user is added to each group on every connected platform when the account is created</p>
           {formData.groups.length > 0 && (
             <div className="tag-list">
               {formData.groups.map((group, idx) => (
                 <span key={idx} className="tag">
-                  {group}
+                  {availableGroups.find((g) => g.id === group)?.name || group}
                   <button type="button" onClick={() => removeGroup(group)} disabled={isSubmitting}>
                     ×
                   </button>

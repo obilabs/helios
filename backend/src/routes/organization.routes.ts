@@ -566,6 +566,16 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     }
     // 'all' means no platform filter
 
+    // Free-text search (email / first / last name). The group member picker and
+    // other callers sent ?search= all along; the server ignored it (2026-09-08).
+    const search = String(req.query.search || '').trim();
+    const listParams: any[] = [organizationId];
+    let searchCondition = '';
+    if (search) {
+      listParams.push(`%${search}%`);
+      searchCondition = `AND (ou.email ILIKE $${listParams.length} OR ou.first_name ILIKE $${listParams.length} OR ou.last_name ILIKE $${listParams.length} OR (ou.first_name || ' ' || ou.last_name) ILIKE $${listParams.length})`;
+    }
+
     // Always fetch local organization users first
     logger.info('Fetching users from local database');
     const localUsersResult = await db.query(`
@@ -617,9 +627,9 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         ou.last_login as "lastLogin"
       FROM organization_users ou
       LEFT JOIN departments d ON ou.department_id = d.id
-      WHERE ou.organization_id = $1 ${statusCondition}
+      WHERE ou.organization_id = $1 ${statusCondition} ${searchCondition}
       ORDER BY ou.first_name, ou.last_name, ou.email
-    `, [organizationId]);
+    `, listParams);
 
     // Secondary index by Google link id, so a synced cache row whose email
     // differs from the canonical organization_users email still resolves to the
@@ -679,6 +689,22 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         return segments.length > 0 ? segments[segments.length - 1] : null;
       };
 
+      // Every organization_users row (not just the filtered page), so a cache
+      // row is never emitted with the gw_synced_users id when a real identity
+      // exists. Until 2026-09-08 a Google user whose org row fell outside the
+      // current filter (e.g. user_type=contact on the Staff tab) came back with
+      // the CACHE id, and every per-user action on that row 404'd.
+      const allOrgRows = await db.query(
+        `SELECT id, LOWER(email) AS email, google_workspace_id FROM organization_users WHERE organization_id = $1`,
+        [organizationId]
+      );
+      const orgIdByEmail = new Map<string, string>();
+      const orgIdByGoogleId = new Map<string, string>();
+      for (const r of allOrgRows.rows) {
+        orgIdByEmail.set(r.email, r.id);
+        if (r.google_workspace_id) orgIdByGoogleId.set(String(r.google_workspace_id), r.id);
+      }
+
       gwUsersResult.rows.forEach((user: any) => {
         const email = user.email.toLowerCase();
         const platforms = ['google_workspace'];
@@ -711,6 +737,10 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
             existingUser.status = 'suspended';
             existingUser.isActive = false;
           }
+        } else if (orgIdByEmail.has(email) || orgIdByGoogleId.has(String(user.external_id))) {
+          // A real identity exists but the current filter excluded it: respect
+          // the filter rather than re-adding the person under the cache id.
+          return;
         } else if (statusFilter === 'all' || includeDeleted) {
           // Only add GW-only users when not filtering by a specific status
           // When filtering by active/deleted/suspended/etc, only show users
@@ -1464,12 +1494,25 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
 
     // Create user in external providers if requested
     let googleWorkspaceUserId: string | null = null;
+    let googleLicenseAssigned = false;
+    let googleLicenseError: string | null = null;
     let googleCreationError: string | null = null;
 
     if (createInGoogle) {
       // Generate a temporary password for Google Workspace
       // User will be required to change it on first login
       const tempPassword = crypto.randomBytes(16).toString('base64').slice(0, 16) + 'Aa1!';
+
+      // The manager picked in the form is a Helios id; Google wants the
+      // manager's email. Until 2026-09-08 it was stored locally only.
+      let createManagerEmail: string | undefined;
+      if (reportingManagerId) {
+        const mgrRow = await db.query(
+          'SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2',
+          [reportingManagerId, organizationId]
+        );
+        createManagerEmail = mgrRow.rows[0]?.email || undefined;
+      }
 
       const gwResult = await googleWorkspaceService.createUser(organizationId, {
         email: email.toLowerCase(),
@@ -1479,8 +1522,23 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
         orgUnitPath: organizationalUnit || '/',
         jobTitle: jobTitle || undefined,
         department: department || undefined,
+        managerEmail: createManagerEmail,
         changePasswordAtNextLogin: true,
-        phones: mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : undefined
+        phones: [
+          ...(mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : []),
+          ...(workPhone ? [{ type: 'work', value: workPhoneExtension ? `${workPhone} ext. ${workPhoneExtension}` : workPhone }] : []),
+        ].length ? [
+          ...(mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : []),
+          ...(workPhone ? [{ type: 'work', value: workPhoneExtension ? `${workPhone} ext. ${workPhoneExtension}` : workPhone }] : []),
+        ] : undefined,
+        location: location || undefined,
+        secondaryEmails: Array.isArray(req.body.secondaryEmails) ? req.body.secondaryEmails : undefined,
+        externalIds: [
+          { customType: 'github', value: githubUsername || '' },
+          { customType: 'slack', value: slackUserId || '' },
+          { customType: 'jumpcloud', value: jumpcloudUserId || '' },
+          { customType: 'associate_id', value: associateId || '' },
+        ].filter(x => x.value)
       });
 
       if (gwResult.success && gwResult.userId) {
@@ -1495,6 +1553,22 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
            WHERE id = $2`,
           [googleWorkspaceUserId, newUser.id]
         );
+
+        // Google licence chosen in the form (licence ids from /organization/licenses
+        // look like gw-<productId>-<skuId>). Until 2026-09-08 the create path
+        // only handled Microsoft licences and silently ignored this.
+        if (licenseId && String(licenseId).startsWith('gw-')) {
+          const parts = String(licenseId).split('-');
+          const skuId = parts[parts.length - 1];
+          const productId = parts.length >= 4 ? parts.slice(1, -1).join('-') : 'Google-Apps';
+          const lic = await googleWorkspaceService.assignGoogleLicense(organizationId, email.toLowerCase(), skuId, productId);
+          if (lic.success) {
+            googleLicenseAssigned = true;
+          } else {
+            googleLicenseError = lic.error || 'unknown error';
+            logger.warn('Google licence not assigned at create', { userId: newUser.id, skuId, error: googleLicenseError });
+          }
+        }
 
         logger.info('User created in Google Workspace and linked to Helios', {
           userId: newUser.id,
@@ -1622,12 +1696,57 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       }
     }
 
+    // Group memberships chosen in the form. Local row always; Google group when
+    // both sides are Google-bound. Until 2026-09-08 the array was ignored.
+    const requestedGroups: string[] = Array.isArray(req.body.groups) ? req.body.groups.filter((g: unknown) => typeof g === 'string' && g) : [];
+    const groupFailures: string[] = [];
+    let groupsAdded = 0;
+    for (const groupRef of requestedGroups) {
+      try {
+        const gRes = await db.query(
+          `SELECT id, name, email, platform, external_id FROM access_groups
+            WHERE organization_id = $1 AND (id::text = $2 OR LOWER(email) = LOWER($2) OR LOWER(name) = LOWER($2))
+            LIMIT 1`,
+          [organizationId, groupRef]
+        );
+        const grp = gRes.rows[0];
+        if (!grp) { groupFailures.push(`${groupRef}: group not found`); continue; }
+        await db.query(
+          `INSERT INTO access_group_members (access_group_id, user_id, member_type, joined_at, is_active)
+           VALUES ($1, $2, 'member', NOW(), true)
+           ON CONFLICT (access_group_id, user_id) DO UPDATE SET is_active = true, updated_at = NOW()`,
+          [grp.id, newUser.id]
+        );
+        if (grp.platform === 'google_workspace' && grp.external_id && googleWorkspaceUserId) {
+          // A user created moments ago can still be unknown to the groups
+          // service for a few seconds; retry a "not found" briefly before
+          // calling it a failure.
+          let gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          for (let attempt = 1; !gw.success && attempt <= 3 && /not found|memberKey|Resource Not Found/i.test(gw.error || ''); attempt++) {
+            await new Promise(r => setTimeout(r, 2000 * attempt));
+            gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          }
+          if (!gw.success) { groupFailures.push(`${grp.name}: Google rejected the membership (${gw.error})`); continue; }
+        }
+        groupsAdded++;
+      } catch (e: any) {
+        groupFailures.push(`${groupRef}: ${e?.message || 'failed'}`);
+      }
+    }
+
     // Build response message based on what was created
     let message = 'User created successfully';
     if (createInGoogle && googleWorkspaceUserId) {
       message = 'User created in Helios and Google Workspace';
+      if (licenseId && String(licenseId).startsWith('gw-') && !googleLicenseAssigned) {
+        message += `. Google licence NOT assigned: ${googleLicenseError || 'unknown error'}`;
+      }
     } else if (createInGoogle && googleCreationError) {
       message = 'User created in Helios. Google Workspace creation failed: ' + googleCreationError;
+    }
+    if (requestedGroups.length > 0) {
+      message += `. Groups: ${groupsAdded}/${requestedGroups.length} added`;
+      if (groupFailures.length > 0) message += ` (${groupFailures.join('; ')})`;
     }
     if (createInMicrosoft && microsoft365UserId) {
       message += (message.includes('Google Workspace') ? ' and Microsoft 365' : ' in Helios and Microsoft 365');
@@ -1911,8 +2030,17 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
           jobTitle,
           department,
           managerEmail,
+          location: location !== undefined ? location : undefined,
           organizationalUnit,
-          phones: phones.length > 0 ? phones : undefined
+          phones: phones.length > 0 ? phones : undefined,
+          externalIds: (githubUsername !== undefined || slackUserId !== undefined || jumpcloudUserId !== undefined || associateId !== undefined)
+            ? [
+                { customType: 'github', value: githubUsername || '' },
+                { customType: 'slack', value: slackUserId || '' },
+                { customType: 'jumpcloud', value: jumpcloudUserId || '' },
+                { customType: 'associate_id', value: associateId || '' },
+              ]
+            : undefined
         }
       );
 
@@ -2052,6 +2180,11 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
     });
   } catch (error: any) {
     logger.error('Failed to update user', { error: error.message });
+    // The hierarchy trigger (migration 083) speaks plainly; pass it through
+    // instead of a generic 500 (2026-09-08).
+    if (/circular manager|own manager/i.test(error?.message || '')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
     res.status(500).json({
       success: false,
       error: 'Failed to update user'
@@ -2126,10 +2259,11 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
     );
     const googleWorkspaceId = userInfo.rows[0]?.google_workspace_id;
 
-    // Soft delete user by setting status to deleted
+    // Soft delete user by setting status to deleted (deleted_at feeds the
+    // 20-day Google undelete window shown on restore)
     await db.query(
       `UPDATE organization_users
-       SET status = 'deleted', is_active = false, updated_at = NOW()
+       SET status = 'deleted', is_active = false, deleted_at = NOW(), updated_at = NOW()
        WHERE id = $1 AND organization_id = $2`,
       [userId, organizationId]
     );
@@ -2427,7 +2561,8 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
 
     // Check if user exists and is deleted
     const userResult = await db.query(
-      `SELECT id, email, status FROM organization_users WHERE id = $1 AND organization_id = $2`,
+      `SELECT id, email, status, google_workspace_id, organizational_unit, deleted_at
+         FROM organization_users WHERE id = $1 AND organization_id = $2`,
       [userId, organizationId]
     );
 
@@ -2439,7 +2574,9 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
     }
 
     const user = userResult.rows[0];
-    const daysSinceDeleted = 0; // Could be calculated from deleted_at if stored
+    const daysSinceDeleted = user.deleted_at
+      ? Math.floor((Date.now() - new Date(user.deleted_at).getTime()) / 86400000)
+      : 0;
 
     if (user.status !== 'deleted') {
       return res.status(400).json({
@@ -2448,12 +2585,43 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
       });
     }
 
-    // Restore user by setting status to active
+    // A Google-bound user is restored in Google FIRST (users.undelete, valid
+    // for 20 days after deletion). Until 2026-09-08 this route only flipped
+    // the local row and the Google account stayed deleted.
+    let googleRestored = false;
+    if (user.google_workspace_id) {
+      const gw = await googleWorkspaceService.undeleteUser(
+        organizationId,
+        user.google_workspace_id,
+        user.organizational_unit || '/'
+      );
+      if (!gw.success) {
+        return res.status(409).json({
+          success: false,
+          error: gw.pastWindow
+            ? `Google can no longer restore this account (deleted ${daysSinceDeleted} day(s) ago; Google keeps deleted users for 20 days). Re-creation from the Helios record is not available yet.`
+            : `Google Workspace rejected the restore: ${gw.error}`,
+          data: { daysSinceDeleted, pastWindow: !!gw.pastWindow }
+        });
+      }
+      googleRestored = true;
+    }
+
+    // Google restores the account in the state it was deleted in (usually
+    // suspended after an offboarding). Mirror that instead of asserting active.
+    let restoredStatus: 'active' | 'suspended' = 'active';
+    if (googleRestored) {
+      try {
+        const g = await googleWorkspaceService.getUserByGoogleId(organizationId, user.google_workspace_id);
+        if (g?.suspended) restoredStatus = 'suspended';
+      } catch { /* leave active; the next sync corrects it */ }
+    }
+
     await db.query(
       `UPDATE organization_users
-       SET status = 'active', is_active = true, updated_at = NOW()
+       SET status = $3, is_active = $4, deleted_at = NULL, updated_at = NOW()
        WHERE id = $1 AND organization_id = $2`,
-      [userId, organizationId]
+      [userId, organizationId, restoredStatus, restoredStatus === 'active']
     );
 
     // Log the user restoration
@@ -2489,6 +2657,7 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
       success: true,
       message: 'User restored successfully',
       data: {
+        googleRestored,
         userId: user.id,
         email: user.email,
         daysSinceDeleted
@@ -3798,6 +3967,38 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
       }
     }
 
+    // The local row is not the source of truth for a Google user's manager:
+    // push the new relation to Google for every Google-bound report. Until
+    // 2026-09-08 this route only rewrote reporting_manager_id, so the reports
+    // still pointed at the departed user in Google after offboarding.
+    for (const r of results) {
+      if (!r.success) continue;
+      try {
+        const rep = await db.query(
+          `SELECT google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
+          [r.reportId, organizationId]
+        );
+        const gwId = rep.rows[0]?.google_workspace_id;
+        if (!gwId) continue;
+        const mgr = await db.query(
+          `SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2`,
+          [r.newManagerId, organizationId]
+        );
+        const managerEmail = mgr.rows[0]?.email;
+        if (!managerEmail) continue;
+        const gw = await googleWorkspaceService.updateUser(organizationId, gwId, { managerEmail });
+        if (!gw.success) {
+          r.success = false;
+          r.error = `Google Workspace rejected the manager change: ${gw.error}`;
+          reassignedCount = Math.max(0, reassignedCount - 1);
+        }
+      } catch (e: any) {
+        r.success = false;
+        r.error = e?.message || 'Google Workspace update failed';
+        reassignedCount = Math.max(0, reassignedCount - 1);
+      }
+    }
+
     // Log the action
     await db.query(`
       INSERT INTO activity_logs (
@@ -4140,6 +4341,91 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
  * directory (one Gmail API call per mailbox), which is fine at typical org sizes;
  * a very large org would want caching/pagination.
  */
+/**
+ * Google Workspace licence for ONE user: read, assign/switch, remove.
+ * Reaches Google first; the local inventory is a cache that the next sync refreshes.
+ */
+async function loadGoogleBoundUser(req: Request, res: Response): Promise<{ organizationId: string; email: string } | null> {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) { res.status(401).json({ success: false, error: 'Organization ID not found' }); return null; }
+  if (req.user?.role !== 'admin') { res.status(403).json({ success: false, error: 'Only administrators can manage licences' }); return null; }
+  const { userId } = req.params;
+  const r = await db.query(
+    `SELECT email, google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
+    [userId, organizationId]
+  );
+  if (r.rows.length === 0) { res.status(404).json({ success: false, error: 'User not found' }); return null; }
+  if (!r.rows[0].google_workspace_id) { res.status(400).json({ success: false, error: 'User is not bound to Google Workspace' }); return null; }
+  return { organizationId, email: r.rows[0].email };
+}
+
+router.get('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const result = await googleWorkspaceService.getUserGoogleLicenses(u.organizationId, u.email);
+    if (!result.success) return res.status(502).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { email: u.email, licenses: result.licenses } });
+  } catch (error: any) {
+    logger.error('Failed to read Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to read Google licence' });
+  }
+});
+
+router.put('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const skuId = String(req.body?.skuId || '').trim();
+    const productId = String(req.body?.productId || 'Google-Apps').trim();
+    if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
+    const result = await googleWorkspaceService.assignGoogleLicense(u.organizationId, u.email, skuId, productId);
+    if (!result.success) {
+      const autoAssign = /auto-assigned/i.test(result.error || '');
+      return res.status(502).json({
+        success: false,
+        error: autoAssign
+          ? "Google assigns licences automatically to this user's organizational unit; per-user changes are refused until automatic licensing is turned off for that unit in the Google Admin console."
+          : `Google Workspace rejected the licence change: ${result.error}`
+      });
+    }
+    await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
+      googleLicense: { productId, skuId, action: result.action }
+    });
+    return res.json({ success: true, data: { email: u.email, productId, skuId, action: result.action } });
+  } catch (error: any) {
+    logger.error('Failed to assign Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to assign Google licence' });
+  }
+});
+
+router.delete('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const skuId = String(req.query.skuId || req.body?.skuId || '').trim();
+    const productId = String(req.query.productId || req.body?.productId || 'Google-Apps').trim();
+    if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
+    const result = await googleWorkspaceService.removeGoogleLicense(u.organizationId, u.email, skuId, productId);
+    if (!result.success) {
+      const autoAssign = /auto-assigned/i.test(result.error || '');
+      return res.status(502).json({
+        success: false,
+        error: autoAssign
+          ? "Google assigns this licence automatically to the user's organizational unit, so it cannot be removed per user. Turn off automatic licensing for that unit in the Google Admin console (Billing > Subscriptions > Licence settings), then try again."
+          : `Google Workspace rejected the licence removal: ${result.error}`
+      });
+    }
+    await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
+      googleLicense: { productId, skuId, action: 'removed' }
+    });
+    return res.json({ success: true, data: { email: u.email, productId, skuId, action: 'removed' } });
+  } catch (error: any) {
+    logger.error('Failed to remove Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to remove Google licence' });
+  }
+});
+
 router.get('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;

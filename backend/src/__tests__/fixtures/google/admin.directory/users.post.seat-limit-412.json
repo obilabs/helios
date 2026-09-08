@@ -1,0 +1,49 @@
+{
+  "family": "admin.directory",
+  "name": "users.post.seat-limit-412",
+  "recordedAt": "2026-09-08T08:21:49.788Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users",
+    "query": null,
+    "body": {
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "ReportOne"
+      },
+      "password": "REDACTED",
+      "changePasswordAtNextLogin": true,
+      "orgUnitPath": "/",
+      "organizations": [
+        {
+          "title": "Engineer",
+          "department": "Engineering",
+          "primary": true
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 412,
+    "data": {
+      "error": {
+        "code": 412,
+        "message": "Domain user limit reached. Start paid subscription.",
+        "errors": [
+          {
+            "message": "Domain user limit reached. Start paid subscription.",
+            "domain": "global",
+            "reason": "limitExceeded",
+            "location": "If-Match",
+            "locationType": "header"
+          }
+        ]
+      }
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

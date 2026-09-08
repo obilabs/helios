@@ -1,7 +1,7 @@
 {
   "family": "admin.datatransfer",
   "name": "transfers.list",
-  "recordedAt": "2026-09-08T00:59:29.201Z",
+  "recordedAt": "2026-09-08T09:07:31.758Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",
@@ -15,8 +15,64 @@
     "status": 200,
     "data": {
       "kind": "admin#datatransfer#dataTransfersList",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/A9TSIbhw4mIyYqIQ08uE6JF7fKo\"",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/XueNOxePoM9CGPJHGdSKagebv-k\"",
       "dataTransfers": [
+        {
+          "kind": "admin#datatransfer#DataTransfer",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/fEvwk5l-FDKxr6ksgN7IxCXSNzY\"",
+          "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCLCfTx1TC-fssM_WMnsypZet4l-pjg76SJIUKxb-4AVKYoudJQVXOiBzf5MwQWCNAjZE9Bg",
+          "oldOwnerUserId": "108421628909948645847",
+          "newOwnerUserId": "104133866875488011700",
+          "applicationDataTransfers": [
+            {
+              "applicationId": "55656082996",
+              "applicationTransferParams": [
+                {
+                  "key": "PRIVACY_LEVEL",
+                  "value": [
+                    "PRIVATE",
+                    "SHARED"
+                  ]
+                }
+              ],
+              "applicationTransferStatus": "completed"
+            },
+            {
+              "applicationId": "435070579839",
+              "applicationTransferStatus": "completed"
+            }
+          ],
+          "overallTransferStatusCode": "completed",
+          "requestTime": "2026-09-08T09:06:46.000Z"
+        },
+        {
+          "kind": "admin#datatransfer#DataTransfer",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/QduQgX8RN79jqUGfizKo4YTuGG0\"",
+          "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCGGzzZMo9pQkpJNLHlFQ0C-VncDsEywlFNBJ8Tw-_26ivC_5ru3srYVkG1nKzbtBpzIalmA",
+          "oldOwnerUserId": "108421628909948645847",
+          "newOwnerUserId": "104954732959818622924",
+          "applicationDataTransfers": [
+            {
+              "applicationId": "55656082996",
+              "applicationTransferParams": [
+                {
+                  "key": "PRIVACY_LEVEL",
+                  "value": [
+                    "PRIVATE",
+                    "SHARED"
+                  ]
+                }
+              ],
+              "applicationTransferStatus": "completed"
+            },
+            {
+              "applicationId": "435070579839",
+              "applicationTransferStatus": "completed"
+            }
+          ],
+          "overallTransferStatusCode": "completed",
+          "requestTime": "2026-09-08T01:11:48.002Z"
+        },
         {
           "kind": "admin#datatransfer#DataTransfer",
           "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/FQt0AvLoWCVzLFXZPXY2iYvQ8qE\"",
@@ -44,6 +100,34 @@
           ],
           "overallTransferStatusCode": "completed",
           "requestTime": "2026-09-08T00:58:31.226Z"
+        },
+        {
+          "kind": "admin#datatransfer#DataTransfer",
+          "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/Zkp8aN9Wvna-6iW4D67K9wOlUoQ\"",
+          "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+          "oldOwnerUserId": "108421628909948645847",
+          "newOwnerUserId": "104954732959818622924",
+          "applicationDataTransfers": [
+            {
+              "applicationId": "55656082996",
+              "applicationTransferParams": [
+                {
+                  "key": "PRIVACY_LEVEL",
+                  "value": [
+                    "PRIVATE",
+                    "SHARED"
+                  ]
+                }
+              ],
+              "applicationTransferStatus": "completed"
+            },
+            {
+              "applicationId": "435070579839",
+              "applicationTransferStatus": "completed"
+            }
+          ],
+          "overallTransferStatusCode": "completed",
+          "requestTime": "2026-09-08T01:18:22.360Z"
         }
       ]
     },
