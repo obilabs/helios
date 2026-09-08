@@ -4178,6 +4178,75 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
  * directory (one Gmail API call per mailbox), which is fine at typical org sizes;
  * a very large org would want caching/pagination.
  */
+/**
+ * Google Workspace licence for ONE user: read, assign/switch, remove.
+ * Reaches Google first; the local inventory is a cache that the next sync refreshes.
+ */
+async function loadGoogleBoundUser(req: Request, res: Response): Promise<{ organizationId: string; email: string } | null> {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) { res.status(401).json({ success: false, error: 'Organization ID not found' }); return null; }
+  if (req.user?.role !== 'admin') { res.status(403).json({ success: false, error: 'Only administrators can manage licences' }); return null; }
+  const { userId } = req.params;
+  const r = await db.query(
+    `SELECT email, google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
+    [userId, organizationId]
+  );
+  if (r.rows.length === 0) { res.status(404).json({ success: false, error: 'User not found' }); return null; }
+  if (!r.rows[0].google_workspace_id) { res.status(400).json({ success: false, error: 'User is not bound to Google Workspace' }); return null; }
+  return { organizationId, email: r.rows[0].email };
+}
+
+router.get('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const result = await googleWorkspaceService.getUserGoogleLicenses(u.organizationId, u.email);
+    if (!result.success) return res.status(502).json({ success: false, error: result.error });
+    return res.json({ success: true, data: { email: u.email, licenses: result.licenses } });
+  } catch (error: any) {
+    logger.error('Failed to read Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to read Google licence' });
+  }
+});
+
+router.put('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const skuId = String(req.body?.skuId || '').trim();
+    const productId = String(req.body?.productId || 'Google-Apps').trim();
+    if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
+    const result = await googleWorkspaceService.assignGoogleLicense(u.organizationId, u.email, skuId, productId);
+    if (!result.success) return res.status(502).json({ success: false, error: `Google Workspace rejected the licence change: ${result.error}` });
+    await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
+      googleLicense: { productId, skuId, action: result.action }
+    });
+    return res.json({ success: true, data: { email: u.email, productId, skuId, action: result.action } });
+  } catch (error: any) {
+    logger.error('Failed to assign Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to assign Google licence' });
+  }
+});
+
+router.delete('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const u = await loadGoogleBoundUser(req, res);
+    if (!u) return;
+    const skuId = String(req.query.skuId || req.body?.skuId || '').trim();
+    const productId = String(req.query.productId || req.body?.productId || 'Google-Apps').trim();
+    if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
+    const result = await googleWorkspaceService.removeGoogleLicense(u.organizationId, u.email, skuId, productId);
+    if (!result.success) return res.status(502).json({ success: false, error: `Google Workspace rejected the licence removal: ${result.error}` });
+    await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
+      googleLicense: { productId, skuId, action: 'removed' }
+    });
+    return res.json({ success: true, data: { email: u.email, productId, skuId, action: 'removed' } });
+  } catch (error: any) {
+    logger.error('Failed to remove Google licence', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to remove Google licence' });
+  }
+});
+
 router.get('/delegations', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;

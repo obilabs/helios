@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
-import { skuHasVault } from '../config/google-license-skus.js';
+import { skuHasVault, skuName } from '../config/google-license-skus.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
@@ -3841,6 +3841,84 @@ export class GoogleWorkspaceService {
     });
 
     return google.licensing({ version: 'v1', auth: jwtClient });
+  }
+
+  /**
+   * Google licences held by one user, across the base product (Google-Apps)
+   * and the Vault add-on (101031). Until 2026-09-08 Helios could only READ
+   * the inventory; assigning or removing a licence for an existing user had
+   * no path at all.
+   */
+  async getUserGoogleLicenses(
+    organizationId: string,
+    userEmail: string
+  ): Promise<{ success: boolean; licenses?: Array<{ productId: string; skuId: string; skuName: string }>; error?: string }> {
+    const found: Array<{ productId: string; skuId: string; skuName: string }> = [];
+    const wanted = userEmail.toLowerCase();
+    for (const productId of ['Google-Apps', '101031']) {
+      const r = await this.listLicenseAssignments(organizationId, productId);
+      if (!r.success) {
+        if (productId === 'Google-Apps') return { success: false, error: r.error };
+        continue; // no Vault product on this customer
+      }
+      for (const a of r.assignments || []) {
+        if (String(a.userId || '').toLowerCase() === wanted) {
+          found.push({ productId: a.productId || productId, skuId: a.skuId, skuName: skuName(a.skuId) });
+        }
+      }
+    }
+    return { success: true, licenses: found };
+  }
+
+  /** Assign (or switch to) a SKU for a user. Same-product switch uses licenseAssignments.update. */
+  async assignGoogleLicense(
+    organizationId: string,
+    userEmail: string,
+    skuId: string,
+    productId = 'Google-Apps'
+  ): Promise<{ success: boolean; error?: string; action?: 'assigned' | 'switched' | 'unchanged' }> {
+    try {
+      const licensing = await this.createLicensingClient(organizationId);
+      if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
+      const current = await this.getUserGoogleLicenses(organizationId, userEmail);
+      if (!current.success) return { success: false, error: current.error };
+      const inProduct = (current.licenses || []).find(l => l.productId === productId);
+      if (inProduct && inProduct.skuId === skuId) return { success: true, action: 'unchanged' };
+      if (inProduct) {
+        await licensing.licenseAssignments.update({
+          productId,
+          skuId: inProduct.skuId,
+          userId: userEmail,
+          requestBody: { skuId }
+        });
+        logger.info('Google licence switched', { userEmail, from: inProduct.skuId, to: skuId });
+        return { success: true, action: 'switched' };
+      }
+      await licensing.licenseAssignments.insert({ productId, skuId, requestBody: { userId: userEmail } });
+      logger.info('Google licence assigned', { userEmail, skuId });
+      return { success: true, action: 'assigned' };
+    } catch (error: any) {
+      logger.error('Failed to assign Google licence', { userEmail, skuId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  async removeGoogleLicense(
+    organizationId: string,
+    userEmail: string,
+    skuId: string,
+    productId = 'Google-Apps'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const licensing = await this.createLicensingClient(organizationId);
+      if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
+      await licensing.licenseAssignments.delete({ productId, skuId, userId: userEmail });
+      logger.info('Google licence removed', { userEmail, skuId });
+      return { success: true };
+    } catch (error: any) {
+      logger.error('Failed to remove Google licence', { userEmail, skuId, error: error.message });
+      return { success: false, error: error.message };
+    }
   }
 
   /**
