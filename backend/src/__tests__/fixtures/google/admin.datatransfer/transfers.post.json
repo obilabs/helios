@@ -1,0 +1,67 @@
+{
+  "family": "admin.datatransfer",
+  "name": "transfers.post",
+  "recordedAt": "2026-09-08T01:18:21.971Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/datatransfer/v1/transfers",
+    "query": null,
+    "body": {
+      "oldOwnerUserId": "108421628909948645847",
+      "newOwnerUserId": "104954732959818622924",
+      "applicationDataTransfers": [
+        {
+          "applicationId": "55656082996",
+          "applicationTransferParams": [
+            {
+              "key": "PRIVACY_LEVEL",
+              "value": [
+                "PRIVATE",
+                "SHARED"
+              ]
+            }
+          ]
+        },
+        {
+          "applicationId": "435070579839",
+          "applicationTransferParams": []
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#datatransfer#DataTransfer",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/rOO-mgcUpbp5KK6JQYtl9SwKrGQ\"",
+      "id": "AKrEtIY_e_ni078ToxzSbLSxT9zCvd_vM0R7SqyP6e-u32EBcsHSDyXRnlhkEjVs_allvikq33n_VkKmTUTL54Hf4RCjVLTZCg",
+      "oldOwnerUserId": "108421628909948645847",
+      "newOwnerUserId": "104954732959818622924",
+      "applicationDataTransfers": [
+        {
+          "applicationId": "55656082996",
+          "applicationTransferParams": [
+            {
+              "key": "PRIVACY_LEVEL",
+              "value": [
+                "PRIVATE",
+                "SHARED"
+              ]
+            }
+          ],
+          "applicationTransferStatus": "pending"
+        },
+        {
+          "applicationId": "435070579839",
+          "applicationTransferStatus": "pending"
+        }
+      ],
+      "overallTransferStatusCode": "inProgress",
+      "requestTime": "2026-09-08T01:18:22.360Z"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

@@ -86,6 +86,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const [forwardingSettings, setForwardingSettings] = useState<ForwardingSettings | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [newDelegateEmail, setNewDelegateEmail] = useState('');
+  const [delegateCandidates, setDelegateCandidates] = useState<Array<{ id: string; email: string; name: string }>>([]);
   const [addingDelegate, setAddingDelegate] = useState(false);
   const [removingDelegate, setRemovingDelegate] = useState<string | null>(null);
   const [showForwardingModal, setShowForwardingModal] = useState(false);
@@ -162,7 +163,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const fetchDropdownData = async () => {
     // Fetch available managers (all active users)
     try {
-      const managersResponse = await authFetch(`/api/v1/organization/users?status=active`);
+      const managersResponse = await authFetch(`/api/v1/organization/users?status=active&userType=staff`);
       if (managersResponse.ok) {
         const managersData = await managersResponse.json();
         setAvailableManagers(managersData.data || []);
@@ -178,9 +179,11 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       const orgUnitsResponse = await authFetch(`/api/v1/google-workspace/org-units/${organizationId}`);
       if (orgUnitsResponse.ok) {
         const orgUnitsData = await orgUnitsResponse.json();
-        if (orgUnitsData.success && orgUnitsData.data) {
-          setAvailableOrgUnits(orgUnitsData.data);
-        }
+        // The service wraps the list: { success, data: { orgUnits: [...] } }.
+        const list = Array.isArray(orgUnitsData?.data)
+          ? orgUnitsData.data
+          : orgUnitsData?.data?.orgUnits;
+        setAvailableOrgUnits(Array.isArray(list) ? list : []);
       }
     } catch (error) {
       console.error('Error fetching org units:', error);
@@ -188,12 +191,10 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
 
     // Fetch available departments
     try {
-      const deptResponse = await authFetch(`/api/v1/departments`);
+      const deptResponse = await authFetch(`/api/v1/organization/departments`);
       if (deptResponse.ok) {
         const deptData = await deptResponse.json();
-        if (deptData.success && deptData.data) {
-          setAvailableDepartments(deptData.data);
-        }
+        setAvailableDepartments(Array.isArray(deptData?.data) ? deptData.data : []);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -236,28 +237,36 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
 
     setEmailLoading(true);
     try {
-      // Fetch delegates
-      const delegatesResponse = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/delegates`
-      );
-      if (delegatesResponse.ok) {
-        const delegatesData = await delegatesResponse.json();
-        if (delegatesData.success && delegatesData.data?.delegates) {
-          setEmailDelegates(delegatesData.data.delegates);
-        } else {
-          setEmailDelegates([]);
+      // Typed backend route (organization.routes: GET users/:id/email-settings).
+      // Until 2026-09-07 this tab called a `/google-workspace/relay?path=` URL
+      // that never existed, so every action here 404'd.
+      const response = await authFetch(`/api/v1/organization/users/${user.id}/email-settings`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setEmailDelegates(
+            (data.data.delegates || []).map((d: any) => ({
+              delegateEmail: d.email || d.delegateEmail,
+              verificationStatus: d.verificationStatus,
+            }))
+          );
+          setForwardingSettings(data.data.forwarding || null);
         }
+      } else {
+        const err = await response.json().catch(() => ({}));
+        showError(err.error || 'Failed to load email settings');
       }
 
-      // Fetch forwarding settings
-      const forwardingResponse = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/autoForwarding`
-      );
-      if (forwardingResponse.ok) {
-        const forwardingData = await forwardingResponse.json();
-        if (forwardingData.success && forwardingData.data) {
-          setForwardingSettings(forwardingData.data);
-        }
+      // Staff list for the delegate picker (delegates must be in the same
+      // Google Workspace; picking from a list is the house rule).
+      const staffResponse = await authFetch(`/api/v1/organization/users?status=active&userType=staff&limit=200`);
+      if (staffResponse.ok) {
+        const staff = await staffResponse.json();
+        setDelegateCandidates(
+          (staff.data || [])
+            .filter((u: any) => u.id !== user.id && u.email && u.googleWorkspaceId)
+            .map((u: any) => ({ id: u.id, email: u.email, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() }))
+        );
       }
     } catch (error) {
       console.error('Error fetching email settings:', error);
@@ -307,28 +316,39 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
     }
   };
 
+  /** POST the typed email-settings payload and surface per-item failures. */
+  const postEmailSettings = async (payload: Record<string, unknown>) => {
+    const response = await authFetch(`/api/v1/organization/users/${user.id}/email-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Request failed');
+    }
+    return (data.data?.results || {}) as {
+      forwarding?: { success: boolean; error?: string };
+      vacation?: { success: boolean; error?: string };
+      delegatesAdded?: Array<{ email: string; success: boolean; error?: string }>;
+      delegatesRemoved?: Array<{ email: string; success: boolean; error?: string }>;
+    };
+  };
+
   const handleAddDelegate = async () => {
-    if (!newDelegateEmail.trim()) return;
+    const delegate = newDelegateEmail.trim();
+    if (!delegate) return;
 
     setAddingDelegate(true);
     try {
-      const response = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/delegates`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ delegateEmail: newDelegateEmail.trim() })
-        }
-      );
-
-      if (response.ok) {
-        showSuccess(`Added ${newDelegateEmail} as delegate`);
-        setNewDelegateEmail('');
-        fetchEmailSettings(); // Refresh the list
-      } else {
-        const errorData = await response.json();
-        showError(errorData.message || 'Failed to add delegate');
+      const results = await postEmailSettings({ addDelegates: [delegate] });
+      const outcome = results.delegatesAdded?.[0];
+      if (outcome && !outcome.success) {
+        throw new Error(outcome.error || 'Google rejected the delegate');
       }
+      showSuccess(`Added ${delegate} as delegate`);
+      setNewDelegateEmail('');
+      fetchEmailSettings();
     } catch (error: any) {
       showError(error.message || 'Failed to add delegate');
     } finally {
@@ -339,18 +359,13 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const handleRemoveDelegate = async (delegateEmail: string) => {
     setRemovingDelegate(delegateEmail);
     try {
-      const response = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/delegates/${encodeURIComponent(delegateEmail)}`,
-        { method: 'DELETE' }
-      );
-
-      if (response.ok) {
-        showSuccess(`Removed ${delegateEmail} as delegate`);
-        fetchEmailSettings(); // Refresh the list
-      } else {
-        const errorData = await response.json();
-        showError(errorData.message || 'Failed to remove delegate');
+      const results = await postEmailSettings({ removeDelegates: [delegateEmail] });
+      const outcome = results.delegatesRemoved?.[0];
+      if (outcome && !outcome.success) {
+        throw new Error(outcome.error || 'Google rejected the removal');
       }
+      showSuccess(`Removed ${delegateEmail} as delegate`);
+      fetchEmailSettings();
     } catch (error: any) {
       showError(error.message || 'Failed to remove delegate');
     } finally {
@@ -359,55 +374,24 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   };
 
   const handleSetForwarding = async () => {
-    if (!newForwardingEmail.trim()) {
+    const target = newForwardingEmail.trim();
+    if (!target) {
       showError('Please enter a forwarding email address');
       return;
     }
 
     setSavingForwarding(true);
     try {
-      // First, add the forwarding address
-      const addResponse = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/forwardingAddresses`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ forwardingEmail: newForwardingEmail.trim() })
-        }
-      );
-
-      // May already exist, ignore 409 errors
-      if (!addResponse.ok && addResponse.status !== 409) {
-        const errorData = await addResponse.json();
-        if (!errorData.message?.includes('already exists')) {
-          showError(errorData.message || 'Failed to add forwarding address');
-          return;
-        }
+      const results = await postEmailSettings({
+        forwarding: { enabled: true, forwardTo: target, disposition: forwardingDisposition },
+      });
+      if (results.forwarding && !results.forwarding.success) {
+        throw new Error(results.forwarding.error || 'Google rejected the forwarding change');
       }
-
-      // Then enable auto-forwarding
-      const enableResponse = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/autoForwarding`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            enabled: true,
-            emailAddress: newForwardingEmail.trim(),
-            disposition: forwardingDisposition
-          })
-        }
-      );
-
-      if (enableResponse.ok) {
-        showSuccess(`Forwarding enabled to ${newForwardingEmail}`);
-        setShowForwardingModal(false);
-        setNewForwardingEmail('');
-        fetchEmailSettings(); // Refresh
-      } else {
-        const errorData = await enableResponse.json();
-        showError(errorData.message || 'Failed to enable forwarding');
-      }
+      showSuccess(`Forwarding enabled to ${target}`);
+      setShowForwardingModal(false);
+      setNewForwardingEmail('');
+      fetchEmailSettings();
     } catch (error: any) {
       showError(error.message || 'Failed to set forwarding');
     } finally {
@@ -418,22 +402,12 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const handleDisableForwarding = async () => {
     setSavingForwarding(true);
     try {
-      const response = await authFetch(
-        `/api/v1/google-workspace/relay?path=/gmail/v1/users/${encodeURIComponent(user.email)}/settings/autoForwarding`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: false })
-        }
-      );
-
-      if (response.ok) {
-        showSuccess('Forwarding disabled');
-        fetchEmailSettings(); // Refresh
-      } else {
-        const errorData = await response.json();
-        showError(errorData.message || 'Failed to disable forwarding');
+      const results = await postEmailSettings({ forwarding: { enabled: false } });
+      if (results.forwarding && !results.forwarding.success) {
+        throw new Error(results.forwarding.error || 'Google rejected the change');
       }
+      showSuccess('Forwarding disabled');
+      fetchEmailSettings();
     } catch (error: any) {
       showError(error.message || 'Failed to disable forwarding');
     } finally {
@@ -1236,13 +1210,20 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     )}
 
                     <div className="add-delegate-form">
-                      <input
-                        type="email"
-                        placeholder="Enter delegate email address"
+                      <select
                         value={newDelegateEmail}
                         onChange={(e) => setNewDelegateEmail(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddDelegate()}
-                      />
+                        aria-label="Delegate"
+                      >
+                        <option value="">Select a team member...</option>
+                        {delegateCandidates
+                          .filter(c => !emailDelegates.some(d => d.delegateEmail === c.email))
+                          .map(c => (
+                            <option key={c.id} value={c.email}>
+                              {c.name ? `${c.name} (${c.email})` : c.email}
+                            </option>
+                          ))}
+                      </select>
                       <button
                         className="btn-primary"
                         onClick={handleAddDelegate}

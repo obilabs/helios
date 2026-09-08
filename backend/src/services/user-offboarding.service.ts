@@ -15,6 +15,13 @@ import { assertNotProtectedAdmin } from './admin-protection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { microsoftGraphService } from './microsoft-graph.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
+
+/** Google's "already there" answers: HTTP 409, or the message says so. */
+function isAlreadyExists(error: any): boolean {
+  const code = error?.code ?? error?.response?.status;
+  const msg = String(error?.message || error?.response?.data?.error?.message || '');
+  return code === 409 || /already exists/i.test(msg);
+}
 import {
   OffboardingTemplate,
   OffboardingConfig,
@@ -499,6 +506,37 @@ class UserOffboardingService {
         }
       } else {
         result.stepsSkipped.push('setup_mailbox_delegation');
+      }
+
+      // Step 3b: Clear the Gmail signature. The template flag existed and was
+      // mapped to 'remove_signature' but no step ever ran (2026-09-08: the
+      // departed mailbox kept its signature).
+      if (config.removeSignature) {
+        stepOrder++;
+        const sigStart = Date.now();
+        try {
+          const sig = await googleWorkspaceService.setUserSignature(organizationId, config.userEmail, '');
+          if (!sig.success) throw new Error(sig.error || 'setUserSignature failed');
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'remove_signature',
+            { ...logOptions, stepOrder, durationMs: Date.now() - sigStart, stepDescription: 'Cleared the Gmail signature' }
+          );
+          result.stepsCompleted.push('remove_signature');
+        } catch (error: any) {
+          result.errors.push(`Failed to remove signature: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'remove_signature',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - sigStart }
+          );
+          result.stepsFailed.push('remove_signature');
+        }
+      } else {
+        result.stepsSkipped.push('remove_signature');
       }
 
       // Step 4: Set auto-reply
@@ -1610,10 +1648,18 @@ class UserOffboardingService {
     const gmail = this.createGmailClient(credentials, config.userEmail);
 
     // 1. Register the forwarding address on the departing user's mailbox.
-    await gmail.users.settings.forwardingAddresses.create({
-      userId: config.userEmail,
-      requestBody: { forwardingEmail: forwardTo },
-    });
+    //    Google answers 409 "already exists" when it is already registered;
+    //    that IS the desired state (a re-run on 2026-09-08 reported the whole
+    //    step failed because of it), so treat it as done.
+    try {
+      await gmail.users.settings.forwardingAddresses.create({
+        userId: config.userEmail,
+        requestBody: { forwardingEmail: forwardTo },
+      });
+    } catch (error: any) {
+      if (!isAlreadyExists(error)) throw error;
+      logger.info('Forwarding address already registered', { from: config.userEmail, to: forwardTo });
+    }
 
     // 2. Enable auto-forwarding to it (leave a copy in the inbox).
     await gmail.users.settings.updateAutoForwarding({
@@ -1655,10 +1701,16 @@ class UserOffboardingService {
 
     const gmail = this.createGmailClient(credentials, config.userEmail);
 
-    await gmail.users.settings.delegates.create({
-      userId: config.userEmail,
-      requestBody: { delegateEmail },
-    });
+    try {
+      await gmail.users.settings.delegates.create({
+        userId: config.userEmail,
+        requestBody: { delegateEmail },
+      });
+    } catch (error: any) {
+      // "Delegate already exists (with any verification status)" — desired state.
+      if (!isAlreadyExists(error)) throw error;
+      logger.info('Mailbox delegate already present', { mailbox: config.userEmail, delegate: delegateEmail });
+    }
 
     logger.info('Mailbox delegation configured', {
       mailbox: config.userEmail,
@@ -1879,8 +1931,11 @@ class UserOffboardingService {
     userId: string,
     status: string
   ): Promise<void> {
+    // The column is `status` (the seed never had user_status). Until
+    // 2026-09-08 this threw, the suspend step was reported failed, and Helios
+    // kept showing the user Active after Google had suspended them.
     await db.query(
-      `UPDATE organization_users SET user_status = $1, is_active = false WHERE id = $2`,
+      `UPDATE organization_users SET status = $1, is_active = false, updated_at = NOW() WHERE id = $2`,
       [status, userId]
     );
   }
@@ -1959,6 +2014,10 @@ class UserOffboardingService {
       key: credentials.private_key,
       scopes: [
         'https://www.googleapis.com/auth/admin.directory.user',
+        // tokens.list / tokens.delete and users.signOut are gated on this
+        // scope; without it "revoke OAuth tokens" and "sign out devices"
+        // failed with "insufficient authentication scopes" (2026-09-08).
+        'https://www.googleapis.com/auth/admin.directory.user.security',
         'https://www.googleapis.com/auth/admin.directory.group',
         'https://www.googleapis.com/auth/admin.directory.device.mobile',
       ],

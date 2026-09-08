@@ -1,0 +1,19 @@
+{
+  "family": "admin.directory",
+  "name": "users.signOut.post",
+  "recordedAt": "2026-09-08T01:18:36.896Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users/departing%40example.com/signOut",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "content-type": "text/html"
+    }
+  }
+}

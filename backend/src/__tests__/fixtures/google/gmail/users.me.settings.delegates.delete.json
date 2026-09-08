@@ -1,0 +1,19 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.delegates.delete",
+  "recordedAt": "2026-09-08T00:25:17.236Z",
+  "request": {
+    "method": "DELETE",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/delegates/manager%40example.com",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "data": null,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

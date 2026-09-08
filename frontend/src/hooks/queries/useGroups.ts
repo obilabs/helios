@@ -106,7 +106,7 @@ async function createGroup(data: CreateGroupData): Promise<Group> {
 
 // Sync groups from Google Workspace
 async function syncGroups(organizationId: string): Promise<void> {
-  const response = await authFetch('/api/v1/google-workspace/groups/sync', {
+  const response = await authFetch('/api/v1/google-workspace/sync-groups', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

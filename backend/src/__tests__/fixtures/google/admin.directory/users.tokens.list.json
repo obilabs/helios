@@ -1,0 +1,22 @@
+{
+  "family": "admin.directory",
+  "name": "users.tokens.list",
+  "recordedAt": "2026-09-08T01:18:36.465Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users/departing%40example.com/tokens",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#tokenList",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/vyGp6PvFo4RvsFtPoIWeCReyIC8\""
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

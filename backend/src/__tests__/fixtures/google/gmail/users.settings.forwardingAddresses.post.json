@@ -1,0 +1,34 @@
+{
+  "family": "gmail",
+  "name": "users.settings.forwardingAddresses.post",
+  "recordedAt": "2026-09-08T01:18:33.115Z",
+  "request": {
+    "method": "POST",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/departing%40example.com/settings/forwardingAddresses",
+    "query": null,
+    "body": {
+      "forwardingEmail": "user1@example.com"
+    }
+  },
+  "response": {
+    "status": 409,
+    "data": {
+      "error": {
+        "code": 409,
+        "message": "Requested entity already exists",
+        "errors": [
+          {
+            "message": "Requested entity already exists",
+            "domain": "global",
+            "reason": "alreadyExists"
+          }
+        ],
+        "status": "ALREADY_EXISTS"
+      }
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

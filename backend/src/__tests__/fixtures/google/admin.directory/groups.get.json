@@ -1,0 +1,31 @@
+{
+  "family": "admin.directory",
+  "name": "groups.get",
+  "recordedAt": "2026-09-08T00:14:44.727Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/groups/user1@example.com",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#group",
+      "id": "00gjdgxs0trarmx",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/jKX-Sir16lgu2y2TzQtzlyl9chg\"",
+      "email": "user1@example.com",
+      "name": "E2E Engineering Squad",
+      "directMembersCount": "1",
+      "description": "Renamed from Helios (UI run, post-fix 2)",
+      "adminCreated": true,
+      "nonEditableAliases": [
+        "user2@example.com"
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

@@ -139,7 +139,12 @@ const rateLimitEnabled = process.env['RATE_LIMIT_ENABLED'] !== 'false';
 if (rateLimitEnabled) {
   const limiter = rateLimit({
     windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
-    max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100'),
+    // Behind the bundled nginx every browser shares ONE source IP (the proxy
+    // container), so this budget is effectively org-wide. A single admin page
+    // load issues 10-15 calls; 100 per 15 minutes locked an admin out mid-task
+    // on 2026-09-07 and the UI then showed the setup wizard. Keep the limiter
+    // (it still blunts brute force) but size it for an admin SPA.
+    max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '2000'),
     message: {
       error: 'Too many requests from this IP, please try again later.',
     },
