@@ -71,14 +71,6 @@ export function UserTable({
 
   // UI State
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  // The slide-out receives a snapshot; refresh it when the list refetches so a
-  // save does not keep showing pre-save values (2026-09-08).
-  useEffect(() => {
-    if (!selectedUser) return;
-    const fresh = users.find((u) => u.id === selectedUser.id);
-    if (fresh && fresh !== selectedUser) setSelectedUser(fresh);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users]);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -117,6 +109,15 @@ export function UserTable({
 
   // Fetch users with TanStack Query
   const { data: users = [], isLoading, error, refetch } = useUsers(filters);
+
+  // The slide-out receives a snapshot; refresh it when the list refetches so a
+  // save does not keep showing pre-save values (2026-09-08).
+  useEffect(() => {
+    if (!selectedUser) return;
+    const fresh = users.find((u) => u.id === selectedUser.id);
+    if (fresh && fresh !== selectedUser) setSelectedUser(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users]);
 
   // Fetch status counts and departments
   const { data: countsData } = useUserStatusCounts(apiUserType);
