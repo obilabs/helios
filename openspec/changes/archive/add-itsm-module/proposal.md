@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-07 — not pursued.** ITSM in Helios would duplicate [Aegis](https://github.com/obilabs/aegis); Helios integrates *to* Aegis (phishing-fail → training, tickets) instead of rebuilding it. Kept for history.
+
 # Add ITSM Module to Helios
 
 ## Summary
