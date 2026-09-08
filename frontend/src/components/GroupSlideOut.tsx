@@ -303,7 +303,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
       // directory and normalize to {id, first_name, last_name, email}.
       const response = isMicrosoft
         ? await authFetch(`/api/v1/microsoft/users?search=${encodeURIComponent(query)}`)
-        : await authFetch(`/api/v1/organization/users?search=${encodeURIComponent(query)}&status=active`);
+        : await authFetch(`/api/v1/organization/users?search=${encodeURIComponent(query)}&userType=staff&limit=50`);
 
       if (response.ok) {
         const data = await response.json();

@@ -1,0 +1,32 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.vacation.put",
+  "recordedAt": "2026-09-08T09:06:59.925Z",
+  "request": {
+    "method": "PUT",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/vacation",
+    "query": null,
+    "body": {
+      "enableAutoReply": true,
+      "responseSubject": "Out of Office",
+      "responseBodyPlainText": "Thank you for your email. {{first_name}} {{last_name}} is no longer with {{company_name}}. For assistance, please contact {{manager_email}}.",
+      "responseBodyHtml": "Thank you for your email. {{first_name}} {{last_name}} is no longer with {{company_name}}. For assistance, please contact {{manager_email}}.",
+      "restrictToContacts": false,
+      "restrictToDomain": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "enableAutoReply": true,
+      "responseSubject": "Out of Office",
+      "responseBodyHtml": "Thank you for your email. {{first_name}} {{last_name}} is no longer with {{company_name}}. For assistance, please contact {{manager_email}}.",
+      "restrictToContacts": false,
+      "restrictToDomain": false
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.settings.forwardingAddresses.post",
-  "recordedAt": "2026-09-08T01:18:33.115Z",
+  "recordedAt": "2026-09-08T09:06:55.428Z",
   "request": {
     "method": "POST",
     "host": "gmail.googleapis.com",

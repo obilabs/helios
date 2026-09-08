@@ -1,0 +1,31 @@
+{
+  "family": "apps",
+  "name": "licensing.product.Google-Apps.sku.user.delete",
+  "recordedAt": "2026-09-08T08:35:25.240Z",
+  "request": {
+    "method": "DELETE",
+    "host": "licensing.googleapis.com",
+    "path": "apps/licensing/v1/product/Google-Apps/sku/1010020025/user/departing%40example.com",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 400,
+    "data": {
+      "error": {
+        "code": 400,
+        "message": "Combination of product and sku is invalid or the product has auto-assigned feature enabled",
+        "errors": [
+          {
+            "message": "Combination of product and sku is invalid or the product has auto-assigned feature enabled",
+            "domain": "global",
+            "reason": "invalid"
+          }
+        ]
+      }
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

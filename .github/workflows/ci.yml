@@ -227,7 +227,12 @@ jobs:
                 -- 2026-09-08: Create Template 500'd on a fresh install (migration 078).
                 ('signature_templates','mobile_html_content'),
                 -- 2026-09-08: both group-member sync paths SET this in ON CONFLICT (migration 080).
-                ('access_group_members','updated_at')
+                ('access_group_members','updated_at'),
+                -- 2026-09-08: auto-reply + delegation flags on templates (migration 081).
+                ('offboarding_templates','email_auto_reply_enabled'),
+                ('offboarding_templates','email_delegate_enabled'),
+                -- 2026-09-08: restore + proxy mirror stamp/read deleted_at (migration 082).
+                ('organization_users','deleted_at')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
@@ -257,6 +262,14 @@ jobs:
             -- GET /lifecycle/logs reads these views (migration 080).
             IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'lifecycle_activity_feed') THEN
               RAISE EXCEPTION 'post-migration schema is missing view lifecycle_activity_feed';
+            END IF;
+
+            -- Offboarding wizard step 2 + org chart (migration 083).
+            SELECT string_agg(f, ', ') INTO missing
+              FROM unnest(ARRAY['get_direct_reports_count','get_total_reports_count','get_org_hierarchy','check_manager_hierarchy']) AS f
+             WHERE NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = f);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'post-migration schema is missing function(s): %', missing;
             END IF;
 
             RAISE NOTICE 'Post-migration contract OK';

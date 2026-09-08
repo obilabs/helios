@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "groups.members.post",
-  "recordedAt": "2026-09-08T01:16:29.220Z",
+  "recordedAt": "2026-09-08T08:59:00.093Z",
   "request": {
     "method": "POST",
     "host": "admin.googleapis.com",
@@ -16,12 +16,12 @@
     "status": 200,
     "data": {
       "kind": "admin#directory#member",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/SIyTWUmnlZBHsTaLdKrXI6lwwto\"",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/CqZOhgEH9yWrLJ6LwP0IAVPZMg0\"",
       "id": "108421628909948645847",
       "email": "user2@example.com",
       "role": "MEMBER",
       "type": "USER",
-      "status": "SUSPENDED"
+      "status": "ACTIVE"
     },
     "headers": {
       "content-type": "application/json; charset=UTF-8"

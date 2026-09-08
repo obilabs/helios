@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "groups.list",
-  "recordedAt": "2026-09-08T01:18:35.475Z",
+  "recordedAt": "2026-09-08T09:07:00.795Z",
   "request": {
     "method": "GET",
     "host": "admin.googleapis.com",

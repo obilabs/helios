@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
-import { skuHasVault } from '../config/google-license-skus.js';
+import { skuHasVault, skuName } from '../config/google-license-skus.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
@@ -1542,6 +1542,58 @@ export class GoogleWorkspaceService {
   }
 
   /**
+   * Restore a deleted Google Workspace user (users.undelete). Google keeps a
+   * deleted user for 20 days; after that the call fails and the caller must
+   * say so instead of pretending.
+   */
+  async undeleteUser(
+    organizationId: string,
+    googleWorkspaceId: string,
+    orgUnitPath: string
+  ): Promise<{ success: boolean; error?: string; pastWindow?: boolean }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      if (!credentials) return { success: false, error: 'Google Workspace not configured' };
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!adminEmail) return { success: false, error: 'Admin email not configured' };
+      const jwtClient = new JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ['https://www.googleapis.com/auth/admin.directory.user'],
+        subject: adminEmail
+      });
+      const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+      await admin.users.undelete({
+        userKey: googleWorkspaceId,
+        requestBody: { orgUnitPath: orgUnitPath || '/' }
+      });
+      logger.info('User restored in Google Workspace', { googleWorkspaceId, orgUnitPath });
+      return { success: true };
+    } catch (error: any) {
+      const code = error?.code ?? error?.response?.status;
+      const msg = String(error?.message || '');
+      logger.error('Failed to restore user in Google Workspace', { googleWorkspaceId, error: msg });
+      return { success: false, error: msg, pastWindow: code === 404 || /not found|deleted user/i.test(msg) };
+    }
+  }
+
+  /** Read one user by Google id (suspended / OU); used after an undelete. */
+  async getUserByGoogleId(organizationId: string, googleWorkspaceId: string): Promise<{ suspended: boolean; orgUnitPath: string } | null> {
+    const credentials = await this.getCredentials(organizationId);
+    const adminEmail = await this.getAdminEmail(organizationId);
+    if (!credentials || !adminEmail) return null;
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/admin.directory.user'],
+      subject: adminEmail
+    });
+    const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+    const res = await admin.users.get({ userKey: googleWorkspaceId });
+    return { suspended: !!res.data.suspended, orgUnitPath: res.data.orgUnitPath || '/' };
+  }
+
+  /**
    * Permanently delete a user from Google Workspace
    *
    * WARNING: This permanently deletes the user and frees the license.
@@ -1649,6 +1701,10 @@ export class GoogleWorkspaceService {
       managerEmail?: string;
       organizationalUnit?: string;
       phones?: { type: string; value: string }[];
+      /** Free-text location; mapped to Google's locations[] (type desk, area). Empty string clears. */
+      location?: string | null;
+      /** Helios custom ids -> externalIds[] (customType). Replaces the whole list. */
+      externalIds?: { customType: string; value: string }[];
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -1689,6 +1745,19 @@ export class GoogleWorkspaceService {
           department: updates.department,
           primary: true
         }];
+      }
+
+      // Location: Google keeps a structured locations[] list; we carry the
+      // free-text value as the area of a single 'desk' entry (2026-09-08).
+      if (updates.location !== undefined) {
+        requestBody.locations = updates.location
+          ? [{ type: 'desk', area: updates.location }]
+          : [];
+      }
+      if (updates.externalIds !== undefined) {
+        requestBody.externalIds = updates.externalIds
+          .filter(x => x.value)
+          .map(x => ({ type: 'custom', customType: x.customType, value: x.value }));
       }
 
       // Update manager relationship
@@ -1924,6 +1993,12 @@ export class GoogleWorkspaceService {
       managerEmail?: string;
       phones?: { type: string; value: string }[];
       changePasswordAtNextLogin?: boolean;
+      /** Free-text location -> locations[{type:'desk', area}] */
+      location?: string;
+      /** Alternate addresses -> emails[] (type 'work'); the primary is implied */
+      secondaryEmails?: string[];
+      /** Helios custom ids (GitHub, Slack, JumpCloud, Associate) -> externalIds[] with customType */
+      externalIds?: { customType: string; value: string }[];
     }
   ): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
@@ -1977,6 +2052,22 @@ export class GoogleWorkspaceService {
           value: userData.managerEmail,
           type: 'manager'
         }];
+      }
+
+      // Location, alternate emails, custom ids (2026-09-08: the form collected
+      // them and Helios stored them, but none reached Google at create).
+      if (userData.location) {
+        requestBody.locations = [{ type: 'desk', area: userData.location }];
+      }
+      if (userData.secondaryEmails && userData.secondaryEmails.length > 0) {
+        requestBody.emails = userData.secondaryEmails
+          .filter(e => e && e.toLowerCase() !== userData.email.toLowerCase())
+          .map(e => ({ address: e, type: 'work' }));
+      }
+      if (userData.externalIds && userData.externalIds.length > 0) {
+        requestBody.externalIds = userData.externalIds
+          .filter(x => x.value)
+          .map(x => ({ type: 'custom', customType: x.customType, value: x.value }));
       }
 
       // Set phone numbers
@@ -3795,6 +3886,84 @@ export class GoogleWorkspaceService {
     });
 
     return google.licensing({ version: 'v1', auth: jwtClient });
+  }
+
+  /**
+   * Google licences held by one user, across the base product (Google-Apps)
+   * and the Vault add-on (101031). Until 2026-09-08 Helios could only READ
+   * the inventory; assigning or removing a licence for an existing user had
+   * no path at all.
+   */
+  async getUserGoogleLicenses(
+    organizationId: string,
+    userEmail: string
+  ): Promise<{ success: boolean; licenses?: Array<{ productId: string; skuId: string; skuName: string }>; error?: string }> {
+    const found: Array<{ productId: string; skuId: string; skuName: string }> = [];
+    const wanted = userEmail.toLowerCase();
+    for (const productId of ['Google-Apps', '101031']) {
+      const r = await this.listLicenseAssignments(organizationId, productId);
+      if (!r.success) {
+        if (productId === 'Google-Apps') return { success: false, error: r.error };
+        continue; // no Vault product on this customer
+      }
+      for (const a of r.assignments || []) {
+        if (String(a.userId || '').toLowerCase() === wanted) {
+          found.push({ productId: a.productId || productId, skuId: a.skuId, skuName: skuName(a.skuId) });
+        }
+      }
+    }
+    return { success: true, licenses: found };
+  }
+
+  /** Assign (or switch to) a SKU for a user. Same-product switch uses licenseAssignments.update. */
+  async assignGoogleLicense(
+    organizationId: string,
+    userEmail: string,
+    skuId: string,
+    productId = 'Google-Apps'
+  ): Promise<{ success: boolean; error?: string; action?: 'assigned' | 'switched' | 'unchanged' }> {
+    try {
+      const licensing = await this.createLicensingClient(organizationId);
+      if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
+      const current = await this.getUserGoogleLicenses(organizationId, userEmail);
+      if (!current.success) return { success: false, error: current.error };
+      const inProduct = (current.licenses || []).find(l => l.productId === productId);
+      if (inProduct && inProduct.skuId === skuId) return { success: true, action: 'unchanged' };
+      if (inProduct) {
+        await licensing.licenseAssignments.update({
+          productId,
+          skuId: inProduct.skuId,
+          userId: userEmail,
+          requestBody: { skuId }
+        });
+        logger.info('Google licence switched', { userEmail, from: inProduct.skuId, to: skuId });
+        return { success: true, action: 'switched' };
+      }
+      await licensing.licenseAssignments.insert({ productId, skuId, requestBody: { userId: userEmail } });
+      logger.info('Google licence assigned', { userEmail, skuId });
+      return { success: true, action: 'assigned' };
+    } catch (error: any) {
+      logger.error('Failed to assign Google licence', { userEmail, skuId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  async removeGoogleLicense(
+    organizationId: string,
+    userEmail: string,
+    skuId: string,
+    productId = 'Google-Apps'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const licensing = await this.createLicensingClient(organizationId);
+      if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
+      await licensing.licenseAssignments.delete({ productId, skuId, userId: userEmail });
+      logger.info('Google licence removed', { userEmail, skuId });
+      return { success: true };
+    } catch (error: any) {
+      logger.error('Failed to remove Google licence', { userEmail, skuId, error: error.message });
+      return { success: false, error: error.message };
+    }
   }
 
   /**
