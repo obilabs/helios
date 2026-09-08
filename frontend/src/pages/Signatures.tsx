@@ -24,7 +24,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import './Signatures.css';
-import { TemplateEditor, TemplatePreview, CampaignEditor, CampaignAnalytics, SignaturePermissions, DeploymentStatus } from '../components/signatures';
+import { TemplateEditor, TemplatePreview, CampaignEditor, CampaignAnalytics, SignaturePermissions, DeploymentStatus, AssignmentManager } from '../components/signatures';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
@@ -89,6 +89,9 @@ const Signatures: React.FC = () => {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<SignatureTemplate | null>(null);
+  // AssignmentManager existed but was mounted nowhere, so no admin could
+  // assign a template to anyone from the UI (found 2026-09-08).
+  const [assignTemplate, setAssignTemplate] = useState<SignatureTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
@@ -640,6 +643,13 @@ const Signatures: React.FC = () => {
                     >
                       <Copy size={16} />
                     </button>
+                    <button
+                      className="btn-icon"
+                      onClick={() => setAssignTemplate(template)}
+                      title="Assign to users, groups, departments or org units"
+                    >
+                      <Users size={16} />
+                    </button>
                     {!template.is_default && (
                       <button
                         className="btn-icon"
@@ -977,6 +987,28 @@ const Signatures: React.FC = () => {
               <TemplatePreview
                 htmlContent={previewTemplate.html_content}
                 plainTextContent={previewTemplate.plain_text_content}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assignment Manager Modal */}
+      {assignTemplate && (
+        <div className="modal-overlay" onClick={() => setAssignTemplate(null)}>
+          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Assign: {assignTemplate.name}</h2>
+              <button className="btn-close" onClick={() => setAssignTemplate(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <AssignmentManager
+                templateId={assignTemplate.id}
+                templateName={assignTemplate.name}
+                onClose={() => setAssignTemplate(null)}
+                onAssignmentChange={() => { fetchTemplates(); }}
               />
             </div>
           </div>
