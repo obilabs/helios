@@ -65,6 +65,15 @@ export const REQUIRED_SCOPES_CSV: string = REQUIRED_SCOPES.join(',')
  */
 export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/ediscovery', reason: "Create Google Vault holds to preserve a departing user's Mail and Drive before deletion (Business Plus and above)." },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.userschema', reason: 'Define custom user attributes (schemas) so Helios-specific fields can be stored on the Google user record.' },
+  // API relay (Settings > Security): under enforcement a read forwards with a
+  // read-only token. DWD matches scope strings exactly, so those read-only
+  // variants must be authorised separately or the relay cannot narrow. Verified
+  // live 2026-09-08: a tenant with the full scope refuses the readonly one.
+  { scope: 'https://www.googleapis.com/auth/admin.directory.user.readonly', reason: 'API relay: read-only tokens for user reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.group.readonly', reason: 'API relay: read-only tokens for group reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.orgunit.readonly', reason: 'API relay: read-only tokens for org unit reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.domain.readonly', reason: 'API relay: read-only tokens for domain reads.' },
 ]
 
 /**
@@ -76,3 +85,98 @@ export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
 export const DELEGATION_SCOPE_DETAILS: ScopeDetail[] = [...SCOPE_DETAILS, ...OPTIONAL_SCOPE_DETAILS]
 export const DELEGATION_SCOPES: string[] = DELEGATION_SCOPE_DETAILS.map((s) => s.scope)
 export const DELEGATION_SCOPES_CSV: string = DELEGATION_SCOPES.join(',')
+
+// ---------------------------------------------------------------------------
+// Scope contract v1 (frozen 2026-09-08) and per-call minting.
+// ---------------------------------------------------------------------------
+//
+// Google domain-wide delegation is all-or-nothing PER TOKEN EXCHANGE: a JWT that
+// asks for one scope the tenant has not authorised is refused outright, so every
+// call that minted "the full list" failed the moment the list grew. That is how
+// adding `userschema` in August 2026 broke every connected workspace.
+//
+// Two rules, enforced by google-scopes.contract.test.ts:
+//
+//   1. REQUIRED_SCOPES is a WIRE CONTRACT. Its content hash is pinned. Changing
+//      it is a deliberate decision recorded in the north-star tracker, then the
+//      pin is bumped. Existing tenants must re-authorise after such a change.
+//
+//   2. Nothing mints the full list per call. `googleScopesForPath()` returns the
+//      minimal scopes for one request. Paths it does not know fall back to the
+//      frozen contract, never to a wider set, so a new optional scope can only
+//      ever be requested by the path that needs it. An unauthorised optional
+//      scope fails that one feature with a clear 401; nothing else notices.
+
+export const SCOPE_CONTRACT_VERSION = 1
+
+const G = 'https://www.googleapis.com/auth/'
+
+/**
+ * Per-path scope map. Order matters: first match wins. Patterns are matched
+ * against the Google API path with the leading slash and version removed
+ * (`admin/directory/v1/users/x` -> `admin/directory/users/x`).
+ */
+interface PathScopeRule {
+  test: RegExp
+  read: string[]
+  write: string[]
+}
+
+const PATH_SCOPES: PathScopeRule[] = [
+  // Google DWD matches scope strings exactly: a tenant that authorised
+  // `admin.directory.user` refuses a token for `admin.directory.user.readonly`
+  // (AGENT-RULES.md). So reads mint the same contract scope as writes; the
+  // narrowing is per API family, not per verb. Only scopes present in
+  // DELEGATION_SCOPES may appear here (the contract test enforces it).
+  // Directory: schemas need their own scope (optional; per-call only).
+  { test: /^admin\/directory\/customer\/[^/]+\/schemas/, read: [`${G}admin.directory.userschema`], write: [`${G}admin.directory.userschema`] },
+  // Directory: user security sub-resources (tokens, ASPs, verification codes, signOut).
+  { test: /^admin\/directory\/users\/[^/]+\/(tokens|asps|verificationCodes|signOut)/, read: [`${G}admin.directory.user.security`], write: [`${G}admin.directory.user.security`] },
+  // Directory: users (incl. undelete, aliases, photos, makeAdmin).
+  { test: /^admin\/directory\/users/, read: [`${G}admin.directory.user`], write: [`${G}admin.directory.user`] },
+  // Directory: group members, then groups.
+  { test: /^admin\/directory\/groups\/[^/]+\/(members|hasMember)/, read: [`${G}admin.directory.group.member`], write: [`${G}admin.directory.group.member`] },
+  { test: /^admin\/directory\/groups/, read: [`${G}admin.directory.group`], write: [`${G}admin.directory.group`] },
+  // Directory: customer-scoped resources.
+  { test: /^admin\/directory\/customer\/[^/]+\/orgunits/, read: [`${G}admin.directory.orgunit`], write: [`${G}admin.directory.orgunit`] },
+  { test: /^admin\/directory\/customer\/[^/]+\/domains/, read: [`${G}admin.directory.domain`], write: [`${G}admin.directory.domain`] },
+  { test: /^admin\/directory\/customer\/[^/]+\/devices\/mobile/, read: [`${G}admin.directory.device.mobile`], write: [`${G}admin.directory.device.mobile`] },
+  // Reports (readonly scopes are the contract scopes here).
+  { test: /^admin\/reports\/activity/, read: [`${G}admin.reports.audit.readonly`], write: [`${G}admin.reports.audit.readonly`] },
+  { test: /^admin\/reports\/usage/, read: [`${G}admin.reports.usage.readonly`], write: [`${G}admin.reports.usage.readonly`] },
+  // Data transfer.
+  { test: /^admin\/datatransfer/, read: [`${G}admin.datatransfer`], write: [`${G}admin.datatransfer`] },
+  // Licensing.
+  { test: /^apps\/licensing/, read: [`${G}apps.licensing`], write: [`${G}apps.licensing`] },
+  // Gmail settings: sendAs, delegates and forwarding need the sharing scope; the rest basic.
+  { test: /^gmail\/users\/[^/]+\/settings\/(sendAs|delegates|forwardingAddresses)/, read: [`${G}gmail.settings.basic`, `${G}gmail.settings.sharing`], write: [`${G}gmail.settings.basic`, `${G}gmail.settings.sharing`] },
+  { test: /^gmail\/users\/[^/]+\/settings/, read: [`${G}gmail.settings.basic`], write: [`${G}gmail.settings.basic`] },
+  // Calendar and Drive (drive.readonly IS a contract scope, so reads can use it).
+  { test: /^calendar/, read: [`${G}calendar`], write: [`${G}calendar`] },
+  { test: /^drive/, read: [`${G}drive.readonly`], write: [`${G}drive`] },
+]
+
+const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/** Strip leading slashes and any `/vN/` version segment. */
+export function normaliseGooglePath(path: string): string {
+  return String(path || '')
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter((seg) => seg && !/^v\d+(?:beta\d*|alpha)?$/i.test(seg))
+    .join('/')
+}
+
+/**
+ * Minimal scopes to mint for one Google API call. Unknown paths return the
+ * frozen v1 contract (never wider). `fellBack` tells the caller so it can log
+ * the gap; every fallback is a candidate row for PATH_SCOPES.
+ */
+export function googleScopesForPath(method: string, path: string): { scopes: string[]; fellBack: boolean } {
+  const p = normaliseGooglePath(path)
+  const isRead = READ_METHODS.has(String(method || 'GET').toUpperCase())
+  for (const rule of PATH_SCOPES) {
+    if (rule.test.test(p)) return { scopes: isRead ? rule.read : rule.write, fellBack: false }
+  }
+  return { scopes: REQUIRED_SCOPES, fellBack: true }
+}
