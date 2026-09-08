@@ -223,7 +223,9 @@ jobs:
                 ('ai_config','mcp_tools'),
                 ('ai_config','use_custom_prompt'),
                 ('ai_config','custom_system_prompt'),
-                ('ai_config','ai_role')
+                ('ai_config','ai_role'),
+                -- 2026-09-08: Create Template 500'd on a fresh install (migration 078).
+                ('signature_templates','mobile_html_content')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
