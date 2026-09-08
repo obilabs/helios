@@ -2419,6 +2419,8 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       )}
 
       {/* Status Change Confirmation */}
+      {/* Dialogs live inside the overlay; stop their clicks reaching the overlay onClose (2026-09-08). */}
+      <div onClick={(e) => e.stopPropagation()}>
       <ConfirmDialog
         isOpen={gLicenseToRemove !== null}
         title="Remove Google licence"
@@ -2479,6 +2481,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
         onConfirm={confirmRemoveFromGroup}
         onCancel={() => setGroupToRemove(null)}
       />
+      </div>
     </div>
   );
 }
