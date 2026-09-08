@@ -2485,12 +2485,21 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
       googleRestored = true;
     }
 
-    // Restore user by setting status to active
+    // Google restores the account in the state it was deleted in (usually
+    // suspended after an offboarding). Mirror that instead of asserting active.
+    let restoredStatus: 'active' | 'suspended' = 'active';
+    if (googleRestored) {
+      try {
+        const g = await googleWorkspaceService.getUserByGoogleId(organizationId, user.google_workspace_id);
+        if (g?.suspended) restoredStatus = 'suspended';
+      } catch { /* leave active; the next sync corrects it */ }
+    }
+
     await db.query(
       `UPDATE organization_users
-       SET status = 'active', is_active = true, updated_at = NOW()
+       SET status = $3, is_active = $4, deleted_at = NULL, updated_at = NOW()
        WHERE id = $1 AND organization_id = $2`,
-      [userId, organizationId]
+      [userId, organizationId, restoredStatus, restoredStatus === 'active']
     );
 
     // Log the user restoration
