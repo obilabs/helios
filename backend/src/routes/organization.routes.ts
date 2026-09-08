@@ -1503,6 +1503,17 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       // User will be required to change it on first login
       const tempPassword = crypto.randomBytes(16).toString('base64').slice(0, 16) + 'Aa1!';
 
+      // The manager picked in the form is a Helios id; Google wants the
+      // manager's email. Until 2026-09-08 it was stored locally only.
+      let createManagerEmail: string | undefined;
+      if (reportingManagerId) {
+        const mgrRow = await db.query(
+          'SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2',
+          [reportingManagerId, organizationId]
+        );
+        createManagerEmail = mgrRow.rows[0]?.email || undefined;
+      }
+
       const gwResult = await googleWorkspaceService.createUser(organizationId, {
         email: email.toLowerCase(),
         firstName,
@@ -1511,6 +1522,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
         orgUnitPath: organizationalUnit || '/',
         jobTitle: jobTitle || undefined,
         department: department || undefined,
+        managerEmail: createManagerEmail,
         changePasswordAtNextLogin: true,
         phones: mobilePhone ? [{ type: 'mobile', value: mobilePhone }] : undefined
       });
