@@ -112,7 +112,8 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
         setGLicenses(mineData.data?.licenses || []);
       }
       const invData = await inv.json().catch(() => ({}));
-      const google = (invData.data || invData.licenses || []).filter((l: any) => l.provider === 'google');
+      const inventory = invData?.data?.licenses || invData?.licenses || (Array.isArray(invData?.data) ? invData.data : []);
+      const google = inventory.filter((l: any) => l.provider === 'google');
       setGInventory(google.map((l: any) => ({ skuId: l.skuId, displayName: l.displayName })));
     } catch (e: any) {
       setGLicenseError(e?.message || 'Could not read the licence');
