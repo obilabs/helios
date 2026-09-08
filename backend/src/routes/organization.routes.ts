@@ -1474,6 +1474,8 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
 
     // Create user in external providers if requested
     let googleWorkspaceUserId: string | null = null;
+    let googleLicenseAssigned = false;
+    let googleLicenseError: string | null = null;
     let googleCreationError: string | null = null;
 
     if (createInGoogle) {
@@ -1505,6 +1507,22 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
            WHERE id = $2`,
           [googleWorkspaceUserId, newUser.id]
         );
+
+        // Google licence chosen in the form (licence ids from /organization/licenses
+        // look like gw-<productId>-<skuId>). Until 2026-09-08 the create path
+        // only handled Microsoft licences and silently ignored this.
+        if (licenseId && String(licenseId).startsWith('gw-')) {
+          const parts = String(licenseId).split('-');
+          const skuId = parts[parts.length - 1];
+          const productId = parts.length >= 4 ? parts.slice(1, -1).join('-') : 'Google-Apps';
+          const lic = await googleWorkspaceService.assignGoogleLicense(organizationId, email.toLowerCase(), skuId, productId);
+          if (lic.success) {
+            googleLicenseAssigned = true;
+          } else {
+            googleLicenseError = lic.error || 'unknown error';
+            logger.warn('Google licence not assigned at create', { userId: newUser.id, skuId, error: googleLicenseError });
+          }
+        }
 
         logger.info('User created in Google Workspace and linked to Helios', {
           userId: newUser.id,
@@ -1636,6 +1654,9 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     let message = 'User created successfully';
     if (createInGoogle && googleWorkspaceUserId) {
       message = 'User created in Helios and Google Workspace';
+      if (licenseId && String(licenseId).startsWith('gw-') && !googleLicenseAssigned) {
+        message += `. Google licence NOT assigned: ${googleLicenseError || 'unknown error'}`;
+      }
     } else if (createInGoogle && googleCreationError) {
       message = 'User created in Helios. Google Workspace creation failed: ' + googleCreationError;
     }
