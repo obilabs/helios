@@ -47,11 +47,12 @@ describe('scope contract v1 is frozen', () => {
     expect(OPTIONAL_SCOPE_DETAILS.map((s) => s.scope)).toContain(`${G}admin.directory.userschema`);
   });
 
-  it('every scope a path can mint is either in the contract or an optional scope', () => {
+  it('every scope a path can mint is exactly an advertised scope (DWD matches strings exactly)', () => {
     // A path that minted something outside the advertised set would fail on
-    // every tenant, since nobody was ever asked to authorise it.
+    // every tenant, since nobody was ever asked to authorise it. That includes
+    // readonly variants: `admin.directory.user.readonly` is refused by a tenant
+    // that authorised `admin.directory.user`.
     const advertised = new Set(DELEGATION_SCOPES);
-    const readonlyOf = (s: string) => s.replace(/\.readonly$/, '');
     const paths: Array<[string, string]> = [
       ['GET', 'admin/directory/v1/users'],
       ['POST', 'admin/directory/v1/users'],
@@ -74,10 +75,7 @@ describe('scope contract v1 is frozen', () => {
     for (const [method, path] of paths) {
       const { scopes, fellBack } = googleScopesForPath(method, path);
       expect(fellBack).toBe(false);
-      for (const s of scopes) {
-        // readonly variants are implied by their write scope in DWD.
-        expect(advertised.has(s) || advertised.has(readonlyOf(s))).toBe(true);
-      }
+      for (const s of scopes) expect(advertised.has(s)).toBe(true);
     }
   });
 });
@@ -89,9 +87,9 @@ describe('per-call minting', () => {
     expect(normaliseGooglePath('drive/v3/files')).toBe('drive/files');
   });
 
-  it('a directory read mints the readonly user scope only', () => {
+  it('a directory read mints the user scope only (no readonly variant: DWD would refuse it)', () => {
     expect(googleScopesForPath('GET', 'admin/directory/v1/users')).toEqual({
-      scopes: [`${G}admin.directory.user.readonly`],
+      scopes: [`${G}admin.directory.user`],
       fellBack: false,
     });
   });
@@ -127,6 +125,7 @@ describe('per-call minting', () => {
 
   it('an unknown path falls back to the frozen contract and says so', () => {
     const r = googleScopesForPath('GET', 'chat/v1/spaces');
+    expect(googleScopesForPath('GET', 'admin/directory/v1/customers/my_customer').fellBack).toBe(true);
     expect(r.fellBack).toBe(true);
     expect(r.scopes).toBe(REQUIRED_SCOPES);
   });

@@ -115,32 +115,36 @@ interface PathScopeRule {
 }
 
 const PATH_SCOPES: PathScopeRule[] = [
+  // Google DWD matches scope strings exactly: a tenant that authorised
+  // `admin.directory.user` refuses a token for `admin.directory.user.readonly`
+  // (AGENT-RULES.md). So reads mint the same contract scope as writes; the
+  // narrowing is per API family, not per verb. Only scopes present in
+  // DELEGATION_SCOPES may appear here (the contract test enforces it).
   // Directory: schemas need their own scope (optional; per-call only).
-  { test: /^admin\/directory\/customer\/[^/]+\/schemas/, read: [`${G}admin.directory.userschema.readonly`], write: [`${G}admin.directory.userschema`] },
+  { test: /^admin\/directory\/customer\/[^/]+\/schemas/, read: [`${G}admin.directory.userschema`], write: [`${G}admin.directory.userschema`] },
   // Directory: user security sub-resources (tokens, ASPs, verification codes, signOut).
   { test: /^admin\/directory\/users\/[^/]+\/(tokens|asps|verificationCodes|signOut)/, read: [`${G}admin.directory.user.security`], write: [`${G}admin.directory.user.security`] },
   // Directory: users (incl. undelete, aliases, photos, makeAdmin).
-  { test: /^admin\/directory\/users/, read: [`${G}admin.directory.user.readonly`], write: [`${G}admin.directory.user`] },
-  // Directory: groups and members.
-  { test: /^admin\/directory\/groups\/[^/]+\/(members|hasMember)/, read: [`${G}admin.directory.group.member.readonly`], write: [`${G}admin.directory.group.member`] },
-  { test: /^admin\/directory\/groups/, read: [`${G}admin.directory.group.readonly`], write: [`${G}admin.directory.group`] },
+  { test: /^admin\/directory\/users/, read: [`${G}admin.directory.user`], write: [`${G}admin.directory.user`] },
+  // Directory: group members, then groups.
+  { test: /^admin\/directory\/groups\/[^/]+\/(members|hasMember)/, read: [`${G}admin.directory.group.member`], write: [`${G}admin.directory.group.member`] },
+  { test: /^admin\/directory\/groups/, read: [`${G}admin.directory.group`], write: [`${G}admin.directory.group`] },
   // Directory: customer-scoped resources.
-  { test: /^admin\/directory\/customer\/[^/]+\/orgunits/, read: [`${G}admin.directory.orgunit.readonly`], write: [`${G}admin.directory.orgunit`] },
-  { test: /^admin\/directory\/customer\/[^/]+\/domains/, read: [`${G}admin.directory.domain.readonly`], write: [`${G}admin.directory.domain`] },
-  { test: /^admin\/directory\/customer\/[^/]+\/devices\/mobile/, read: [`${G}admin.directory.device.mobile.readonly`], write: [`${G}admin.directory.device.mobile`] },
-  { test: /^admin\/directory\/customers/, read: [`${G}admin.directory.customer.readonly`], write: [`${G}admin.directory.customer`] },
-  // Reports.
+  { test: /^admin\/directory\/customer\/[^/]+\/orgunits/, read: [`${G}admin.directory.orgunit`], write: [`${G}admin.directory.orgunit`] },
+  { test: /^admin\/directory\/customer\/[^/]+\/domains/, read: [`${G}admin.directory.domain`], write: [`${G}admin.directory.domain`] },
+  { test: /^admin\/directory\/customer\/[^/]+\/devices\/mobile/, read: [`${G}admin.directory.device.mobile`], write: [`${G}admin.directory.device.mobile`] },
+  // Reports (readonly scopes are the contract scopes here).
   { test: /^admin\/reports\/activity/, read: [`${G}admin.reports.audit.readonly`], write: [`${G}admin.reports.audit.readonly`] },
   { test: /^admin\/reports\/usage/, read: [`${G}admin.reports.usage.readonly`], write: [`${G}admin.reports.usage.readonly`] },
   // Data transfer.
-  { test: /^admin\/datatransfer/, read: [`${G}admin.datatransfer.readonly`], write: [`${G}admin.datatransfer`] },
+  { test: /^admin\/datatransfer/, read: [`${G}admin.datatransfer`], write: [`${G}admin.datatransfer`] },
   // Licensing.
   { test: /^apps\/licensing/, read: [`${G}apps.licensing`], write: [`${G}apps.licensing`] },
   // Gmail settings: sendAs, delegates and forwarding need the sharing scope; the rest basic.
   { test: /^gmail\/users\/[^/]+\/settings\/(sendAs|delegates|forwardingAddresses)/, read: [`${G}gmail.settings.basic`, `${G}gmail.settings.sharing`], write: [`${G}gmail.settings.basic`, `${G}gmail.settings.sharing`] },
   { test: /^gmail\/users\/[^/]+\/settings/, read: [`${G}gmail.settings.basic`], write: [`${G}gmail.settings.basic`] },
-  // Calendar and Drive.
-  { test: /^calendar/, read: [`${G}calendar.readonly`], write: [`${G}calendar`] },
+  // Calendar and Drive (drive.readonly IS a contract scope, so reads can use it).
+  { test: /^calendar/, read: [`${G}calendar`], write: [`${G}calendar`] },
   { test: /^drive/, read: [`${G}drive.readonly`], write: [`${G}drive`] },
 ]
 

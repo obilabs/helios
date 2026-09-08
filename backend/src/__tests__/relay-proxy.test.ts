@@ -91,7 +91,9 @@ const { REQUIRED_SCOPES } = await import('../config/google-scopes.js');
 // Flag OFF mints the MINIMAL scopes for the path (per-call minting, Phase 02
 // scope contract). It used to mint the full REQUIRED_SCOPES list, which made
 // any addition to that list a blanket 401 for every connected tenant.
-const FLAG_OFF_USERS_READ = 'https://www.googleapis.com/auth/admin.directory.user.readonly';
+// Reads mint the same contract scope as writes: DWD matches strings exactly,
+// so a readonly variant would be refused by a tenant that authorised the full one.
+const FLAG_OFF_USERS_READ = 'https://www.googleapis.com/auth/admin.directory.user';
 const FLAG_OFF_USERS_WRITE = 'https://www.googleapis.com/auth/admin.directory.user';
 
 const READONLY_USER_SCOPE = 'https://www.googleapis.com/auth/admin.directory.user.readonly';
