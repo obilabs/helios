@@ -159,6 +159,12 @@ function getPageFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/console')) return 'console';
   // Automation routes
   if (pathname.startsWith('/admin/onboarding-templates')) return 'onboarding-templates';
+  // Editor pages must be matched BEFORE the list page prefix; without these
+  // "New Template" navigated to an unmapped page id and landed on the Dashboard (2026-09-08).
+  if (pathname.startsWith('/admin/offboarding-templates/new')) return 'new-offboarding-template';
+  if (pathname.startsWith('/admin/offboarding-templates/edit')) return 'edit-offboarding-template';
+  if (pathname.startsWith('/admin/onboarding-templates/new')) return 'new-onboarding-template';
+  if (pathname.startsWith('/admin/onboarding-templates/edit')) return 'edit-onboarding-template';
   if (pathname.startsWith('/admin/offboarding-templates')) return 'offboarding-templates';
   if (pathname.startsWith('/admin/scheduled-actions')) return 'scheduled-actions';
   if (pathname.startsWith('/admin/training')) return 'training';
@@ -254,6 +260,10 @@ function AppContent() {
       // Automation routes
       'onboarding-templates': '/admin/onboarding-templates',
       'offboarding-templates': '/admin/offboarding-templates',
+      'new-offboarding-template': '/admin/offboarding-templates/new',
+      'edit-offboarding-template': '/admin/offboarding-templates/edit',
+      'new-onboarding-template': '/admin/onboarding-templates/new',
+      'edit-onboarding-template': '/admin/onboarding-templates/edit',
       'scheduled-actions': '/admin/scheduled-actions',
       'tasks': '/admin/tasks',
       'training': '/admin/training',
