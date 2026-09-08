@@ -1466,6 +1466,17 @@ class UserOffboardingService {
     if (!config.userId) errors.push('User ID is required');
     if (!config.userEmail) errors.push('User email is required');
 
+    // Fail BEFORE any step runs when the template relies on a manager the
+    // user does not have (2026-09-08: the run got 13 steps in, then the Drive
+    // transfer failed for want of a target).
+    const needsManager: string[] = [];
+    if (config.driveAction === 'transfer_manager') needsManager.push('Drive transfer');
+    if (config.emailAction === 'forward_manager' && !config.emailForwardAddress) needsManager.push('mail forwarding');
+    if (config.calendarTransferMeetingOwnership && config.calendarTransferToManager && !config.calendarTransferToUserId) needsManager.push('calendar transfer');
+    if (needsManager.length > 0 && !config.managerEmail) {
+      errors.push(`${config.userEmail} has no reporting manager, but the template sends ${needsManager.join(', ')} to the manager. Set a manager first or pick a template with a named target.`);
+    }
+
     return errors;
   }
 
@@ -1738,10 +1749,18 @@ class UserOffboardingService {
     if (config.emailForwardAddress) {
       return config.emailForwardAddress;
     }
-    if (config.emailForwardToUserId) {
+    // A stale emailForwardToUserId left on the template must not win over
+    // "forward to manager" (2026-09-08: it silently forwarded to a previous
+    // named user). The named target counts only when the action asks for it.
+    if (config.emailAction === 'forward_user' && config.emailForwardToUserId) {
       return this.getUserEmail(config.emailForwardToUserId);
     }
-    return config.managerEmail ?? null;
+    if (config.emailAction === 'forward_manager') {
+      return config.managerEmail ?? null;
+    }
+    return config.emailForwardToUserId
+      ? this.getUserEmail(config.emailForwardToUserId)
+      : (config.managerEmail ?? null);
   }
 
   /**
