@@ -185,18 +185,23 @@
       "category": "users",
       "subcategory": "lifecycle",
       "summary": "Guide to offboarding departing employees using Helios",
-      "content": "Handle departing employees with Helios offboarding:\n\n**Offboarding Templates**:\nDefine standard procedures for departures:\n- Account suspension timeline\n- Data transfer requirements\n- Group removal\n- License recovery\n- Email forwarding setup\n\n**Initiating Offboarding**:\n1. Navigate to Lifecycle > Offboarding Templates\n2. Select the template appropriate for the departure type\n3. Configure departure date and options\n4. Review and schedule\n\n**Key Features**:\n- Schedule future account suspension\n- Set up email forwarding\n- Transfer Drive/OneDrive files\n- Remove from all groups\n- Recover licenses\n\n**Audit Trail**:\nAll offboarding actions are logged in the audit trail for compliance.",
+      "content": "Handle departing employees with Helios offboarding:\n\n**Offboarding Templates**:\nDefine standard procedures for departures:\n- Account suspension timeline\n- Data transfer requirements\n- Group removal\n- License recovery\n- Email forwarding setup\n\n**Initiating Offboarding**:\n1. Navigate to Lifecycle > Offboarding Templates\n2. Select the template appropriate for the departure type\n3. Configure departure date and options\n4. Review and schedule\n\n**Key Features**:\n- Schedule future account suspension\n- Set up email forwarding\n- Transfer Drive/OneDrive files\n- Remove from all groups\n- Recover licenses\n\n**Audit Trail**:\nAll offboarding actions are logged in the audit trail for compliance.\n\n**Mail after departure — what actually happens (verified against Google Workspace, 2026-09-08)**:\n- Email is not part of Google's Data Transfer. Drive files and calendar ownership transfer; the mailbox stays with the departing account.\n- Forwarding: Helios registers the forwarding address and enables auto-forwarding on the departing mailbox. The target can be any address, inside or outside your domain.\n- Delegation: Helios grants the delegate access to the mailbox. The grant is created even if the delegate has never signed in; the delegate simply signs in to Gmail to use it.\n- To read the departed user's OLD mail, the departed account must still exist and must not be suspended. If the template suspends the account, delegates lose access to old mail from that moment. Choose \"Keep active\" for the account action while someone needs the old mail, then suspend later — or use Google Vault for retention.\n- Running the same offboarding twice is safe: forwarding and delegation that already exist count as done.\n- The Gmail signature is cleared when the template's signature option is on.\n- Suspending, revoking OAuth tokens and signing out of all devices need the admin.directory.user.security scope on the service account's domain-wide delegation.",
       "keywords": [
-        "offboarding",
-        "departure",
-        "leaving",
-        "terminate",
-        "suspend",
         "deactivate",
-        "lifecycle",
+        "delegation",
+        "departure",
+        "forwarding",
         "last day",
-        "transfer",
-        "remove"
+        "leaving",
+        "lifecycle",
+        "mailbox",
+        "offboarding",
+        "old mail",
+        "remove",
+        "suspend",
+        "suspended",
+        "terminate",
+        "transfer"
       ],
       "aliases": [
         "remove user",
@@ -210,7 +215,7 @@
         "guide-user-onboarding",
         "guide-audit-logs"
       ],
-      "lastUpdated": "2025-12-21T00:00:00Z"
+      "lastUpdated": "2026-09-08T00:00:00Z"
     },
     {
       "id": "guide-group-management",
