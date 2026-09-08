@@ -1,11 +1,11 @@
 {
   "family": "calendar",
   "name": "calendars.primary.events.get",
-  "recordedAt": "2026-09-08T00:59:29.610Z",
+  "recordedAt": "2026-09-08T09:07:33.143Z",
   "request": {
     "method": "GET",
     "host": "www.googleapis.com",
-    "path": "calendar/v3/calendars/primary/events/36jom7o9tbjj54ssvi1smcnirs",
+    "path": "calendar/v3/calendars/primary/events/3d4djp174h5lupg8jvi0pd83s0",
     "query": null,
     "body": null
   },
@@ -13,11 +13,11 @@
     "status": 200,
     "data": {
       "kind": "calendar#event",
-      "etag": "\"3577658232400830\"",
-      "id": "36jom7o9tbjj54ssvi1smcnirs",
+      "etag": "\"3577716819589918\"",
+      "id": "3d4djp174h5lupg8jvi0pd83s0",
       "status": "cancelled",
-      "htmlLink": "https://www.google.com/calendar/event?eid=MzZqb203bzl0YmpqNTRzc3ZpMXNtY25pcnMgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
-      "updated": "2026-09-08T00:58:36.200Z",
+      "htmlLink": "https://www.google.com/calendar/event?eid=M2Q0ZGpwMTc0aDVsdXBnOGp2aTBwZDgzczAgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
+      "updated": "2026-09-08T09:06:49.794Z",
       "start": {
         "dateTime": "2000-01-01T00:00:00Z",
         "timeZone": "UTC"

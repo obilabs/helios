@@ -1,7 +1,7 @@
 {
   "family": "admin.directory",
   "name": "users.put",
-  "recordedAt": "2026-09-08T01:18:39.261Z",
+  "recordedAt": "2026-09-08T09:07:04.709Z",
   "request": {
     "method": "PUT",
     "host": "admin.googleapis.com",
@@ -16,7 +16,7 @@
     "data": {
       "kind": "admin#directory#user",
       "id": "108421628909948645847",
-      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/9OtQHxr-pasdHi7e2x_AwcpTQXE\"",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/NbY_9n7XIdejl2nBRFQoLfiXII4\"",
       "primaryEmail": "user1@example.com",
       "name": {
         "givenName": "E2E",
@@ -64,6 +64,12 @@
       ],
       "nonEditableAliases": [
         "user2@example.com"
+      ],
+      "locations": [
+        {
+          "type": "desk",
+          "area": "Lagos HQ"
+        }
       ],
       "customerId": "C028vt14i",
       "orgUnitPath": "/Engineering",

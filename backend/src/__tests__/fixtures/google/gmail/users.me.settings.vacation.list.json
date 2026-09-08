@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.me.settings.vacation.list",
-  "recordedAt": "2026-09-08T00:25:17.600Z",
+  "recordedAt": "2026-09-08T09:07:32.713Z",
   "request": {
     "method": "GET",
     "host": "gmail.googleapis.com",
@@ -12,8 +12,9 @@
   "response": {
     "status": 200,
     "data": {
-      "enableAutoReply": false,
-      "responseSubject": "",
+      "enableAutoReply": true,
+      "responseSubject": "Out of Office",
+      "responseBodyHtml": "Thank you for your email. {{first_name}} {{last_name}} is no longer with {{company_name}}. For assistance, please contact {{manager_email}}.",
       "restrictToContacts": false,
       "restrictToDomain": false
     },

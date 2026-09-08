@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.settings.delegates.post",
-  "recordedAt": "2026-09-08T01:18:34.009Z",
+  "recordedAt": "2026-09-08T09:06:59.308Z",
   "request": {
     "method": "POST",
     "host": "gmail.googleapis.com",
@@ -12,20 +12,10 @@
     }
   },
   "response": {
-    "status": 409,
+    "status": 200,
     "data": {
-      "error": {
-        "code": 409,
-        "message": "Delegate already exists (with any verification status).",
-        "errors": [
-          {
-            "message": "Delegate already exists (with any verification status).",
-            "domain": "global",
-            "reason": "alreadyExists"
-          }
-        ],
-        "status": "ALREADY_EXISTS"
-      }
+      "delegateEmail": "user1@example.com",
+      "verificationStatus": "accepted"
     },
     "headers": {
       "content-type": "application/json; charset=UTF-8"

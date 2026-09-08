@@ -49,6 +49,11 @@ const WRITE_FIXTURES: Fx[] = [
   // Offboarding data transfer (Drive + Calendar), with completion polling
   { family: 'admin.datatransfer', name: 'transfers.post', method: 'POST', okStatuses: [200] },
   { family: 'admin.datatransfer', name: 'transfers.get', method: 'GET', okStatuses: [200] },
+  // 2026-09-08 retest: undelete, auto-reply, per-user licence (incl. Google's auto-licensing refusal)
+  { family: 'admin.directory', name: 'users.undelete.post', method: 'POST', okStatuses: [204] },
+  { family: 'gmail', name: 'users.me.settings.vacation.put', method: 'PUT', okStatuses: [200] },
+  { family: 'apps', name: 'licensing.product.Google-Apps.sku.user.get', method: 'GET', okStatuses: [200] },
+  { family: 'apps', name: 'licensing.product.Google-Apps.sku.user.delete', method: 'DELETE', okStatuses: [400] }, // auto-assigned SKU: Google refuses per-user removal
   // Seeds used by the run
   { family: 'drive', name: 'files.post', method: 'POST', okStatuses: [200] },
   { family: 'calendar', name: 'calendars.primary.events.post', method: 'POST', okStatuses: [200] },

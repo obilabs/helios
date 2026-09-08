@@ -1,21 +1,19 @@
 {
   "family": "calendar",
   "name": "calendars.primary.events.post",
-  "recordedAt": "2026-09-07T23:38:47.343Z",
+  "recordedAt": "2026-09-08T09:00:25.529Z",
   "request": {
     "method": "POST",
     "host": "www.googleapis.com",
     "path": "calendar/v3/calendars/primary/events",
-    "query": {
-      "sendUpdates": "none"
-    },
+    "query": null,
     "body": {
-      "summary": "E2E future sync",
+      "summary": "E2E Run3 sync",
       "start": {
-        "dateTime": "2026-09-14T14:00:00.000Z"
+        "dateTime": "2026-09-17T14:00:00Z"
       },
       "end": {
-        "dateTime": "2026-09-14T15:00:00.000Z"
+        "dateTime": "2026-09-17T15:00:00Z"
       },
       "attendees": [
         {
@@ -28,13 +26,13 @@
     "status": 200,
     "data": {
       "kind": "calendar#event",
-      "etag": "\"3577648658570366\"",
-      "id": "36jom7o9tbjj54ssvi1smcnirs",
+      "etag": "\"3577716050790846\"",
+      "id": "hrsqaa41ldqnb6bbl3i5r1sths",
       "status": "confirmed",
-      "htmlLink": "https://www.google.com/calendar/event?eid=MzZqb203bzl0YmpqNTRzc3ZpMXNtY25pcnMgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
-      "created": "2026-09-07T23:38:49.000Z",
-      "updated": "2026-09-07T23:38:49.285Z",
-      "summary": "E2E future sync",
+      "htmlLink": "https://www.google.com/calendar/event?eid=aHJzcWFhNDFsZHFuYjZiYmwzaTVyMXN0aHMgZTJlLmRlcGFydGluZ0BvYmlsYWJzLmRldg",
+      "created": "2026-09-08T09:00:25.000Z",
+      "updated": "2026-09-08T09:00:25.395Z",
+      "summary": "E2E Run3 sync",
       "creator": {
         "email": "user2@example.com",
         "self": true
@@ -44,11 +42,11 @@
         "self": true
       },
       "start": {
-        "dateTime": "2026-09-14T14:00:00Z",
+        "dateTime": "2026-09-17T14:00:00Z",
         "timeZone": "UTC"
       },
       "end": {
-        "dateTime": "2026-09-14T15:00:00Z",
+        "dateTime": "2026-09-17T15:00:00Z",
         "timeZone": "UTC"
       },
       "iCalUID": "user3@example.com",

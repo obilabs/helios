@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.me.settings.autoForwarding.list",
-  "recordedAt": "2026-09-08T01:19:07.108Z",
+  "recordedAt": "2026-09-08T09:07:32.137Z",
   "request": {
     "method": "GET",
     "host": "gmail.googleapis.com",

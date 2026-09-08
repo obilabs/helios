@@ -1,7 +1,7 @@
 {
   "family": "gmail",
   "name": "users.me.settings.delegates.list",
-  "recordedAt": "2026-09-08T01:19:07.507Z",
+  "recordedAt": "2026-09-08T09:07:32.474Z",
   "request": {
     "method": "GET",
     "host": "gmail.googleapis.com",
@@ -15,6 +15,10 @@
       "delegates": [
         {
           "delegateEmail": "user1@example.com",
+          "verificationStatus": "accepted"
+        },
+        {
+          "delegateEmail": "user2@example.com",
           "verificationStatus": "accepted"
         }
       ]
