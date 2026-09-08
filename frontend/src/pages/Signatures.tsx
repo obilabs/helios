@@ -314,12 +314,16 @@ const Signatures: React.FC = () => {
 
   const handleManualSync = async () => {
     try {
-      const response = await authFetch('/api/signatures/sync', {
+      // The sync router has no POST '/'; the header button 404'd until
+      // 2026-09-08. Same endpoint as the Overview "Deploy Pending" action.
+      const response = await authFetch('/api/signatures/sync/deploy', {
         method: 'POST',
       });
       const data = await response.json();
       if (data.success) {
-        alert(`Signature sync initiated for ${data.data?.userCount || 0} users`);
+        const r = data.data || {};
+        alert(`Signature sync finished: ${r.successCount ?? 0} deployed, ${r.failureCount ?? 0} failed, ${r.skippedCount ?? 0} skipped`);
+        fetchTemplates();
       } else {
         alert(data.error || 'Sync not available');
       }
