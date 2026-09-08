@@ -2104,6 +2104,11 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
     });
   } catch (error: any) {
     logger.error('Failed to update user', { error: error.message });
+    // The hierarchy trigger (migration 083) speaks plainly; pass it through
+    // instead of a generic 500 (2026-09-08).
+    if (/circular manager|own manager/i.test(error?.message || '')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
     res.status(500).json({
       success: false,
       error: 'Failed to update user'
