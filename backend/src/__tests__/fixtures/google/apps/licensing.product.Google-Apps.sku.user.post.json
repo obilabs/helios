@@ -1,0 +1,30 @@
+{
+  "family": "apps",
+  "name": "licensing.product.Google-Apps.sku.user.post",
+  "recordedAt": "2026-09-08T09:45:58.367Z",
+  "request": {
+    "method": "POST",
+    "host": "licensing.googleapis.com",
+    "path": "apps/licensing/v1/product/Google-Apps/sku/1010020025/user",
+    "query": null,
+    "body": {
+      "userId": "user1@example.com"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "licensing#licenseAssignment",
+      "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/7_W_CbNVySQLnVSn04eF0373rbk\"",
+      "productId": "Google-Apps",
+      "userId": "user1@example.com",
+      "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user1@example.com",
+      "skuId": "1010020025",
+      "skuName": "Google Workspace Business Plus",
+      "productName": "Google Workspace"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}
