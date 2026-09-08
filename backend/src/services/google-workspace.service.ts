@@ -1577,6 +1577,75 @@ export class GoogleWorkspaceService {
     }
   }
 
+  /**
+   * The user record exactly as Google returns it (projection=full), for the
+   * pre-change snapshot. Nothing trimmed: emails, locations, externalIds,
+   * addresses, customSchemas and recovery fields all matter to a re-create.
+   */
+  async getUserRaw(organizationId: string, userKey: string): Promise<{ success: boolean; user?: Record<string, any>; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      const res = await admin.users.get({ userKey, projection: 'full' });
+      return { success: true, user: res.data as Record<string, any> };
+    } catch (error: any) {
+      return { success: false, error: error?.message || String(error) };
+    }
+  }
+
+  /** Fields Google sets itself; sending them back on users.insert is rejected or meaningless. */
+  static readonly USER_RECORD_READ_ONLY_FIELDS = [
+    'kind', 'id', 'etag', 'customerId', 'creationTime', 'lastLoginTime', 'deletionTime',
+    'agreedToTerms', 'isAdmin', 'isDelegatedAdmin', 'isMailboxSetup', 'isEnrolledIn2Sv', 'isEnforcedIn2Sv',
+    'thumbnailPhotoUrl', 'thumbnailPhotoEtag', 'aliases', 'nonEditableAliases', 'suspensionReason',
+    'isGuestUser', 'archived', 'suspended', 'hashFunction', 'password',
+  ];
+
+  /**
+   * Re-create a user from a snapshot of their Google record (users.insert with
+   * everything Google accepts back: name, OU, organizations, phones, relations,
+   * emails, locations, externalIds, addresses, customSchemas, recovery fields).
+   * The account comes back active with a one-time password. Aliases are not
+   * re-created here (Google needs the primary to exist first).
+   */
+  async createUserFromRecord(
+    organizationId: string,
+    record: Record<string, any>,
+    options: { password: string; changePasswordAtNextLogin?: boolean; primaryEmail?: string }
+  ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      const requestBody: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record || {})) {
+        if (GoogleWorkspaceService.USER_RECORD_READ_ONLY_FIELDS.includes(k)) continue;
+        if (v === null || v === undefined) continue;
+        requestBody[k] = v;
+      }
+      if (options.primaryEmail) requestBody.primaryEmail = options.primaryEmail;
+      if (!requestBody.primaryEmail || !requestBody.name) {
+        return { success: false, error: 'Snapshot has no primaryEmail or name' };
+      }
+      // Alternate emails that equal the primary confuse users.insert.
+      if (Array.isArray(requestBody.emails)) {
+        requestBody.emails = requestBody.emails.filter((e: any) => e?.address && e.address !== requestBody.primaryEmail);
+        if (requestBody.emails.length === 0) delete requestBody.emails;
+      }
+      requestBody.password = options.password;
+      requestBody.changePasswordAtNextLogin = options.changePasswordAtNextLogin !== false;
+      const res = await admin.users.insert({ requestBody });
+      return { success: true, userId: res.data.id || undefined };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.message || String(error);
+      logger.error('Failed to re-create user from record', { primaryEmail: record?.primaryEmail, error: msg });
+      return { success: false, error: msg };
+    }
+  }
+
   /** Read one user by Google id (suspended / OU); used after an undelete. */
   async getUserByGoogleId(organizationId: string, googleWorkspaceId: string): Promise<{ suspended: boolean; orgUnitPath: string } | null> {
     const credentials = await this.getCredentials(organizationId);
