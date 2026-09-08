@@ -4267,7 +4267,15 @@ router.put('/users/:userId/google-license', authenticateToken, async (req: Reque
     const productId = String(req.body?.productId || 'Google-Apps').trim();
     if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
     const result = await googleWorkspaceService.assignGoogleLicense(u.organizationId, u.email, skuId, productId);
-    if (!result.success) return res.status(502).json({ success: false, error: `Google Workspace rejected the licence change: ${result.error}` });
+    if (!result.success) {
+      const autoAssign = /auto-assigned/i.test(result.error || '');
+      return res.status(502).json({
+        success: false,
+        error: autoAssign
+          ? 'Google assigns licences automatically to this user's organizational unit; per-user changes are refused until automatic licensing is turned off for that unit in the Google Admin console.'
+          : `Google Workspace rejected the licence change: ${result.error}`
+      });
+    }
     await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
       googleLicense: { productId, skuId, action: result.action }
     });
@@ -4286,7 +4294,15 @@ router.delete('/users/:userId/google-license', authenticateToken, async (req: Re
     const productId = String(req.query.productId || req.body?.productId || 'Google-Apps').trim();
     if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
     const result = await googleWorkspaceService.removeGoogleLicense(u.organizationId, u.email, skuId, productId);
-    if (!result.success) return res.status(502).json({ success: false, error: `Google Workspace rejected the licence removal: ${result.error}` });
+    if (!result.success) {
+      const autoAssign = /auto-assigned/i.test(result.error || '');
+      return res.status(502).json({
+        success: false,
+        error: autoAssign
+          ? 'Google assigns this licence automatically to the user's organizational unit, so it cannot be removed per user. Turn off automatic licensing for that unit in the Google Admin console (Billing > Subscriptions > Licence settings), then try again.'
+          : `Google Workspace rejected the licence removal: ${result.error}`
+      });
+    }
     await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
       googleLicense: { productId, skuId, action: 'removed' }
     });
