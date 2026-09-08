@@ -1703,6 +1703,8 @@ export class GoogleWorkspaceService {
       phones?: { type: string; value: string }[];
       /** Free-text location; mapped to Google's locations[] (type desk, area). Empty string clears. */
       location?: string | null;
+      /** Helios custom ids -> externalIds[] (customType). Replaces the whole list. */
+      externalIds?: { customType: string; value: string }[];
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -1751,6 +1753,11 @@ export class GoogleWorkspaceService {
         requestBody.locations = updates.location
           ? [{ type: 'desk', area: updates.location }]
           : [];
+      }
+      if (updates.externalIds !== undefined) {
+        requestBody.externalIds = updates.externalIds
+          .filter(x => x.value)
+          .map(x => ({ type: 'custom', customType: x.customType, value: x.value }));
       }
 
       // Update manager relationship
@@ -1986,6 +1993,12 @@ export class GoogleWorkspaceService {
       managerEmail?: string;
       phones?: { type: string; value: string }[];
       changePasswordAtNextLogin?: boolean;
+      /** Free-text location -> locations[{type:'desk', area}] */
+      location?: string;
+      /** Alternate addresses -> emails[] (type 'work'); the primary is implied */
+      secondaryEmails?: string[];
+      /** Helios custom ids (GitHub, Slack, JumpCloud, Associate) -> externalIds[] with customType */
+      externalIds?: { customType: string; value: string }[];
     }
   ): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
@@ -2039,6 +2052,22 @@ export class GoogleWorkspaceService {
           value: userData.managerEmail,
           type: 'manager'
         }];
+      }
+
+      // Location, alternate emails, custom ids (2026-09-08: the form collected
+      // them and Helios stored them, but none reached Google at create).
+      if (userData.location) {
+        requestBody.locations = [{ type: 'desk', area: userData.location }];
+      }
+      if (userData.secondaryEmails && userData.secondaryEmails.length > 0) {
+        requestBody.emails = userData.secondaryEmails
+          .filter(e => e && e.toLowerCase() !== userData.email.toLowerCase())
+          .map(e => ({ address: e, type: 'work' }));
+      }
+      if (userData.externalIds && userData.externalIds.length > 0) {
+        requestBody.externalIds = userData.externalIds
+          .filter(x => x.value)
+          .map(x => ({ type: 'custom', customType: x.customType, value: x.value }));
       }
 
       // Set phone numbers
