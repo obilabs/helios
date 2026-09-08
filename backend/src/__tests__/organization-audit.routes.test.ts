@@ -154,8 +154,9 @@ beforeEach(() => {
       return { rows: [{ google_workspace_id: null, email: 'user-2@corp.test' }] };
     }
     // PATCH status target lookup
-    if (text.includes('SELECT id, email, status, role FROM organization_users')) {
-      return { rows: [{ id: 'user-2', email: 'user-2@corp.test', status: 'active', role: 'user' }] };
+    if (text.includes('SELECT id, email, status, role, google_workspace_id, microsoft_365_id')) {
+      // No platform ids: the route must not call Google / Microsoft for this user.
+      return { rows: [{ id: 'user-2', email: 'user-2@corp.test', status: 'active', role: 'user', google_workspace_id: null, microsoft_365_id: null }] };
     }
     // PUT target lookup
     if (text.includes('SELECT id, role FROM organization_users')) {
