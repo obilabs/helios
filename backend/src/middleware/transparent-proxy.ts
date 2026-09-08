@@ -19,7 +19,7 @@ import { logger } from '../utils/logger.js';
 import { authenticateToken } from './auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
 import { telemetryService } from '../services/telemetry.service.js';
-import { REQUIRED_SCOPES } from '../config/google-scopes.js';
+import { googleScopesForPath } from '../config/google-scopes.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
 // Record/replay seam for the two outbound Google calls below. In production
 // (and any test that does not opt in) this is a straight passthrough to axios —
@@ -537,9 +537,10 @@ function googleHostForPath(path: string): string {
  * Proxy request to Google Admin SDK
  * Uses Google SDK clients directly to avoid JWT scope/audience bugs
  *
- * `scopes`: the OAuth scopes to mint. `null` = legacy behavior (broad
- * directory scopes, relay flag off). Under enforcement the caller passes the
- * minimal scopes selected for the matched capability.
+ * `scopes`: the OAuth scopes to mint. `null` = per-call minting from the path
+ * (config/google-scopes.ts googleScopesForPath, relay flag off). Under
+ * enforcement the caller passes the minimal scopes selected for the matched
+ * capability. Nothing mints the full contract list unless the path is unknown.
  *
  * `subject`: the user to impersonate via domain-wide delegation (the JWT `sub`).
  * When omitted, the service account acts as the org admin (`admin_email`) — the
@@ -556,10 +557,21 @@ async function proxyToGoogle(
   // Use manual JWT token generation to avoid Google Auth Library bugs
   // Build JWT manually and exchange for access token
   const impersonatedSubject = subject || credentials.admin_email;
+  let mintScopes = scopes;
+  if (!mintScopes) {
+    const selected = googleScopesForPath(proxyRequest.method, proxyRequest.path);
+    mintScopes = selected.scopes;
+    if (selected.fellBack) {
+      logger.warn('Google scope map has no entry for this path; minting the frozen contract', {
+        method: proxyRequest.method,
+        path: proxyRequest.path
+      });
+    }
+  }
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
     iss: credentials.client_email,
-    scope: (scopes ?? REQUIRED_SCOPES).join(' '),
+    scope: mintScopes.join(' '),
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
