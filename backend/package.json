@@ -54,7 +54,7 @@
     "nodemailer": "^9.0.5",
     "papaparse": "^5.5.3",
     "pg": "^8.11.3",
-    "redis": "^4.7.1",
+    "redis": "^6.2.1",
     "sharp": "^0.35.3",
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
