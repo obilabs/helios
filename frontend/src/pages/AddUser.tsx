@@ -83,7 +83,7 @@ export function AddUser() {
 
     // Fetch managers (active users)
     try {
-      const managersResponse = await authFetch('/api/v1/organization/users?status=active&limit=100');
+      const managersResponse = await authFetch('/api/v1/organization/users?userType=staff&limit=200');
       if (managersResponse.ok) {
         const data = await managersResponse.json();
         setManagers(data.data || []);
@@ -942,7 +942,7 @@ export function AddUser() {
             disabled={isSubmitting}
           >
             <option value="">Select manager...</option>
-            {managers.filter((mgr: any) => (mgr.userStatus ?? mgr.status) === 'active' && mgr.userType !== 'guest' && mgr.userType !== 'contact').map((mgr: any) => (
+            {managers.filter((mgr: any) => (mgr.userStatus ?? mgr.status) !== 'deleted' && mgr.userType !== 'guest' && mgr.userType !== 'contact').map((mgr: any) => (
               <option key={mgr.id} value={mgr.id}>
                 {mgr.first_name || mgr.firstName} {mgr.last_name || mgr.lastName} ({mgr.email})
               </option>

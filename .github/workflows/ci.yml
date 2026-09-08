@@ -227,7 +227,10 @@ jobs:
                 -- 2026-09-08: Create Template 500'd on a fresh install (migration 078).
                 ('signature_templates','mobile_html_content'),
                 -- 2026-09-08: both group-member sync paths SET this in ON CONFLICT (migration 080).
-                ('access_group_members','updated_at')
+                ('access_group_members','updated_at'),
+                -- 2026-09-08: auto-reply + delegation flags on templates (migration 081).
+                ('offboarding_templates','email_auto_reply_enabled'),
+                ('offboarding_templates','email_delegate_enabled')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns

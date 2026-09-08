@@ -566,6 +566,16 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     }
     // 'all' means no platform filter
 
+    // Free-text search (email / first / last name). The group member picker and
+    // other callers sent ?search= all along; the server ignored it (2026-09-08).
+    const search = String(req.query.search || '').trim();
+    const listParams: any[] = [organizationId];
+    let searchCondition = '';
+    if (search) {
+      listParams.push(`%${search}%`);
+      searchCondition = `AND (ou.email ILIKE $${listParams.length} OR ou.first_name ILIKE $${listParams.length} OR ou.last_name ILIKE $${listParams.length} OR (ou.first_name || ' ' || ou.last_name) ILIKE $${listParams.length})`;
+    }
+
     // Always fetch local organization users first
     logger.info('Fetching users from local database');
     const localUsersResult = await db.query(`
@@ -617,9 +627,9 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         ou.last_login as "lastLogin"
       FROM organization_users ou
       LEFT JOIN departments d ON ou.department_id = d.id
-      WHERE ou.organization_id = $1 ${statusCondition}
+      WHERE ou.organization_id = $1 ${statusCondition} ${searchCondition}
       ORDER BY ou.first_name, ou.last_name, ou.email
-    `, [organizationId]);
+    `, listParams);
 
     // Secondary index by Google link id, so a synced cache row whose email
     // differs from the canonical organization_users email still resolves to the
@@ -1911,6 +1921,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
           jobTitle,
           department,
           managerEmail,
+          location: location !== undefined ? location : undefined,
           organizationalUnit,
           phones: phones.length > 0 ? phones : undefined
         }
@@ -2126,10 +2137,11 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
     );
     const googleWorkspaceId = userInfo.rows[0]?.google_workspace_id;
 
-    // Soft delete user by setting status to deleted
+    // Soft delete user by setting status to deleted (deleted_at feeds the
+    // 20-day Google undelete window shown on restore)
     await db.query(
       `UPDATE organization_users
-       SET status = 'deleted', is_active = false, updated_at = NOW()
+       SET status = 'deleted', is_active = false, deleted_at = NOW(), updated_at = NOW()
        WHERE id = $1 AND organization_id = $2`,
       [userId, organizationId]
     );
@@ -2427,7 +2439,8 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
 
     // Check if user exists and is deleted
     const userResult = await db.query(
-      `SELECT id, email, status FROM organization_users WHERE id = $1 AND organization_id = $2`,
+      `SELECT id, email, status, google_workspace_id, organizational_unit, deleted_at
+         FROM organization_users WHERE id = $1 AND organization_id = $2`,
       [userId, organizationId]
     );
 
@@ -2439,13 +2452,37 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
     }
 
     const user = userResult.rows[0];
-    const daysSinceDeleted = 0; // Could be calculated from deleted_at if stored
+    const daysSinceDeleted = user.deleted_at
+      ? Math.floor((Date.now() - new Date(user.deleted_at).getTime()) / 86400000)
+      : 0;
 
     if (user.status !== 'deleted') {
       return res.status(400).json({
         success: false,
         error: 'User is not deleted'
       });
+    }
+
+    // A Google-bound user is restored in Google FIRST (users.undelete, valid
+    // for 20 days after deletion). Until 2026-09-08 this route only flipped
+    // the local row and the Google account stayed deleted.
+    let googleRestored = false;
+    if (user.google_workspace_id) {
+      const gw = await googleWorkspaceService.undeleteUser(
+        organizationId,
+        user.google_workspace_id,
+        user.organizational_unit || '/'
+      );
+      if (!gw.success) {
+        return res.status(409).json({
+          success: false,
+          error: gw.pastWindow
+            ? `Google can no longer restore this account (deleted ${daysSinceDeleted} day(s) ago; Google keeps deleted users for 20 days). Re-creation from the Helios record is not available yet.`
+            : `Google Workspace rejected the restore: ${gw.error}`,
+          data: { daysSinceDeleted, pastWindow: !!gw.pastWindow }
+        });
+      }
+      googleRestored = true;
     }
 
     // Restore user by setting status to active
@@ -2489,6 +2526,7 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
       success: true,
       message: 'User restored successfully',
       data: {
+        googleRestored,
         userId: user.id,
         email: user.email,
         daysSinceDeleted

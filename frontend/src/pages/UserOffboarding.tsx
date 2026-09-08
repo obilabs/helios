@@ -234,7 +234,7 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
       const [usersRes, templatesRes] = await Promise.all([
         // The wizard used to call /api/v1/users, which does not exist (404) — the page
         // then rendered "No users found" with no error. The staff list lives here.
-        authFetch('/api/v1/organization/users?status=active&userType=staff'),
+        authFetch('/api/v1/organization/users?userType=staff&platform=google_workspace&limit=200'),
         authFetch('/api/v1/lifecycle/offboarding-templates'),
       ]);
 

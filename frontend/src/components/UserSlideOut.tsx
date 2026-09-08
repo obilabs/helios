@@ -87,6 +87,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const [emailLoading, setEmailLoading] = useState(false);
   const [newDelegateEmail, setNewDelegateEmail] = useState('');
   const [delegateCandidates, setDelegateCandidates] = useState<Array<{ id: string; email: string; name: string }>>([]);
+  const [delegateToRemove, setDelegateToRemove] = useState<string | null>(null);
   const [addingDelegate, setAddingDelegate] = useState(false);
   const [removingDelegate, setRemovingDelegate] = useState<string | null>(null);
   const [showForwardingModal, setShowForwardingModal] = useState(false);
@@ -163,7 +164,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const fetchDropdownData = async () => {
     // Fetch available managers (all active users)
     try {
-      const managersResponse = await authFetch(`/api/v1/organization/users?status=active&userType=staff`);
+      const managersResponse = await authFetch(`/api/v1/organization/users?userType=staff&limit=200`);
       if (managersResponse.ok) {
         const managersData = await managersResponse.json();
         setAvailableManagers(managersData.data || []);
@@ -259,7 +260,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
 
       // Staff list for the delegate picker (delegates must be in the same
       // Google Workspace; picking from a list is the house rule).
-      const staffResponse = await authFetch(`/api/v1/organization/users?status=active&userType=staff&limit=200`);
+      const staffResponse = await authFetch(`/api/v1/organization/users?userType=staff&platform=google_workspace&limit=200`);
       if (staffResponse.ok) {
         const staff = await staffResponse.json();
         setDelegateCandidates(
@@ -1194,7 +1195,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                             </div>
                             <button
                               className="btn-icon-danger"
-                              onClick={() => handleRemoveDelegate(delegate.delegateEmail)}
+                              onClick={() => setDelegateToRemove(delegate.delegateEmail)}
                               disabled={removingDelegate === delegate.delegateEmail}
                               title="Remove delegate"
                             >
@@ -2306,6 +2307,15 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       )}
 
       {/* Status Change Confirmation */}
+      <ConfirmDialog
+        isOpen={delegateToRemove !== null}
+        title="Remove delegate"
+        message={delegateToRemove ? `Remove ${delegateToRemove}'s delegate access to ${user.email}?` : ''}
+        confirmText="Remove"
+        variant="warning"
+        onConfirm={async () => { const d = delegateToRemove; setDelegateToRemove(null); if (d) await handleRemoveDelegate(d); }}
+        onCancel={() => setDelegateToRemove(null)}
+      />
       <ConfirmDialog
         isOpen={statusChangeConfirm !== null}
         title="Change User Status"
