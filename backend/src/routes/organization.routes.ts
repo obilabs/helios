@@ -4272,7 +4272,7 @@ router.put('/users/:userId/google-license', authenticateToken, async (req: Reque
       return res.status(502).json({
         success: false,
         error: autoAssign
-          ? 'Google assigns licences automatically to this user's organizational unit; per-user changes are refused until automatic licensing is turned off for that unit in the Google Admin console.'
+          ? "Google assigns licences automatically to this user's organizational unit; per-user changes are refused until automatic licensing is turned off for that unit in the Google Admin console."
           : `Google Workspace rejected the licence change: ${result.error}`
       });
     }
@@ -4299,7 +4299,7 @@ router.delete('/users/:userId/google-license', authenticateToken, async (req: Re
       return res.status(502).json({
         success: false,
         error: autoAssign
-          ? 'Google assigns this licence automatically to the user's organizational unit, so it cannot be removed per user. Turn off automatic licensing for that unit in the Google Admin console (Billing > Subscriptions > Licence settings), then try again.'
+          ? "Google assigns this licence automatically to the user's organizational unit, so it cannot be removed per user. Turn off automatic licensing for that unit in the Google Admin console (Billing > Subscriptions > Licence settings), then try again."
           : `Google Workspace rejected the licence removal: ${result.error}`
       });
     }
