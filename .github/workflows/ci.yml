@@ -230,7 +230,9 @@ jobs:
                 ('access_group_members','updated_at'),
                 -- 2026-09-08: auto-reply + delegation flags on templates (migration 081).
                 ('offboarding_templates','email_auto_reply_enabled'),
-                ('offboarding_templates','email_delegate_enabled')
+                ('offboarding_templates','email_delegate_enabled'),
+                -- 2026-09-08: restore + proxy mirror stamp/read deleted_at (migration 082).
+                ('organization_users','deleted_at')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
