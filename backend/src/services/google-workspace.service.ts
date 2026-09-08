@@ -1577,6 +1577,22 @@ export class GoogleWorkspaceService {
     }
   }
 
+  /** Read one user by Google id (suspended / OU); used after an undelete. */
+  async getUserByGoogleId(organizationId: string, googleWorkspaceId: string): Promise<{ suspended: boolean; orgUnitPath: string } | null> {
+    const credentials = await this.getCredentials(organizationId);
+    const adminEmail = await this.getAdminEmail(organizationId);
+    if (!credentials || !adminEmail) return null;
+    const jwtClient = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/admin.directory.user'],
+      subject: adminEmail
+    });
+    const admin = google.admin({ version: 'directory_v1', auth: jwtClient });
+    const res = await admin.users.get({ userKey: googleWorkspaceId });
+    return { suspended: !!res.data.suspended, orgUnitPath: res.data.orgUnitPath || '/' };
+  }
+
   /**
    * Permanently delete a user from Google Workspace
    *
