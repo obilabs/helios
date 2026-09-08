@@ -141,6 +141,7 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
 
   // Direct reports management
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
+  const [directReportsFailed, setDirectReportsFailed] = useState(false);
   const [loadingDirectReports, setLoadingDirectReports] = useState(false);
   const [reassignment, setReassignment] = useState<ReassignmentMode>({
     type: 'all_to_one',
@@ -182,6 +183,16 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
     setLoadingDirectReports(true);
     try {
       const response = await authFetch(`/api/v1/organization/users/${userId}/direct-reports`);
+
+      if (!response.ok) {
+        // A failed lookup must NOT read as "no direct reports" (2026-09-08: a
+        // 500 here let an offboarding proceed with two reports left orphaned).
+        setDirectReportsFailed(true);
+        setError('Could not load this user's direct reports. Fix the lookup before offboarding; nobody may be left without a manager.');
+        setDirectReports([]);
+        return;
+      }
+      setDirectReportsFailed(false);
 
       if (response.ok) {
         const data = await response.json();
@@ -279,6 +290,11 @@ const UserOffboarding: React.FC<UserOffboardingProps> = ({
         setError('Please select a user to offboard');
         return;
       }
+    }
+
+    if (currentStep === 2 && directReportsFailed) {
+      setError('Direct reports could not be loaded; offboarding is blocked until they can be reassigned.');
+      return;
     }
 
     // Step 2: Direct Reports - validate reassignments if there are any
