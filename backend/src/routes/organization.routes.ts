@@ -4014,10 +4014,12 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
     // Handle forwarding
     if (forwarding !== undefined) {
       if (forwarding.enabled && forwarding.forwardTo) {
+        const allowed = ['leaveInInbox', 'archive', 'trash', 'markRead'];
         results.forwarding = await gwService.setupEmailForwarding(
           organizationId,
           user.email,
-          forwarding.forwardTo
+          forwarding.forwardTo,
+          allowed.includes(forwarding.disposition) ? forwarding.disposition : 'leaveInInbox'
         );
       } else if (forwarding.enabled === false) {
         results.forwarding = await gwService.disableEmailForwarding(

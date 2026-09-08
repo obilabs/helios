@@ -2198,7 +2198,8 @@ export class GoogleWorkspaceService {
   async setupEmailForwarding(
     organizationId: string,
     userEmail: string,
-    forwardToEmail: string
+    forwardToEmail: string,
+    disposition: 'leaveInInbox' | 'archive' | 'trash' | 'markRead' = 'leaveInInbox'
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const credentials = await this.getCredentials(organizationId);
@@ -2237,7 +2238,7 @@ export class GoogleWorkspaceService {
         requestBody: {
           enabled: true,
           emailAddress: forwardToEmail,
-          disposition: 'leaveInInbox' // Keep original in inbox, forward copy
+          disposition // caller's choice; default keeps the original in the inbox
         }
       });
 
