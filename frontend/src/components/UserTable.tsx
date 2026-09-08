@@ -84,6 +84,8 @@ export function UserTable({
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 8 });
   const [restoreDeletedUser, setRestoreDeletedUser] = useState<User | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  // Set when Google could not undelete and Helios re-created the account from its snapshot.
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
 
   // Column visibility (persisted in localStorage)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -189,6 +191,14 @@ export function UserTable({
       }
       setRestoreDeletedUser(null);
       setRestoreError(null);
+      if (data.recreated) {
+        const r = data.recreated;
+        const parts = [`${target.email} was re-created in Google from the snapshot taken ${String(r.takenAt).slice(0, 10)}`];
+        if (r.restored) parts.push(`${r.restored.groups} group(s) and ${r.restored.licenses} licence(s) restored`);
+        if (Array.isArray(r.failures) && r.failures.length) parts.push(`not restored: ${r.failures.join(', ')}`);
+        parts.push('The user signs in with a one-time password set by an admin.');
+        setRestoreNotice(parts.join('. '));
+      }
       refetch();
     } catch (e: any) {
       setRestoreError(e?.message || 'Failed to restore user');
@@ -707,9 +717,18 @@ export function UserTable({
         onCancel={() => setSuspendConfirmUser(null)}
       />
       <ConfirmDialog
+        isOpen={restoreNotice !== null}
+        title="User re-created from snapshot"
+        message={restoreNotice || ''}
+        confirmText="OK"
+        variant="info"
+        onConfirm={() => setRestoreNotice(null)}
+        onCancel={() => setRestoreNotice(null)}
+      />
+      <ConfirmDialog
         isOpen={restoreDeletedUser !== null}
         title="Restore deleted user"
-        message={restoreDeletedUser ? `Restore ${restoreDeletedUser.email}? A Google Workspace account is restored in Google as well (possible for 20 days after deletion).` : ''}
+        message={restoreDeletedUser ? `Restore ${restoreDeletedUser.email}? A Google Workspace account is restored in Google as well. Within 20 days of deletion Google undeletes it; after that Helios re-creates it from the snapshot taken before it was removed (profile, groups, licence), with a one-time password.` : ''}
         confirmText="Restore"
         variant="info"
         onConfirm={confirmRestoreDeleted}

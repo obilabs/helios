@@ -10,6 +10,7 @@ import { JWT } from 'google-auth-library';
 import { db } from '../database/connection.js';
 import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
+import { userSnapshotService } from './user-snapshot.service.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
@@ -400,6 +401,53 @@ class UserOffboardingService {
         { ...logOptions, stepOrder, durationMs: Date.now() - validateStart }
       );
       result.stepsCompleted.push('validate_config');
+
+      // Step 1b: Snapshot the Google account BEFORE anything changes, so a
+      // Restore after Google's 20-day undelete window can re-create it.
+      // A failed snapshot is recorded but does not block the offboarding.
+      if (config.platformHint?.google !== false) {
+        stepOrder++;
+        const snapStart = Date.now();
+        try {
+          const target = await db.query(
+            'SELECT google_workspace_id FROM organization_users WHERE organization_id = $1 AND (id::text = $2 OR email = $3) LIMIT 1',
+            [organizationId, config.userId, config.userEmail]
+          );
+          const googleId = target.rows[0]?.google_workspace_id;
+          if (googleId) {
+            const snap = await userSnapshotService.capture(organizationId, {
+              userId: target.rows[0] ? config.userId : null,
+              googleWorkspaceId: googleId,
+              primaryEmail: config.userEmail,
+              reason: 'offboard',
+              takenBy: options.triggeredByUserId || null,
+            });
+            if (snap.success) {
+              await lifecycleLogService.logSuccess(organizationId, 'offboard', 'snapshot_account', {
+                ...logOptions, stepOrder, durationMs: Date.now() - snapStart,
+                details: { snapshotId: snap.snapshot?.id, partial: snap.snapshot?.snapshot?.partial || [] },
+              });
+              result.stepsCompleted.push('snapshot_account');
+            } else {
+              result.errors.push(`Snapshot not taken: ${snap.error}`);
+              await lifecycleLogService.logFailure(organizationId, 'offboard', 'snapshot_account', snap.error || 'unknown', {
+                ...logOptions, stepOrder, durationMs: Date.now() - snapStart,
+              });
+              result.stepsFailed.push('snapshot_account');
+            }
+          } else {
+            result.stepsSkipped.push('snapshot_account');
+          }
+        } catch (error: any) {
+          result.errors.push(`Snapshot not taken: ${error.message}`);
+          await lifecycleLogService.logFailure(organizationId, 'offboard', 'snapshot_account', error, {
+            ...logOptions, stepOrder, durationMs: Date.now() - snapStart,
+          });
+          result.stepsFailed.push('snapshot_account');
+        }
+      } else {
+        result.stepsSkipped.push('snapshot_account');
+      }
 
       // Step 2: Transfer Drive files
       if (config.driveAction !== 'keep') {
