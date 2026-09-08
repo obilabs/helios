@@ -66,6 +66,14 @@ export const REQUIRED_SCOPES_CSV: string = REQUIRED_SCOPES.join(',')
 export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/ediscovery', reason: "Create Google Vault holds to preserve a departing user's Mail and Drive before deletion (Business Plus and above)." },
   { scope: 'https://www.googleapis.com/auth/admin.directory.userschema', reason: 'Define custom user attributes (schemas) so Helios-specific fields can be stored on the Google user record.' },
+  // API relay (Settings > Security): under enforcement a read forwards with a
+  // read-only token. DWD matches scope strings exactly, so those read-only
+  // variants must be authorised separately or the relay cannot narrow. Verified
+  // live 2026-09-08: a tenant with the full scope refuses the readonly one.
+  { scope: 'https://www.googleapis.com/auth/admin.directory.user.readonly', reason: 'API relay: read-only tokens for user reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.group.readonly', reason: 'API relay: read-only tokens for group reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.orgunit.readonly', reason: 'API relay: read-only tokens for org unit reads.' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.domain.readonly', reason: 'API relay: read-only tokens for domain reads.' },
 ]
 
 /**

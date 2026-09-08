@@ -80,6 +80,22 @@ describe('scope contract v1 is frozen', () => {
   });
 });
 
+describe('relay enforcement scopes are advertised', () => {
+  it('every scope the relay map can mint is in the delegation list', async () => {
+    // The relay narrows reads to readonly tokens. Google refuses a readonly
+    // variant a tenant never authorised, so each one must be advertised at setup.
+    const { selectScopes } = await import('../services/relay/scopes.js');
+    const advertised = new Set(DELEGATION_SCOPES);
+    for (const resource of ['admin.directory.users', 'admin.directory.groups', 'admin.directory.orgunits', 'admin.directory.domains']) {
+      for (const cls of ['read', 'write'] as const) {
+        const scopes = selectScopes(resource, cls);
+        expect(scopes.length).toBeGreaterThan(0);
+        for (const s of scopes) expect(advertised.has(s)).toBe(true);
+      }
+    }
+  });
+});
+
 describe('per-call minting', () => {
   it('strips the leading slash and the version segment', () => {
     expect(normaliseGooglePath('/admin/directory/v1/users/x')).toBe('admin/directory/users/x');

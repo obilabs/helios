@@ -38,7 +38,8 @@ const PROBES: Probe[] = [
   { label: 'directory domains.list', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/directory/v1/customer/my_customer/domains', query: {}, contract: true },
   { label: 'reports activity (admin)', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/reports/v1/activity/users/all/applications/admin', query: { maxResults: '1' }, contract: true },
   { label: 'datatransfer applications.list', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/datatransfer/v1/applications', query: { customerId: 'my_customer', maxResults: '1' }, contract: true },
-  { label: 'licensing users.list', method: 'GET', host: 'https://licensing.googleapis.com', path: 'apps/licensing/v1/product/Google-Apps/users', query: { customerId: 'my_customer', maxResults: '1' }, contract: true },
+  // Licensing does not accept the my_customer alias; the domain is substituted at run time.
+  { label: 'licensing users.list', method: 'GET', host: 'https://licensing.googleapis.com', path: 'apps/licensing/v1/product/Google-Apps/users', query: { customerId: '{domain}', maxResults: '1' }, contract: true },
   { label: 'gmail vacation (admin)', method: 'GET', host: 'https://gmail.googleapis.com', path: 'gmail/v1/users/me/settings/vacation', query: {}, contract: true },
   { label: 'gmail sendAs (admin)', method: 'GET', host: 'https://gmail.googleapis.com', path: 'gmail/v1/users/me/settings/sendAs', query: {}, contract: true },
   { label: 'calendar list (admin)', method: 'GET', host: 'https://www.googleapis.com', path: 'calendar/v3/users/me/calendarList', query: { maxResults: '1' }, contract: true },
@@ -99,7 +100,8 @@ async function main(): Promise<void> {
       if (p.contract) contractFailures++;
     } else {
       try {
-        const res = await axios.get(`${p.host}/${p.path}`, { params: p.query, headers: { Authorization: `Bearer ${minted.token}` }, validateStatus: () => true });
+        const params = Object.fromEntries(Object.entries(p.query).map(([k, v]) => [k, v.replace('{domain}', creds.domain)]));
+        const res = await axios.get(`${p.host}/${p.path}`, { params, headers: { Authorization: `Bearer ${minted.token}` }, validateStatus: () => true });
         outcome = `HTTP ${res.status}`;
         if (p.contract && res.status >= 400) contractFailures++;
       } catch (e: any) {
