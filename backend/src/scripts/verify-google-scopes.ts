@@ -46,6 +46,14 @@ const PROBES: Probe[] = [
   { label: 'directory schemas.list (optional: userschema)', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/directory/v1/customer/my_customer/schemas', query: {}, contract: false },
 ];
 
+/**
+ * Informative only: does this tenant accept a readonly variant it was never
+ * asked to authorise? AGENT-RULES.md says no (exact string match). The relay
+ * scope map (services/relay/scopes.ts) still mints readonly variants under
+ * enforcement, so the answer decides whether that map needs the same fix.
+ */
+const READONLY_PROBE = 'https://www.googleapis.com/auth/admin.directory.user.readonly';
+
 interface Creds { client_email: string; private_key: string; admin_email: string; domain: string }
 
 async function loadCredentials(organizationId?: string): Promise<Creds> {
@@ -107,6 +115,8 @@ async function main(): Promise<void> {
   const full = await mint(creds, REQUIRED_SCOPES);
   console.log('');
   console.log(`full-contract token (${REQUIRED_SCOPES.length} scopes): ${full.token ? 'granted' : `refused (${full.error})`}`);
+  const ro = await mint(creds, [READONLY_PROBE]);
+  console.log(`readonly variant not in the grant (admin.directory.user.readonly): ${ro.token ? 'granted' : `refused (${ro.error})`}`);
   console.log('');
   console.log(contractFailures === 0 ? 'PASS: every contract probe succeeded with per-call scopes.' : `FAIL: ${contractFailures} contract probe(s) failed.`);
   await db.close();
