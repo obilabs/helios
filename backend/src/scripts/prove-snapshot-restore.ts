@@ -71,7 +71,8 @@ async function main(): Promise<void> {
       }
       check('add to group', added);
     }
-    await sleep(8000); // let Google's reads catch up with the writes
+    // Google's reads lag its writes by up to ~30 s (group membership especially).
+    await sleep(35000);
 
     // 2. snapshot
     const snap = await userSnapshotService.capture(organizationId, { userId: null, googleWorkspaceId: googleId, primaryEmail: email, reason: 'delete' });
@@ -88,10 +89,25 @@ async function main(): Promise<void> {
     check('delete in Google', del.success, del.error);
     if (!del.success) return finish(failures);
     cleanupId = null;
-    await sleep(8000);
+    // Wait until the deletion is visible to reads.
+    for (let i = 0; i < 12; i++) {
+      await sleep(5000);
+      const g = await googleWorkspaceService.getUserRaw(organizationId, googleId);
+      if (!g.success) break;
+    }
 
-    // 4. re-create
-    const rc = await userSnapshotService.recreate(organizationId, snap.snapshot.id, {});
+    // 4. re-create. Google keeps a deleted user's primary address reserved for
+    // the 20-day undelete window, so a same-address re-create is refused with
+    // "Entity already exists" until then. That is exactly the case Restore
+    // handles (undelete is still possible). To prove the re-create mechanism
+    // today, fall back to a suffixed address when the original is reserved.
+    let rc = await userSnapshotService.recreate(organizationId, snap.snapshot.id, {});
+    let recreatedEmail = email;
+    if (!rc.success && /already exists/i.test(rc.error || '')) {
+      console.log('NOTE  same-address re-create refused while the deleted user is inside the 20-day window (address reserved); re-creating under a suffixed address to prove the path');
+      recreatedEmail = `snap-proof-${stamp}-r@${domain}`;
+      rc = await userSnapshotService.recreate(organizationId, snap.snapshot.id, { primaryEmailOverride: recreatedEmail });
+    }
     check('re-create from snapshot', rc.success, rc.error || rc.restored);
     if (!rc.success || !rc.googleWorkspaceId) return finish(failures);
     cleanupId = rc.googleWorkspaceId;
@@ -110,8 +126,9 @@ async function main(): Promise<void> {
     check('location preserved', u.locations?.[0]?.area === 'Desk 42', u.locations);
     check('externalIds preserved', u.externalIds?.some((x: any) => x.value === `A-${stamp}`), u.externalIds);
     check('alternate email preserved', u.emails?.some((e: any) => e.address?.includes('-alt@')), u.emails);
+    check('primary address as requested', u.primaryEmail === recreatedEmail, u.primaryEmail);
     check('account active, password change forced', u.suspended === false && u.changePasswordAtNextLogin === true);
-    const lic = await googleWorkspaceService.getUserGoogleLicenses(organizationId, email);
+    const lic = await googleWorkspaceService.getUserGoogleLicenses(organizationId, recreatedEmail);
     console.log(`licences after re-create: ${JSON.stringify(lic.licenses)} (restored count ${rc.restored?.licenses})`);
     const row = (await db.query('SELECT restored_at, restored_google_workspace_id FROM user_google_snapshots WHERE id = $1', [snap.snapshot.id])).rows[0];
     check('snapshot row marked restored', !!row?.restored_at && row.restored_google_workspace_id === rc.googleWorkspaceId);
@@ -122,6 +139,7 @@ async function main(): Promise<void> {
       console.log(`cleanup delete ${cleanupId}: ${d.success ? 'ok' : d.error}`);
     }
     await db.query('DELETE FROM user_google_snapshots WHERE organization_id = $1 AND primary_email = $2', [organizationId, email]);
+    // The original address stays reserved by Google for 20 days; nothing to do about that.
   }
   return finish(failures);
 }

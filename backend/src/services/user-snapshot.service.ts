@@ -164,7 +164,7 @@ export class UserSnapshotService {
   async recreate(
     organizationId: string,
     snapshotId: string,
-    options: { actorId?: string | null } = {},
+    options: { actorId?: string | null; primaryEmailOverride?: string } = {},
   ): Promise<{ success: boolean; googleWorkspaceId?: string; primaryEmail?: string; restored?: { groups: number; licenses: number }; failures?: string[]; error?: string }> {
     const r = await db.query('SELECT * FROM user_google_snapshots WHERE id = $1 AND organization_id = $2', [snapshotId, organizationId]);
     const row = r.rows[0] as UserSnapshotRow | undefined;
@@ -173,12 +173,16 @@ export class UserSnapshotService {
     if (!body?.profile?.primaryEmail) return { success: false, error: 'Snapshot has no profile to re-create from' };
 
     const password = crypto.randomBytes(18).toString('base64url');
-    const created = await googleWorkspaceService.createUserFromRecord(organizationId, body.profile, { password, changePasswordAtNextLogin: true });
+    const created = await googleWorkspaceService.createUserFromRecord(organizationId, body.profile, {
+      password,
+      changePasswordAtNextLogin: true,
+      primaryEmail: options.primaryEmailOverride,
+    });
     if (!created.success || !created.userId) {
       return { success: false, error: `Google refused the re-create: ${created.error || 'unknown error'}` };
     }
     const newId = created.userId;
-    const email = body.profile.primaryEmail as string;
+    const email = (options.primaryEmailOverride || body.profile.primaryEmail) as string;
     const failures: string[] = [];
 
     let groupsRestored = 0;
