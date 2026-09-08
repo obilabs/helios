@@ -34,6 +34,9 @@ export function AddUser() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [jobTitles, setJobTitles] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
+  // Google OUs (the list used to be four hard-coded local names that did not
+  // exist in Google — 2026-09-07 run). Empty until Google Workspace is connected.
+  const [googleOrgUnits, setGoogleOrgUnits] = useState<Array<{ id?: string; path: string }>>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [licenses, setLicenses] = useState<any[]>([]);
   const [selectedLicenseId, setSelectedLicenseId] = useState('');
@@ -79,6 +82,24 @@ export function AddUser() {
       }
     } catch (error) {
       console.error('Error fetching job titles:', error);
+    }
+
+    // Fetch Google organizational units for the OU picker
+    try {
+      const orgId = JSON.parse(localStorage.getItem('helios_organization') || '{}').organizationId;
+      if (orgId) {
+        const ouResponse = await authFetch(`/api/v1/google-workspace/org-units/${orgId}`);
+        if (ouResponse.ok) {
+          const ouData = await ouResponse.json();
+          const list = Array.isArray(ouData?.data) ? ouData.data : ouData?.data?.orgUnits;
+          if (Array.isArray(list)) {
+            const withRoot = list.some((o: any) => o.path === '/') ? list : [{ id: 'root', path: '/' }, ...list];
+            setGoogleOrgUnits(withRoot);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Google org units:', error);
     }
 
     // Fetch managers (active users)
@@ -925,10 +946,9 @@ export function AddUser() {
               disabled={isSubmitting}
             >
               <option value="">Select OU...</option>
-              <option value="/Engineering">Engineering</option>
-              <option value="/Sales">Sales</option>
-              <option value="/Marketing">Marketing</option>
-              <option value="/HR">HR</option>
+              {googleOrgUnits.map((ou) => (
+                <option key={ou.id || ou.path} value={ou.path}>{ou.path}</option>
+              ))}
             </select>
             <p className="field-hint">Where in your organization structure</p>
           </div>
