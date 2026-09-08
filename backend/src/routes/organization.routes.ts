@@ -1718,7 +1718,14 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
           [grp.id, newUser.id]
         );
         if (grp.platform === 'google_workspace' && grp.external_id && googleWorkspaceUserId) {
-          const gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          // A user created moments ago can still be unknown to the groups
+          // service for a few seconds; retry a "not found" briefly before
+          // calling it a failure.
+          let gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          for (let attempt = 1; !gw.success && attempt <= 3 && /not found|memberKey|Resource Not Found/i.test(gw.error || ''); attempt++) {
+            await new Promise(r => setTimeout(r, 2000 * attempt));
+            gw = await googleWorkspaceService.addUserToGroup(organizationId, email.toLowerCase(), grp.external_id);
+          }
           if (!gw.success) { groupFailures.push(`${grp.name}: Google rejected the membership (${gw.error})`); continue; }
         }
         groupsAdded++;
