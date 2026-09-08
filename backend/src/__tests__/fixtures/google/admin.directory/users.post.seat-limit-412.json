@@ -1,6 +1,6 @@
 {
   "family": "admin.directory",
-  "name": "users.post.seat-limit-400",
+  "name": "users.post.seat-limit-412",
   "recordedAt": "2026-09-08T08:21:49.788Z",
   "request": {
     "method": "POST",
