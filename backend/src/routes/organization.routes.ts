@@ -3886,6 +3886,38 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
       }
     }
 
+    // The local row is not the source of truth for a Google user's manager:
+    // push the new relation to Google for every Google-bound report. Until
+    // 2026-09-08 this route only rewrote reporting_manager_id, so the reports
+    // still pointed at the departed user in Google after offboarding.
+    for (const r of results) {
+      if (!r.success) continue;
+      try {
+        const rep = await db.query(
+          `SELECT google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
+          [r.reportId, organizationId]
+        );
+        const gwId = rep.rows[0]?.google_workspace_id;
+        if (!gwId) continue;
+        const mgr = await db.query(
+          `SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2`,
+          [r.newManagerId, organizationId]
+        );
+        const managerEmail = mgr.rows[0]?.email;
+        if (!managerEmail) continue;
+        const gw = await googleWorkspaceService.updateUser(organizationId, gwId, { managerEmail });
+        if (!gw.success) {
+          r.success = false;
+          r.error = `Google Workspace rejected the manager change: ${gw.error}`;
+          reassignedCount = Math.max(0, reassignedCount - 1);
+        }
+      } catch (e: any) {
+        r.success = false;
+        r.error = e?.message || 'Google Workspace update failed';
+        reassignedCount = Math.max(0, reassignedCount - 1);
+      }
+    }
+
     // Log the action
     await db.query(`
       INSERT INTO activity_logs (
