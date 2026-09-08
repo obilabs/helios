@@ -145,7 +145,7 @@ describe('sample: replay admin.directory users.list through the proxy', () => {
     const params = turing![1] as unknown[];
     expect(params[2]).toBe('Alan'); // first_name  <- name.givenName
     expect(params[3]).toBe('Turing'); // last_name  <- name.familyName
-    expect(params[8]).toBe('/Engineering'); // org_unit_path
+    expect(params[7]).toBe('/Engineering'); // organizational_unit (the mirror writes the seed's real columns)
   });
 
   it('a request with no matching fixture throws loudly instead of hitting Google', async () => {
