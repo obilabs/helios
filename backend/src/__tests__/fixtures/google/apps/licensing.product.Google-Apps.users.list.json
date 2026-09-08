@@ -1,0 +1,127 @@
+{
+  "family": "apps",
+  "name": "licensing.product.Google-Apps.users.list",
+  "recordedAt": "2026-09-08T00:15:54.801Z",
+  "request": {
+    "method": "GET",
+    "host": "licensing.googleapis.com",
+    "path": "apps/licensing/v1/product/Google-Apps/users",
+    "query": {
+      "customerId": "example.com",
+      "maxResults": "1000"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "licensing#licenseAssignmentList",
+      "etag": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/JSHTncFqkVDa0xySkKRNnwkMQa0\"",
+      "items": [
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/JaJ7hgXKwixyhTMkyCBD7Xpy6_w\"",
+          "productId": "Google-Apps",
+          "userId": "user1@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user1@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/LXPk7XZtQlRkjDqyD0gwyX1BUTE\"",
+          "productId": "Google-Apps",
+          "userId": "user2@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user2@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/ehN4Ny3Y9tVG3i8iY9roJpgtK3E\"",
+          "productId": "Google-Apps",
+          "userId": "user3@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user3@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/fD4H4Tv_zQbhW8QOcFP7KMdhByg\"",
+          "productId": "Google-Apps",
+          "userId": "user4@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user4@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/Es9B96ZIoH4p7mNGMVhhJkne3kQ\"",
+          "productId": "Google-Apps",
+          "userId": "user5@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user5@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/DHt5yRwDMPWscaanAcl0TxX9szE\"",
+          "productId": "Google-Apps",
+          "userId": "user6@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user6@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/u0C9U9VYMoXfP6LzvV8P2ghc_hU\"",
+          "productId": "Google-Apps",
+          "userId": "user7@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user7@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/Ow38kYM48UGcj-b3fiZsL9X_EZk\"",
+          "productId": "Google-Apps",
+          "userId": "user8@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user8@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/TzhIO1zoji7pzR5AU1XB_YA4NPs\"",
+          "productId": "Google-Apps",
+          "userId": "user9@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user9@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        },
+        {
+          "kind": "licensing#licenseAssignment",
+          "etags": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/ESx7iBlNor3JwlUNk8jyOpXadrY\"",
+          "productId": "Google-Apps",
+          "userId": "user10@example.com",
+          "selfLink": "https://licensing.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/1010020025/user/user10@example.com",
+          "skuId": "1010020025",
+          "skuName": "Google Workspace Business Plus",
+          "productName": "Google Workspace"
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

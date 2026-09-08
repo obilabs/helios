@@ -1,0 +1,27 @@
+{
+  "family": "drive",
+  "name": "files.post",
+  "recordedAt": "2026-09-07T23:38:45.964Z",
+  "request": {
+    "method": "POST",
+    "host": "www.googleapis.com",
+    "path": "drive/v3/files",
+    "query": null,
+    "body": {
+      "name": "E2E Notes.gdoc",
+      "mimeType": "application/vnd.google-apps.document"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "drive#file",
+      "id": "1T3VgHu20znyectvDenS6mjmEOBED9_6YAA-QPpUpSdo",
+      "name": "E2E Notes.gdoc",
+      "mimeType": "application/vnd.google-apps.document"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

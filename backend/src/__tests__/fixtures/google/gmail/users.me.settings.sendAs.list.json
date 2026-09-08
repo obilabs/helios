@@ -1,0 +1,30 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.sendAs.list",
+  "recordedAt": "2026-09-08T01:19:07.859Z",
+  "request": {
+    "method": "GET",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/sendAs",
+    "query": null,
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "sendAs": [
+        {
+          "sendAsEmail": "user1@example.com",
+          "displayName": "",
+          "replyToAddress": "",
+          "signature": "",
+          "isPrimary": true,
+          "isDefault": true
+        }
+      ]
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

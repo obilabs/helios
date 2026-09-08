@@ -1,0 +1,27 @@
+{
+  "family": "gmail",
+  "name": "users.settings.autoForwarding.put",
+  "recordedAt": "2026-09-08T01:18:33.646Z",
+  "request": {
+    "method": "PUT",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/departing%40example.com/settings/autoForwarding",
+    "query": null,
+    "body": {
+      "enabled": true,
+      "emailAddress": "user1@example.com",
+      "disposition": "leaveInInbox"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "enabled": true,
+      "emailAddress": "user1@example.com",
+      "disposition": "leaveInInbox"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "family": "gmail",
+  "name": "users.me.settings.autoForwarding.put",
+  "recordedAt": "2026-09-08T00:24:51.131Z",
+  "request": {
+    "method": "PUT",
+    "host": "gmail.googleapis.com",
+    "path": "gmail/v1/users/me/settings/autoForwarding",
+    "query": null,
+    "body": {
+      "enabled": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "enabled": false
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

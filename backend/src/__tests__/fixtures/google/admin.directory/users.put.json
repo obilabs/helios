@@ -1,0 +1,80 @@
+{
+  "family": "admin.directory",
+  "name": "users.put",
+  "recordedAt": "2026-09-08T01:18:39.261Z",
+  "request": {
+    "method": "PUT",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users/departing%40example.com",
+    "query": null,
+    "body": {
+      "suspended": true
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#user",
+      "id": "108421628909948645847",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/9OtQHxr-pasdHi7e2x_AwcpTQXE\"",
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "Departing",
+        "fullName": "E2E Departing"
+      },
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "lastLoginTime": "1970-01-01T00:00:00.000Z",
+      "creationTime": "2026-09-07T23:37:42.000Z",
+      "agreedToTerms": false,
+      "suspended": true,
+      "suspensionReason": "ADMIN",
+      "archived": false,
+      "changePasswordAtNextLogin": true,
+      "ipWhitelisted": false,
+      "emails": [
+        {
+          "address": "user1@example.com",
+          "primary": true
+        },
+        {
+          "address": "user2@example.com"
+        }
+      ],
+      "relations": [
+        {
+          "value": "user3@example.com",
+          "type": "manager"
+        }
+      ],
+      "organizations": [
+        {
+          "title": "Senior Analyst",
+          "primary": true,
+          "customType": "",
+          "department": "Engineering"
+        }
+      ],
+      "phones": [
+        {
+          "value": "+2348012345678",
+          "type": "mobile"
+        }
+      ],
+      "nonEditableAliases": [
+        "user2@example.com"
+      ],
+      "customerId": "C028vt14i",
+      "orgUnitPath": "/Engineering",
+      "isMailboxSetup": true,
+      "includeInGlobalAddressList": true,
+      "thumbnailPhotoUrl": "//lh3.googleusercontent.com/a/ACg8ocJnyTHPXkHNhAsQS65jtvvbua0nHe4NL5lpISLCvG5JWXJ5Hg=mo",
+      "thumbnailPhotoEtag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/6kSivgkl9f0mbUOFyc4itipsdnc\"",
+      "recoveryEmail": ""
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

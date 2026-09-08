@@ -1,0 +1,26 @@
+{
+  "family": "apps",
+  "name": "licensing.product.users.list",
+  "recordedAt": "2026-09-08T00:15:55.563Z",
+  "request": {
+    "method": "GET",
+    "host": "licensing.googleapis.com",
+    "path": "apps/licensing/v1/product/101034/users",
+    "query": {
+      "customerId": "example.com",
+      "maxResults": "1000"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "licensing#licenseAssignmentList",
+      "etag": "\"sC5fnmnmnHqLCqN1s0AMFGY34WuFsooCAts9w06iBss/vyGp6PvFo4RvsFtPoIWeCReyIC8\"",
+      "items": []
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}
