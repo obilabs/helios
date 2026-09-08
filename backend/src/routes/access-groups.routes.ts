@@ -275,10 +275,13 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
     // cache that the next sync overwrites. Until 2026-09-07 this only renamed
     // the local row, so Helios and Google disagreed until the rename was lost.
     if (oldGroup.platform === 'google_workspace' && oldGroup.external_id) {
+      // Send every provided field, not a diff against the local row: the
+      // local row can be stale (it was, on 2026-09-07), and groups.patch is
+      // idempotent.
       const updates: { name?: string; description?: string; email?: string } = {};
-      if (name && name !== oldGroup.name) updates.name = name;
-      if (description !== undefined && description !== oldGroup.description) updates.description = description;
-      if (email && email !== oldGroup.email) updates.email = email;
+      if (name) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (email) updates.email = email;
       if (Object.keys(updates).length > 0) {
         const gw = await googleWorkspaceService.updateGroup(organizationId!, oldGroup.external_id, updates);
         if (!gw?.success) {
