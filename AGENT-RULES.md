@@ -95,6 +95,25 @@ https://www.googleapis.com/auth/gmail.settings.basic
 https://www.googleapis.com/auth/gmail.settings.sharing
 ```
 
+### The list is a wire contract; scopes are minted per call
+
+Since 2026-09-08 (Phase 02 bone 1):
+
+- `REQUIRED_SCOPES` is **frozen**. Its sha256 is pinned in
+  `backend/src/__tests__/google-scopes.contract.test.ts`. Changing the list means every
+  connected workspace must re-authorise, so it is a recorded decision (north-star tracker),
+  then bump `SCOPE_CONTRACT_VERSION` and the pin. Never just update the hash.
+- **Nothing mints the full list per call.** The transparent proxy asks
+  `googleScopesForPath(method, path)` for the scopes one request needs (one API family, exact
+  contract strings, no readonly variants). An unknown path falls back to the frozen contract,
+  never anything wider.
+- **New capabilities go in `OPTIONAL_SCOPE_DETAILS`** (today: `ediscovery`, `admin.directory.userschema`)
+  plus a `PATH_SCOPES` row. They are advertised at setup so a new install grants them up front,
+  and only the path that needs them ever requests them. A tenant that has not authorised one
+  sees that one feature fail with a clear `unauthorized_client`; everything else keeps working.
+- Prove a tenant's grant from inside the backend container:
+  `node dist/scripts/verify-google-scopes.js` (exit 1 if any contract probe fails).
+
 ## Test Environment
 
 ### Test Google Workspace Credentials
