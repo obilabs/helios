@@ -29,7 +29,7 @@ type Fx = { family: string; name: string; method: string; okStatuses: number[] }
 const WRITE_FIXTURES: Fx[] = [
   // Directory: user lifecycle
   { family: 'admin.directory', name: 'users.post', method: 'POST', okStatuses: [200] },
-  { family: 'admin.directory', name: 'users.post.seat-limit-400', method: 'POST', okStatuses: [400] }, // trial seat cap: "Domain user limit reached"
+  { family: 'admin.directory', name: 'users.post.seat-limit-412', method: 'POST', okStatuses: [412] }, // trial seat cap: 412 "Domain user limit reached. Start paid subscription."
   { family: 'admin.directory', name: 'users.put', method: 'PUT', okStatuses: [200] }, // suspend / restore / profile
   { family: 'admin.directory', name: 'users.signOut.post', method: 'POST', okStatuses: [204] },
   { family: 'admin.directory', name: 'users.delete', method: 'DELETE', okStatuses: [204] },
