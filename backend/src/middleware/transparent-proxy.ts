@@ -863,6 +863,10 @@ async function syncUserResource(params: {
 
   // CREATE USER (POST)
   if (method === 'POST' && responseData.id) {
+    // Column names follow the seed (status / organizational_unit; the unique
+    // key on organization_users is email). Until 2026-09-08 this wrote
+    // user_status / platforms / org_unit_path, which do not exist, so every
+    // proxy-created user failed to mirror and the failure was only logged.
     await db.query(`
       INSERT INTO organization_users (
         organization_id,
@@ -871,28 +875,26 @@ async function syncUserResource(params: {
         last_name,
         google_workspace_id,
         is_active,
-        user_status,
-        platforms,
-        org_unit_path,
+        status,
+        organizational_unit,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-      ON CONFLICT (organization_id, email)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      ON CONFLICT (email)
       DO UPDATE SET
         google_workspace_id = EXCLUDED.google_workspace_id,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        org_unit_path = EXCLUDED.org_unit_path,
+        first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), organization_users.first_name),
+        last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), organization_users.last_name),
+        organizational_unit = EXCLUDED.organizational_unit,
         updated_at = NOW()
     `, [
       params.organizationId,
       responseData.primaryEmail,
-      responseData.name?.givenName,
-      responseData.name?.familyName,
+      responseData.name?.givenName || '',
+      responseData.name?.familyName || '',
       responseData.id,
       !responseData.suspended,
       responseData.suspended ? 'suspended' : 'active',
-      ['google_workspace'],
       responseData.orgUnitPath || '/'
     ]);
 
@@ -911,7 +913,7 @@ async function syncUserResource(params: {
       UPDATE organization_users
       SET
         deleted_at = NOW(),
-        user_status = 'deleted',
+        status = 'deleted',
         is_active = false,
         updated_at = NOW()
       WHERE organization_id = $1
@@ -929,8 +931,8 @@ async function syncUserResource(params: {
         first_name = COALESCE($1, first_name),
         last_name = COALESCE($2, last_name),
         is_active = $3,
-        user_status = $4,
-        org_unit_path = COALESCE($5, org_unit_path),
+        status = $4,
+        organizational_unit = COALESCE($5, organizational_unit),
         updated_at = NOW()
       WHERE organization_id = $6
         AND google_workspace_id = $7
@@ -958,30 +960,28 @@ async function syncUserResource(params: {
           last_name,
           google_workspace_id,
           is_active,
-          user_status,
-          platforms,
-          org_unit_path,
+          status,
+          organizational_unit,
           created_at,
           updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-        ON CONFLICT (organization_id, email)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        ON CONFLICT (email)
         DO UPDATE SET
           google_workspace_id = EXCLUDED.google_workspace_id,
-          first_name = EXCLUDED.first_name,
-          last_name = EXCLUDED.last_name,
+          first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), organization_users.first_name),
+          last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), organization_users.last_name),
           is_active = EXCLUDED.is_active,
-          user_status = EXCLUDED.user_status,
-          org_unit_path = EXCLUDED.org_unit_path,
+          status = EXCLUDED.status,
+          organizational_unit = EXCLUDED.organizational_unit,
           updated_at = NOW()
       `, [
         params.organizationId,
         user.primaryEmail,
-        user.name?.givenName,
-        user.name?.familyName,
+        user.name?.givenName || '',
+        user.name?.familyName || '',
         user.id,
         !user.suspended,
         user.suspended ? 'suspended' : 'active',
-        ['google_workspace'],
         user.orgUnitPath || '/'
       ]);
     }
@@ -1010,13 +1010,14 @@ async function syncGroupResource(params: {
         name,
         email,
         description,
-        google_workspace_id,
+        platform,
+        external_id,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-      ON CONFLICT (organization_id, email)
+      ) VALUES ($1, $2, $3, $4, 'google_workspace', $5, NOW(), NOW())
+      ON CONFLICT (organization_id, platform, external_id)
       DO UPDATE SET
-        google_workspace_id = EXCLUDED.google_workspace_id,
+        email = EXCLUDED.email,
         name = EXCLUDED.name,
         description = EXCLUDED.description,
         updated_at = NOW()
@@ -1041,7 +1042,8 @@ async function syncGroupResource(params: {
     await db.query(`
       DELETE FROM access_groups
       WHERE organization_id = $1
-        AND (email = $2 OR google_workspace_id = $2)
+        AND platform = 'google_workspace'
+        AND (email = $2 OR external_id = $2)
     `, [params.organizationId, groupKey]);
 
     logger.info('Synced group deletion', { groupKey });

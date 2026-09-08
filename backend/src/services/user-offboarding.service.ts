@@ -501,6 +501,37 @@ class UserOffboardingService {
         result.stepsSkipped.push('setup_mailbox_delegation');
       }
 
+      // Step 3b: Clear the Gmail signature. The template flag existed and was
+      // mapped to 'remove_signature' but no step ever ran (2026-09-08: the
+      // departed mailbox kept its signature).
+      if (config.removeSignature) {
+        stepOrder++;
+        const sigStart = Date.now();
+        try {
+          const sig = await googleWorkspaceService.setUserSignature(organizationId, config.userEmail, '');
+          if (!sig.success) throw new Error(sig.error || 'setUserSignature failed');
+          await lifecycleLogService.logSuccess(
+            organizationId,
+            'offboard',
+            'remove_signature',
+            { ...logOptions, stepOrder, durationMs: Date.now() - sigStart, stepDescription: 'Cleared the Gmail signature' }
+          );
+          result.stepsCompleted.push('remove_signature');
+        } catch (error: any) {
+          result.errors.push(`Failed to remove signature: ${error.message}`);
+          await lifecycleLogService.logFailure(
+            organizationId,
+            'offboard',
+            'remove_signature',
+            error,
+            { ...logOptions, stepOrder, durationMs: Date.now() - sigStart }
+          );
+          result.stepsFailed.push('remove_signature');
+        }
+      } else {
+        result.stepsSkipped.push('remove_signature');
+      }
+
       // Step 4: Set auto-reply
       if (config.emailAction === 'auto_reply' && config.emailAutoReplyMessage) {
         stepOrder++;
@@ -1879,8 +1910,11 @@ class UserOffboardingService {
     userId: string,
     status: string
   ): Promise<void> {
+    // The column is `status` (the seed never had user_status). Until
+    // 2026-09-08 this threw, the suspend step was reported failed, and Helios
+    // kept showing the user Active after Google had suspended them.
     await db.query(
-      `UPDATE organization_users SET user_status = $1, is_active = false WHERE id = $2`,
+      `UPDATE organization_users SET status = $1, is_active = false, updated_at = NOW() WHERE id = $2`,
       [status, userId]
     );
   }
@@ -1959,6 +1993,10 @@ class UserOffboardingService {
       key: credentials.private_key,
       scopes: [
         'https://www.googleapis.com/auth/admin.directory.user',
+        // tokens.list / tokens.delete and users.signOut are gated on this
+        // scope; without it "revoke OAuth tokens" and "sign out devices"
+        // failed with "insufficient authentication scopes" (2026-09-08).
+        'https://www.googleapis.com/auth/admin.directory.user.security',
         'https://www.googleapis.com/auth/admin.directory.group',
         'https://www.googleapis.com/auth/admin.directory.device.mobile',
       ],
