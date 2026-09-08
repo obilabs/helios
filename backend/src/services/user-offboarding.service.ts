@@ -1472,7 +1472,7 @@ class UserOffboardingService {
     const needsManager: string[] = [];
     if (config.driveAction === 'transfer_manager') needsManager.push('Drive transfer');
     if (config.emailAction === 'forward_manager' && !config.emailForwardAddress) needsManager.push('mail forwarding');
-    if (config.calendarTransferMeetingOwnership && config.calendarTransferToManager && !config.calendarTransferToUserId) needsManager.push('calendar transfer');
+    if (config.calendarTransferMeetingOwnership && !config.calendarTransferToUserId) needsManager.push('calendar transfer');
     if (needsManager.length > 0 && !config.managerEmail) {
       errors.push(`${config.userEmail} has no reporting manager, but the template sends ${needsManager.join(', ')} to the manager. Set a manager first or pick a template with a named target.`);
     }
