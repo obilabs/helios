@@ -88,10 +88,13 @@ const { REQUIRED_SCOPES } = await import('../config/google-scopes.js');
 
 // ---- fixtures ----
 
-// Flag OFF mints the FULL set of DWD-authorized scopes (the generic-proxy
-// default — every API family reachable). This used to be only the 4 broad
-// admin.directory scopes; it was widened when the proxy became host-generic.
-const FLAG_OFF_SCOPES = REQUIRED_SCOPES.join(' ');
+// Flag OFF mints the MINIMAL scopes for the path (per-call minting, Phase 02
+// scope contract). It used to mint the full REQUIRED_SCOPES list, which made
+// any addition to that list a blanket 401 for every connected tenant.
+// Reads mint the same contract scope as writes: DWD matches strings exactly,
+// so a readonly variant would be refused by a tenant that authorised the full one.
+const FLAG_OFF_USERS_READ = 'https://www.googleapis.com/auth/admin.directory.user';
+const FLAG_OFF_USERS_WRITE = 'https://www.googleapis.com/auth/admin.directory.user';
 
 const READONLY_USER_SCOPE = 'https://www.googleapis.com/auth/admin.directory.user.readonly';
 
@@ -157,7 +160,7 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
     mockIsEnabled.mockResolvedValue(false);
   });
 
-  it('forwards a GET to Google and mints the full flag-off scopes', async () => {
+  it('forwards a GET to Google and mints only the scope that path needs', async () => {
     const res = await request(buildApp()).get('/api/google/admin/directory/v1/users').expect(200);
     expect(res.body).toEqual({ ok: true });
     expect(mockAxiosPost).toHaveBeenCalledTimes(1); // token exchange happened
@@ -165,7 +168,8 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
     expect(mockAxiosForward.mock.calls[0][0].url).toBe(
       'https://admin.googleapis.com/admin/directory/v1/users',
     );
-    expect(lastMintedScope()).toBe(FLAG_OFF_SCOPES);
+    expect(lastMintedScope()).toBe(FLAG_OFF_USERS_READ);
+    expect(lastMintedScope()).not.toBe(REQUIRED_SCOPES.join(' '));
   });
 
   it('even a DELETE with zero configured rules passes through (no enforcement)', async () => {
@@ -173,7 +177,7 @@ describe('feature flag OFF — behavior identical to the legacy proxy', () => {
       .delete('/api/google/admin/directory/v1/users/x%40e.com')
       .expect(200);
     expect(mockAxiosForward).toHaveBeenCalledTimes(1);
-    expect(lastMintedScope()).toBe(FLAG_OFF_SCOPES);
+    expect(lastMintedScope()).toBe(FLAG_OFF_USERS_WRITE);
   });
 });
 
