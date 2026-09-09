@@ -22,6 +22,16 @@ jest.unstable_mockModule('../utils/logger.js', () => ({
 const mockLogSuccess = jest.fn<(...args: any[]) => Promise<any>>();
 const mockLogFailure = jest.fn<(...args: any[]) => Promise<any>>();
 const mockLogSkipped = jest.fn<(...args: any[]) => Promise<any>>();
+jest.unstable_mockModule('../services/org-policy.service.js', () => ({
+  orgPolicyService: {
+    resolveLocalUser: jest.fn(async () => null),
+    checkNoOrphans: jest.fn(async () => ({ ok: true, reports: [] })),
+    describeOrphans: jest.fn(() => ''),
+  },
+}));
+jest.unstable_mockModule('../services/user-snapshot.service.js', () => ({
+  userSnapshotService: { capture: jest.fn(async () => ({ success: true, snapshot: { id: 'snap', snapshot: { partial: [] } } })) },
+}));
 jest.unstable_mockModule('../services/lifecycle-log.service.js', () => ({
   lifecycleLogService: {
     logSuccess: mockLogSuccess,

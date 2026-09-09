@@ -1,0 +1,56 @@
+{
+  "family": "admin.directory",
+  "name": "users.post.from-record",
+  "recordedAt": "2026-09-08T09:52:35.336Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/users",
+    "query": null,
+    "body": {
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "GroupHire"
+      },
+      "password": "REDACTED",
+      "changePasswordAtNextLogin": true,
+      "orgUnitPath": "/Engineering",
+      "relations": [
+        {
+          "value": "user2@example.com",
+          "type": "manager"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#user",
+      "id": "100220713532318949283",
+      "etag": "\"nNEc9gal71zAXcZCAEuACF_HaHL-qljl7gkdrnnYaAs/FASft_HUh4M_5wgM68TFvElhmuo\"",
+      "primaryEmail": "user1@example.com",
+      "name": {
+        "givenName": "E2E",
+        "familyName": "GroupHire"
+      },
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "creationTime": "2026-09-08T09:52:35.000Z",
+      "changePasswordAtNextLogin": true,
+      "relations": [
+        {
+          "value": "user2@example.com",
+          "type": "manager"
+        }
+      ],
+      "customerId": "C028vt14i",
+      "orgUnitPath": "/Engineering",
+      "isMailboxSetup": false
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}

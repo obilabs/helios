@@ -7,6 +7,8 @@ import { authService } from '../services/auth.service.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
+import { orgPolicyService } from '../services/org-policy.service.js';
+import { userSnapshotService } from '../services/user-snapshot.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { microsoftGraphService, chooseUpnDomain } from '../services/microsoft-graph.service.js';
 import { activityTracker } from '../services/activity-tracker.service.js';
@@ -2196,6 +2198,23 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
  * DELETE /api/organization/users/:userId
  * Soft delete an organization user (can be restored within 30 days)
  */
+/**
+ * Snapshots taken of this user's Google account before a suspend, offboard or
+ * delete. Summary only (counts, OU, what was partial); the full record stays server-side.
+ */
+router.get('/users/:userId/snapshots', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
+    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Only administrators can view snapshots' });
+    const rows = await userSnapshotService.list(organizationId, req.params.userId);
+    return res.json({ success: true, data: rows });
+  } catch (error: any) {
+    logger.error('Failed to list user snapshots', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to list snapshots' });
+  }
+});
+
 router.delete('/users/:userId', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
@@ -2252,12 +2271,64 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
       }
     }
 
+
+    // No-orphans policy: nobody is deleted while people still report to
+    // them, unless the reports are reassigned in this same request
+    // (body.reassignReports = { mode: 'all_to_one', targetManagerId } or
+    // { mode: 'individual', assignments }). Enforced here, not only in the wizard.
+    let reassigned: { totalReports: number; reassignedCount: number; results: any[] } | null = null;
+    {
+      let reassignInput;
+      try {
+        reassignInput = orgPolicyService.parseReassignInput(req.body?.reassignReports);
+      } catch (e: any) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+      let orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      if (!orphans.ok && reassignInput) {
+        try {
+          reassigned = await orgPolicyService.reassignDirectReports(organizationId, userId, reassignInput);
+        } catch (e: any) {
+          return res.status(400).json({ success: false, error: e.message });
+        }
+        orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      }
+      if (!orphans.ok) {
+        return res.status(409).json({
+          success: false,
+          error: orgPolicyService.describeOrphans('delete', orphans.reports),
+          data: {
+            orphans: orphans.reports.map((r) => ({ id: r.id, email: r.email, name: [r.first_name, r.last_name].filter(Boolean).join(' ') })),
+            reassigned,
+            hint: 'Reassign their manager (Edit user, or the offboarding wizard) or send reassignReports with this request.'
+          }
+        });
+      }
+    }
+
     // Get user's Google Workspace ID before deletion
     const userInfo = await db.query(
       'SELECT google_workspace_id FROM organization_users WHERE id = $1',
       [userId]
     );
     const googleWorkspaceId = userInfo.rows[0]?.google_workspace_id;
+
+    // Snapshot the Google account first (profile, groups, licence, mail
+    // settings) so a Restore after Google's 20-day window can re-create it.
+    let snapshotNote = '';
+    if (googleWorkspaceId) {
+      const snap = await userSnapshotService.capture(organizationId, {
+        userId,
+        googleWorkspaceId,
+        primaryEmail: userToDelete.email,
+        reason: 'delete',
+        takenBy: req.user?.userId || null,
+      });
+      if (!snap.success) {
+        snapshotNote = ` (snapshot not taken: ${snap.error})`;
+        logger.warn('Delete proceeded without a Google snapshot', { userId, error: snap.error });
+      }
+    }
 
     // Soft delete user by setting status to deleted (deleted_at feeds the
     // 20-day Google undelete window shown on restore)
@@ -2332,7 +2403,8 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
 
     res.json({
       success: true,
-      message: `User deleted successfully (can be restored within 30 days)${googleSyncMessage}`
+      message: `User deleted successfully (can be restored within 30 days)${googleSyncMessage}${snapshotNote}`,
+      data: { reassigned }
     });
   } catch (error: any) {
     logger.error('Failed to delete user', { error: error.message });
@@ -2437,6 +2509,51 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     const oldStatus = userResult.rows[0].status;
 
+    // LAST-ADMIN GUARD first: a refusal must happen before any platform is touched.
+    if (status !== 'active' && PRIVILEGED_ROLES.includes(userResult.rows[0].role)) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot suspend the last administrator'
+        });
+      }
+    }
+
+    // No-orphans policy: nobody is suspended while people still report to
+    // them, unless the reports are reassigned in this same request
+    // (body.reassignReports = { mode: 'all_to_one', targetManagerId } or
+    // { mode: 'individual', assignments }). Enforced here, not only in the wizard.
+    let reassigned: { totalReports: number; reassignedCount: number; results: any[] } | null = null;
+    if (status === 'suspended') {
+      let reassignInput;
+      try {
+        reassignInput = orgPolicyService.parseReassignInput(req.body?.reassignReports);
+      } catch (e: any) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+      let orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      if (!orphans.ok && reassignInput) {
+        try {
+          reassigned = await orgPolicyService.reassignDirectReports(organizationId, userId, reassignInput);
+        } catch (e: any) {
+          return res.status(400).json({ success: false, error: e.message });
+        }
+        orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      }
+      if (!orphans.ok) {
+        return res.status(409).json({
+          success: false,
+          error: orgPolicyService.describeOrphans('suspend', orphans.reports),
+          data: {
+            orphans: orphans.reports.map((r) => ({ id: r.id, email: r.email, name: [r.first_name, r.last_name].filter(Boolean).join(' ') })),
+            reassigned,
+            hint: 'Reassign their manager (Edit user, or the offboarding wizard) or send reassignReports with this request.'
+          }
+        });
+      }
+    }
+
     // Reach the bound platform(s) BEFORE touching the local row. Until
     // 2026-09-07 this route only flipped the local status: "Suspend" in the
     // Users list left the Google/Microsoft account fully active while Helios
@@ -2455,15 +2572,6 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     // LAST-ADMIN GUARD: suspending/staging the final remaining admin would
     // lock out administration — refuse.
-    if (status !== 'active' && PRIVILEGED_ROLES.includes(userResult.rows[0].role)) {
-      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
-      if (otherAdmins === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Cannot suspend the last administrator'
-        });
-      }
-    }
 
     // Update user status
     const isActive = status === 'active';
@@ -2522,6 +2630,7 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
         userId,
         status,
         isActive,
+        reassigned,
         platforms: res.locals.platforms ?? []
       }
     });
@@ -2589,19 +2698,49 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
     // for 20 days after deletion). Until 2026-09-08 this route only flipped
     // the local row and the Google account stayed deleted.
     let googleRestored = false;
+    let recreated: { snapshotId: string; takenAt: string; googleWorkspaceId: string; restored?: { groups: number; licenses: number }; failures: string[] } | null = null;
     if (user.google_workspace_id) {
       const gw = await googleWorkspaceService.undeleteUser(
         organizationId,
         user.google_workspace_id,
         user.organizational_unit || '/'
       );
-      if (!gw.success) {
+      if (!gw.success && gw.pastWindow) {
+        // Past Google's window: re-create from the snapshot taken before the
+        // account was suspended, offboarded or deleted.
+        const snapshot = await userSnapshotService.latest(organizationId, userId, user.email);
+        if (!snapshot) {
+          return res.status(409).json({
+            success: false,
+            error: `Google can no longer restore this account (deleted ${daysSinceDeleted} day(s) ago; Google keeps deleted users for 20 days) and Helios has no snapshot to re-create it from.`,
+            data: { daysSinceDeleted, pastWindow: true, snapshot: false }
+          });
+        }
+        const rc = await userSnapshotService.recreate(organizationId, snapshot.id, { actorId: req.user?.userId });
+        if (!rc.success) {
+          return res.status(409).json({
+            success: false,
+            error: `Google can no longer restore this account and re-creating it from the ${new Date(snapshot.taken_at).toISOString().slice(0, 10)} snapshot failed: ${rc.error}`,
+            data: { daysSinceDeleted, pastWindow: true, snapshot: true }
+          });
+        }
+        recreated = {
+          snapshotId: snapshot.id,
+          takenAt: snapshot.taken_at,
+          googleWorkspaceId: rc.googleWorkspaceId!,
+          restored: rc.restored,
+          failures: rc.failures || []
+        };
+        await db.query(
+          'UPDATE organization_users SET google_workspace_id = $3 WHERE id = $1 AND organization_id = $2',
+          [userId, organizationId, rc.googleWorkspaceId]
+        );
+        user.google_workspace_id = rc.googleWorkspaceId;
+      } else if (!gw.success) {
         return res.status(409).json({
           success: false,
-          error: gw.pastWindow
-            ? `Google can no longer restore this account (deleted ${daysSinceDeleted} day(s) ago; Google keeps deleted users for 20 days). Re-creation from the Helios record is not available yet.`
-            : `Google Workspace rejected the restore: ${gw.error}`,
-          data: { daysSinceDeleted, pastWindow: !!gw.pastWindow }
+          error: `Google Workspace rejected the restore: ${gw.error}`,
+          data: { daysSinceDeleted, pastWindow: false }
         });
       }
       googleRestored = true;
@@ -2610,7 +2749,7 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
     // Google restores the account in the state it was deleted in (usually
     // suspended after an offboarding). Mirror that instead of asserting active.
     let restoredStatus: 'active' | 'suspended' = 'active';
-    if (googleRestored) {
+    if (googleRestored && !recreated) {
       try {
         const g = await googleWorkspaceService.getUserByGoogleId(organizationId, user.google_workspace_id);
         if (g?.suspended) restoredStatus = 'suspended';
@@ -2661,7 +2800,8 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
         userId: user.id,
         email: user.email,
         daysSinceDeleted
-      }
+      },
+      recreated
     });
   } catch (error: any) {
     logger.error('Failed to restore user', { error: error.message });
@@ -3904,102 +4044,23 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
     }
 
     // Get current direct reports
-    const reportsResult = await db.query(
-      'SELECT id, email, first_name, last_name FROM organization_users WHERE reporting_manager_id = $1 AND organization_id = $2',
-      [userId, organizationId]
-    );
-
-    const directReports = reportsResult.rows;
     let reassignedCount = 0;
-    const results: { reportId: string; email: string; newManagerId: string; success: boolean; error?: string }[] = [];
-
-    if (mode === 'all_to_one') {
-      // Reassign all to one manager
-      const updateResult = await db.query(
-        'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE reporting_manager_id = $2 AND organization_id = $3 RETURNING id, email',
-        [targetManagerId, userId, organizationId]
+    let results: any[] = [];
+    let totalReports = 0;
+    try {
+      const r = await orgPolicyService.reassignDirectReports(
+        organizationId,
+        userId,
+        mode === 'all_to_one' ? { mode: 'all_to_one', targetManagerId } : { mode: 'individual', assignments }
       );
-      reassignedCount = updateResult.rowCount || 0;
-
-      for (const report of updateResult.rows) {
-        results.push({
-          reportId: report.id,
-          email: report.email,
-          newManagerId: targetManagerId,
-          success: true
-        });
-      }
-    } else {
-      // Individual assignments
-      for (const assignment of assignments) {
-        try {
-          const updateResult = await db.query(
-            'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3 RETURNING id, email',
-            [assignment.newManagerId, assignment.reportId, organizationId]
-          );
-
-          if (updateResult.rowCount && updateResult.rowCount > 0) {
-            reassignedCount++;
-            results.push({
-              reportId: assignment.reportId,
-              email: updateResult.rows[0].email,
-              newManagerId: assignment.newManagerId,
-              success: true
-            });
-          } else {
-            results.push({
-              reportId: assignment.reportId,
-              email: 'unknown',
-              newManagerId: assignment.newManagerId,
-              success: false,
-              error: 'Report not found'
-            });
-          }
-        } catch (error: any) {
-          results.push({
-            reportId: assignment.reportId,
-            email: 'unknown',
-            newManagerId: assignment.newManagerId,
-            success: false,
-            error: error.message
-          });
-        }
-      }
+      reassignedCount = r.reassignedCount;
+      results = r.results;
+      totalReports = r.totalReports;
+    } catch (e: any) {
+      return res.status(400).json({ success: false, error: e.message });
     }
+    const directReports = { length: totalReports };
 
-    // The local row is not the source of truth for a Google user's manager:
-    // push the new relation to Google for every Google-bound report. Until
-    // 2026-09-08 this route only rewrote reporting_manager_id, so the reports
-    // still pointed at the departed user in Google after offboarding.
-    for (const r of results) {
-      if (!r.success) continue;
-      try {
-        const rep = await db.query(
-          `SELECT google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
-          [r.reportId, organizationId]
-        );
-        const gwId = rep.rows[0]?.google_workspace_id;
-        if (!gwId) continue;
-        const mgr = await db.query(
-          `SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2`,
-          [r.newManagerId, organizationId]
-        );
-        const managerEmail = mgr.rows[0]?.email;
-        if (!managerEmail) continue;
-        const gw = await googleWorkspaceService.updateUser(organizationId, gwId, { managerEmail });
-        if (!gw.success) {
-          r.success = false;
-          r.error = `Google Workspace rejected the manager change: ${gw.error}`;
-          reassignedCount = Math.max(0, reassignedCount - 1);
-        }
-      } catch (e: any) {
-        r.success = false;
-        r.error = e?.message || 'Google Workspace update failed';
-        reassignedCount = Math.max(0, reassignedCount - 1);
-      }
-    }
-
-    // Log the action
     await db.query(`
       INSERT INTO activity_logs (
         organization_id,

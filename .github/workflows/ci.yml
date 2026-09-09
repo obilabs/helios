@@ -232,7 +232,10 @@ jobs:
                 ('offboarding_templates','email_auto_reply_enabled'),
                 ('offboarding_templates','email_delegate_enabled'),
                 -- 2026-09-08: restore + proxy mirror stamp/read deleted_at (migration 082).
-                ('organization_users','deleted_at')
+                ('organization_users','deleted_at'),
+                -- 2026-09-08: pre-change Google snapshot; restore re-creates from it (migration 084).
+                ('user_google_snapshots','snapshot'),
+                ('user_google_snapshots','restored_google_workspace_id')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
