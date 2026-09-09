@@ -80,12 +80,19 @@ export class OrgPolicyService {
 
     if (input.mode === 'all_to_one') {
       if (input.targetManagerId === userId) throw new Error('A user cannot be their own manager');
+      // The new manager may themselves be one of the reports (a deputy taking
+      // over). They cannot report to themselves, so they are left out here and
+      // reported back; the caller assigns them individually (or to nobody).
       const upd = await db.query(
-        'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE reporting_manager_id = $2 AND organization_id = $3 RETURNING id, email',
+        'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE reporting_manager_id = $2 AND organization_id = $3 AND id <> $1 RETURNING id, email',
         [input.targetManagerId, userId, organizationId],
       );
       reassignedCount = upd.rowCount || 0;
       for (const row of upd.rows) results.push({ reportId: row.id, email: row.email, newManagerId: input.targetManagerId, success: true });
+      const self = directReports.rows.find((r: any) => r.id === input.targetManagerId);
+      if (self) {
+        results.push({ reportId: self.id, email: self.email, newManagerId: input.targetManagerId, success: false, error: 'This is the new manager; they cannot report to themselves. Assign their manager individually.' });
+      }
     } else {
       for (const a of input.assignments) {
         try {

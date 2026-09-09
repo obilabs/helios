@@ -31,6 +31,20 @@ async function main(): Promise<void> {
   };
   const local = async (email: string) => (await db.query('SELECT id, email, google_workspace_id, status, is_active FROM organization_users WHERE organization_id = $1 AND email = $2', [organizationId, email])).rows[0];
 
+  // Leftovers from an earlier interrupted run.
+  try {
+    const list = await googleWorkspaceService.getUsers(organizationId, domain);
+    const users: any[] = (list?.users as any[]) || [];
+    for (const x of users) {
+      if (String(x.primaryEmail || '').startsWith('orphan-proof-')) {
+        const d = await googleWorkspaceService.deleteUser(organizationId, x.id);
+        console.log(`removed leftover ${x.primaryEmail}: ${d.success ? 'ok' : d.error}`);
+      }
+    }
+  } catch (e: any) {
+    console.log(`leftover sweep skipped: ${e?.message || e}`);
+  }
+
   const manager = await local(managerEmail);
   const newManager = await local(newManagerEmail);
   if (!manager?.google_workspace_id || !newManager?.google_workspace_id) throw new Error('both managers must exist locally with a Google id');
@@ -87,7 +101,13 @@ async function main(): Promise<void> {
       console.log(`cleanup restore manager: ${act.ok ? 'ok' : act.error}`);
     }
     if (reportGoogleId) {
-      const d = await googleWorkspaceService.deleteUser(organizationId, reportGoogleId);
+      // The admin self-lockout guard reads the user first; a just-created
+      // account can be unreadable for a while, so retry with a pause.
+      let d: { success: boolean; error?: string } = { success: false };
+      for (let i = 0; i < 6 && !d.success; i++) {
+        if (i) await sleep(10000);
+        d = await googleWorkspaceService.deleteUser(organizationId, reportGoogleId);
+      }
       console.log(`cleanup delete report ${reportGoogleId}: ${d.success ? 'ok' : d.error}`);
     }
     if (reportLocalId) await db.query('DELETE FROM organization_users WHERE id = $1', [reportLocalId]);

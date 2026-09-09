@@ -105,6 +105,16 @@ describe('service', () => {
     expect(gws.updateUser).toHaveBeenCalledWith(ORG_ID, 'g-rep-1', { managerEmail: 'newboss@example.com' });
   });
 
+  it('all-to-one leaves out the new manager when they are one of the reports and says so', async () => {
+    primeDb(REPORTS);
+    const r = await orgPolicyService.reassignDirectReports(ORG_ID, 'mgr-1', { mode: 'all_to_one', targetManagerId: 'rep-1' });
+    const sql = mockQuery.mock.calls.find((c) => String(c[0]).includes('WHERE reporting_manager_id = $2 AND organization_id = $3 AND id <> $1'));
+    expect(sql).toBeDefined();
+    const self = r.results.find((x) => x.reportId === 'rep-1');
+    expect(self?.success).toBe(false);
+    expect(self?.error).toMatch(/cannot report to themselves/);
+  });
+
   it('refuses to reassign reports to the departing manager', async () => {
     primeDb(REPORTS);
     await expect(orgPolicyService.reassignDirectReports(ORG_ID, 'mgr-1', { mode: 'all_to_one', targetManagerId: 'mgr-1' })).rejects.toThrow(/own manager/);
