@@ -2509,6 +2509,17 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     const oldStatus = userResult.rows[0].status;
 
+    // LAST-ADMIN GUARD first: a refusal must happen before any platform is touched.
+    if (status !== 'active' && PRIVILEGED_ROLES.includes(userResult.rows[0].role)) {
+      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
+      if (otherAdmins === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot suspend the last administrator'
+        });
+      }
+    }
+
     // No-orphans policy: nobody is suspended while people still report to
     // them, unless the reports are reassigned in this same request
     // (body.reassignReports = { mode: 'all_to_one', targetManagerId } or
@@ -2561,15 +2572,6 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     // LAST-ADMIN GUARD: suspending/staging the final remaining admin would
     // lock out administration — refuse.
-    if (status !== 'active' && PRIVILEGED_ROLES.includes(userResult.rows[0].role)) {
-      const otherAdmins = await countOtherActiveAdmins(organizationId, userId);
-      if (otherAdmins === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Cannot suspend the last administrator'
-        });
-      }
-    }
 
     // Update user status
     const isActive = status === 'active';
