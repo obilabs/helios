@@ -133,11 +133,13 @@ export class OrgPolicyService {
         if (!managerEmail) continue;
         const gw = await googleWorkspaceService.updateUser(organizationId, gwId, { managerEmail });
         if (!gw.success) {
+          await this.revertLocalManager(organizationId, r.reportId, userId);
           r.success = false;
           r.error = `Google Workspace rejected the manager change: ${gw.error}`;
           reassignedCount = Math.max(0, reassignedCount - 1);
         }
       } catch (e: any) {
+        await this.revertLocalManager(organizationId, r.reportId, userId);
         r.success = false;
         r.error = e?.message || 'Google Workspace update failed';
         reassignedCount = Math.max(0, reassignedCount - 1);
@@ -146,6 +148,21 @@ export class OrgPolicyService {
 
     logger.info('Direct reports reassigned', { organizationId, userId, totalReports: directReports.rows.length, reassignedCount });
     return { totalReports: directReports.rows.length, reassignedCount, results };
+  }
+
+  /**
+   * Google refused the manager change: put the Helios row back so the two
+   * never disagree (the report still counts as an orphan, which is the truth).
+   */
+  private async revertLocalManager(organizationId: string, reportId: string, previousManagerId: string): Promise<void> {
+    try {
+      await db.query(
+        'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
+        [previousManagerId, reportId, organizationId],
+      );
+    } catch (e: any) {
+      logger.error('Could not revert local manager after Google rejection', { organizationId, reportId, error: e?.message });
+    }
   }
 
   /**

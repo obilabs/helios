@@ -127,6 +127,10 @@ describe('service', () => {
     const r = await orgPolicyService.reassignDirectReports(ORG_ID, 'mgr-1', { mode: 'all_to_one', targetManagerId: 'mgr-2' });
     expect(r.reassignedCount).toBe(1);
     expect(r.results.find((x) => x.reportId === 'rep-2')?.error).toMatch(/Google Workspace rejected/);
+    // The Helios row is put back so Helios and Google never disagree.
+    const revert = mockQuery.mock.calls.find((c) => String(c[0]).startsWith('UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3'));
+    expect(revert).toBeDefined();
+    expect((revert![1] as any[]).slice(0, 2)).toEqual(['mgr-1', 'rep-2']);
   });
 });
 

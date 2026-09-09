@@ -56,6 +56,9 @@ async function main(): Promise<void> {
       [organizationId, reportEmail, `Proof ${stamp}`, reportGoogleId, manager.id],
     );
     reportLocalId = ins.rows[0].id;
+    // A brand-new account answers "User creation is not complete." to updates
+    // for a short while; real reports are never this fresh.
+    await sleep(40000);
 
     // 2. policy refuses
     const before = await orgPolicyService.checkNoOrphans(organizationId, manager.id);
