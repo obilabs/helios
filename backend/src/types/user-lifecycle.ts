@@ -737,6 +737,7 @@ export type OnboardingStep = typeof ONBOARDING_STEPS[number];
 // Offboarding steps (in order)
 export const OFFBOARDING_STEPS = [
   'validate_config',
+  'snapshot_account',
   'transfer_drive_files',
   'setup_email_forwarding',
   'setup_mailbox_delegation',

@@ -81,9 +81,14 @@ export function UserTable({
   const [bulkConfirmAction, setBulkConfirmAction] = useState<'activate' | 'suspend' | 'delete' | null>(null);
   // Suspend is a platform write; ask first (2026-09-08).
   const [suspendConfirmUser, setSuspendConfirmUser] = useState<User | null>(null);
+  // Server refusals worth reading (no-orphans policy names the people who still report to the user).
+  const [suspendError, setSuspendError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 8 });
   const [restoreDeletedUser, setRestoreDeletedUser] = useState<User | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  // Set when Google could not undelete and Helios re-created the account from its snapshot.
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
 
   // Column visibility (persisted in localStorage)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -173,8 +178,13 @@ export function UserTable({
   const confirmQuickSuspend = async () => {
     if (!suspendConfirmUser) return;
     const target = suspendConfirmUser;
-    setSuspendConfirmUser(null);
-    await updateStatusMutation.mutateAsync({ userId: target.id, status: 'suspended' });
+    try {
+      await updateStatusMutation.mutateAsync({ userId: target.id, status: 'suspended' });
+      setSuspendConfirmUser(null);
+      setSuspendError(null);
+    } catch (e: any) {
+      setSuspendError(e?.message || 'Failed to suspend user');
+    }
   };
 
   const confirmRestoreDeleted = async () => {
@@ -189,6 +199,14 @@ export function UserTable({
       }
       setRestoreDeletedUser(null);
       setRestoreError(null);
+      if (data.recreated) {
+        const r = data.recreated;
+        const parts = [`${target.email} was re-created in Google from the snapshot taken ${String(r.takenAt).slice(0, 10)}`];
+        if (r.restored) parts.push(`${r.restored.groups} group(s) and ${r.restored.licenses} licence(s) restored`);
+        if (Array.isArray(r.failures) && r.failures.length) parts.push(`not restored: ${r.failures.join(', ')}`);
+        parts.push('The user signs in with a one-time password set by an admin.');
+        setRestoreNotice(parts.join('. '));
+      }
       refetch();
     } catch (e: any) {
       setRestoreError(e?.message || 'Failed to restore user');
@@ -214,12 +232,17 @@ export function UserTable({
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
-    await deleteMutation.mutateAsync({
-      userId: userToDelete.id,
-      googleAction: userToDelete.googleWorkspaceId ? googleAction : undefined,
-    });
-    setShowDeleteModal(false);
-    setUserToDelete(null);
+    try {
+      await deleteMutation.mutateAsync({
+        userId: userToDelete.id,
+        googleAction: userToDelete.googleWorkspaceId ? googleAction : undefined,
+      });
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      setDeleteError(null);
+    } catch (e: any) {
+      setDeleteError(e?.message || 'Failed to delete user');
+    }
   };
 
   // Bulk actions - show confirmation dialog
@@ -680,8 +703,10 @@ export function UserTable({
               <p>This will soft-delete the user. They can be restored within 30 days.</p>
             )}
 
+            {deleteError && <p className="text-red-600" style={{ marginTop: 8 }}>{deleteError}</p>}
+
             <div className="modal-buttons">
-              <button className="btn-secondary" onClick={() => setShowDeleteModal(false)}>
+              <button className="btn-secondary" onClick={() => { setShowDeleteModal(false); setDeleteError(null); }}>
                 Cancel
               </button>
               <button
@@ -704,12 +729,23 @@ export function UserTable({
         confirmText="Suspend"
         variant="warning"
         onConfirm={confirmQuickSuspend}
-        onCancel={() => setSuspendConfirmUser(null)}
+        onCancel={() => { setSuspendConfirmUser(null); setSuspendError(null); }}
+      >
+        {suspendError && <p className="text-red-600" style={{ marginTop: 8 }}>{suspendError}</p>}
+      </ConfirmDialog>
+      <ConfirmDialog
+        isOpen={restoreNotice !== null}
+        title="User re-created from snapshot"
+        message={restoreNotice || ''}
+        confirmText="OK"
+        variant="info"
+        onConfirm={() => setRestoreNotice(null)}
+        onCancel={() => setRestoreNotice(null)}
       />
       <ConfirmDialog
         isOpen={restoreDeletedUser !== null}
         title="Restore deleted user"
-        message={restoreDeletedUser ? `Restore ${restoreDeletedUser.email}? A Google Workspace account is restored in Google as well (possible for 20 days after deletion).` : ''}
+        message={restoreDeletedUser ? `Restore ${restoreDeletedUser.email}? A Google Workspace account is restored in Google as well. Within 20 days of deletion Google undeletes it; after that Helios re-creates it from the snapshot taken before it was removed (profile, groups, licence), with a one-time password.` : ''}
         confirmText="Restore"
         variant="info"
         onConfirm={confirmRestoreDeleted}

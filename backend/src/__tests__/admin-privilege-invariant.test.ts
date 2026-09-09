@@ -167,6 +167,9 @@ function primeDb(opts: {
     if (text.includes('SELECT id FROM organization_users WHERE email')) {
       return { rows: opts.emailTaken ? [{ id: 'existing-1' }] : [] };
     }
+    if (text.includes('reporting_manager_id = $2')) {
+      return { rows: [] }; // no-orphans policy: nobody reports to the target in these cases
+    }
     if (text.includes('FROM organization_users')) {
       return { rows: opts.targetUser ? [{ ...opts.targetUser }] : [] };
     }
