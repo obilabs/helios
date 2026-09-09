@@ -10,6 +10,7 @@ import { JWT } from 'google-auth-library';
 import { db } from '../database/connection.js';
 import { decodeServiceAccountKey } from './gw-credentials.js';
 import { logger } from '../utils/logger.js';
+import { orgPolicyService } from './org-policy.service.js';
 import { userSnapshotService } from './user-snapshot.service.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
@@ -401,6 +402,31 @@ class UserOffboardingService {
         { ...logOptions, stepOrder, durationMs: Date.now() - validateStart }
       );
       result.stepsCompleted.push('validate_config');
+
+      // No-orphans policy (enforced here as well as in the wizard): the
+      // departing user's direct reports must have been reassigned before any
+      // step runs, otherwise the org chart is left pointing at a suspended account.
+      {
+        const target = await db.query(
+          'SELECT id FROM organization_users WHERE organization_id = $1 AND (id::text = $2 OR email = $3) LIMIT 1',
+          [organizationId, config.userId, config.userEmail]
+        );
+        const localId = target.rows[0]?.id;
+        if (localId) {
+          const orphans = await orgPolicyService.checkNoOrphans(organizationId, localId);
+          if (!orphans.ok) {
+            const msg = orgPolicyService.describeOrphans('offboard', orphans.reports);
+            result.errors.push(msg);
+            result.success = false;
+            await lifecycleLogService.logFailure(organizationId, 'offboard', 'validate_config', msg, {
+              ...logOptions, stepOrder, durationMs: 0,
+            });
+            result.stepsCompleted = result.stepsCompleted.filter((s) => s !== 'validate_config');
+            result.stepsFailed.push('validate_config');
+            return result;
+          }
+        }
+      }
 
       // Step 1b: Snapshot the Google account BEFORE anything changes, so a
       // Restore after Google's 20-day undelete window can re-create it.

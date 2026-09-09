@@ -7,6 +7,7 @@ import { authService } from '../services/auth.service.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
+import { orgPolicyService } from '../services/org-policy.service.js';
 import { userSnapshotService } from '../services/user-snapshot.service.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { microsoftGraphService, chooseUpnDomain } from '../services/microsoft-graph.service.js';
@@ -2270,6 +2271,41 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
       }
     }
 
+
+    // No-orphans policy: nobody is deleted while people still report to
+    // them, unless the reports are reassigned in this same request
+    // (body.reassignReports = { mode: 'all_to_one', targetManagerId } or
+    // { mode: 'individual', assignments }). Enforced here, not only in the wizard.
+    let reassigned: { totalReports: number; reassignedCount: number; results: any[] } | null = null;
+    {
+      let reassignInput;
+      try {
+        reassignInput = orgPolicyService.parseReassignInput(req.body?.reassignReports);
+      } catch (e: any) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+      let orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      if (!orphans.ok && reassignInput) {
+        try {
+          reassigned = await orgPolicyService.reassignDirectReports(organizationId, userId, reassignInput);
+        } catch (e: any) {
+          return res.status(400).json({ success: false, error: e.message });
+        }
+        orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      }
+      if (!orphans.ok) {
+        return res.status(409).json({
+          success: false,
+          error: orgPolicyService.describeOrphans('delete', orphans.reports),
+          data: {
+            orphans: orphans.reports.map((r) => ({ id: r.id, email: r.email, name: [r.first_name, r.last_name].filter(Boolean).join(' ') })),
+            reassigned,
+            hint: 'Reassign their manager (Edit user, or the offboarding wizard) or send reassignReports with this request.'
+          }
+        });
+      }
+    }
+
     // Get user's Google Workspace ID before deletion
     const userInfo = await db.query(
       'SELECT google_workspace_id FROM organization_users WHERE id = $1',
@@ -2367,7 +2403,8 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
 
     res.json({
       success: true,
-      message: `User deleted successfully (can be restored within 30 days)${googleSyncMessage}${snapshotNote}`
+      message: `User deleted successfully (can be restored within 30 days)${googleSyncMessage}${snapshotNote}`,
+      data: { reassigned }
     });
   } catch (error: any) {
     logger.error('Failed to delete user', { error: error.message });
@@ -2472,6 +2509,40 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     const oldStatus = userResult.rows[0].status;
 
+    // No-orphans policy: nobody is suspended while people still report to
+    // them, unless the reports are reassigned in this same request
+    // (body.reassignReports = { mode: 'all_to_one', targetManagerId } or
+    // { mode: 'individual', assignments }). Enforced here, not only in the wizard.
+    let reassigned: { totalReports: number; reassignedCount: number; results: any[] } | null = null;
+    if (status === 'suspended') {
+      let reassignInput;
+      try {
+        reassignInput = orgPolicyService.parseReassignInput(req.body?.reassignReports);
+      } catch (e: any) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+      let orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      if (!orphans.ok && reassignInput) {
+        try {
+          reassigned = await orgPolicyService.reassignDirectReports(organizationId, userId, reassignInput);
+        } catch (e: any) {
+          return res.status(400).json({ success: false, error: e.message });
+        }
+        orphans = await orgPolicyService.checkNoOrphans(organizationId, userId);
+      }
+      if (!orphans.ok) {
+        return res.status(409).json({
+          success: false,
+          error: orgPolicyService.describeOrphans('suspend', orphans.reports),
+          data: {
+            orphans: orphans.reports.map((r) => ({ id: r.id, email: r.email, name: [r.first_name, r.last_name].filter(Boolean).join(' ') })),
+            reassigned,
+            hint: 'Reassign their manager (Edit user, or the offboarding wizard) or send reassignReports with this request.'
+          }
+        });
+      }
+    }
+
     // Reach the bound platform(s) BEFORE touching the local row. Until
     // 2026-09-07 this route only flipped the local status: "Suspend" in the
     // Users list left the Google/Microsoft account fully active while Helios
@@ -2557,6 +2628,7 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
         userId,
         status,
         isActive,
+        reassigned,
         platforms: res.locals.platforms ?? []
       }
     });
@@ -3970,102 +4042,23 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
     }
 
     // Get current direct reports
-    const reportsResult = await db.query(
-      'SELECT id, email, first_name, last_name FROM organization_users WHERE reporting_manager_id = $1 AND organization_id = $2',
-      [userId, organizationId]
-    );
-
-    const directReports = reportsResult.rows;
     let reassignedCount = 0;
-    const results: { reportId: string; email: string; newManagerId: string; success: boolean; error?: string }[] = [];
-
-    if (mode === 'all_to_one') {
-      // Reassign all to one manager
-      const updateResult = await db.query(
-        'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE reporting_manager_id = $2 AND organization_id = $3 RETURNING id, email',
-        [targetManagerId, userId, organizationId]
+    let results: any[] = [];
+    let totalReports = 0;
+    try {
+      const r = await orgPolicyService.reassignDirectReports(
+        organizationId,
+        userId,
+        mode === 'all_to_one' ? { mode: 'all_to_one', targetManagerId } : { mode: 'individual', assignments }
       );
-      reassignedCount = updateResult.rowCount || 0;
-
-      for (const report of updateResult.rows) {
-        results.push({
-          reportId: report.id,
-          email: report.email,
-          newManagerId: targetManagerId,
-          success: true
-        });
-      }
-    } else {
-      // Individual assignments
-      for (const assignment of assignments) {
-        try {
-          const updateResult = await db.query(
-            'UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3 RETURNING id, email',
-            [assignment.newManagerId, assignment.reportId, organizationId]
-          );
-
-          if (updateResult.rowCount && updateResult.rowCount > 0) {
-            reassignedCount++;
-            results.push({
-              reportId: assignment.reportId,
-              email: updateResult.rows[0].email,
-              newManagerId: assignment.newManagerId,
-              success: true
-            });
-          } else {
-            results.push({
-              reportId: assignment.reportId,
-              email: 'unknown',
-              newManagerId: assignment.newManagerId,
-              success: false,
-              error: 'Report not found'
-            });
-          }
-        } catch (error: any) {
-          results.push({
-            reportId: assignment.reportId,
-            email: 'unknown',
-            newManagerId: assignment.newManagerId,
-            success: false,
-            error: error.message
-          });
-        }
-      }
+      reassignedCount = r.reassignedCount;
+      results = r.results;
+      totalReports = r.totalReports;
+    } catch (e: any) {
+      return res.status(400).json({ success: false, error: e.message });
     }
+    const directReports = { length: totalReports };
 
-    // The local row is not the source of truth for a Google user's manager:
-    // push the new relation to Google for every Google-bound report. Until
-    // 2026-09-08 this route only rewrote reporting_manager_id, so the reports
-    // still pointed at the departed user in Google after offboarding.
-    for (const r of results) {
-      if (!r.success) continue;
-      try {
-        const rep = await db.query(
-          `SELECT google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
-          [r.reportId, organizationId]
-        );
-        const gwId = rep.rows[0]?.google_workspace_id;
-        if (!gwId) continue;
-        const mgr = await db.query(
-          `SELECT email FROM organization_users WHERE id = $1 AND organization_id = $2`,
-          [r.newManagerId, organizationId]
-        );
-        const managerEmail = mgr.rows[0]?.email;
-        if (!managerEmail) continue;
-        const gw = await googleWorkspaceService.updateUser(organizationId, gwId, { managerEmail });
-        if (!gw.success) {
-          r.success = false;
-          r.error = `Google Workspace rejected the manager change: ${gw.error}`;
-          reassignedCount = Math.max(0, reassignedCount - 1);
-        }
-      } catch (e: any) {
-        r.success = false;
-        r.error = e?.message || 'Google Workspace update failed';
-        reassignedCount = Math.max(0, reassignedCount - 1);
-      }
-    }
-
-    // Log the action
     await db.query(`
       INSERT INTO activity_logs (
         organization_id,
