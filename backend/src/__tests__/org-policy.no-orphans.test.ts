@@ -61,7 +61,8 @@ function primeDb(reports: any[]): void {
     if (text.startsWith('SELECT id, email, first_name, last_name FROM organization_users WHERE reporting_manager_id')) return { rows: reports };
     if (text.startsWith('UPDATE organization_users SET reporting_manager_id = $1, updated_at = NOW() WHERE reporting_manager_id')) {
       moved = true;
-      return { rows: reports.map((r) => ({ id: r.id, email: r.email })), rowCount: reports.length };
+      const rows = reports.filter((r) => r.id !== params?.[0]).map((r) => ({ id: r.id, email: r.email }));
+      return { rows, rowCount: rows.length };
     }
     if (text.includes('SELECT google_workspace_id FROM organization_users WHERE id = $1')) return { rows: [{ google_workspace_id: `g-${params?.[0]}` }] };
     if (text.includes('SELECT email FROM organization_users WHERE id = $1')) return { rows: [{ email: 'newboss@example.com' }] };

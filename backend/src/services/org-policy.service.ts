@@ -36,6 +36,15 @@ export interface OrphanCheck {
 }
 
 export class OrgPolicyService {
+  /** Resolve a Helios user row from an id or an email (offboarding configs carry either). */
+  async resolveLocalUser(organizationId: string, idOrEmail: string, email?: string): Promise<{ id: string; email: string; google_workspace_id: string | null } | null> {
+    const r = await db.query(
+      'SELECT id, email, google_workspace_id FROM organization_users WHERE organization_id = $1 AND (id::text = $2 OR email = $3) LIMIT 1',
+      [organizationId, idOrEmail, email || idOrEmail],
+    );
+    return (r.rows[0] as any) || null;
+  }
+
   /** People who currently report to this user and are not themselves gone. */
   async listActiveDirectReports(organizationId: string, userId: string): Promise<DirectReport[]> {
     const r = await db.query(

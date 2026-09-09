@@ -31,20 +31,6 @@ async function main(): Promise<void> {
   };
   const local = async (email: string) => (await db.query('SELECT id, email, google_workspace_id, status, is_active FROM organization_users WHERE organization_id = $1 AND email = $2', [organizationId, email])).rows[0];
 
-  // Leftovers from an earlier interrupted run.
-  try {
-    const list = await googleWorkspaceService.getUsers(organizationId, domain);
-    const users: any[] = (list?.users as any[]) || [];
-    for (const x of users) {
-      if (String(x.primaryEmail || '').startsWith('orphan-proof-')) {
-        const d = await googleWorkspaceService.deleteUser(organizationId, x.id);
-        console.log(`removed leftover ${x.primaryEmail}: ${d.success ? 'ok' : d.error}`);
-      }
-    }
-  } catch (e: any) {
-    console.log(`leftover sweep skipped: ${e?.message || e}`);
-  }
-
   const manager = await local(managerEmail);
   const newManager = await local(newManagerEmail);
   if (!manager?.google_workspace_id || !newManager?.google_workspace_id) throw new Error('both managers must exist locally with a Google id');

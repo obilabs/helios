@@ -406,12 +406,9 @@ class UserOffboardingService {
       // No-orphans policy (enforced here as well as in the wizard): the
       // departing user's direct reports must have been reassigned before any
       // step runs, otherwise the org chart is left pointing at a suspended account.
+      const localUser = await orgPolicyService.resolveLocalUser(organizationId, config.userId, config.userEmail);
       {
-        const target = await db.query(
-          'SELECT id FROM organization_users WHERE organization_id = $1 AND (id::text = $2 OR email = $3) LIMIT 1',
-          [organizationId, config.userId, config.userEmail]
-        );
-        const localId = target.rows[0]?.id;
+        const localId = localUser?.id;
         if (localId) {
           const orphans = await orgPolicyService.checkNoOrphans(organizationId, localId);
           if (!orphans.ok) {
@@ -435,14 +432,10 @@ class UserOffboardingService {
         stepOrder++;
         const snapStart = Date.now();
         try {
-          const target = await db.query(
-            'SELECT google_workspace_id FROM organization_users WHERE organization_id = $1 AND (id::text = $2 OR email = $3) LIMIT 1',
-            [organizationId, config.userId, config.userEmail]
-          );
-          const googleId = target.rows[0]?.google_workspace_id;
+          const googleId = localUser?.google_workspace_id;
           if (googleId) {
             const snap = await userSnapshotService.capture(organizationId, {
-              userId: target.rows[0] ? config.userId : null,
+              userId: localUser?.id || null,
               googleWorkspaceId: googleId,
               primaryEmail: config.userEmail,
               reason: 'offboard',
