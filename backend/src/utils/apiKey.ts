@@ -213,6 +213,11 @@ export const API_SCOPES = {
   // Audit
   'read:audit-logs': 'View audit logs',
 
+  // Training contract v1 — granted on per-integration keys, one provider per key so the
+  // provenance of a completion is the key that presented it.
+  'write:training-completions': 'Report training completions for this organization',
+  'read:training': 'Read training requirements and completion status',
+
   // MTP (MSP portal) surface — granted on helios-mtp-pairing keys only
   'mtp:poll': 'Read the MTP directory/security poll aggregate',
   'mtp:offboard': 'Offboard (suspend/transfer/delete) a Workspace user via an MTP action',

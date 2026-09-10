@@ -47,3 +47,29 @@
   .sync-status-text { display: none; }
   .sync-status { padding: 4px 6px; }
 }
+
+/* One stamp per connected platform, sitting together as a single unit.
+   flex-shrink is off on both: in a crowded header the stamps were squeezed to
+   27px and the age was clipped away, leaving an icon that said nothing. A
+   truncated timestamp is worse than none, because it still looks like an
+   answer. */
+.sync-status-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.sync-status {
+  flex: 0 0 auto;
+}
+
+/* Only a stamp that can actually do something looks clickable. Microsoft has
+   no sync-now endpoint yet, so its stamp reads as an indicator, not a button. */
+.sync-status:not(.is-actionable) {
+  cursor: default;
+}
+
+.sync-status-text {
+  font-variant-numeric: tabular-nums;
+}
