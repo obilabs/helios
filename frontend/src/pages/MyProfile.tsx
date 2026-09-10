@@ -663,9 +663,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -693,9 +694,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -724,9 +726,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -753,9 +756,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >

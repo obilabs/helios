@@ -278,6 +278,64 @@ router.get('/profile', async (req: express.Request, res: express.Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
+/**
+ * Field visibility for the People Directory. The Privacy tab has called
+ * PUT /me/privacy since it was built; the route never existed (found
+ * 2026-09-10), so every change was refused with 404 and silently reverted.
+ */
+const VISIBILITY_FIELDS = new Set([
+  'email', 'personal_email', 'phone', 'work_phone', 'mobile_phone',
+  'job_title', 'location', 'department', 'manager', 'start_date',
+  'bio', 'voice_intro', 'video_intro', 'fun_facts', 'interests', 'expertise',
+]);
+const VISIBILITY_VALUES = new Set(['everyone', 'team', 'manager', 'none']);
+
+router.get('/privacy', async (req: express.Request, res: express.Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const rows = await db.query('SELECT field_name, visibility FROM user_field_visibility WHERE user_id = $1', [userId]);
+    const settings: Record<string, string> = {};
+    for (const r of rows.rows) settings[r.field_name] = r.visibility;
+    return res.json({ success: true, data: settings });
+  } catch (error: any) {
+    logger.error('Error reading privacy settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to read privacy settings' });
+  }
+});
+
+router.put('/privacy', async (req: express.Request, res: express.Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const settings = req.body?.settings;
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      return res.status(400).json({ success: false, error: 'settings must be an object of field -> visibility' });
+    }
+    const entries = Object.entries(settings as Record<string, unknown>);
+    if (entries.length === 0) return res.status(400).json({ success: false, error: 'No settings given' });
+    for (const [field, value] of entries) {
+      if (!VISIBILITY_FIELDS.has(field)) return res.status(400).json({ success: false, error: `Unknown field: ${field}` });
+      if (!VISIBILITY_VALUES.has(String(value))) return res.status(400).json({ success: false, error: `Invalid visibility for ${field}: ${String(value)}` });
+    }
+    for (const [field, value] of entries) {
+      await db.query(
+        `INSERT INTO user_field_visibility (user_id, field_name, visibility)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, field_name) DO UPDATE SET visibility = EXCLUDED.visibility`,
+        [userId, field, String(value)]
+      );
+    }
+    const rows = await db.query('SELECT field_name, visibility FROM user_field_visibility WHERE user_id = $1', [userId]);
+    const out: Record<string, string> = {};
+    for (const r of rows.rows) out[r.field_name] = r.visibility;
+    return res.json({ success: true, data: out });
+  } catch (error: any) {
+    logger.error('Error updating privacy settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to update privacy settings' });
+  }
+});
+
 router.put('/profile', async (req: express.Request, res: express.Response) => {
   try {
     const userId = req.user?.userId;
