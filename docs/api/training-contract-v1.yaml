@@ -1,0 +1,368 @@
+openapi: 3.1.0
+info:
+  title: Helios Training Contract
+  version: "1.0.0"
+  description: |
+    Helios records training requirements and completions over a documented, versioned
+    REST/webhook contract. It uses xAPI (IEEE 9274.1.1) verb identifiers and result
+    semantics so records map cleanly to xAPI-based systems. **Helios is not a Learning
+    Record Store.**
+
+    Helios owns the *requirement* — who must complete what, why, and by when — and its
+    status. Content, players and scoring live wherever the customer wants them. Any
+    provider reports completions here and Helios decides whether the requirement is met.
+
+    ## Versioning and deprecation
+
+    `spec_version` is carried in every payload we accept and every payload we send. It is
+    bumped only for a breaking change to the wire shape; new optional fields do not bump
+    it, so a client must ignore fields it does not recognise.
+
+    When a breaking version ships, the previous version keeps working for **at least 12
+    months** from the date the new one is announced, and the deprecation is stated in this
+    document and in the `GET /training/v1/` discovery response before it takes effect. We
+    will not remove a field or change the meaning of an existing value without that
+    notice.
+
+    ## What this contract does not do
+
+    It does not launch content, host content, or score anything. There is no
+    `POST /statements` and no LRS behaviour: no statement GET/filtering, no `stored`
+    ordering, no voiding. If you need those, put an LRS in front of us and forward.
+servers:
+  - url: https://{host}/api/v1/training/v1
+    variables:
+      host:
+        default: helios.example.com
+        description: The customer's own Helios installation. There is no shared Helios cloud.
+
+tags:
+  - name: discovery
+  - name: completions
+  - name: records
+
+paths:
+  /:
+    get:
+      tags: [discovery]
+      summary: What this installation implements
+      description: |
+        Unauthenticated and tenant-free on purpose: a connector author needs the spec
+        version and the accepted vocabulary before they have a key.
+      responses:
+        "200":
+          description: Contract description
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spec_version: { type: integer, example: 1 }
+                  statement: { type: string }
+                  verbs:
+                    type: object
+                    additionalProperties: { type: string, format: uri }
+                  requirement_reasons:
+                    type: array
+                    items: { $ref: "#/components/schemas/RequirementReason" }
+                  requirement_statuses:
+                    type: array
+                    items: { $ref: "#/components/schemas/RequirementStatus" }
+                  webhook_events:
+                    type: array
+                    items: { type: string }
+                  is_learning_record_store: { type: boolean, const: false }
+
+  /completions:
+    post:
+      tags: [completions]
+      summary: Report a completion
+      description: |
+        Accepts an xAPI statement subset plus a `helios` block.
+
+        `Idempotency-Key` is **required**. Retried delivery is the normal failure mode of
+        every webhook producer, and a duplicate completion would appear in an audit export
+        as a second satisfied requirement. Re-sending the same key returns `200` with the
+        original completion id and stores nothing new.
+
+        A completion that matches no open requirement is still **stored** as evidence and
+        returns `201` with `matched: false`. Do not retry it; the outcome will not change.
+      security:
+        - apiKey: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, maxLength: 255 }
+          description: Stable per delivery. Reuse it on every retry of the same event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompletionStatement" }
+            examples:
+              passedWithScore:
+                summary: A scored course, matched by explicit requirement id
+                value:
+                  spec_version: 1
+                  actor: { mbox: "mailto:alice@example.com" }
+                  verb: { id: "http://adlnet.gov/expapi/verbs/passed" }
+                  object:
+                    id: "https://vendor.example/courses/phishing-101"
+                    definition: { name: { en-US: "Phishing 101" } }
+                  result:
+                    completion: true
+                    success: true
+                    score: { scaled: 0.92 }
+                    duration: "PT12M"
+                  timestamp: "2026-09-10T14:03:00Z"
+                  helios:
+                    requirement_id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                    provider: "aegis"
+              acknowledgement:
+                summary: An unscored policy acknowledgement, matched by course id
+                value:
+                  actor: { mbox: "mailto:bob@example.com" }
+                  verb: { id: "http://adlnet.gov/expapi/verbs/completed" }
+                  object: { id: "policy-acceptable-use-2026" }
+                  result: { completion: true }
+                  helios: { provider: "caniphish" }
+      responses:
+        "201":
+          description: Stored as new evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestResult" }
+        "200":
+          description: Already stored under this Idempotency-Key. Nothing changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestResult" }
+        "400":
+          description: |
+            Refused. The contract prefers a loud refusal to a quietly wrong record, so
+            these are rejections rather than best-effort acceptances:
+            `idempotency_key_required`, `invalid_actor`, `ambiguous_actor`,
+            `unsupported_verb`, `invalid_score` (a scaled score outside 0..1 — send 0.85,
+            not 85), `invalid_duration`, `invalid_timestamp` (including a future date),
+            `unsupported_spec_version`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The training contract is not enabled for this organization.
+
+  /records:
+    get:
+      tags: [records]
+      summary: Read requirements as compliance records
+      description: |
+        Field names follow Vanta's `TrainingRecord` so a Vanta or Drata connector is a
+        projection rather than a translation. `uniqueId` is the requirement id and is
+        stable, so an upsert keyed on it will update rather than duplicate.
+      security:
+        - apiKey: []
+      parameters:
+        - { name: user_id, in: query, schema: { type: string, format: uuid } }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/RequirementStatus" }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        "200":
+          description: A page of records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spec_version: { type: integer }
+                  total: { type: integer }
+                  records:
+                    type: array
+                    items: { $ref: "#/components/schemas/TrainingRecord" }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      description: |
+        A Helios API key, scoped per integration. `write:training-completions` to report,
+        `read:training` to read. Issue one key per provider: the key that presented a
+        completion is stored with it, and that provenance chain is the compliance value.
+
+  schemas:
+    RequirementReason:
+      type: string
+      enum: [onboarding, policy, periodic, phish_failure, incident, manual]
+      description: |
+        Why the requirement exists. `phish_failure` records that a simulated phish was
+        failed. No learning standard models this, and it is the reason this contract is
+        its own rather than borrowed.
+
+    RequirementStatus:
+      type: string
+      enum: [pending, satisfied, overdue, waived, cancelled]
+      description: |
+        `overdue` is **derived**, never stored: a requirement is overdue when it is
+        pending and its due date has passed. A record is therefore never wrong merely
+        because a scheduled job has not run.
+
+    CompletionStatement:
+      type: object
+      required: [actor, verb, object]
+      properties:
+        spec_version:
+          type: integer
+          default: 1
+          description: Omit to mean 1. A version newer than the installation supports is refused.
+        actor:
+          type: object
+          description: Exactly one of `mbox` or `account`. Both together is refused as ambiguous.
+          properties:
+            mbox: { type: string, example: "mailto:alice@example.com" }
+            account:
+              type: object
+              required: [homePage, name]
+              properties:
+                homePage: { type: string, format: uri }
+                name: { type: string }
+        verb:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uri
+              enum:
+                - http://adlnet.gov/expapi/verbs/completed
+                - http://adlnet.gov/expapi/verbs/passed
+                - http://adlnet.gov/expapi/verbs/failed
+              description: |
+                A closed set of three. Other valid xAPI verbs (`attempted`,
+                `experienced`, `progressed`) are refused: a requirement is not satisfied
+                because someone opened a video. `failed` is stored and does not satisfy.
+        object:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string, description: Course identifier or IRI. Matched against the requirement's external_course_id. }
+            definition:
+              type: object
+              properties:
+                name: { type: object, additionalProperties: { type: string } }
+        result:
+          type: object
+          properties:
+            completion: { type: boolean }
+            success: { type: boolean }
+            score:
+              type: object
+              properties:
+                scaled:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: xAPI semantics — 0 to 1. Sending 85 for 85% is refused, not rescaled.
+            duration:
+              type: string
+              description: ISO 8601. Year and month components are refused because they have no fixed length.
+              example: PT12M
+        timestamp:
+          type: string
+          format: date-time
+          description: Defaults to receipt time. More than five minutes in the future is refused.
+        helios:
+          type: object
+          properties:
+            requirement_id:
+              type: string
+              format: uuid
+              description: |
+                Optional. When absent, the completion is matched to the oldest pending
+                requirement for this person whose course id equals `object.id`. There is
+                deliberately no looser fallback: closing an unrelated obligation would
+                look correct to everyone reading it.
+            provider: { type: string, maxLength: 64 }
+
+    IngestResult:
+      type: object
+      properties:
+        spec_version: { type: integer }
+        completion_id: { type: string, format: uuid }
+        duplicate: { type: boolean, description: True when this Idempotency-Key was already stored. }
+        requirement_id: { type: [string, "null"], format: uuid }
+        matched: { type: boolean }
+        satisfied: { type: boolean, description: False for a `failed` verb even when matched. }
+        note: { type: string }
+
+    TrainingRecord:
+      type: object
+      properties:
+        uniqueId: { type: string, format: uuid }
+        displayName: { type: string }
+        personEmail: { type: string, format: email }
+        completionDate: { type: [string, "null"], format: date-time }
+        dueDate: { type: [string, "null"], format: date-time }
+        status: { $ref: "#/components/schemas/RequirementStatus" }
+        reason: { $ref: "#/components/schemas/RequirementReason" }
+        provider: { type: string }
+        score: { type: [number, "null"] }
+        specVersion: { type: integer }
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            field: { type: string }
+
+webhooks:
+  requirementLifecycle:
+    post:
+      summary: Requirement lifecycle events
+      description: |
+        Sent to each configured HTTPS endpoint subscribed to the event name.
+
+        **Signature.** `X-Helios-Signature: t=<unix seconds>,v1=<hex hmac-sha256>`. The
+        signed value is `"<timestamp>.<raw body>"`, keyed with the endpoint secret shown
+        once at creation. Verify against the **raw bytes** — re-serialising the JSON
+        changes key order and the signature will not match. Reject a timestamp more than
+        300 seconds old and compare in constant time.
+
+        **Idempotency.** `X-Helios-Event-Id` is stable across retries of the same event.
+        Use it to deduplicate.
+
+        There is no `completion.received` event: a completion that does not change a
+        requirement's state is not news.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: string, format: uuid }
+                spec_version: { type: integer }
+                event:
+                  type: string
+                  enum:
+                    - training.requirement.created
+                    - training.requirement.due_soon
+                    - training.requirement.overdue
+                    - training.requirement.satisfied
+                    - training.requirement.waived
+                    - training.requirement.cancelled
+                occurred_at: { type: string, format: date-time }
+                organization_id: { type: string, format: uuid }
+                data:
+                  type: object
+                  properties:
+                    record: { $ref: "#/components/schemas/TrainingRecord" }
+      responses:
+        "2xx":
+          description: Acknowledged. Any other status is retried.

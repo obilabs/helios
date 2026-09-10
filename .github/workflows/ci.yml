@@ -151,6 +151,41 @@ jobs:
               RAISE EXCEPTION 'post-migration schema is missing table(s): %', missing;
             END IF;
 
+            -- Training contract v1 (migration 092). These are a published wire
+            -- contract: a customer's vendor posts to them. A missing object here
+            -- is a broken integration on someone else's schedule, not ours.
+            SELECT string_agg(t, ', ') INTO missing
+              FROM unnest(ARRAY[
+                'training_requirements','training_completions',
+                'training_webhook_endpoints','training_webhook_deliveries'
+              ]) AS t
+             WHERE NOT EXISTS (
+               SELECT 1 FROM information_schema.tables WHERE table_name = t);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'training contract is missing table(s): %', missing;
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM information_schema.views
+                            WHERE table_name = 'training_requirement_records') THEN
+              RAISE EXCEPTION 'training contract is missing the read projection view';
+            END IF;
+
+            -- 'overdue' must stay underivable-from-storage: if someone widens the
+            -- CHECK to allow storing it, the two definitions can drift and a
+            -- record becomes wrong until a job runs.
+            PERFORM 1 FROM pg_constraint
+              WHERE conname = 'training_requirements_status_check'
+                AND pg_get_constraintdef(oid) NOT LIKE '%overdue%';
+            IF NOT FOUND THEN
+              RAISE EXCEPTION 'training_requirements must not accept a stored overdue status';
+            END IF;
+
+            -- The append-only guarantee is the evidence guarantee.
+            IF NOT EXISTS (SELECT 1 FROM pg_trigger
+                            WHERE tgname = 'trg_training_completions_immutable') THEN
+              RAISE EXCEPTION 'training_completions is missing its immutability trigger';
+            END IF;
+
             -- Columns on organization_users. Without the first two, LOGIN itself
             -- 500s (42703). Without the rest, creating any user 500s.
             SELECT string_agg(c, ', ') INTO missing

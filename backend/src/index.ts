@@ -95,6 +95,7 @@ import assetProxyRoutes from './routes/asset-proxy.routes.js';
 import assetsRoutes from './routes/assets.routes.js';
 import lifecycleRoutes from './routes/lifecycle.routes.js';
 import trainingRoutes from './routes/training.routes.js';
+import trainingContractRoutes from './routes/training-contract.routes.js';
 import automationRoutes from './routes/automation.routes.js';
 import trackingRoutes from './routes/tracking.routes.js';
 import trackingAnalyticsRoutes from './routes/tracking-analytics.routes.js';
@@ -689,6 +690,10 @@ registerRoute('/modules', modulesRoutes);
 // Assets & Lifecycle
 registerRoute('/assets', assetsRoutes);
 registerRoute('/lifecycle', lifecycleRoutes);
+// Training contract v1 (Phase 02 bone). Mounted BEFORE the local training routes so
+// /training/v1/* is not swallowed by a :param route on the content player. Inert until
+// an admin enables it per organization.
+registerRoute('/training/v1', trainingContractRoutes);
 registerRoute('/training', trainingRoutes);
 
 // Automation & Rules Engine
