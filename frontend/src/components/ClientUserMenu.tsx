@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Terminal, Key, Users, Lock, Settings as SettingsIcon, LogOut, Book, ChevronDown, User } from 'lucide-react';
+import { Terminal, Key, Users, Lock, Settings as SettingsIcon, LogOut, Book, ChevronDown, User, RefreshCw } from 'lucide-react';
 import { useView } from '../contexts/ViewContext';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { authFetch } from '../config/api';
 import './ClientUserMenu.css';
 
 interface ClientUserMenuProps {
@@ -21,6 +22,8 @@ export function ClientUserMenu({ userName, userEmail, userRole, onLogout, onChan
   const { currentView } = useView();
   const [isOpen, setIsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,6 +116,26 @@ export function ClientUserMenu({ userName, userEmail, userRole, onLogout, onChan
                   <Users size={14} className="menu-icon-svg" />
                   <span>Administrators</span>
                 </button>
+                <button className="menu-item" disabled={syncing} onClick={async () => {
+                  // Quick "pull what Google has now" for admins; the scheduler
+                  // runs anyway, this just skips the wait. Result goes to the
+                  // notification area, not a blocking alert.
+                  setSyncing(true);
+                  setSyncNote(null);
+                  try {
+                    const res = await authFetch('/api/v1/google-workspace/sync-now', { method: 'POST' });
+                    const data = await res.json().catch(() => ({}));
+                    setSyncNote(res.ok && data.success ? 'Google Workspace synced' : `Sync failed: ${data.error || data.message || res.status}`);
+                  } catch (e: any) {
+                    setSyncNote(`Sync failed: ${e?.message || 'network error'}`);
+                  } finally {
+                    setSyncing(false);
+                  }
+                }}>
+                  <RefreshCw size={14} className="menu-icon-svg" />
+                  <span>{syncing ? 'Syncing Google Workspace...' : 'Sync Google Workspace now'}</span>
+                </button>
+                {syncNote && <div className="menu-note" style={{ padding: '4px 12px 6px', fontSize: 12, opacity: 0.85 }}>{syncNote}</div>}
                 <button className="menu-item" onClick={() => alert('API Keys coming soon!')}>
                   <Lock size={14} className="menu-icon-svg" />
                   <span>My API Keys</span>

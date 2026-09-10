@@ -60,6 +60,9 @@ interface OffboardingTemplate {
   emailAutoReplySubject: string;
   emailAutoReplyEnabled: boolean;
   emailDelegateEnabled: boolean;
+  emailReleaseAddress: boolean;
+  emailReleasePrefix: string;
+  emailReleaseGroupEnabled: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings: boolean;
@@ -132,6 +135,9 @@ const defaultTemplate: OffboardingTemplate = {
   emailAutoReplySubject: 'Out of Office',
   emailAutoReplyEnabled: false,
   emailDelegateEnabled: true,
+  emailReleaseAddress: false,
+  emailReleasePrefix: 'deprovisioned',
+  emailReleaseGroupEnabled: true,
 
   // Calendar handling
   calendarDeclineFutureMeetings: true,
@@ -579,6 +585,40 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                   <p className="form-hint">Delegated access only works while the departed account stays active. Suspending the account ends it.</p>
                 </div>
               )}
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={template.emailReleaseAddress}
+                    onChange={(e) => setTemplate((prev) => ({ ...prev, emailReleaseAddress: e.target.checked }))}
+                  />
+                  <span>Release the address: rename the account to <code>{template.emailReleasePrefix || 'deprovisioned'}.name@domain</code> and free the old address</span>
+                </label>
+                <p className="form-hint">Gmail forwarding stops when the account is deleted. With the address released, a group on the old address keeps delivering to the forwarding target after deletion.</p>
+                {template.emailReleaseAddress && (
+                  <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                    <label>
+                      <span>Prefix</span>
+                      <input
+                        type="text"
+                        value={template.emailReleasePrefix}
+                        onChange={(e) => setTemplate((prev) => ({ ...prev, emailReleasePrefix: e.target.value.replace(/[^a-z0-9-]/gi, '').toLowerCase() }))}
+                        placeholder="deprovisioned"
+                        maxLength={40}
+                      />
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={template.emailReleaseGroupEnabled}
+                        onChange={(e) => setTemplate((prev) => ({ ...prev, emailReleaseGroupEnabled: e.target.checked }))}
+                      />
+                      <span>Create a group on the old address that delivers to the forwarding target</span>
+                    </label>
+                  </div>
+                )}
+              </div>
 
               {template.emailAction !== 'auto_reply' && (
                 <div className="form-group">

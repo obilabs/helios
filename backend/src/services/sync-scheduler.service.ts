@@ -309,6 +309,30 @@ export class SyncSchedulerService {
         }
       }
 
+      // Users that no longer exist in Google (deleted in the Admin console, or
+      // by another tool) used to stay Active in Helios forever. Mark them
+      // deleted with a timestamp: the Users list shows them under Deleted and
+      // Restore can still undelete them in Google for 20 days.
+      const presentIds = users.map((u) => u.id).filter(Boolean);
+      const gone = await db.query(
+        `UPDATE organization_users
+            SET status = 'deleted', is_active = false, deleted_at = COALESCE(deleted_at, NOW()), updated_at = NOW()
+          WHERE organization_id = $1
+            AND google_workspace_id IS NOT NULL
+            AND NOT (google_workspace_id = ANY($2::text[]))
+            AND COALESCE(status, 'active') <> 'deleted'
+          RETURNING email`,
+        [organizationId, presentIds]
+      );
+      const markedDeleted = gone.rowCount || 0;
+      if (markedDeleted > 0) {
+        logger.warn('Users missing from Google Workspace marked deleted in Helios', {
+          organizationId,
+          count: markedDeleted,
+          emails: gone.rows.map((r: any) => r.email)
+        });
+      }
+
       // Update organization_modules table with last sync
       const moduleResult = await db.query(
         `SELECT id FROM modules WHERE slug = 'google_workspace' LIMIT 1`
@@ -328,7 +352,8 @@ export class SyncSchedulerService {
       logger.info('Sync completed successfully', {
         organizationId,
         domain: org.domain,
-        userCount: users.length
+        userCount: users.length,
+        markedDeleted
       });
 
     } catch (error: any) {

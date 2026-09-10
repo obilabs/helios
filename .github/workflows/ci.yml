@@ -235,7 +235,16 @@ jobs:
                 ('organization_users','deleted_at'),
                 -- 2026-09-08: pre-change Google snapshot; restore re-creates from it (migration 084).
                 ('user_google_snapshots','snapshot'),
-                ('user_google_snapshots','restored_google_workspace_id')
+                ('user_google_snapshots','restored_google_workspace_id'),
+                -- 2026-09-10: signature scheduler wrote to tables the seed never had (migration 085).
+                ('signature_sync_logs','users_processed'),
+                ('user_signature_assignments','apply_status'),
+                -- 2026-09-10: offboarding "release the address" (migration 086).
+                ('offboarding_templates','email_release_address'),
+                ('offboarding_templates','email_release_group_enabled'),
+                -- 2026-09-10: signature sync read tables/columns the seed never had (migration 087).
+                ('template_assignments','target_type'),
+                ('signature_user_tracking','pixel_token')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
@@ -269,7 +278,9 @@ jobs:
 
             -- Offboarding wizard step 2 + org chart (migration 083).
             SELECT string_agg(f, ', ') INTO missing
-              FROM unnest(ARRAY['get_direct_reports_count','get_total_reports_count','get_org_hierarchy','check_manager_hierarchy']) AS f
+              FROM unnest(ARRAY['get_direct_reports_count','get_total_reports_count','get_org_hierarchy','check_manager_hierarchy',
+                                -- My Profile save + privacy tab (migration 088).
+                                'calculate_profile_completeness','initialize_user_visibility_settings']) AS f
              WHERE NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = f);
             IF missing IS NOT NULL THEN
               RAISE EXCEPTION 'post-migration schema is missing function(s): %', missing;

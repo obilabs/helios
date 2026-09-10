@@ -159,8 +159,11 @@ class UserOffboardingService {
         notification_message,
         is_active,
         is_default,
-        created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+        created_by,
+        email_release_address,
+        email_release_prefix,
+        email_release_group_enabled
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44)
       RETURNING *
     `;
 
@@ -206,6 +209,9 @@ class UserOffboardingService {
       dto.isActive ?? true,
       dto.isDefault ?? false,
       createdBy || null,
+      dto.emailReleaseAddress ?? false,
+      (dto.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, ''),
+      dto.emailReleaseGroupEnabled ?? true,
     ];
 
     const result = await db.query(query, values);
@@ -240,6 +246,9 @@ class UserOffboardingService {
       emailAutoReplySubject: 'email_auto_reply_subject',
       emailAutoReplyEnabled: 'email_auto_reply_enabled',
       emailDelegateEnabled: 'email_delegate_enabled',
+      emailReleaseAddress: 'email_release_address',
+      emailReleasePrefix: 'email_release_prefix',
+      emailReleaseGroupEnabled: 'email_release_group_enabled',
       calendarDeclineFutureMeetings: 'calendar_decline_future_meetings',
       calendarTransferMeetingOwnership: 'calendar_transfer_meeting_ownership',
       calendarTransferToManager: 'calendar_transfer_to_manager',
@@ -651,7 +660,12 @@ class UserOffboardingService {
         try {
           const cancelResult = await googleWorkspaceService.cancelFutureEvents(
             organizationId,
-            config.userEmail
+            config.userEmail,
+            {
+              // With a transfer target, organized meetings belong to the new
+              // owner: only the user's own invitations are declined.
+              skipOrganized: !!(config.calendarTransferMeetingOwnership || config.calendarTransferToUserId),
+            }
           );
           if (!cancelResult.success) {
             throw new Error(cancelResult.error || 'Failed to cancel future calendar events');
@@ -817,7 +831,8 @@ class UserOffboardingService {
         stepOrder++;
         const resetStart = Date.now();
         try {
-          await this.resetPassword(organizationId, config.userEmail);
+          // Delegation needs a mailbox that is not waiting for a password change.
+          await this.resetPassword(organizationId, config.userEmail, !config.emailDelegateEnabled);
           await lifecycleLogService.logSuccess(
             organizationId,
             'offboard',
@@ -889,6 +904,37 @@ class UserOffboardingService {
       // 2026-09-07). No hint = unknown = fail OPEN so a real Google error stays
       // visible in the log.
       const microsoftOnly = !!config.platformHint && config.platformHint.microsoft && !config.platformHint.google;
+
+      // Step 8b: Release the address (rename, drop alias, group on the old
+      // address). Runs after every mailbox setting and before the suspend, so
+      // the old address keeps delivering even once the account is gone.
+      if (config.emailReleaseAddress && !microsoftOnly) {
+        stepOrder++;
+        const relStart = Date.now();
+        try {
+          const rel = await this.releaseAddress(organizationId, config, localUser);
+          if (rel.success) {
+            await lifecycleLogService.logSuccess(organizationId, 'offboard', 'release_address', {
+              ...logOptions, stepOrder, durationMs: Date.now() - relStart, details: rel,
+            });
+            result.stepsCompleted.push('release_address');
+          } else {
+            result.errors.push(`Release address failed: ${rel.error}`);
+            await lifecycleLogService.logFailure(organizationId, 'offboard', 'release_address', rel.error || 'unknown', {
+              ...logOptions, stepOrder, durationMs: Date.now() - relStart,
+            });
+            result.stepsFailed.push('release_address');
+          }
+        } catch (error: any) {
+          result.errors.push(`Release address failed: ${error.message}`);
+          await lifecycleLogService.logFailure(organizationId, 'offboard', 'release_address', error, {
+            ...logOptions, stepOrder, durationMs: Date.now() - relStart,
+          });
+          result.stepsFailed.push('release_address');
+        }
+      } else {
+        result.stepsSkipped.push('release_address');
+      }
 
       // Step 9: Suspend account (if immediate)
       if (config.accountAction === 'suspend_immediately' && microsoftOnly) {
@@ -1272,6 +1318,9 @@ class UserOffboardingService {
       emailAutoReplySubject: template.emailAutoReplySubject,
       emailAutoReplyEnabled: template.emailAutoReplyEnabled,
       emailDelegateEnabled: template.emailDelegateEnabled,
+      emailReleaseAddress: template.emailReleaseAddress,
+      emailReleasePrefix: template.emailReleasePrefix,
+      emailReleaseGroupEnabled: template.emailReleaseGroupEnabled,
 
       // Calendar
       calendarDeclineFutureMeetings: template.calendarDeclineFutureMeetings,
@@ -1812,6 +1861,110 @@ class UserOffboardingService {
    * then the looked-up `emailForwardToUserId` (`forward_user`), then the
    * manager's email.
    */
+  /**
+   * Release the departing user's address:
+   *   1. rename the Google account to <prefix>.<local>@domain (Google keeps the
+   *      old address as an alias),
+   *   2. delete that alias so the old address is free,
+   *   3. create a group on the old address with the forwarding target as its
+   *      member (when enabled), so mail keeps arriving after the account is
+   *      deleted,
+   *   4. move the Helios row and the sync cache to the new address.
+   * Idempotent enough to re-run: an account already renamed is left alone; an
+   * existing group is reused.
+   */
+  async releaseAddress(
+    organizationId: string,
+    config: OffboardingConfig,
+    localUser: { id: string; email: string; google_workspace_id: string | null } | null
+  ): Promise<{ success: boolean; oldEmail?: string; newEmail?: string; groupEmail?: string | null; groupMember?: string | null; error?: string }> {
+    const oldEmail = config.userEmail.toLowerCase();
+    const googleId = localUser?.google_workspace_id;
+    if (!googleId) return { success: false, error: 'User has no Google Workspace account' };
+    const prefix = (config.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, '') || 'deprovisioned';
+    const [local, domain] = oldEmail.split('@');
+    if (!local || !domain) return { success: false, error: `Not a mailbox address: ${oldEmail}` };
+    if (local.startsWith(`${prefix}.`)) {
+      return { success: true, oldEmail, newEmail: oldEmail, groupEmail: null, groupMember: null };
+    }
+    const newEmail = `${prefix}.${local}@${domain}`;
+
+    const renamed = await googleWorkspaceService.renameUserPrimaryEmail(organizationId, googleId, newEmail);
+    if (!renamed.success) return { success: false, error: `Rename refused: ${renamed.error}` };
+
+    // Google turns the old address into an alias on rename. Observed live
+    // 2026-09-10: the delete is refused for a while right after the rename,
+    // then succeeds, and reads keep showing the alias for up to ~2 minutes
+    // after that. So: retry the delete with its real error logged, then wait
+    // until a read no longer lists the alias, since the group on that
+    // address cannot be created while it is still taken.
+    const aliasListed = async (): Promise<boolean | null> => {
+      const read = await googleWorkspaceService.getUserRaw(organizationId, googleId);
+      if (!read.success) return null;
+      return (read.user?.aliases || []).map((x: string) => x.toLowerCase()).includes(oldEmail);
+    };
+    let deleted = false;
+    let lastDeleteError = '';
+    for (let attempt = 0; attempt < 12 && !deleted; attempt++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      // Read first: once the alias no longer shows, Google refuses the delete
+      // with an error that is not "not found", so the read is the truth.
+      if ((await aliasListed()) === false) { deleted = true; break; }
+      const del = await googleWorkspaceService.deleteUserAlias(organizationId, googleId, oldEmail);
+      deleted = del.success || /not found/i.test(String(del.error || ''));
+      if (!deleted) {
+        lastDeleteError = String(del.error || '');
+        logger.warn('Alias delete refused, retrying', { organizationId, oldEmail, attempt: attempt + 1, error: lastDeleteError });
+      }
+    }
+    if (!deleted) return { success: false, error: `Old address is still an alias of the renamed account (${lastDeleteError})` };
+    let aliasGone = false;
+    for (let attempt = 0; attempt < 24 && !aliasGone; attempt++) {
+      aliasGone = (await aliasListed()) === false;
+      if (!aliasGone) await new Promise((r) => setTimeout(r, 5000));
+    }
+    if (!aliasGone) {
+      logger.warn('Alias delete accepted but reads still list it; trying the group anyway', { organizationId, oldEmail });
+    }
+
+    let groupEmail: string | null = null;
+    let groupMember: string | null = null;
+    if (config.emailReleaseGroupEnabled !== false) {
+      groupMember = await this.resolveForwardTarget(config);
+      groupEmail = oldEmail;
+      let created = false;
+      let lastError = '';
+      for (let attempt = 0; attempt < 6 && !created; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 5000));
+        const g = await googleWorkspaceService.createGroup(organizationId, oldEmail, `Former: ${local}`, `Mail for the former account ${oldEmail} (offboarded)`);
+        created = !!g?.success || /already exists|entity already/i.test(String(g?.error || g?.message || ''));
+        lastError = String(g?.error || g?.message || '');
+      }
+      if (!created) return { success: false, error: `Group on the old address could not be created: ${lastError}` };
+      if (groupMember) {
+        // A group created seconds ago answers "Resource Not Found: groupKey"
+        // to member writes until Google's reads catch up (observed live).
+        let added = false;
+        let lastError = '';
+        for (let attempt = 0; attempt < 10 && !added; attempt++) {
+          if (attempt) await new Promise((r) => setTimeout(r, 6000));
+          const m = await googleWorkspaceService.addGroupMember(organizationId, oldEmail, groupMember);
+          added = !!m?.success || /already exists|member already/i.test(String(m?.error || m?.message || ''));
+          lastError = String(m?.error || m?.message || '');
+          if (!added && !/not found/i.test(lastError)) break;
+        }
+        if (!added) {
+          return { success: false, error: `Group created but the member could not be added: ${lastError}` };
+        }
+      }
+    }
+
+    await db.query('UPDATE organization_users SET email = $3, updated_at = NOW() WHERE id = $1 AND organization_id = $2', [localUser!.id, organizationId, newEmail]);
+    await db.query('UPDATE gw_synced_users SET email = $3, updated_at = NOW() WHERE organization_id = $1 AND google_id = $2', [organizationId, googleId, newEmail]);
+    logger.info('Address released during offboarding', { organizationId, oldEmail, newEmail, groupEmail, groupMember });
+    return { success: true, oldEmail, newEmail, groupEmail, groupMember };
+  }
+
   private async resolveForwardTarget(config: OffboardingConfig): Promise<string | null> {
     if (config.emailForwardAddress) {
       return config.emailForwardAddress;
@@ -1973,9 +2126,17 @@ class UserOffboardingService {
     logger.info('Signed out user from all devices', { userEmail });
   }
 
+  /**
+   * `forceChange` = ask for a new password at next sign-in. Confirmed live
+   * 2026-09-10: a mailbox in that state answers delegates with Gmail's
+   * "temporary error" (401), while an admin-set password WITHOUT the forced
+   * change locks the person out and keeps the mailbox open to delegates. So
+   * when the template grants delegation, the reset must not force a change.
+   */
   private async resetPassword(
     organizationId: string,
-    userEmail: string
+    userEmail: string,
+    forceChange: boolean = true
   ): Promise<void> {
     const credentials = await this.getCredentials(organizationId);
     if (!credentials) throw new Error('Google Workspace not configured');
@@ -1992,11 +2153,11 @@ class UserOffboardingService {
       userKey: userEmail,
       requestBody: {
         password: newPassword,
-        changePasswordAtNextLogin: true,
+        changePasswordAtNextLogin: forceChange,
       },
     });
 
-    logger.info('Reset password for user', { userEmail });
+    logger.info('Reset password for user', { userEmail, forceChange });
   }
 
   private async suspendUser(
@@ -2188,6 +2349,9 @@ class UserOffboardingService {
       emailAutoReplySubject: row.email_auto_reply_subject,
       emailAutoReplyEnabled: row.email_auto_reply_enabled ?? false,
       emailDelegateEnabled: row.email_delegate_enabled ?? true,
+      emailReleaseAddress: row.email_release_address ?? false,
+      emailReleasePrefix: row.email_release_prefix || 'deprovisioned',
+      emailReleaseGroupEnabled: row.email_release_group_enabled ?? true,
 
       // Calendar
       calendarDeclineFutureMeetings: row.calendar_decline_future_meetings,

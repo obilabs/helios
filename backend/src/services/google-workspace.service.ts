@@ -1649,6 +1649,38 @@ export class GoogleWorkspaceService {
     }
   }
 
+  /** Rename the primary address. Google keeps the old one as an alias. */
+  async renameUserPrimaryEmail(organizationId: string, userKey: string, newPrimaryEmail: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      await admin.users.update({ userKey, requestBody: { primaryEmail: newPrimaryEmail } });
+      logger.info('User primary email renamed', { organizationId, userKey, newPrimaryEmail });
+      return { success: true };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.message || String(error);
+      return { success: false, error: msg };
+    }
+  }
+
+  /** Remove an alias from a user (e.g. the old address Google keeps after a rename). */
+  async deleteUserAlias(organizationId: string, userKey: string, alias: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      await admin.users.aliases.delete({ userKey, alias });
+      logger.info('User alias removed', { organizationId, userKey, alias });
+      return { success: true };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.message || String(error);
+      return { success: false, error: msg };
+    }
+  }
+
   /** Read one user by Google id (suspended / OU); used after an undelete. */
   async getUserByGoogleId(organizationId: string, googleWorkspaceId: string): Promise<{ suspended: boolean; orgUnitPath: string } | null> {
     const credentials = await this.getCredentials(organizationId);
@@ -4318,8 +4350,18 @@ export class GoogleWorkspaceService {
    */
   async cancelFutureEvents(
     organizationId: string,
-    userEmail: string
-  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; error?: string }> {
+    userEmail: string,
+    options: { timeBudgetMs?: number; skipOrganized?: boolean } = {}
+  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; skippedOrganized?: number; partial?: boolean; remaining?: number; error?: string }> {
+    // Observed 2026-09-10 on a migrated mailbox: 263 future instances, all from
+    // a handful of recurring series, deleted one by one with Google throttling
+    // the deletes: the step ran silently for 20+ minutes. Two changes:
+    //   - list recurring series as ONE event (singleEvents: false), so a series
+    //     is one delete/decline instead of every instance;
+    //   - a time budget (default 2 min): past it the step returns what it did,
+    //     marked partial with the count left, and the offboarding continues.
+    const timeBudgetMs = options.timeBudgetMs ?? 120000;
+    const startedAt = Date.now();
     try {
       const credentials = await this.getCredentials(organizationId);
       if (!credentials) {
@@ -4343,28 +4385,51 @@ export class GoogleWorkspaceService {
       let declinedCount = 0;
       let pageToken: string | undefined = undefined;
 
+      let processed = 0;
+      let remaining = 0;
+      let partial = false;
+      let skippedOrganized = 0;
+
       do {
         const listResp = await calendar.events.list({
           calendarId: userEmail,
           timeMin: nowISO,
-          singleEvents: true,
+          // Recurring series come back once (the master), not per instance.
+          singleEvents: false,
           maxResults: 250,
           pageToken
         });
 
         const events = listResp.data.items || [];
 
-        for (const event of events) {
+        for (let i = 0; i < events.length; i++) {
+          const event = events[i];
+          if (Date.now() - startedAt > timeBudgetMs) {
+            partial = true;
+            remaining += events.length - i;
+            break;
+          }
           const eventId = event.id;
           if (!eventId) continue;
           // Already-cancelled instances need no action.
           if (event.status === 'cancelled') continue;
+          processed++;
+          if (processed % 25 === 0) {
+            logger.info('Cancelling future calendar events: progress', { userEmail, processed, cancelledCount, declinedCount });
+          }
 
           const isOrganizer =
             event.organizer?.self === true ||
             (event.organizer?.email || '').toLowerCase() === targetEmail;
 
           try {
+            if (isOrganizer && options.skipOrganized) {
+              // Ownership is being transferred to someone who can manage these
+              // meetings; cancelling them here would destroy what the transfer
+              // is meant to hand over.
+              skippedOrganized++;
+              continue;
+            }
             if (isOrganizer) {
               // The user owns the event → delete it (cancels for all attendees).
               await calendar.events.delete({ calendarId: userEmail, eventId });
@@ -4399,16 +4464,17 @@ export class GoogleWorkspaceService {
           }
         }
 
-        pageToken = listResp.data.nextPageToken || undefined;
+        pageToken = partial ? undefined : (listResp.data.nextPageToken || undefined);
       } while (pageToken);
 
-      logger.info('Cancelled/declined future calendar events during offboarding', {
-        userEmail,
-        cancelledCount,
-        declinedCount
-      });
+      logger[partial ? 'warn' : 'info'](
+        partial
+          ? 'Cancelled/declined future calendar events: time budget reached, continuing the offboarding'
+          : 'Cancelled/declined future calendar events during offboarding',
+        { userEmail, cancelledCount, declinedCount, skippedOrganized, partial, remaining, elapsedMs: Date.now() - startedAt }
+      );
 
-      return { success: true, cancelledCount, declinedCount };
+      return { success: true, cancelledCount, declinedCount, skippedOrganized, partial, remaining };
     } catch (error: any) {
       logger.error('Failed to cancel future calendar events', {
         userEmail,
