@@ -218,3 +218,28 @@ describe('cancelFutureEvents time budget', () => {
     expect(mockEventsList).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('cancelFutureEvents with a transfer target', () => {
+  it('leaves organized meetings alone and only declines invitations', async () => {
+    const orgId = 'org-1';
+    const user = 'departing@example.com';
+    mockEventsList.mockReset();
+    mockEventsDelete.mockReset();
+    mockEventsPatch.mockReset();
+    mockEventsList.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 'evt-org', organizer: { self: true } },
+          { id: 'evt-invite', organizer: { email: 'boss@example.com' }, attendees: [{ email: user, self: true, responseStatus: 'accepted' }] },
+        ],
+      },
+    });
+    mockEventsPatch.mockResolvedValue({});
+    const res = await googleWorkspaceService.cancelFutureEvents(orgId, user, { skipOrganized: true });
+    expect(res.success).toBe(true);
+    expect(res.cancelledCount).toBe(0);
+    expect(res.skippedOrganized).toBe(1);
+    expect(res.declinedCount).toBe(1);
+    expect(mockEventsDelete).not.toHaveBeenCalled();
+  });
+});

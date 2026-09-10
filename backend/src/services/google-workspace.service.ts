@@ -4351,8 +4351,8 @@ export class GoogleWorkspaceService {
   async cancelFutureEvents(
     organizationId: string,
     userEmail: string,
-    options: { timeBudgetMs?: number } = {}
-  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; partial?: boolean; remaining?: number; error?: string }> {
+    options: { timeBudgetMs?: number; skipOrganized?: boolean } = {}
+  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; skippedOrganized?: number; partial?: boolean; remaining?: number; error?: string }> {
     // Observed 2026-09-10 on a migrated mailbox: 263 future instances, all from
     // a handful of recurring series, deleted one by one with Google throttling
     // the deletes: the step ran silently for 20+ minutes. Two changes:
@@ -4388,6 +4388,7 @@ export class GoogleWorkspaceService {
       let processed = 0;
       let remaining = 0;
       let partial = false;
+      let skippedOrganized = 0;
 
       do {
         const listResp = await calendar.events.list({
@@ -4422,6 +4423,13 @@ export class GoogleWorkspaceService {
             (event.organizer?.email || '').toLowerCase() === targetEmail;
 
           try {
+            if (isOrganizer && options.skipOrganized) {
+              // Ownership is being transferred to someone who can manage these
+              // meetings; cancelling them here would destroy what the transfer
+              // is meant to hand over.
+              skippedOrganized++;
+              continue;
+            }
             if (isOrganizer) {
               // The user owns the event → delete it (cancels for all attendees).
               await calendar.events.delete({ calendarId: userEmail, eventId });
@@ -4463,10 +4471,10 @@ export class GoogleWorkspaceService {
         partial
           ? 'Cancelled/declined future calendar events: time budget reached, continuing the offboarding'
           : 'Cancelled/declined future calendar events during offboarding',
-        { userEmail, cancelledCount, declinedCount, partial, remaining, elapsedMs: Date.now() - startedAt }
+        { userEmail, cancelledCount, declinedCount, skippedOrganized, partial, remaining, elapsedMs: Date.now() - startedAt }
       );
 
-      return { success: true, cancelledCount, declinedCount, partial, remaining };
+      return { success: true, cancelledCount, declinedCount, skippedOrganized, partial, remaining };
     } catch (error: any) {
       logger.error('Failed to cancel future calendar events', {
         userEmail,

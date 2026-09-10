@@ -660,7 +660,12 @@ class UserOffboardingService {
         try {
           const cancelResult = await googleWorkspaceService.cancelFutureEvents(
             organizationId,
-            config.userEmail
+            config.userEmail,
+            {
+              // With a transfer target, organized meetings belong to the new
+              // owner: only the user's own invitations are declined.
+              skipOrganized: !!(config.calendarTransferMeetingOwnership || config.calendarTransferToUserId),
+            }
           );
           if (!cancelResult.success) {
             throw new Error(cancelResult.error || 'Failed to cancel future calendar events');
