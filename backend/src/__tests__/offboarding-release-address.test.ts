@@ -24,7 +24,7 @@ const gws = {
   deleteUserAlias: jest.fn<any>(),
   createGroup: jest.fn<any>(),
   addGroupMember: jest.fn<any>(),
-  getUserRaw: jest.fn<any>(async () => ({ success: true, user: { aliases: [] } })),
+  getUserRaw: jest.fn<any>(async () => ({ success: true, user: { aliases: [] as string[] } })),
 };
 jest.unstable_mockModule('../services/google-workspace.service.js', () => ({ googleWorkspaceService: gws }));
 jest.unstable_mockModule('googleapis', () => ({ google: {} }));
