@@ -248,7 +248,10 @@ jobs:
                 -- 2026-09-10: signature merge fields with no backing column (migration 089).
                 ('organization_users','professional_designation'),
                 ('organization_users','preferred_name'),
-                ('organization_users','linkedin_url')
+                ('organization_users','linkedin_url'),
+                -- 2026-09-10: company details signatures read (migration 090).
+                ('organizations','website_url'),
+                ('organizations','phone')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
