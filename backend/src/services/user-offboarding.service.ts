@@ -1941,9 +1941,19 @@ class UserOffboardingService {
       }
       if (!created) return { success: false, error: `Group on the old address could not be created: ${lastError}` };
       if (groupMember) {
-        const m = await googleWorkspaceService.addGroupMember(organizationId, oldEmail, groupMember);
-        if (!m?.success && !/already exists|member already/i.test(String(m?.error || m?.message || ''))) {
-          return { success: false, error: `Group created but the member could not be added: ${m?.error || m?.message}` };
+        // A group created seconds ago answers "Resource Not Found: groupKey"
+        // to member writes until Google's reads catch up (observed live).
+        let added = false;
+        let lastError = '';
+        for (let attempt = 0; attempt < 10 && !added; attempt++) {
+          if (attempt) await new Promise((r) => setTimeout(r, 6000));
+          const m = await googleWorkspaceService.addGroupMember(organizationId, oldEmail, groupMember);
+          added = !!m?.success || /already exists|member already/i.test(String(m?.error || m?.message || ''));
+          lastError = String(m?.error || m?.message || '');
+          if (!added && !/not found/i.test(lastError)) break;
+        }
+        if (!added) {
+          return { success: false, error: `Group created but the member could not be added: ${lastError}` };
         }
       }
     }
