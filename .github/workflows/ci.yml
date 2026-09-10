@@ -244,7 +244,11 @@ jobs:
                 ('offboarding_templates','email_release_group_enabled'),
                 -- 2026-09-10: signature sync read tables/columns the seed never had (migration 087).
                 ('template_assignments','target_type'),
-                ('signature_user_tracking','pixel_token')
+                ('signature_user_tracking','pixel_token'),
+                -- 2026-09-10: signature merge fields with no backing column (migration 089).
+                ('organization_users','professional_designation'),
+                ('organization_users','preferred_name'),
+                ('organization_users','linkedin_url')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns

@@ -158,6 +158,21 @@ export interface MergeField {
 export const MERGE_FIELDS: MergeField[] = [
   // Personal Information
   {
+    key: 'professional_designation',
+    displayName: 'Professional Designation',
+    description: 'Post-nominal letters (CPA, P.Eng, PMP)',
+    category: 'Personal',
+    example: 'CPA',
+    databaseColumn: 'professional_designation',
+  },
+  {
+    key: 'full_name_with_designation',
+    displayName: 'Full Name with Designation',
+    description: 'Full name followed by the designation when the person has one',
+    category: 'Personal',
+    example: 'John Smith, CPA',
+  },
+  {
     key: 'full_name',
     displayName: 'Full Name',
     description: 'The user\'s full name (first + last)',
