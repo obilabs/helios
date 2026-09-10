@@ -695,6 +695,49 @@ describe('UserOffboardingService', () => {
           }),
         });
       });
+
+      it('does not force a password change when the template grants delegation (delegates would get a 401)', async () => {
+        const config: OffboardingConfig = {
+          ...baseConfig,
+          resetPassword: true,
+          emailDelegateEnabled: true,
+        };
+
+        // Self-lockout guard reads the admin email first (departing != admin -> allowed)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
+
+        // Mock GW credentials
+        mockQuery.mockResolvedValueOnce({
+          rows: [{
+            service_account_key: JSON.stringify({
+              type: 'service_account',
+              client_email: 'test@project.iam.gserviceaccount.com',
+              private_key: '-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----',
+            }),
+          }],
+        });
+
+        // Mock admin email
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ admin_email: 'admin@obilabs.dev' }],
+        });
+
+        // Mock users update
+        mockUsersUpdate.mockResolvedValue({});
+
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).toContain('reset_password');
+        expect(mockUsersUpdate).toHaveBeenCalledWith({
+          userKey: config.userEmail,
+          requestBody: expect.objectContaining({
+            password: expect.any(String),
+            changePasswordAtNextLogin: false,
+          }),
+        });
+      });
     });
 
     describe('suspendAccount', () => {
@@ -1070,7 +1113,7 @@ describe('UserOffboardingService', () => {
         const result = await userOffboardingService.executeOffboarding(testOrgId, config);
 
         expect(result.stepsCompleted).toContain('cancel_future_events');
-        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', expect.objectContaining({ skipOrganized: expect.any(Boolean) }));
       });
 
       it('also runs via the pre-existing (previously inert) calendarDeclineFutureMeetings flag', async () => {
@@ -1432,7 +1475,7 @@ describe('UserOffboardingService', () => {
         );
 
         expect(result.stepsCompleted).toContain('cancel_future_events');
-        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', expect.objectContaining({ skipOrganized: expect.any(Boolean) }));
       });
 
       it('uses the policy auto-reply template when the config leaves the message unset', async () => {

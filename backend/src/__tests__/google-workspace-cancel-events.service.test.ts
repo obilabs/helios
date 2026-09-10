@@ -114,7 +114,7 @@ describe('GoogleWorkspaceService.cancelFutureEvents', () => {
     // Pagination: two list calls, the second continuing from `page2`.
     expect(mockEventsList).toHaveBeenCalledTimes(2);
     expect(mockEventsList.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ calendarId: user, singleEvents: true, maxResults: 250 })
+      expect.objectContaining({ calendarId: user, singleEvents: false, maxResults: 250 })
     );
     expect(typeof mockEventsList.mock.calls[0][0].timeMin).toBe('string');
     expect(mockEventsList.mock.calls[1][0].pageToken).toBe('page2');
@@ -192,5 +192,54 @@ describe('GoogleWorkspaceService.cancelFutureEvents', () => {
 
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/calendar api unavailable/);
+  });
+});
+
+describe('cancelFutureEvents time budget', () => {
+  it('stops at the budget, reports partial with the count left, and does not fetch more pages', async () => {
+    const orgId = 'org-1';
+    const user = 'departing@example.com';
+    mockEventsList.mockReset();
+    mockEventsDelete.mockReset();
+    mockEventsList.mockResolvedValueOnce({
+      data: {
+        nextPageToken: 'page2',
+        items: Array.from({ length: 5 }, (_, i) => ({ id: `evt-${i}`, organizer: { self: true } })),
+      },
+    });
+    // Each delete takes longer than the whole budget, so the loop must stop after the first.
+    mockEventsDelete.mockImplementation(() => new Promise((r) => setTimeout(r, 30)));
+
+    const res = await googleWorkspaceService.cancelFutureEvents(orgId, user, { timeBudgetMs: 20 });
+    expect(res.success).toBe(true);
+    expect(res.partial).toBe(true);
+    expect(res.cancelledCount).toBe(1);
+    expect(res.remaining).toBe(4);
+    expect(mockEventsList).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('cancelFutureEvents with a transfer target', () => {
+  it('leaves organized meetings alone and only declines invitations', async () => {
+    const orgId = 'org-1';
+    const user = 'departing@example.com';
+    mockEventsList.mockReset();
+    mockEventsDelete.mockReset();
+    mockEventsPatch.mockReset();
+    mockEventsList.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 'evt-org', organizer: { self: true } },
+          { id: 'evt-invite', organizer: { email: 'boss@example.com' }, attendees: [{ email: user, self: true, responseStatus: 'accepted' }] },
+        ],
+      },
+    });
+    mockEventsPatch.mockResolvedValue({});
+    const res = await googleWorkspaceService.cancelFutureEvents(orgId, user, { skipOrganized: true });
+    expect(res.success).toBe(true);
+    expect(res.cancelledCount).toBe(0);
+    expect(res.skippedOrganized).toBe(1);
+    expect(res.declinedCount).toBe(1);
+    expect(mockEventsDelete).not.toHaveBeenCalled();
   });
 });

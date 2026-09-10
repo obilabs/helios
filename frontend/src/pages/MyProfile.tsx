@@ -89,14 +89,25 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
     setHasChanges(true);
   };
 
-  // Save profile changes
+  // Save profile changes. The outcome is shown inline: until 2026-09-10 a
+  // failed save (server 500) left the page silent with the button re-armed.
+  const [saveNote, setSaveNote] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const handleSaveProfile = async () => {
     if (!hasChanges) return;
     setSaving(true);
-    const success = await profileService.updateProfile(formData);
+    setSaveNote(null);
+    let success = false;
+    try {
+      success = await profileService.updateProfile(formData);
+    } catch (err: any) {
+      success = false;
+    }
     if (success) {
       setHasChanges(false);
+      setSaveNote({ kind: 'ok', text: 'Profile saved' });
       loadProfile();
+    } else {
+      setSaveNote({ kind: 'error', text: 'Your profile could not be saved. Nothing was lost on this page; try again or tell your administrator.' });
     }
     setSaving(false);
   };
@@ -223,6 +234,9 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
             <span className="completeness-label">Complete</span>
           </div>
         </div>
+        {saveNote && (
+          <p className={saveNote.kind === 'error' ? 'text-red-600' : 'text-green-700'} style={{ margin: '8px 0' }}>{saveNote.text}</p>
+        )}
         {hasChanges && (
           <div className="save-bar">
             <span>You have unsaved changes</span>
@@ -649,9 +663,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -679,9 +694,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -710,9 +726,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >
@@ -739,9 +756,10 @@ export function MyProfile({ organizationId: _organizationId }: MyProfileProps) {
                       <select
                         value={profileData.visibility[item.field] || 'everyone'}
                         onChange={async (e) => {
-                          await profileService.updatePrivacySettings({
+                          const ok = await profileService.updatePrivacySettings({
                             [item.field]: e.target.value,
                           });
+                          setSaveNote(ok ? { kind: 'ok', text: 'Visibility saved' } : { kind: 'error', text: 'Visibility could not be saved; the previous value stays.' });
                           loadProfile();
                         }}
                       >

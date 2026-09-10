@@ -109,7 +109,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              // Radix closes the dialog on this click by default. When the
+              // handler is async, hold the dialog open until it settles: a
+              // rejection means the caller has an error to show (it renders
+              // it through `children`), so stay open; success closes.
+              const result = onConfirm();
+              if (result && typeof (result as Promise<void>).then === 'function') {
+                e.preventDefault();
+                (result as Promise<void>).then(() => onCancel(), () => { /* stay open; caller shows the error */ });
+              }
+            }}
             className={cn(variantButtonClasses[variant])}
           >
             {confirmText}

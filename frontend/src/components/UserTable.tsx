@@ -184,6 +184,7 @@ export function UserTable({
       setSuspendError(null);
     } catch (e: any) {
       setSuspendError(e?.message || 'Failed to suspend user');
+      throw e; // keeps the dialog open with the reason
     }
   };
 
@@ -195,7 +196,7 @@ export function UserTable({
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
         setRestoreError(data.error || 'Failed to restore user');
-        return;
+        throw new Error(data.error || 'Failed to restore user');
       }
       setRestoreDeletedUser(null);
       setRestoreError(null);
@@ -210,6 +211,7 @@ export function UserTable({
       refetch();
     } catch (e: any) {
       setRestoreError(e?.message || 'Failed to restore user');
+      throw e;
     }
   };
 
@@ -242,6 +244,7 @@ export function UserTable({
       setDeleteError(null);
     } catch (e: any) {
       setDeleteError(e?.message || 'Failed to delete user');
+      throw e;
     }
   };
 

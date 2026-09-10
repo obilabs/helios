@@ -154,6 +154,15 @@ export interface OffboardingTemplate {
   emailAutoReplyEnabled: boolean;
   /** Grant the forwarding target Gmail delegate access to the mailbox (default true). */
   emailDelegateEnabled: boolean;
+  /**
+   * Release the address: rename the account to <prefix>.<user>@domain, drop the
+   * alias Google keeps on the old address, and (optionally) create a group on
+   * the old address that delivers to the forwarding target. Gmail forwarding
+   * dies with the account; the group survives it.
+   */
+  emailReleaseAddress: boolean;
+  emailReleasePrefix: string;
+  emailReleaseGroupEnabled: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings: boolean;
@@ -221,6 +230,9 @@ export interface CreateOffboardingTemplateDTO {
   emailAutoReplySubject?: string;
   emailAutoReplyEnabled?: boolean;
   emailDelegateEnabled?: boolean;
+  emailReleaseAddress?: boolean;
+  emailReleasePrefix?: string;
+  emailReleaseGroupEnabled?: boolean;
 
   // Calendar handling
   calendarDeclineFutureMeetings?: boolean;
@@ -527,6 +539,9 @@ export interface OffboardingConfig {
   emailAutoReplySubject?: string;
   emailAutoReplyEnabled?: boolean;
   emailDelegateEnabled?: boolean;
+  emailReleaseAddress?: boolean;
+  emailReleasePrefix?: string;
+  emailReleaseGroupEnabled?: boolean;
   /**
    * Explicit forwarding target email. Overrides the manager / forward-user
    * resolution when set — lets the caller (e.g. the `gw offboard --forward=`
@@ -753,6 +768,7 @@ export const OFFBOARDING_STEPS = [
   'remove_signature',
   'set_offboarding_signature',
   'wipe_mobile_devices',
+  'release_address',
   'suspend_account',
   'schedule_deletion',
   'send_notifications',
