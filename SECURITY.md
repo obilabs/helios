@@ -8,15 +8,35 @@ vulnerabilities and what our security practices are.
 
 **Please do not open a public issue for security vulnerabilities.**
 
-Report privately via one of:
-- GitHub's **private vulnerability reporting** (Security tab → "Report a vulnerability"), or
-- Email: `security@<your-domain>` <!-- set to the company security address -->
+Report privately through
+[GitHub's private vulnerability reporting](https://github.com/obilabs/helios/security/advisories/new)
+(Security tab → "Report a vulnerability"). That channel is monitored and keeps the
+report confidential until a fix ships.
 
-Please include: a description, steps to reproduce, affected version/commit, and impact.
-We aim to acknowledge within **72 hours** and to provide a remediation timeline after
-triage.
+Please include: a description, steps to reproduce, the affected version or commit, and
+the impact you believe it has.
 
-We will credit reporters who wish to be named once a fix is released.
+**What happens next, and when:**
+
+| Stage | Target |
+|---|---|
+| Acknowledgement that a human has read it | 3 business days |
+| Initial assessment and severity | 10 business days |
+| Fix or documented mitigation for high/critical | 90 days from the acknowledgement |
+| Public advisory | With the fix, or at 90 days, whichever comes first |
+
+If a report goes unanswered past those targets, you are free to disclose publicly; we
+would rather be held to a deadline than have a silent report sit forever.
+
+**Scope.** This repository's code and its CI configuration. Findings that need an
+already-compromised administrator account, physical access to the host, or a
+misconfiguration of the operator's own Google Workspace tenant are out of scope.
+
+**Safe harbour.** We will not pursue or support legal action against research done in
+good faith under this policy: no privacy violation, no data destruction, no service
+degradation, and no access beyond what is needed to demonstrate the issue.
+
+We credit reporters who wish to be named once a fix is released.
 
 ## Supported versions
 
