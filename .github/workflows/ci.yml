@@ -241,7 +241,10 @@ jobs:
                 ('user_signature_assignments','apply_status'),
                 -- 2026-09-10: offboarding "release the address" (migration 086).
                 ('offboarding_templates','email_release_address'),
-                ('offboarding_templates','email_release_group_enabled')
+                ('offboarding_templates','email_release_group_enabled'),
+                -- 2026-09-10: signature sync read tables/columns the seed never had (migration 087).
+                ('template_assignments','target_type'),
+                ('signature_user_tracking','pixel_token')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
