@@ -610,7 +610,10 @@ export class GoogleWorkspaceService {
         };
       }
 
-      const testAdminEmail = adminEmail || `admin@${domain}`;
+      // Impersonate the admin the workspace was connected with. The old
+      // fallback guessed admin@<domain>, which usually does not exist and
+      // fails the token exchange with invalid_grant.
+      const testAdminEmail = adminEmail || (await this.getAdminEmail(organizationId)) || `admin@${domain}`;
       const adminClient = this.createAdminClient(credentials, testAdminEmail);
 
       // Get users with Domain-Wide Delegation
