@@ -1897,10 +1897,18 @@ class UserOffboardingService {
     // after that. So: retry the delete with its real error logged, then wait
     // until a read no longer lists the alias, since the group on that
     // address cannot be created while it is still taken.
+    const aliasListed = async (): Promise<boolean | null> => {
+      const read = await googleWorkspaceService.getUserRaw(organizationId, googleId);
+      if (!read.success) return null;
+      return (read.user?.aliases || []).map((x: string) => x.toLowerCase()).includes(oldEmail);
+    };
     let deleted = false;
     let lastDeleteError = '';
     for (let attempt = 0; attempt < 12 && !deleted; attempt++) {
       await new Promise((r) => setTimeout(r, 5000));
+      // Read first: once the alias no longer shows, Google refuses the delete
+      // with an error that is not "not found", so the read is the truth.
+      if ((await aliasListed()) === false) { deleted = true; break; }
       const del = await googleWorkspaceService.deleteUserAlias(organizationId, googleId, oldEmail);
       deleted = del.success || /not found/i.test(String(del.error || ''));
       if (!deleted) {
@@ -1911,9 +1919,7 @@ class UserOffboardingService {
     if (!deleted) return { success: false, error: `Old address is still an alias of the renamed account (${lastDeleteError})` };
     let aliasGone = false;
     for (let attempt = 0; attempt < 24 && !aliasGone; attempt++) {
-      const read = await googleWorkspaceService.getUserRaw(organizationId, googleId);
-      const aliases: string[] = (read.user?.aliases || []).map((x: string) => x.toLowerCase());
-      aliasGone = read.success && !aliases.includes(oldEmail);
+      aliasGone = (await aliasListed()) === false;
       if (!aliasGone) await new Promise((r) => setTimeout(r, 5000));
     }
     if (!aliasGone) {
