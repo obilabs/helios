@@ -57,6 +57,8 @@ beforeEach(() => {
 describe('releaseAddress', () => {
   it('renames, drops the alias, creates the group with the forwarding target, moves the Helios row', async () => {
     const svc = userOffboardingService;
+    // First read after the rename still lists the old address as an alias, so the delete runs.
+    gws.getUserRaw.mockResolvedValueOnce({ success: true, user: { aliases: ['todd@example.net'] } });
     const r = await svc.releaseAddress(ORG, baseConfig, localUser);
     expect(r).toEqual({ success: true, oldEmail: 'todd@example.net', newEmail: 'deprovisioned.todd@example.net', groupEmail: 'todd@example.net', groupMember: 'mike@example.com' });
     expect(gws.renameUserPrimaryEmail).toHaveBeenCalledWith(ORG, 'g-1', 'deprovisioned.todd@example.net');
