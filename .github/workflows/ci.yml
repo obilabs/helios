@@ -274,6 +274,15 @@ jobs:
             END IF;
 
             -- labels/with-availability calls this on every page load (migration 077).
+            -- 2026-09-10: same-priority signature assignments must resolve by
+            -- newest (migration 091), or a new assignment silently loses.
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_views WHERE viewname = 'user_effective_signatures'
+                AND definition LIKE '%created_at DESC%'
+            ) THEN
+              RAISE EXCEPTION 'user_effective_signatures has no created_at tie-break (migration 091)';
+            END IF;
+
             IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_available_entities') THEN
               RAISE EXCEPTION 'post-migration schema is missing function get_available_entities';
             END IF;
