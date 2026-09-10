@@ -278,7 +278,9 @@ jobs:
 
             -- Offboarding wizard step 2 + org chart (migration 083).
             SELECT string_agg(f, ', ') INTO missing
-              FROM unnest(ARRAY['get_direct_reports_count','get_total_reports_count','get_org_hierarchy','check_manager_hierarchy']) AS f
+              FROM unnest(ARRAY['get_direct_reports_count','get_total_reports_count','get_org_hierarchy','check_manager_hierarchy',
+                                -- My Profile save + privacy tab (migration 088).
+                                'calculate_profile_completeness','initialize_user_visibility_settings']) AS f
              WHERE NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = f);
             IF missing IS NOT NULL THEN
               RAISE EXCEPTION 'post-migration schema is missing function(s): %', missing;
