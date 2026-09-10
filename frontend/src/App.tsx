@@ -1132,8 +1132,10 @@ function AppContent() {
           </div>
         </div>
         <div className="header-right">
-          <SyncStatusIndicator isAdmin={currentUser?.role === 'admin'} />
           <ViewSwitcher />
+          {/* Sync stamps sit with the status cluster, not between the search box
+              and the console switcher, where a pill reads as a control. */}
+          <SyncStatusIndicator isAdmin={currentUser?.role === 'admin'} />
           <div className="welcome-stats">
             <span className="welcome-text">Welcome, {currentUser?.firstName || 'User'}!</span>
           </div>
