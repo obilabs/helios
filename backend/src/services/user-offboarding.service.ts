@@ -159,8 +159,11 @@ class UserOffboardingService {
         notification_message,
         is_active,
         is_default,
-        created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+        created_by,
+        email_release_address,
+        email_release_prefix,
+        email_release_group_enabled
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44)
       RETURNING *
     `;
 
@@ -206,6 +209,9 @@ class UserOffboardingService {
       dto.isActive ?? true,
       dto.isDefault ?? false,
       createdBy || null,
+      dto.emailReleaseAddress ?? false,
+      (dto.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, ''),
+      dto.emailReleaseGroupEnabled ?? true,
     ];
 
     const result = await db.query(query, values);
@@ -240,6 +246,9 @@ class UserOffboardingService {
       emailAutoReplySubject: 'email_auto_reply_subject',
       emailAutoReplyEnabled: 'email_auto_reply_enabled',
       emailDelegateEnabled: 'email_delegate_enabled',
+      emailReleaseAddress: 'email_release_address',
+      emailReleasePrefix: 'email_release_prefix',
+      emailReleaseGroupEnabled: 'email_release_group_enabled',
       calendarDeclineFutureMeetings: 'calendar_decline_future_meetings',
       calendarTransferMeetingOwnership: 'calendar_transfer_meeting_ownership',
       calendarTransferToManager: 'calendar_transfer_to_manager',
@@ -890,6 +899,37 @@ class UserOffboardingService {
       // visible in the log.
       const microsoftOnly = !!config.platformHint && config.platformHint.microsoft && !config.platformHint.google;
 
+      // Step 8b: Release the address (rename, drop alias, group on the old
+      // address). Runs after every mailbox setting and before the suspend, so
+      // the old address keeps delivering even once the account is gone.
+      if (config.emailReleaseAddress && !microsoftOnly) {
+        stepOrder++;
+        const relStart = Date.now();
+        try {
+          const rel = await this.releaseAddress(organizationId, config, localUser);
+          if (rel.success) {
+            await lifecycleLogService.logSuccess(organizationId, 'offboard', 'release_address', {
+              ...logOptions, stepOrder, durationMs: Date.now() - relStart, details: rel,
+            });
+            result.stepsCompleted.push('release_address');
+          } else {
+            result.errors.push(`Release address failed: ${rel.error}`);
+            await lifecycleLogService.logFailure(organizationId, 'offboard', 'release_address', rel.error || 'unknown', {
+              ...logOptions, stepOrder, durationMs: Date.now() - relStart,
+            });
+            result.stepsFailed.push('release_address');
+          }
+        } catch (error: any) {
+          result.errors.push(`Release address failed: ${error.message}`);
+          await lifecycleLogService.logFailure(organizationId, 'offboard', 'release_address', error, {
+            ...logOptions, stepOrder, durationMs: Date.now() - relStart,
+          });
+          result.stepsFailed.push('release_address');
+        }
+      } else {
+        result.stepsSkipped.push('release_address');
+      }
+
       // Step 9: Suspend account (if immediate)
       if (config.accountAction === 'suspend_immediately' && microsoftOnly) {
         stepOrder++;
@@ -1272,6 +1312,9 @@ class UserOffboardingService {
       emailAutoReplySubject: template.emailAutoReplySubject,
       emailAutoReplyEnabled: template.emailAutoReplyEnabled,
       emailDelegateEnabled: template.emailDelegateEnabled,
+      emailReleaseAddress: template.emailReleaseAddress,
+      emailReleasePrefix: template.emailReleasePrefix,
+      emailReleaseGroupEnabled: template.emailReleaseGroupEnabled,
 
       // Calendar
       calendarDeclineFutureMeetings: template.calendarDeclineFutureMeetings,
@@ -1812,6 +1855,75 @@ class UserOffboardingService {
    * then the looked-up `emailForwardToUserId` (`forward_user`), then the
    * manager's email.
    */
+  /**
+   * Release the departing user's address:
+   *   1. rename the Google account to <prefix>.<local>@domain (Google keeps the
+   *      old address as an alias),
+   *   2. delete that alias so the old address is free,
+   *   3. create a group on the old address with the forwarding target as its
+   *      member (when enabled), so mail keeps arriving after the account is
+   *      deleted,
+   *   4. move the Helios row and the sync cache to the new address.
+   * Idempotent enough to re-run: an account already renamed is left alone; an
+   * existing group is reused.
+   */
+  async releaseAddress(
+    organizationId: string,
+    config: OffboardingConfig,
+    localUser: { id: string; email: string; google_workspace_id: string | null } | null
+  ): Promise<{ success: boolean; oldEmail?: string; newEmail?: string; groupEmail?: string | null; groupMember?: string | null; error?: string }> {
+    const oldEmail = config.userEmail.toLowerCase();
+    const googleId = localUser?.google_workspace_id;
+    if (!googleId) return { success: false, error: 'User has no Google Workspace account' };
+    const prefix = (config.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, '') || 'deprovisioned';
+    const [local, domain] = oldEmail.split('@');
+    if (!local || !domain) return { success: false, error: `Not a mailbox address: ${oldEmail}` };
+    if (local.startsWith(`${prefix}.`)) {
+      return { success: true, oldEmail, newEmail: oldEmail, groupEmail: null, groupMember: null };
+    }
+    const newEmail = `${prefix}.${local}@${domain}`;
+
+    const renamed = await googleWorkspaceService.renameUserPrimaryEmail(organizationId, googleId, newEmail);
+    if (!renamed.success) return { success: false, error: `Rename refused: ${renamed.error}` };
+
+    // Google turns the old address into an alias on rename; wait for reads to
+    // catch up, then drop it so the address is free for the group.
+    let aliasGone = false;
+    for (let attempt = 0; attempt < 6 && !aliasGone; attempt++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const del = await googleWorkspaceService.deleteUserAlias(organizationId, googleId, oldEmail);
+      aliasGone = del.success || /not found/i.test(String(del.error || ''));
+    }
+    if (!aliasGone) return { success: false, error: 'Old address is still an alias of the renamed account' };
+
+    let groupEmail: string | null = null;
+    let groupMember: string | null = null;
+    if (config.emailReleaseGroupEnabled !== false) {
+      groupMember = await this.resolveForwardTarget(config);
+      groupEmail = oldEmail;
+      let created = false;
+      let lastError = '';
+      for (let attempt = 0; attempt < 6 && !created; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 5000));
+        const g = await googleWorkspaceService.createGroup(organizationId, oldEmail, `Former: ${local}`, `Mail for the former account ${oldEmail} (offboarded)`);
+        created = !!g?.success || /already exists|entity already/i.test(String(g?.error || g?.message || ''));
+        lastError = String(g?.error || g?.message || '');
+      }
+      if (!created) return { success: false, error: `Group on the old address could not be created: ${lastError}` };
+      if (groupMember) {
+        const m = await googleWorkspaceService.addGroupMember(organizationId, oldEmail, groupMember);
+        if (!m?.success && !/already exists|member already/i.test(String(m?.error || m?.message || ''))) {
+          return { success: false, error: `Group created but the member could not be added: ${m?.error || m?.message}` };
+        }
+      }
+    }
+
+    await db.query('UPDATE organization_users SET email = $3, updated_at = NOW() WHERE id = $1 AND organization_id = $2', [localUser!.id, organizationId, newEmail]);
+    await db.query('UPDATE gw_synced_users SET email = $3, updated_at = NOW() WHERE organization_id = $1 AND google_id = $2', [organizationId, googleId, newEmail]);
+    logger.info('Address released during offboarding', { organizationId, oldEmail, newEmail, groupEmail, groupMember });
+    return { success: true, oldEmail, newEmail, groupEmail, groupMember };
+  }
+
   private async resolveForwardTarget(config: OffboardingConfig): Promise<string | null> {
     if (config.emailForwardAddress) {
       return config.emailForwardAddress;
@@ -2188,6 +2300,9 @@ class UserOffboardingService {
       emailAutoReplySubject: row.email_auto_reply_subject,
       emailAutoReplyEnabled: row.email_auto_reply_enabled ?? false,
       emailDelegateEnabled: row.email_delegate_enabled ?? true,
+      emailReleaseAddress: row.email_release_address ?? false,
+      emailReleasePrefix: row.email_release_prefix || 'deprovisioned',
+      emailReleaseGroupEnabled: row.email_release_group_enabled ?? true,
 
       // Calendar
       calendarDeclineFutureMeetings: row.calendar_decline_future_meetings,

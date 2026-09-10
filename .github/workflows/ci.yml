@@ -238,7 +238,10 @@ jobs:
                 ('user_google_snapshots','restored_google_workspace_id'),
                 -- 2026-09-10: signature scheduler wrote to tables the seed never had (migration 085).
                 ('signature_sync_logs','users_processed'),
-                ('user_signature_assignments','apply_status')
+                ('user_signature_assignments','apply_status'),
+                -- 2026-09-10: offboarding "release the address" (migration 086).
+                ('offboarding_templates','email_release_address'),
+                ('offboarding_templates','email_release_group_enabled')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns

@@ -1649,6 +1649,38 @@ export class GoogleWorkspaceService {
     }
   }
 
+  /** Rename the primary address. Google keeps the old one as an alias. */
+  async renameUserPrimaryEmail(organizationId: string, userKey: string, newPrimaryEmail: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      await admin.users.update({ userKey, requestBody: { primaryEmail: newPrimaryEmail } });
+      logger.info('User primary email renamed', { organizationId, userKey, newPrimaryEmail });
+      return { success: true };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.message || String(error);
+      return { success: false, error: msg };
+    }
+  }
+
+  /** Remove an alias from a user (e.g. the old address Google keeps after a rename). */
+  async deleteUserAlias(organizationId: string, userKey: string, alias: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      await admin.users.aliases.delete({ userKey, alias });
+      logger.info('User alias removed', { organizationId, userKey, alias });
+      return { success: true };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.message || String(error);
+      return { success: false, error: msg };
+    }
+  }
+
   /** Read one user by Google id (suspended / OU); used after an undelete. */
   async getUserByGoogleId(organizationId: string, googleWorkspaceId: string): Promise<{ suspended: boolean; orgUnitPath: string } | null> {
     const credentials = await this.getCredentials(organizationId);
