@@ -95,7 +95,15 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
   }, null);
 
   const stale = oldest !== null && oldest >= 60;
-  const primary = stamps[0];
+  // Show the platform that is furthest behind: the pill answers "how old is
+  // the oldest thing on this screen", so the amber and the number agree.
+  const primary = stamps.reduce((worst, s) => {
+    const a = minutesSince(s.lastSync);
+    const b = minutesSince(worst.lastSync);
+    if (a === null) return s;
+    if (b === null) return worst;
+    return a > b ? s : worst;
+  }, stamps[0]);
 
   const title = [
     ...stamps.map((s) => `${s.label}: synced ${ago(s.lastSync)} (${s.userCount} users)`),
@@ -116,7 +124,7 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
     >
       <RefreshCw size={13} className={syncing ? 'spin' : ''} />
       <span className="sync-status-text">
-        {syncing ? 'Syncing...' : `Synced ${ago(primary.lastSync)}`}
+        {syncing ? 'Syncing...' : `${stamps.length > 1 ? `${primary.label} ` : ''}synced ${ago(primary.lastSync)}`}
       </span>
     </button>
   );
