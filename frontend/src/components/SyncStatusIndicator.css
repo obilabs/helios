@@ -1,0 +1,49 @@
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gray-500, #6b7280);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sync-status:hover:not(:disabled) {
+  background: var(--gray-50, #f9fafb);
+  color: var(--gray-700, #374151);
+}
+
+.sync-status:disabled {
+  cursor: default;
+}
+
+/* An hour or more since the last sync: worth doubting what is on screen. */
+.sync-status.is-stale {
+  color: #b45309;
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.sync-status.has-error {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.sync-status .spin {
+  animation: sync-status-spin 1s linear infinite;
+}
+
+@keyframes sync-status-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .sync-status-text { display: none; }
+  .sync-status { padding: 4px 6px; }
+}

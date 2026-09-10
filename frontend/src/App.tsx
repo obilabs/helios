@@ -64,6 +64,7 @@ import { ViewProvider, useView } from './contexts/ViewContext'
 import { FeatureFlagsProvider, useFeatureFlags } from './contexts/FeatureFlagsContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { AdminNavigation, UserNavigation, ViewSwitcher, ViewOnboarding } from './components/navigation'
+import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 // Button component removed - using styled quick-action-btn classes instead
 import { EmailEngagementWidget } from './components/widgets/EmailEngagementWidget'
 import { LoginMapWidget } from './components/widgets/LoginMapWidget'
@@ -1101,6 +1102,7 @@ function AppContent() {
           </div>
         </div>
         <div className="header-right">
+          <SyncStatusIndicator isAdmin={currentUser?.role === 'admin'} />
           <ViewSwitcher />
           <div className="welcome-stats">
             <span className="welcome-text">Welcome, {currentUser?.firstName || 'User'}!</span>
