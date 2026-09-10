@@ -4318,8 +4318,18 @@ export class GoogleWorkspaceService {
    */
   async cancelFutureEvents(
     organizationId: string,
-    userEmail: string
-  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; error?: string }> {
+    userEmail: string,
+    options: { timeBudgetMs?: number } = {}
+  ): Promise<{ success: boolean; cancelledCount?: number; declinedCount?: number; partial?: boolean; remaining?: number; error?: string }> {
+    // Observed 2026-09-10 on a migrated mailbox: 263 future instances, all from
+    // a handful of recurring series, deleted one by one with Google throttling
+    // the deletes: the step ran silently for 20+ minutes. Two changes:
+    //   - list recurring series as ONE event (singleEvents: false), so a series
+    //     is one delete/decline instead of every instance;
+    //   - a time budget (default 2 min): past it the step returns what it did,
+    //     marked partial with the count left, and the offboarding continues.
+    const timeBudgetMs = options.timeBudgetMs ?? 120000;
+    const startedAt = Date.now();
     try {
       const credentials = await this.getCredentials(organizationId);
       if (!credentials) {
@@ -4343,22 +4353,37 @@ export class GoogleWorkspaceService {
       let declinedCount = 0;
       let pageToken: string | undefined = undefined;
 
+      let processed = 0;
+      let remaining = 0;
+      let partial = false;
+
       do {
         const listResp = await calendar.events.list({
           calendarId: userEmail,
           timeMin: nowISO,
-          singleEvents: true,
+          // Recurring series come back once (the master), not per instance.
+          singleEvents: false,
           maxResults: 250,
           pageToken
         });
 
         const events = listResp.data.items || [];
 
-        for (const event of events) {
+        for (let i = 0; i < events.length; i++) {
+          const event = events[i];
+          if (Date.now() - startedAt > timeBudgetMs) {
+            partial = true;
+            remaining += events.length - i;
+            break;
+          }
           const eventId = event.id;
           if (!eventId) continue;
           // Already-cancelled instances need no action.
           if (event.status === 'cancelled') continue;
+          processed++;
+          if (processed % 25 === 0) {
+            logger.info('Cancelling future calendar events: progress', { userEmail, processed, cancelledCount, declinedCount });
+          }
 
           const isOrganizer =
             event.organizer?.self === true ||
@@ -4399,16 +4424,17 @@ export class GoogleWorkspaceService {
           }
         }
 
-        pageToken = listResp.data.nextPageToken || undefined;
+        pageToken = partial ? undefined : (listResp.data.nextPageToken || undefined);
       } while (pageToken);
 
-      logger.info('Cancelled/declined future calendar events during offboarding', {
-        userEmail,
-        cancelledCount,
-        declinedCount
-      });
+      logger[partial ? 'warn' : 'info'](
+        partial
+          ? 'Cancelled/declined future calendar events: time budget reached, continuing the offboarding'
+          : 'Cancelled/declined future calendar events during offboarding',
+        { userEmail, cancelledCount, declinedCount, partial, remaining, elapsedMs: Date.now() - startedAt }
+      );
 
-      return { success: true, cancelledCount, declinedCount };
+      return { success: true, cancelledCount, declinedCount, partial, remaining };
     } catch (error: any) {
       logger.error('Failed to cancel future calendar events', {
         userEmail,
