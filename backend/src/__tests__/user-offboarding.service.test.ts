@@ -1070,7 +1070,7 @@ describe('UserOffboardingService', () => {
         const result = await userOffboardingService.executeOffboarding(testOrgId, config);
 
         expect(result.stepsCompleted).toContain('cancel_future_events');
-        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', expect.objectContaining({ skipOrganized: expect.any(Boolean) }));
       });
 
       it('also runs via the pre-existing (previously inert) calendarDeclineFutureMeetings flag', async () => {
@@ -1432,7 +1432,7 @@ describe('UserOffboardingService', () => {
         );
 
         expect(result.stepsCompleted).toContain('cancel_future_events');
-        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev');
+        expect(mockCancelFutureEvents).toHaveBeenCalledWith(testOrgId, 'departing@obilabs.dev', expect.objectContaining({ skipOrganized: expect.any(Boolean) }));
       });
 
       it('uses the policy auto-reply template when the config leaves the message unset', async () => {

@@ -1891,15 +1891,34 @@ class UserOffboardingService {
     const renamed = await googleWorkspaceService.renameUserPrimaryEmail(organizationId, googleId, newEmail);
     if (!renamed.success) return { success: false, error: `Rename refused: ${renamed.error}` };
 
-    // Google turns the old address into an alias on rename; wait for reads to
-    // catch up, then drop it so the address is free for the group.
-    let aliasGone = false;
-    for (let attempt = 0; attempt < 6 && !aliasGone; attempt++) {
+    // Google turns the old address into an alias on rename. Observed live
+    // 2026-09-10: the delete is refused for a while right after the rename,
+    // then succeeds, and reads keep showing the alias for up to ~2 minutes
+    // after that. So: retry the delete with its real error logged, then wait
+    // until a read no longer lists the alias, since the group on that
+    // address cannot be created while it is still taken.
+    let deleted = false;
+    let lastDeleteError = '';
+    for (let attempt = 0; attempt < 12 && !deleted; attempt++) {
       await new Promise((r) => setTimeout(r, 5000));
       const del = await googleWorkspaceService.deleteUserAlias(organizationId, googleId, oldEmail);
-      aliasGone = del.success || /not found/i.test(String(del.error || ''));
+      deleted = del.success || /not found/i.test(String(del.error || ''));
+      if (!deleted) {
+        lastDeleteError = String(del.error || '');
+        logger.warn('Alias delete refused, retrying', { organizationId, oldEmail, attempt: attempt + 1, error: lastDeleteError });
+      }
     }
-    if (!aliasGone) return { success: false, error: 'Old address is still an alias of the renamed account' };
+    if (!deleted) return { success: false, error: `Old address is still an alias of the renamed account (${lastDeleteError})` };
+    let aliasGone = false;
+    for (let attempt = 0; attempt < 24 && !aliasGone; attempt++) {
+      const read = await googleWorkspaceService.getUserRaw(organizationId, googleId);
+      const aliases: string[] = (read.user?.aliases || []).map((x: string) => x.toLowerCase());
+      aliasGone = read.success && !aliases.includes(oldEmail);
+      if (!aliasGone) await new Promise((r) => setTimeout(r, 5000));
+    }
+    if (!aliasGone) {
+      logger.warn('Alias delete accepted but reads still list it; trying the group anyway', { organizationId, oldEmail });
+    }
 
     let groupEmail: string | null = null;
     let groupMember: string | null = null;
