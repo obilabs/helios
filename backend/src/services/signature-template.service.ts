@@ -51,6 +51,7 @@ interface UserDataRow {
   last_name: string;
   preferred_name: string | null;
   pronouns: string | null;
+  professional_designation: string | null;
   job_title: string | null;
   work_phone: string | null;
   mobile_phone: string | null;
@@ -742,6 +743,9 @@ class SignatureTemplateService {
       last_name: user.last_name || '',
       preferred_name: user.preferred_name || user.first_name || '',
       pronouns: user.pronouns || '',
+      professional_designation: user.professional_designation || '',
+      // "Jane Doe, CPA" when a designation is set; the plain name otherwise.
+      full_name_with_designation: `${`${user.first_name || ''} ${user.last_name || ''}`.trim()}${user.professional_designation ? `, ${user.professional_designation}` : ''}`,
 
       // Professional
       job_title: user.job_title || '',
