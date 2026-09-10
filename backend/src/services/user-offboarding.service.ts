@@ -831,7 +831,8 @@ class UserOffboardingService {
         stepOrder++;
         const resetStart = Date.now();
         try {
-          await this.resetPassword(organizationId, config.userEmail);
+          // Delegation needs a mailbox that is not waiting for a password change.
+          await this.resetPassword(organizationId, config.userEmail, !config.emailDelegateEnabled);
           await lifecycleLogService.logSuccess(
             organizationId,
             'offboard',
@@ -2125,9 +2126,17 @@ class UserOffboardingService {
     logger.info('Signed out user from all devices', { userEmail });
   }
 
+  /**
+   * `forceChange` = ask for a new password at next sign-in. Confirmed live
+   * 2026-09-10: a mailbox in that state answers delegates with Gmail's
+   * "temporary error" (401), while an admin-set password WITHOUT the forced
+   * change locks the person out and keeps the mailbox open to delegates. So
+   * when the template grants delegation, the reset must not force a change.
+   */
   private async resetPassword(
     organizationId: string,
-    userEmail: string
+    userEmail: string,
+    forceChange: boolean = true
   ): Promise<void> {
     const credentials = await this.getCredentials(organizationId);
     if (!credentials) throw new Error('Google Workspace not configured');
@@ -2144,11 +2153,11 @@ class UserOffboardingService {
       userKey: userEmail,
       requestBody: {
         password: newPassword,
-        changePasswordAtNextLogin: true,
+        changePasswordAtNextLogin: forceChange,
       },
     });
 
-    logger.info('Reset password for user', { userEmail });
+    logger.info('Reset password for user', { userEmail, forceChange });
   }
 
   private async suspendUser(
