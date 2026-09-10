@@ -81,6 +81,14 @@ const PUBLIC_ROUTERS: Record<string, { reason: string; publicPaths: string[] }> 
     reason: 'Authentication endpoints must be reachable before a session exists.',
     publicPaths: ['/login', '/logout', '/verify', '/verify-setup-token', '/setup-password'],
   },
+  'training-contract.routes.ts': {
+    reason:
+      'Only the discovery document is public, and it carries no tenant data: the spec ' +
+      'version and the accepted vocabulary. A connector author needs those before they ' +
+      'hold a key, and making them guess is how mismatched integrations ship. Both ' +
+      'routes that touch data are API-key authenticated and scope-checked.',
+    publicPaths: ['/'],
+  },
   'tracking.routes.ts': {
     reason: 'Email tracking pixels and health check — public by design.',
     publicPaths: ['/p/:token.gif', '/u/:token.gif', '/health'],
