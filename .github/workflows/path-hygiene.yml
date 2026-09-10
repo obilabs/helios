@@ -8,12 +8,18 @@ on:
   push:
     branches: [main]
 
+# Least privilege: the workflow token can only read the repo. Jobs that need
+# more (packages: write to publish, security-events: write to upload findings)
+# raise it for themselves, so a compromised step in any other job cannot write.
+permissions:
+  contents: read
+
 jobs:
   no-absolute-paths:
     name: No absolute machine paths
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Check tracked files
         run: bash tools/check-abspaths.sh .
 
@@ -21,8 +27,8 @@ jobs:
     name: No committed credentials
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
       - name: Scan tracked files for credentials
