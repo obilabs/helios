@@ -5,6 +5,7 @@ import { authFetch } from './config/api'
 import { signOut, getSession } from './lib/auth-client'
 import './App.css'
 import { LoginPage } from './pages/LoginPage'
+import { SetupPassword } from './pages/SetupPassword';
 import { ClientUserMenu } from './components/ClientUserMenu'
 import { AccountSetup } from './components/AccountSetup'
 import { Settings } from './components/Settings'
@@ -135,6 +136,74 @@ interface OrganizationStats {
 }
 
 // Helper to map URL paths to page identifiers for active nav highlighting
+/**
+ * The pages this app has, and where each one lives. Hoisted to module scope on
+ * 2026-09-10 so that navigation AND the "Page Not Found" placeholder read the
+ * same table. They used to disagree: the placeholder was guarded by a
+ * hand-maintained chain of 36 `currentPage !== '...'` comparisons, ten valid
+ * pages were missing from it, and those pages rendered their real content with
+ * a full "this page doesn't exist" panel underneath. A list maintained by hand
+ * in two places drifts; this is the single source.
+ */
+const ADMIN_PATHS: Record<string, string> = {
+    'dashboard': '/admin',
+    'users': '/admin/users',
+    'groups': '/admin/groups',
+    'orgChart': '/admin/org-chart',
+    'orgUnits': '/admin/org-units',
+    'workspaces': '/admin/workspaces',
+    'assets': '/admin/assets',
+    'files-assets': '/admin/files-assets',
+    'email-security': '/admin/email-security',
+    'signatures': '/admin/signatures',
+    'security-events': '/admin/security-events',
+    'oauth-apps': '/admin/security/oauth-apps',
+    'audit-logs': '/admin/audit-logs',
+    'licenses': '/admin/licenses',
+    'external-sharing': '/admin/external-sharing',
+    'bulk-operations': '/admin/bulk-operations',
+    'migration': '/admin/migration',
+    'delegations': '/admin/delegations',
+    'settings': '/admin/settings',
+    'administrators': '/admin/administrators',
+    'console': '/admin/console',
+    // Automation routes
+    'onboarding-templates': '/admin/onboarding-templates',
+    'offboarding-templates': '/admin/offboarding-templates',
+    'new-offboarding-template': '/admin/offboarding-templates/new',
+    'edit-offboarding-template': '/admin/offboarding-templates/edit',
+    'new-onboarding-template': '/admin/onboarding-templates/new',
+    'edit-onboarding-template': '/admin/onboarding-templates/edit',
+    'scheduled-actions': '/admin/scheduled-actions',
+    'tasks': '/admin/tasks',
+    'training': '/admin/training',
+    'requests': '/admin/requests',
+    'hr-dashboard': '/admin/hr-dashboard',
+    'manager-dashboard': '/admin/manager-dashboard',
+    'lifecycle-analytics': '/admin/lifecycle-analytics',
+    'rules-engine': '/admin/rules-engine',
+    // User management routes
+    'add-user': '/add-user',
+    'new-user-onboarding': '/admin/onboarding/new',
+    'user-offboarding': '/admin/offboarding/user',
+    };
+
+const USER_PATHS: Record<string, string> = {
+    'dashboard': '/',
+    'home': '/',
+    'people': '/people',
+    'my-team': '/my-team',
+    'my-groups': '/my-groups',
+    'my-profile': '/my-profile',
+    'my-onboarding': '/my-onboarding',
+    'user-settings': '/user-settings',
+    };
+
+/** A page id is real when either navigation table knows how to reach it. */
+function isKnownPage(page: string): boolean {
+  return page in ADMIN_PATHS || page in USER_PATHS;
+}
+
 function getPageFromPath(pathname: string): string {
   // Admin routes (with /admin prefix)
   if (pathname === '/admin' || pathname === '/admin/dashboard') return 'dashboard';
@@ -236,69 +305,19 @@ function AppContent() {
   // Navigation helper that uses React Router - routes based on current view
   const setCurrentPage = (page: string) => {
     // Admin pages use /admin prefix
-    const adminPathMap: Record<string, string> = {
-      'dashboard': '/admin',
-      'users': '/admin/users',
-      'groups': '/admin/groups',
-      'orgChart': '/admin/org-chart',
-      'orgUnits': '/admin/org-units',
-      'workspaces': '/admin/workspaces',
-      'assets': '/admin/assets',
-      'files-assets': '/admin/files-assets',
-      'email-security': '/admin/email-security',
-      'signatures': '/admin/signatures',
-      'security-events': '/admin/security-events',
-      'oauth-apps': '/admin/security/oauth-apps',
-      'audit-logs': '/admin/audit-logs',
-      'licenses': '/admin/licenses',
-      'external-sharing': '/admin/external-sharing',
-      'bulk-operations': '/admin/bulk-operations',
-      'migration': '/admin/migration',
-      'delegations': '/admin/delegations',
-      'settings': '/admin/settings',
-      'administrators': '/admin/administrators',
-      'console': '/admin/console',
-      // Automation routes
-      'onboarding-templates': '/admin/onboarding-templates',
-      'offboarding-templates': '/admin/offboarding-templates',
-      'new-offboarding-template': '/admin/offboarding-templates/new',
-      'edit-offboarding-template': '/admin/offboarding-templates/edit',
-      'new-onboarding-template': '/admin/onboarding-templates/new',
-      'edit-onboarding-template': '/admin/onboarding-templates/edit',
-      'scheduled-actions': '/admin/scheduled-actions',
-      'tasks': '/admin/tasks',
-      'training': '/admin/training',
-      'requests': '/admin/requests',
-      'hr-dashboard': '/admin/hr-dashboard',
-      'manager-dashboard': '/admin/manager-dashboard',
-      'lifecycle-analytics': '/admin/lifecycle-analytics',
-      'rules-engine': '/admin/rules-engine',
-      // User management routes
-      'add-user': '/add-user',
-      'new-user-onboarding': '/admin/onboarding/new',
-      'user-offboarding': '/admin/offboarding/user',
-    };
+
 
     // User pages at root level
-    const userPathMap: Record<string, string> = {
-      'dashboard': '/',
-      'home': '/',
-      'people': '/people',
-      'my-team': '/my-team',
-      'my-groups': '/my-groups',
-      'my-profile': '/my-profile',
-      'my-onboarding': '/my-onboarding',
-      'user-settings': '/user-settings',
-    };
+
 
     // Use appropriate path map based on current view
-    if (currentView === 'admin' && adminPathMap[page]) {
-      navigate(adminPathMap[page]);
-    } else if (userPathMap[page]) {
-      navigate(userPathMap[page]);
-    } else if (adminPathMap[page]) {
+    if (currentView === 'admin' && ADMIN_PATHS[page]) {
+      navigate(ADMIN_PATHS[page]);
+    } else if (USER_PATHS[page]) {
+      navigate(USER_PATHS[page]);
+    } else if (ADMIN_PATHS[page]) {
       // Fallback to admin path if user path not found
-      navigate(adminPathMap[page]);
+      navigate(ADMIN_PATHS[page]);
     } else {
       navigate('/');
     }
@@ -780,6 +799,17 @@ function AppContent() {
     }
   };
 
+  // The password-setup link from an invitation email lands here. It must be
+  // handled BEFORE the login gate, because the person following it has no
+  // password yet — that is the whole point of the link. Until 2026-09-10 there
+  // was no branch for this path at all, so every invited user fell through to
+  // the dashboard, the token was never read, and the invite silently did
+  // nothing. Checked against location.pathname rather than a page id because
+  // it is a pre-authentication route.
+  if (location.pathname === '/setup-password') {
+    return <SetupPassword />;
+  }
+
   if (loading || step === null) {
     return (
       <div className="app">
@@ -1102,8 +1132,10 @@ function AppContent() {
           </div>
         </div>
         <div className="header-right">
-          <SyncStatusIndicator isAdmin={currentUser?.role === 'admin'} />
           <ViewSwitcher />
+          {/* Sync stamps sit with the status cluster, not between the search box
+              and the console switcher, where a pill reads as a control. */}
+          <SyncStatusIndicator isAdmin={currentUser?.role === 'admin'} />
           <div className="welcome-stats">
             <span className="welcome-text">Welcome, {currentUser?.firstName || 'User'}!</span>
           </div>
@@ -1819,7 +1851,7 @@ function AppContent() {
             </Suspense>
           )}
 
-          {currentPage !== 'dashboard' && currentPage !== 'settings' && currentPage !== 'users' && currentPage !== 'groups' && currentPage !== 'workspaces' && currentPage !== 'orgUnits' && currentPage !== 'assets' && currentPage !== 'files-assets' && currentPage !== 'email-security' && currentPage !== 'signatures' && currentPage !== 'security-events' && currentPage !== 'audit-logs' && currentPage !== 'licenses' && currentPage !== 'external-sharing' && currentPage !== 'console' && currentPage !== 'administrators' && currentPage !== 'my-profile' && currentPage !== 'people' && currentPage !== 'my-team' && currentPage !== 'my-groups' && currentPage !== 'user-settings' && currentPage !== 'orgChart' && currentPage !== 'add-user' && currentPage !== 'onboarding-templates' && currentPage !== 'new-onboarding-template' && currentPage !== 'edit-onboarding-template' && currentPage !== 'offboarding-templates' && currentPage !== 'new-offboarding-template' && currentPage !== 'edit-offboarding-template' && currentPage !== 'scheduled-actions' && currentPage !== 'new-user-onboarding' && currentPage !== 'user-offboarding' && currentPage !== 'requests' && currentPage !== 'bulk-operations' && currentPage !== 'migration' && currentPage !== 'delegations' && (
+          {!isKnownPage(currentPage) && (
             <div className="page-placeholder">
               <div className="placeholder-content">
                 <h2>Page Not Found</h2>

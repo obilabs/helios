@@ -94,6 +94,7 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         totalUsers,
         activeUsers,
         suspendedUsers,
+        googleSuspendedUsers,
         deletedUsers,
         totalGroups,
         googleUsers,
@@ -104,15 +105,26 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
       ] = await Promise.all([
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = true', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = false', [organizationId]),
+        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = false AND deleted_at IS NULL', [organizationId]),
+        // Suspended IN GOOGLE, which is a different question from inactive in
+        // Helios. The Google card used the org-wide inactive count, so it read
+        // "13 suspended users in Google Workspace" on a tenant where Google had
+        // three users and none suspended: local users, guests and already-deleted
+        // rows were all counted as Google suspensions.
+        db.query(
+          `SELECT COUNT(*) as count FROM organization_users
+            WHERE organization_id = $1 AND is_active = false
+              AND google_workspace_id IS NOT NULL AND deleted_at IS NULL`,
+          [organizationId],
+        ),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND status = \'deleted\'', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM access_groups WHERE organization_id = $1', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NOT NULL', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NULL', [organizationId]),
+        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NOT NULL AND deleted_at IS NULL', [organizationId]),
+        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NULL AND deleted_at IS NULL', [organizationId]),
         // Guest users are classified by user_type ('guest'); the legacy is_guest
         // boolean is not maintained by the sync path, so count on user_type.
-        db.query("SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND user_type = 'guest'", [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND role = \'admin\'', [organizationId]),
+        db.query("SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND user_type = 'guest' AND deleted_at IS NULL", [organizationId]),
+        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND role = \'admin\' AND deleted_at IS NULL', [organizationId]),
         // Orphaned users: no manager assigned, not CEO, active
         db.query(`
           SELECT COUNT(*) as count FROM organization_users
@@ -302,7 +314,7 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         google: isGoogleConfigured ? {
           connected: true,
           totalUsers: parseInt(googleUsers.rows[0].count),
-          suspendedUsers: parseInt(suspendedUsers.rows[0].count),
+          suspendedUsers: parseInt(googleSuspendedUsers.rows[0].count),
           adminUsers: parseInt(admins.rows[0].count),
           lastSync: lastSync,
           licenses: googleLicenses
@@ -449,7 +461,9 @@ router.get('/alerts', async (req: Request, res: Response): Promise<void> => {
 
     // Check for suspended users
     const suspendedResult = await db.query(
-      'SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = false',
+`SELECT COUNT(*) as count FROM organization_users
+        WHERE organization_id = $1 AND is_active = false
+          AND google_workspace_id IS NOT NULL AND deleted_at IS NULL`,
       [organizationId]
     );
     const suspendedCount = parseInt(suspendedResult.rows[0].count);
