@@ -2215,6 +2215,57 @@ router.get('/users/:userId/snapshots', authenticateToken, async (req: Request, r
   }
 });
 
+/**
+ * When each connected platform was last synced, for the "Synced N ago" marker
+ * in the header. A dashboard that looks live while the data is hours old is
+ * the same silent-staleness problem as a UI that says OK while the platform
+ * was never touched, so the age is always on screen.
+ */
+router.get('/sync-status', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ success: false, error: 'Organization ID not found' });
+    }
+
+    const google = await db.query(
+      `SELECT om.last_sync_at,
+              (SELECT COUNT(*) FROM gw_synced_users g WHERE g.organization_id = $1) AS user_count
+         FROM organization_modules om
+         JOIN modules m ON m.id = om.module_id
+        WHERE om.organization_id = $1 AND m.slug = 'google_workspace' AND om.is_enabled = true`,
+      [organizationId]
+    );
+
+    let microsoft: { rows: any[] } = { rows: [] };
+    try {
+      microsoft = await db.query(
+        `SELECT last_sync_at,
+                (SELECT COUNT(*) FROM ms_synced_users u WHERE u.organization_id = $1) AS user_count
+           FROM ms_credentials WHERE organization_id = $1 AND is_active = true`,
+        [organizationId]
+      );
+    } catch {
+      // Microsoft tables are optional on an install that never connected it.
+    }
+
+    const shape = (row: any) =>
+      row ? { lastSync: row.last_sync_at || null, userCount: Number(row.user_count) || 0 } : null;
+
+    return res.json({
+      success: true,
+      data: {
+        google: shape(google.rows[0]),
+        microsoft: shape(microsoft.rows[0]),
+        serverTime: new Date().toISOString(),
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to read sync status', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to read sync status' });
+  }
+});
+
 router.delete('/users/:userId', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
