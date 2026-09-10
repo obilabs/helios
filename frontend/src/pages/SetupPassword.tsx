@@ -12,6 +12,22 @@ interface VerificationResult {
   error?: string;
 }
 
+/**
+ * The API returns `error` as `{ code, message }`, not a string (see
+ * backend/src/utils/response.ts errorResponse). Rendering that object directly
+ * crashes React with "Objects are not valid as a React child" — which is what
+ * this page did for anyone arriving with an expired or invalid token, so the
+ * one screen that should explain the problem showed a crash instead.
+ */
+function errorText(error: unknown, fallback: string): string {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error === 'object') {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return fallback;
+}
+
 export function SetupPassword() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
@@ -46,7 +62,7 @@ export function SetupPassword() {
       const data: VerificationResult = await response.json();
 
       if (!response.ok || !data.success) {
-        setTokenError(data.error || 'Invalid or expired token');
+        setTokenError(errorText(data.error, 'Invalid or expired token'));
         return;
       }
 
@@ -93,7 +109,7 @@ export function SetupPassword() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setError(data.error || 'Failed to set password');
+        setError(errorText(data.error, 'Failed to set password'));
         return;
       }
 
