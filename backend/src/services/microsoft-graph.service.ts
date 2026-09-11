@@ -40,7 +40,16 @@ export interface MicrosoftUser {
   businessPhones?: string[];
   accountEnabled: boolean;
   assignedLicenses?: Array<{ skuId: string }>;
+  /** Member or Guest. */
+  userType?: string | null;
+  /** Invitation for B2B guests; null for accounts created in the tenant. */
+  creationType?: string | null;
+  /** PendingAcceptance or Accepted for external users. */
+  externalUserState?: string | null;
 }
+
+/** The user fields Helios reads. One list, so the list and single-user reads agree. */
+const USER_SELECT = 'id,userPrincipalName,displayName,givenName,surname,mail,jobTitle,department,officeLocation,companyName,mobilePhone,businessPhones,accountEnabled,assignedLicenses,userType,creationType,externalUserState';
 
 /**
  * Microsoft Graph group object
@@ -373,7 +382,7 @@ export class MicrosoftGraphService {
         ? await this.graphClient.api(nextLink).get()
         : await this.graphClient
             .api('/users')
-            .select('id,userPrincipalName,displayName,givenName,surname,mail,jobTitle,department,officeLocation,companyName,mobilePhone,businessPhones,accountEnabled,assignedLicenses')
+            .select(USER_SELECT)
             .top(100)
             .get();
 
@@ -382,6 +391,25 @@ export class MicrosoftGraphService {
     } while (nextLink);
 
     return users;
+  }
+
+  /**
+   * What a user's mailbox is for (user, shared, room, equipment, ...), from
+   * mailboxSettings.userPurpose. Needs the MailboxSettings.Read application permission,
+   * which is optional: without it Graph answers 403 and the caller stops asking.
+   * An account with no mailbox answers 404; that is "no answer", not an error.
+   */
+  async getMailboxPurpose(userId: string): Promise<{ purpose: string | null; notPermitted: boolean }> {
+    if (!this.graphClient) {
+      throw new Error('Microsoft Graph client not initialized');
+    }
+    try {
+      const res = await this.graphClient.api(`/users/${userId}/mailboxSettings/userPurpose`).get();
+      return { purpose: typeof res?.value === 'string' ? res.value : null, notPermitted: false };
+    } catch (error: any) {
+      if (error.statusCode === 403 || error.statusCode === 401) return { purpose: null, notPermitted: true };
+      return { purpose: null, notPermitted: false };
+    }
   }
 
   /**
@@ -395,7 +423,7 @@ export class MicrosoftGraphService {
     try {
       return await this.graphClient
         .api(`/users/${userId}`)
-        .select('id,userPrincipalName,displayName,givenName,surname,mail,jobTitle,department,officeLocation,companyName,mobilePhone,businessPhones,accountEnabled,assignedLicenses')
+        .select(USER_SELECT)
         .get();
     } catch (error: any) {
       if (error.statusCode === 404) {
