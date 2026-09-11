@@ -46,6 +46,13 @@ const router = Router();
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
+/*
+ * Who appears on the org chart is defined ONCE, by the org_chart_members view
+ * (migration 094): active, not deleted, staff or local. Guests and contacts are
+ * outside the organization and must never be drawn as part of its structure.
+ * Read from the view; do not re-state the rule against organization_users. The
+ * leftover is_active filters below are redundant with the view and harmless.
+ */
 router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
@@ -59,7 +66,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
 
     // First, check if we have any users and if the function exists
     const userCountResult = await db.query(
-      'SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = true',
+      'SELECT COUNT(*) as count FROM org_chart_members WHERE organization_id = $1 AND is_active = true',
       [organizationId]
     );
     const userCount = parseInt(userCountResult.rows[0]?.count || '0');
@@ -68,7 +75,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
     if (userCount <= 1) {
       const singleUserQuery = `
         SELECT id, email, first_name, last_name, job_title, department, photo_data
-        FROM organization_users
+        FROM org_chart_members
         WHERE organization_id = $1 AND is_active = true
         LIMIT 1
       `;
@@ -151,7 +158,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
             reporting_manager_id,
             0 AS level,
             ARRAY[id] AS path
-          FROM organization_users
+          FROM org_chart_members
           WHERE organization_id = $1
             AND is_active = true
             AND reporting_manager_id IS NULL
@@ -169,7 +176,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
             ou.reporting_manager_id,
             ot.level + 1 AS level,
             ot.path || ou.id AS path
-          FROM organization_users ou
+          FROM org_chart_members ou
           INNER JOIN org_tree ot ON ou.reporting_manager_id = ot.user_id
           WHERE ou.organization_id = $1
             AND ou.is_active = true
@@ -192,12 +199,12 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
         ou.department,
         ou.photo_data,
         ou.reporting_manager_id
-      FROM organization_users ou
+      FROM org_chart_members ou
       WHERE ou.organization_id = $1
         AND ou.is_active = true
         AND ou.reporting_manager_id IS NOT NULL
         AND ou.reporting_manager_id NOT IN (
-          SELECT id FROM organization_users
+          SELECT id FROM org_chart_members
           WHERE organization_id = $1 AND is_active = true
         )
     `;
@@ -223,7 +230,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
           SELECT
             reporting_manager_id,
             COUNT(*) as report_count
-          FROM organization_users
+          FROM org_chart_members
           WHERE organization_id = $1
             AND is_active = true
             AND reporting_manager_id IS NOT NULL
@@ -382,7 +389,7 @@ router.put('/users/:userId/manager', requireAuth, async (req: Request, res: Resp
 
     // Validate that both users belong to the same organization
     const validationQuery = `
-      SELECT id FROM organization_users
+      SELECT id FROM org_chart_members
       WHERE organization_id = $1
         AND id = ANY($2::uuid[])
         AND is_active = true
@@ -521,7 +528,7 @@ router.get('/users/:userId/direct-reports', requireAuth, async (req: Request, re
         department,
         photo_data,
         get_direct_reports_count(id) as direct_reports_count
-      FROM organization_users
+      FROM org_chart_members
       WHERE organization_id = $1
         AND reporting_manager_id = $2
         AND is_active = true
