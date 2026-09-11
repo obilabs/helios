@@ -626,7 +626,12 @@ export function UserTable({
         emptyMessage={
           platformFilter !== 'all'
             ? `No users found with selected integration`
-            : 'No users found. Start by connecting to Google Workspace in Settings.'
+            : statusFilter !== 'all'
+              // A filtered view that happens to be empty is not a setup problem.
+              // It used to tell admins to go connect Google Workspace, while
+              // Google was connected, on a tab whose own count said 2.
+              ? 'No users match this filter.'
+              : 'No users found. Start by connecting to Google Workspace in Settings.'
         }
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={handleColumnVisibilityChange}
