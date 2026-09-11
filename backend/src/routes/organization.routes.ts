@@ -550,7 +550,10 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     } else if (statusFilter === 'active') {
       statusCondition = "AND ou.status = 'active'";
     } else if (statusFilter === 'pending' || statusFilter === 'staged') {
-      statusCondition = "AND ou.status = 'staged'";
+      // Must match normalizeUserStatus() in frontend/src/hooks/queries/useUsers.ts.
+      // It matched only the literal 'staged', but people invited by email link are
+      // stored as 'invited', so the Staged tab counted 2 and listed none.
+      statusCondition = "AND ou.status IN ('staged', 'invited', 'pending')";
     } else if (statusFilter === 'suspended') {
       statusCondition = "AND ou.status = 'suspended'";
     } else if (statusFilter === 'deleted') {

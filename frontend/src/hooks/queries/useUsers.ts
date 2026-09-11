@@ -134,7 +134,7 @@ async function fetchUsers(filters: UserFilters): Promise<User[]> {
     microsoft365Id: user.microsoft365Id || user.microsoft_365_id,
     createdAt: user.createdAt || user.created_at,
     updatedAt: user.updatedAt || user.updated_at,
-    status: user.status || user.userStatus || (user.isActive ? 'active' : 'inactive'),
+    status: normalizeUserStatus(user),
     source: user.source,
     userType: user.userType || user.user_type,
     company: user.company,
@@ -143,6 +143,23 @@ async function fetchUsers(filters: UserFilters): Promise<User[]> {
 }
 
 // Fetch all users for status counts (includes deleted)
+/**
+ * The one definition of a user's list status, shared by the row badge and the
+ * tab counts. They used to disagree: the counts treated 'invited' as Staged, while
+ * the row preferred a Google-derived status, so an invited person was counted
+ * under Staged but badged "Active" before a sync and "Suspended" after one. The
+ * Google account of an invitee IS suspended, by design, until they accept; that is
+ * how the invite works, not an admin suspension, so it must not read as one.
+ */
+export const STAGED_STATUSES: readonly string[] = ['invited', 'staged', 'pending'];
+
+export function normalizeUserStatus(user: any): string {
+  const stored = user.userStatus || user.user_status;
+  if (stored && STAGED_STATUSES.includes(stored)) return 'staged';
+  const status = user.status || stored || (user.isActive === false ? 'inactive' : 'active');
+  return STAGED_STATUSES.includes(status) ? 'staged' : status;
+}
+
 async function fetchAllUsersForCounts(userType: string): Promise<{ users: User[]; statusCounts: StatusCounts; departments: string[] }> {
   const params = new URLSearchParams({
     userType,
@@ -164,12 +181,7 @@ async function fetchAllUsersForCounts(userType: string): Promise<{ users: User[]
   const users = data.success ? data.data : [];
 
   // Helper to normalize status (handle null/undefined and different naming conventions)
-  const getStatus = (user: any): string => {
-    const status = user.userStatus || user.status || 'active';
-    // Normalize status values
-    if (status === 'invited' || status === 'staged' || status === 'pending') return 'staged';
-    return status;
-  };
+  const getStatus = (user: any): string => normalizeUserStatus(user);
 
   // Calculate status counts
   const statusCounts: StatusCounts = {
