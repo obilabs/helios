@@ -114,7 +114,13 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         db.query(
           `SELECT COUNT(*) as count FROM organization_users
             WHERE organization_id = $1 AND is_active = false
-              AND google_workspace_id IS NOT NULL AND deleted_at IS NULL`,
+              AND google_workspace_id IS NOT NULL AND deleted_at IS NULL
+              -- An invited person is suspended in Google BY DESIGN until they accept
+              -- and set a password. Counting them made the card and its "review and
+              -- restore or remove" alert steer admins toward unsuspending accounts
+              -- that have no password yet. Proven live 2026-09-11: two fresh invites
+              -- showed as two suspensions.
+              AND COALESCE(status, '') <> 'invited'`,
           [organizationId],
         ),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND status = \'deleted\'', [organizationId]),
@@ -463,7 +469,8 @@ router.get('/alerts', async (req: Request, res: Response): Promise<void> => {
     const suspendedResult = await db.query(
 `SELECT COUNT(*) as count FROM organization_users
         WHERE organization_id = $1 AND is_active = false
-          AND google_workspace_id IS NOT NULL AND deleted_at IS NULL`,
+          AND google_workspace_id IS NOT NULL AND deleted_at IS NULL
+          AND COALESCE(status, '') <> 'invited'`,
       [organizationId]
     );
     const suspendedCount = parseInt(suspendedResult.rows[0].count);
