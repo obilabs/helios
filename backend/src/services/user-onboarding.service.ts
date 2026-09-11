@@ -9,6 +9,7 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import bcrypt from 'bcryptjs';
 import { decodeServiceAccountKey } from './gw-credentials.js';
+import { ADMIN_SDK_CLIENT_SCOPES } from '../config/google-scopes.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
@@ -1060,11 +1061,7 @@ Welcome to the team!`;
     const jwtClient = new JWT({
       email: credentials.client_email,
       key: credentials.private_key,
-      scopes: [
-        'https://www.googleapis.com/auth/admin.directory.user',
-        'https://www.googleapis.com/auth/admin.directory.group',
-        'https://www.googleapis.com/auth/admin.directory.orgunit',
-      ],
+      scopes: ADMIN_SDK_CLIENT_SCOPES.onboarding,
       subject: adminEmail,
     });
 

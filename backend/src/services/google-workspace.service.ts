@@ -5,8 +5,27 @@ import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
-import { REQUIRED_SCOPES, SCOPE_DETAILS, DELEGATION_SCOPES, DELEGATION_SCOPE_DETAILS } from '../config/google-scopes.js';
+import {
+  REQUIRED_SCOPES,
+  SCOPE_DETAILS,
+  DELEGATION_SCOPES,
+  DELEGATION_SCOPE_DETAILS,
+  ADMIN_SDK_CLIENT_SCOPES,
+  googleScopesForPath,
+} from '../config/google-scopes.js';
 import { ACCOUNT_PURPOSE_FIELD, HELIOS_SCHEMA_NAME, type AccountPurpose } from '../lib/account-purpose.js';
+
+/**
+ * A tenant that has not authorised an optional scope refuses the token
+ * exchange with a bare `unauthorized_client`. Name the missing scope so the
+ * admin knows what to add, instead of a generic delegation error.
+ */
+function optionalScopeError(error: any, feature: string, scopes: string[]): string {
+  const message = String(error?.message || error);
+  if (!message.includes('unauthorized_client')) return message;
+  return `${feature} needs the ${scopes.join(', ')} scope, which this workspace has not authorised. ` +
+    'Add it to the service account in Google Admin Console > Security > API Controls > Domain-wide delegation.';
+}
 
 export interface ServiceAccountCredentials {
   type: string;
@@ -304,19 +323,19 @@ export class GoogleWorkspaceService {
   }
 
   /**
-   * Create authenticated Google Admin SDK client with Domain-Wide Delegation
+   * Create authenticated Google Admin SDK client with Domain-Wide Delegation.
+   * Scopes come from config/google-scopes.ts; a call outside the default set
+   * passes its own from googleScopesForPath().
    */
-  private createAdminClient(credentials: ServiceAccountCredentials, adminEmail: string) {
+  private createAdminClient(
+    credentials: ServiceAccountCredentials,
+    adminEmail: string,
+    scopes: string[] = ADMIN_SDK_CLIENT_SCOPES.workspace
+  ) {
     const jwtClient = new JWT({
       email: credentials.client_email,
       key: credentials.private_key,
-      scopes: [
-        'https://www.googleapis.com/auth/admin.directory.user',
-        'https://www.googleapis.com/auth/admin.directory.group',
-        'https://www.googleapis.com/auth/admin.directory.orgunit',
-        'https://www.googleapis.com/auth/admin.directory.domain',
-        'https://www.googleapis.com/auth/admin.reports.audit.readonly'
-      ],
+      scopes,
       subject: adminEmail // This enables Domain-Wide Delegation - impersonate admin user
     });
 
@@ -1623,7 +1642,9 @@ export class GoogleWorkspaceService {
     const auth = new JWT({
       email: credentials.client_email,
       key: credentials.private_key,
-      scopes: ['https://www.googleapis.com/auth/admin.directory.userschema'],
+      // Optional scope, minted per call from the canonical module (not the
+      // default admin client, whose contract scopes do not include it).
+      scopes: googleScopesForPath('POST', 'admin/directory/v1/customer/my_customer/schemas').scopes,
       subject: adminEmail,
     });
     const admin = google.admin({ version: 'directory_v1', auth });
@@ -3983,6 +4004,7 @@ export class GoogleWorkspaceService {
     buildings?: any[];
     error?: string;
   }> {
+    const { scopes } = googleScopesForPath('GET', 'admin/directory/v1/customer/my_customer/resources/buildings');
     try {
       const credentials = await this.getCredentials(organizationId);
       if (!credentials) {
@@ -3994,7 +4016,7 @@ export class GoogleWorkspaceService {
         return { success: false, error: 'No admin email configured' };
       }
 
-      const admin = this.createAdminClient(credentials, adminEmail);
+      const admin = this.createAdminClient(credentials, adminEmail, scopes);
 
       const response = await admin.resources.buildings.list({
         customer: 'my_customer'
@@ -4013,7 +4035,7 @@ export class GoogleWorkspaceService {
       return { success: true, buildings };
     } catch (error: any) {
       logger.error('Failed to list buildings', { organizationId, error: error.message });
-      return { success: false, error: error.message };
+      return { success: false, error: optionalScopeError(error, 'Listing buildings', scopes) };
     }
   }
 
@@ -4028,6 +4050,9 @@ export class GoogleWorkspaceService {
     resources?: any[];
     error?: string;
   }> {
+    // The default admin client's contract scopes do not cover calendar
+    // resources; mint only the optional scope this call needs.
+    const { scopes } = googleScopesForPath('GET', 'admin/directory/v1/customer/my_customer/resources/calendars');
     try {
       const credentials = await this.getCredentials(organizationId);
       if (!credentials) {
@@ -4039,7 +4064,7 @@ export class GoogleWorkspaceService {
         return { success: false, error: 'No admin email configured' };
       }
 
-      const admin = this.createAdminClient(credentials, adminEmail);
+      const admin = this.createAdminClient(credentials, adminEmail, scopes);
 
       // Build query filter
       let query = '';
@@ -4081,7 +4106,7 @@ export class GoogleWorkspaceService {
       return { success: true, resources };
     } catch (error: any) {
       logger.error('Failed to list calendar resources', { organizationId, error: error.message });
-      return { success: false, error: error.message };
+      return { success: false, error: optionalScopeError(error, 'Listing rooms and equipment', scopes) };
     }
   }
 

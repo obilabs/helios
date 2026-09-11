@@ -22,7 +22,9 @@ import {
   OPTIONAL_SCOPE_DETAILS,
   DELEGATION_SCOPES,
   SCOPE_CONTRACT_VERSION,
+  ADMIN_SDK_CLIENT_SCOPES,
   googleScopesForPath,
+  googleScopesForPaths,
   normaliseGooglePath,
 } from '../config/google-scopes.js';
 
@@ -63,6 +65,9 @@ describe('scope contract v1 is frozen', () => {
       ['GET', 'admin/directory/v1/customer/my_customer/domains'],
       ['GET', 'admin/directory/v1/customer/my_customer/devices/mobile'],
       ['GET', 'admin/directory/v1/customer/my_customer/schemas'],
+      ['GET', 'admin/directory/v1/customer/my_customer/resources/calendars'],
+      ['POST', 'admin/directory/v1/customer/my_customer/resources/calendars'],
+      ['GET', 'admin/directory/v1/customer/my_customer/resources/buildings'],
       ['GET', 'admin/reports/v1/activity/users/all/applications/admin'],
       ['GET', 'admin/reports/v1/usage/dates/2026-01-01'],
       ['POST', 'admin/datatransfer/v1/transfers'],
@@ -139,10 +144,67 @@ describe('per-call minting', () => {
     expect(googleScopesForPath('PUT', 'gmail/v1/users/me/settings/vacation').scopes).toEqual([`${G}gmail.settings.basic`]);
   });
 
+  it('calendar resources mint only the resource scope: readonly for reads, full for writes', () => {
+    // Before 2026-09-11 this path fell back to the contract, whose `calendar`
+    // scope Google does not accept for resources.calendars.list
+    // (403 ACCESS_TOKEN_SCOPE_INSUFFICIENT on every tenant, verified live).
+    const read = `${G}admin.directory.resource.calendar.readonly`;
+    const write = `${G}admin.directory.resource.calendar`;
+    const P = 'admin/directory/v1/customer/my_customer/resources';
+    expect(googleScopesForPath('GET', `${P}/calendars`)).toEqual({ scopes: [read], fellBack: false });
+    expect(googleScopesForPath('GET', `/${P}/calendars/room-1`)).toEqual({ scopes: [read], fellBack: false });
+    expect(googleScopesForPath('GET', `${P}/buildings`).scopes).toEqual([read]);
+    expect(googleScopesForPath('GET', `${P}/features`).scopes).toEqual([read]);
+    expect(googleScopesForPath('POST', `${P}/calendars`).scopes).toEqual([write]);
+    expect(googleScopesForPath('PATCH', `${P}/calendars/room-1`).scopes).toEqual([write]);
+    expect(googleScopesForPath('DELETE', `${P}/buildings/b1`).scopes).toEqual([write]);
+    // Optional, never contract: a tenant that has not authorised them loses
+    // only this feature.
+    expect(OPTIONAL_SCOPE_DETAILS.map((s) => s.scope)).toEqual(expect.arrayContaining([read, write]));
+    expect(REQUIRED_SCOPES).not.toContain(read);
+    expect(REQUIRED_SCOPES).not.toContain(write);
+    // Sibling customer paths are not captured by the new rule.
+    expect(googleScopesForPath('GET', 'admin/directory/v1/customer/my_customer/orgunits').scopes).toEqual([`${G}admin.directory.orgunit`]);
+    expect(googleScopesForPath('GET', 'admin/directory/v1/users').scopes).not.toContain(read);
+  });
+
   it('an unknown path falls back to the frozen contract and says so', () => {
     const r = googleScopesForPath('GET', 'chat/v1/spaces');
     expect(googleScopesForPath('GET', 'admin/directory/v1/customers/my_customer').fellBack).toBe(true);
     expect(r.fellBack).toBe(true);
     expect(r.scopes).toBe(REQUIRED_SCOPES);
+  });
+});
+
+describe('Admin SDK client scopes come from this module', () => {
+  it('each service client keeps exactly the set it used to hard-code', () => {
+    expect(ADMIN_SDK_CLIENT_SCOPES.workspace).toEqual([
+      `${G}admin.directory.user`,
+      `${G}admin.directory.group`,
+      `${G}admin.directory.orgunit`,
+      `${G}admin.directory.domain`,
+      `${G}admin.reports.audit.readonly`,
+    ]);
+    expect(ADMIN_SDK_CLIENT_SCOPES.onboarding).toEqual([
+      `${G}admin.directory.user`,
+      `${G}admin.directory.group`,
+      `${G}admin.directory.orgunit`,
+    ]);
+    expect(ADMIN_SDK_CLIENT_SCOPES.offboarding).toEqual([
+      `${G}admin.directory.user`,
+      `${G}admin.directory.user.security`,
+      `${G}admin.directory.group`,
+      `${G}admin.directory.device.mobile`,
+    ]);
+  });
+
+  it('default clients carry contract scopes only (an optional one would fail every call on some tenants)', () => {
+    for (const scopes of Object.values(ADMIN_SDK_CLIENT_SCOPES)) {
+      for (const s of scopes) expect(REQUIRED_SCOPES).toContain(s);
+    }
+  });
+
+  it('a client declared with an unmapped path throws rather than widening to the contract', () => {
+    expect(() => googleScopesForPaths('GET', ['admin/directory/v1/users', 'chat/v1/spaces'])).toThrow(/no PATH_SCOPES rule/);
   });
 });

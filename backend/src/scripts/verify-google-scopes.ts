@@ -45,6 +45,7 @@ const PROBES: Probe[] = [
   { label: 'calendar list (admin)', method: 'GET', host: 'https://www.googleapis.com', path: 'calendar/v3/users/me/calendarList', query: { maxResults: '1' }, contract: true },
   { label: 'drive files.list (admin)', method: 'GET', host: 'https://www.googleapis.com', path: 'drive/v3/files', query: { pageSize: '1' }, contract: true },
   { label: 'directory schemas.list (optional: userschema)', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/directory/v1/customer/my_customer/schemas', query: {}, contract: false },
+  { label: 'calendar resources.list (optional: resource.calendar.readonly)', method: 'GET', host: 'https://admin.googleapis.com', path: 'admin/directory/v1/customer/my_customer/resources/calendars', query: { maxResults: '1' }, contract: false },
 ];
 
 /**
