@@ -27,6 +27,7 @@ import { ErrorCode } from '../types/error-codes.js';
 import { cacheService } from '../services/cache.service.js';
 import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '../lib/sync-settings.js';
 import { fieldDriftService } from '../services/field-drift.service.js';
+import { ACCOUNT_PURPOSE_LABELS, isAccountPurpose } from '../lib/account-purpose.js';
 
 const router = Router();
 
@@ -599,6 +600,9 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
       statusCondition = "AND (ou.status IS NULL OR ou.status != 'deleted')";
     }
 
+    // Values bound below; conditions reference them by position.
+    const listParams: any[] = [organizationId];
+
     // Add user type filter condition
     if (userType) {
       // Map 'guests' to 'guest' for frontend compatibility
@@ -609,7 +613,9 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         // are unreachable anywhere in the admin Users page.
         statusCondition += " AND ou.user_type IN ('staff','local')";
       } else {
-        statusCondition += ` AND ou.user_type = '${dbUserType}'`;
+        // Bound, not interpolated: this value comes straight from the query string.
+        listParams.push(dbUserType);
+        statusCondition += ` AND ou.user_type = $${listParams.length}`;
       }
     } else if (guestOnly) {
       // Fallback to old guest filter for backwards compatibility
@@ -627,10 +633,20 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
     }
     // 'all' means no platform filter
 
+    // Account purpose: ?purpose=person keeps shared mailboxes, service and resource
+    // accounts out (the manager picker uses it); any other valid value lists only those.
+    const purposeFilter = req.query.purpose;
+    if (purposeFilter !== undefined) {
+      if (!isAccountPurpose(purposeFilter)) {
+        return res.status(400).json({ success: false, error: `purpose must be one of: ${Object.keys(ACCOUNT_PURPOSE_LABELS).join(', ')}` });
+      }
+      listParams.push(purposeFilter);
+      statusCondition += ` AND ou.account_purpose = $${listParams.length}`;
+    }
+
     // Free-text search (email / first / last name). The group member picker and
     // other callers sent ?search= all along; the server ignored it (2026-09-08).
     const search = String(req.query.search || '').trim();
-    const listParams: any[] = [organizationId];
     let searchCondition = '';
     if (search) {
       listParams.push(`%${search}%`);
@@ -650,6 +666,7 @@ router.get('/users', authenticateToken, async (req: Request, res: Response) => {
         ou.status as "userStatus",
         ou.is_guest as "isGuest",
         ou.user_type as "userType",
+        ou.account_purpose as "accountPurpose",
         ou.guest_expires_at as "guestExpiresAt",
         ou.guest_invited_by as "guestInvitedBy",
         ou.guest_invited_at as "guestInvitedAt",
@@ -1951,6 +1968,28 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
 
     const currentRole = existingUser.rows[0].role;
 
+    // Account purpose (person, shared mailbox, service, resource).
+    const accountPurpose = req.body.accountPurpose;
+    if (accountPurpose !== undefined && !isAccountPurpose(accountPurpose)) {
+      return res.status(400).json({ success: false, error: `accountPurpose must be one of: ${Object.keys(ACCOUNT_PURPOSE_LABELS).join(', ')}` });
+    }
+    if (accountPurpose !== undefined && accountPurpose !== 'person') {
+      // Only people belong on the org chart. Anyone reporting to this account would
+      // drop off the chart with it, so they need another manager first.
+      const reports = await db.query(
+        `SELECT COUNT(*)::int AS n FROM organization_users
+          WHERE reporting_manager_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+        [userId, organizationId],
+      );
+      if (reports.rows[0].n > 0) {
+        const n = reports.rows[0].n;
+        return res.status(409).json({
+          success: false,
+          error: `${n} ${n === 1 ? 'person reports' : 'people report'} to this account. Give them another manager before marking it as a ${ACCOUNT_PURPOSE_LABELS[accountPurpose as keyof typeof ACCOUNT_PURPOSE_LABELS].toLowerCase()}.`,
+        });
+      }
+    }
+
     // SECURITY: elevation to a privileged role is NOT allowed through this
     // generic update route. It happens only via the separate, admin-gated,
     // audited route POST /organization/admins/promote/:userId.
@@ -1994,6 +2033,15 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
     // non-COALESCE assignment, so every save from the UI nulled the manager.)
     const managerProvided = req.body.managerId !== undefined || reportingManagerId !== undefined;
     const managerIdValue = (req.body.managerId !== undefined ? req.body.managerId : reportingManagerId) || null;
+    if (managerIdValue) {
+      const mgr = await db.query(
+        'SELECT account_purpose FROM organization_users WHERE id = $1 AND organization_id = $2',
+        [managerIdValue, organizationId],
+      );
+      if (mgr.rows[0] && mgr.rows[0].account_purpose !== 'person') {
+        return res.status(400).json({ success: false, error: 'A manager must be a person, not a shared mailbox, service or resource account.' });
+      }
+    }
 
     // Update user
     const result = await db.query(
@@ -2079,6 +2127,16 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
 
     const updatedUser = result.rows[0];
 
+    let purposeChanged = false;
+    if (accountPurpose !== undefined) {
+      const p = await db.query(
+        `UPDATE organization_users SET account_purpose = $1, updated_at = NOW()
+          WHERE id = $2 AND organization_id = $3 AND account_purpose IS DISTINCT FROM $1 RETURNING id`,
+        [accountPurpose, userId, organizationId],
+      );
+      purposeChanged = p.rows.length > 0;
+    }
+
     // Sync to Google Workspace if the user is linked
     const userDetailsResult = await db.query(
       'SELECT google_workspace_id, microsoft_365_id, email FROM organization_users WHERE id = $1',
@@ -2140,6 +2198,13 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         platformWarnings.push(`Google Workspace refused the change: ${syncResult.error || 'unknown error'}`);
       } else {
         logger.info('User synced to Google Workspace', { userId, googleWorkspaceId });
+      }
+
+      // Mirror the purpose to Google's Helios.AccountPurpose attribute, so the Google
+      // console and Helios agree and a later change in Google comes back on sync.
+      if (purposeChanged) {
+        const mirrored = await googleWorkspaceService.setAccountPurpose(organizationId, googleWorkspaceId, accountPurpose);
+        if (!mirrored.success) platformWarnings.push(mirrored.error || 'Google did not record the account purpose');
       }
     }
 

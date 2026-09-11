@@ -7,6 +7,7 @@ import { OAuthTokenSyncService } from './oauth-token-sync.service.js';
 import { loadSyncSettings } from '../lib/sync-settings.js';
 import { microsoftSyncService } from './microsoft-sync.service.js';
 import { fieldDriftService } from './field-drift.service.js';
+import { purposeFromGoogle } from '../lib/account-purpose.js';
 
 interface SyncConfig {
   minInterval: number; // Platform minimum in seconds
@@ -381,6 +382,18 @@ export class SyncSchedulerService {
         // Profile fields: pull what Google owns, record what differs. Before this the
         // sync copied back only names and suspended status, so edits made in Google to
         // title, department, manager, phones or location never reached Helios.
+        // Account purpose set in Google (Helios.AccountPurpose) reaches Helios. An
+        // absent attribute changes nothing: it is not a request to reset to person.
+        const googlePurpose = purposeFromGoogle(user.customSchemas);
+        if (heliosUserId && googlePurpose) {
+          const changed = await db.query(
+            `UPDATE organization_users SET account_purpose = $1, updated_at = NOW()
+              WHERE id = $2 AND account_purpose IS DISTINCT FROM $1 RETURNING id`,
+            [googlePurpose, heliosUserId],
+          );
+          if (changed.rows.length) logger.info('Account purpose taken from Google', { email: user.primaryEmail, purpose: googlePurpose });
+        }
+
         if (heliosUserId) {
           try {
             const r = await fieldDriftService.reconcileUser(organizationId, heliosUserId, user, fieldOwnership);
