@@ -285,9 +285,18 @@ export class UserSyncService {
         const email = String(u.email || u.upn || '').toLowerCase();
         if (!email) continue;
 
+        // Microsoft id first, email second, for the same reason as the Google sync: a
+        // rename must not create a second person, and a live row that belongs to a
+        // different identity is never taken over. (On 2026-09-11 an address released
+        // in Google was reclaimed here as a brand-new Helios person.)
         const existing = await db.query(
-          'SELECT id FROM organization_users WHERE organization_id = $1 AND email = $2',
-          [organizationId, email],
+          `SELECT id FROM organization_users
+            WHERE organization_id = $1
+              AND (microsoft_365_id = $3
+                   OR (lower(email) = $2 AND (microsoft_365_id IS NULL OR microsoft_365_id = $3)))
+            ORDER BY (microsoft_365_id = $3) DESC NULLS LAST
+            LIMIT 1`,
+          [organizationId, email, u.ms_id],
         );
 
         if (existing.rows.length > 0) {

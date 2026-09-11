@@ -288,12 +288,41 @@ export class SyncSchedulerService {
           (user as any).isEnforcedIn2Sv || false
         ]);
 
-        // Create or update user in organization_users table
-        // Check if user already exists by email
+        // Match on the Google id first, email second.
+        //
+        // Matching on email alone made a rename in Google look like a new person:
+        // the old row kept the old address and a second row was created (the
+        // release-address test left three rows for one person). Email is only a
+        // fallback, for a row with no Google id yet, or a deleted row whose address a
+        // re-created account now uses. A live row that belongs to a DIFFERENT Google
+        // account is never taken over.
         const existingUser = await db.query(
-          'SELECT id, google_workspace_id FROM organization_users WHERE organization_id = $1 AND email = $2',
-          [organizationId, user.primaryEmail]
+          `SELECT id, google_workspace_id, email, deleted_at FROM organization_users
+            WHERE organization_id = $1
+              AND (google_workspace_id = $2
+                   OR (lower(email) = lower($3)
+                       AND (google_workspace_id IS NULL OR google_workspace_id = $2 OR deleted_at IS NOT NULL)))
+            ORDER BY (google_workspace_id = $2) DESC NULLS LAST
+            LIMIT 1`,
+          [organizationId, user.id, user.primaryEmail]
         );
+
+        // Renamed in Google: carry the new address, unless another row already holds it.
+        if (existingUser.rows.length > 0 && existingUser.rows[0].email.toLowerCase() !== String(user.primaryEmail).toLowerCase()) {
+          const taken = await db.query('SELECT id FROM organization_users WHERE lower(email) = lower($1) AND id <> $2', [user.primaryEmail, existingUser.rows[0].id]);
+          if (taken.rows.length === 0) {
+            await db.query('UPDATE organization_users SET email = $1, updated_at = NOW() WHERE id = $2', [user.primaryEmail, existingUser.rows[0].id]);
+            logger.info('User renamed in Google; email updated in Helios', { from: existingUser.rows[0].email, to: user.primaryEmail });
+          } else {
+            logger.warn('User renamed in Google but the new address is held by another Helios row; left unchanged', {
+              googleId: user.id, from: existingUser.rows[0].email, to: user.primaryEmail, conflictingRow: taken.rows[0].id,
+            });
+          }
+        }
+        // A deleted row whose address a new Google account now uses: bring it back.
+        if (existingUser.rows.length > 0 && existingUser.rows[0].deleted_at && existingUser.rows[0].google_workspace_id !== user.id) {
+          await db.query(`UPDATE organization_users SET deleted_at = NULL, status = 'active', updated_at = NOW() WHERE id = $1`, [existingUser.rows[0].id]);
+        }
 
         if (existingUser.rows.length > 0) {
           // Update existing user with Google Workspace ID
