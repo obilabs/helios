@@ -25,6 +25,7 @@ import {
 import { ErrorCode } from '../types/error-codes.js';
 
 import { cacheService } from '../services/cache.service.js';
+import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '../lib/sync-settings.js';
 
 const router = Router();
 
@@ -450,49 +451,45 @@ router.put('/settings', authenticateToken, async (req: Request, res: Response) =
 });
 
 /**
- * PUT /api/organization/sync-settings
- * Update sync settings (interval, auto sync, deletion policy, sync direction)
+ * GET /api/organization/sync-settings
+ * The saved directory sync settings, merged over defaults. There was no GET at all:
+ * the Advanced page could only ever show its built-in defaults.
  */
-router.put('/sync-settings', authenticateToken, async (req: Request, res: Response) => {
+router.get('/sync-settings', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { syncInterval, autoSyncEnabled, deletionPolicy, syncDirection } = req.body;
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
+    const settings = await loadSyncSettings(organizationId);
+    return res.json({ success: true, data: settings });
+  } catch (error: any) {
+    logger.error('Failed to load sync settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to load sync settings' });
+  }
+});
 
-    // Get the organization
-    const orgResult = await db.query('SELECT id FROM organizations LIMIT 1');
-    if (orgResult.rows.length === 0) {
-      return notFoundResponse(res, 'Organization');
+/**
+ * PUT /api/organization/sync-settings
+ * Admin only (it was open to any signed-in user). Validates, stores under the
+ * key/value table's `sync_settings` key, and reschedules immediately so the change
+ * takes effect now rather than at the next server restart.
+ */
+router.put('/sync-settings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
+    let patch;
+    try {
+      patch = validateSyncSettingsPatch(req.body);
+    } catch (e: any) {
+      return res.status(400).json({ success: false, error: e.message });
     }
-    const organizationId = orgResult.rows[0].id;
-
-    // Update or insert sync settings in organization_settings
-    const settingsResult = await db.query(
-      `INSERT INTO organization_settings (organization_id, settings, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (organization_id)
-       DO UPDATE SET
-         settings = organization_settings.settings || $2,
-         updated_at = NOW()
-       RETURNING *`,
-      [organizationId, JSON.stringify({
-        sync: {
-          interval: parseInt(syncInterval) || 900,
-          autoSyncEnabled: autoSyncEnabled !== false,
-          deletionPolicy: deletionPolicy || 'delete',
-          syncDirection: syncDirection || 'google-to-helios'
-        }
-      })]
-    );
-
-    logger.info('Sync settings updated', { syncInterval, autoSyncEnabled, deletionPolicy, syncDirection });
-    successResponse(res, {
-      syncInterval,
-      autoSyncEnabled,
-      deletionPolicy,
-      syncDirection
-    });
-  } catch (error) {
-    logger.error('Failed to update sync settings', error);
-    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update sync settings');
+    const saved = await saveSyncSettings(organizationId, patch);
+    await syncScheduler.scheduleFromSettings(organizationId);
+    logger.info('Sync settings updated', { organizationId, ...saved });
+    return res.json({ success: true, data: saved, message: 'Sync settings saved' });
+  } catch (error: any) {
+    logger.error('Failed to save sync settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to save sync settings' });
   }
 });
 
@@ -2320,6 +2317,9 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
       data: {
         google: shape(google.rows[0]),
         microsoft: shape(microsoft.rows[0]),
+        // The schedule as it actually runs, so the stamp can say "every 15 minutes,
+        // next in 7" truthfully, or that automatic sync is off.
+        schedule: { ...(await loadSyncSettings(organizationId)), ...syncScheduler.getSchedule(organizationId) },
         serverTime: new Date().toISOString(),
       },
     });

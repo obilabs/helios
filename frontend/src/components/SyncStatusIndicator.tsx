@@ -15,6 +15,25 @@ interface PlatformSync {
 interface SyncStatus {
   google: PlatformSync | null;
   microsoft: PlatformSync | null;
+  /** The schedule as it actually runs (from the server), not as a setting claims. */
+  schedule?: { autoSyncEnabled: boolean; intervalSeconds: number; scheduled: boolean; nextSyncAt: string | null };
+}
+
+/** "every 15 minutes, next in 7" / "automatic sync is off", from the real schedule. */
+function scheduleNote(schedule: SyncStatus['schedule']): string {
+  if (!schedule) return '';
+  if (!schedule.autoSyncEnabled || !schedule.scheduled) {
+    return 'Automatic sync is off. Sync from here when needed.';
+  }
+  const every = schedule.intervalSeconds >= 3600
+    ? `${Math.round(schedule.intervalSeconds / 3600)} hour${schedule.intervalSeconds >= 7200 ? 's' : ''}`
+    : `${Math.round(schedule.intervalSeconds / 60)} minutes`;
+  let next = '';
+  if (schedule.nextSyncAt) {
+    const mins = Math.max(0, Math.round((new Date(schedule.nextSyncAt).getTime() - Date.now()) / 60000));
+    next = mins < 1 ? ', next in under a minute' : `, next in ${mins} min`;
+  }
+  return `Syncs automatically every ${every}${next}.`;
 }
 
 /** "just now", "6m", "3h", "2d" — short enough for a header. */
@@ -233,11 +252,7 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
                 ) : (
                   <p className="sync-status-note">Only an admin can start a sync.</p>
                 )}
-                <p className="sync-status-note">
-                  {stamp.key === 'google'
-                    ? 'Syncs automatically every 15 minutes.'
-                    : 'Not synced automatically yet. It updates when an admin syncs it here.'}
-                </p>
+                <p className="sync-status-note">{scheduleNote(status?.schedule)}</p>
               </div>
             )}
           </div>

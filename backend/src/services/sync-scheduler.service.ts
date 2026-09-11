@@ -4,6 +4,8 @@ import { db } from '../database/connection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { decodeServiceAccountKey } from './gw-credentials.js';
 import { OAuthTokenSyncService } from './oauth-token-sync.service.js';
+import { loadSyncSettings } from '../lib/sync-settings.js';
+import { microsoftSyncService } from './microsoft-sync.service.js';
 
 interface SyncConfig {
   minInterval: number; // Platform minimum in seconds
@@ -14,6 +16,8 @@ interface SyncConfig {
 
 export class SyncSchedulerService {
   private syncIntervals: Map<string, NodeJS.Timeout> = new Map();
+  /** When the next automatic sync is due, per organization. Absent = none scheduled. */
+  private nextSyncAt: Map<string, Date> = new Map();
   private tokenSyncIntervals: Map<string, NodeJS.Timeout> = new Map();
   private lastTokenSync: Map<string, Date> = new Map();
   private config: SyncConfig;
@@ -32,39 +36,68 @@ export class SyncSchedulerService {
   }
 
   /**
-   * Start sync for an organization with their configured interval
+   * Start automatic sync for an organization, using ITS settings.
+   *
+   * The interval used to be `this.config.defaultInterval` with a comment saying
+   * "use default for now"; the organization's setting was never read, automatic
+   * sync could not be turned off, and Microsoft 365 was never synced on a
+   * schedule at all. Now the saved settings decide, and every connected platform
+   * runs on the same tick.
    */
   async startOrganizationSync(organizationId: string): Promise<void> {
     try {
-      // Get organization sync interval from database (use default for now)
-      const interval = this.config.defaultInterval;
-
-      // Ensure interval respects platform limits
-      const validInterval = Math.max(
-        this.config.minInterval,
-        Math.min(interval, this.config.maxInterval)
-      );
-
-      // Clear existing interval if any
-      this.stopOrganizationSync(organizationId);
-
-      // Set up new interval
-      const intervalMs = validInterval * 1000;  // Convert seconds to milliseconds
-      const timeout = setInterval(() => {
-        this.syncOrganizationData(organizationId).catch(error => {
-          logger.error('Sync failed for organization', { organizationId, error });
-        });
-      }, intervalMs);
-
-      this.syncIntervals.set(organizationId, timeout);
-
-      // Run initial sync
-      await this.syncOrganizationData(organizationId);
-
-      logger.info('Started sync for organization', { organizationId, intervalSeconds: validInterval });
+      await this.scheduleFromSettings(organizationId);
+      // Run initial sync so a freshly started server is current.
+      await this.runScheduledSync(organizationId);
     } catch (error) {
       logger.error('Failed to start organization sync', { organizationId, error });
     }
+  }
+
+  /**
+   * Re-read the settings and reschedule, WITHOUT running a sync. Called when an
+   * admin saves the Advanced settings, so a change takes effect immediately.
+   */
+  async scheduleFromSettings(organizationId: string): Promise<void> {
+    this.stopOrganizationSync(organizationId);
+    const settings = await loadSyncSettings(organizationId);
+    if (!settings.autoSyncEnabled) {
+      logger.info('Automatic sync is off for organization', { organizationId });
+      return;
+    }
+    const seconds = Math.max(this.config.minInterval, Math.min(settings.intervalSeconds, this.config.maxInterval));
+    const intervalMs = seconds * 1000;
+    this.nextSyncAt.set(organizationId, new Date(Date.now() + intervalMs));
+    const timeout = setInterval(() => {
+      this.nextSyncAt.set(organizationId, new Date(Date.now() + intervalMs));
+      this.runScheduledSync(organizationId).catch((error) => {
+        logger.error('Scheduled sync failed for organization', { organizationId, error });
+      });
+    }, intervalMs);
+    this.syncIntervals.set(organizationId, timeout);
+    logger.info('Scheduled sync for organization', { organizationId, intervalSeconds: seconds });
+  }
+
+  /** Every connected platform, on one tick. Each is independent: one failing does not stop the other. */
+  private async runScheduledSync(organizationId: string): Promise<void> {
+    await this.syncOrganizationData(organizationId).catch((error) =>
+      logger.error('Scheduled Google sync failed', { organizationId, error: error?.message }),
+    );
+    try {
+      const ms = await db.query(
+        'SELECT 1 FROM ms_credentials WHERE organization_id = $1 AND is_active = true',
+        [organizationId],
+      );
+      if (ms.rows.length > 0) await microsoftSyncService.syncAll(organizationId);
+    } catch (error: any) {
+      logger.error('Scheduled Microsoft 365 sync failed', { organizationId, error: error?.message });
+    }
+  }
+
+  /** For the header stamp: the schedule as it actually is, not as a setting says it should be. */
+  getSchedule(organizationId: string): { scheduled: boolean; nextSyncAt: string | null } {
+    const next = this.nextSyncAt.get(organizationId);
+    return { scheduled: this.syncIntervals.has(organizationId), nextSyncAt: next ? next.toISOString() : null };
   }
 
   /**
@@ -72,6 +105,7 @@ export class SyncSchedulerService {
    */
   stopOrganizationSync(organizationId: string): void {
     const interval = this.syncIntervals.get(organizationId);
+    this.nextSyncAt.delete(organizationId);
     if (interval) {
       clearInterval(interval);
       this.syncIntervals.delete(organizationId);
