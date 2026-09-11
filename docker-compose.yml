@@ -154,7 +154,12 @@ services:
       # Rate limiting
       RATE_LIMIT_ENABLED: "true"
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
-      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+      # Must equal the default in backend/src/index.ts (a test enforces it).
+      # Every browser reaches the backend through the bundled nginx, so this
+      # budget is shared by the WHOLE organization. At 100 an admin was shown the
+      # sign-in page mid-task on 2026-09-11 (and the setup wizard on 2026-09-07)
+      # because the code default had been raised but this line still said 100.
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-2000}
 
       # Default admin (optional - if not set, setup wizard is shown)
       # Set these to skip the setup wizard and create admin on first startup
