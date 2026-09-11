@@ -147,7 +147,8 @@ const defaultTemplate: OffboardingTemplate = {
 
   // Access revocation
   removeFromAllGroups: true,
-  removeFromSharedDrives: true,
+  // Off by default: removal is not implemented, so a default tick promised it silently.
+  removeFromSharedDrives: false,
   revokeOauthTokens: true,
   revokeAppPasswords: true,
   signOutAllDevices: true,
@@ -188,18 +189,27 @@ const defaultTemplate: OffboardingTemplate = {
 const driveActionLabels: Record<DriveAction, { label: string; description: string }> = {
   transfer_manager: { label: 'Transfer to manager', description: 'All Drive files will be transferred to the user\'s manager' },
   transfer_user: { label: 'Transfer to specific user', description: 'All Drive files will be transferred to a designated user' },
-  archive: { label: 'Archive to Shared Drive', description: 'All Drive files will be copied to a Shared Drive for archival' },
+  archive: { label: 'Archive to Shared Drive', description: 'Not available yet. Helios cannot copy files to a Shared Drive, so this is disabled rather than promising a copy that would not exist.' },
   keep: { label: 'Keep files', description: 'Drive files will remain in the user\'s account' },
-  delete: { label: 'Delete files', description: 'All Drive files will be permanently deleted after retention period' },
+  delete: { label: 'Delete files', description: 'Not available yet. Nothing schedules the deletion; files are removed only when the account itself is deleted.' },
 };
 
 const emailActionLabels: Record<EmailAction, { label: string; description: string }> = {
   forward_manager: { label: 'Forward to manager', description: 'New emails will be forwarded to the user\'s manager' },
   forward_user: { label: 'Forward to specific user', description: 'New emails will be forwarded to a designated user' },
   auto_reply: { label: 'Set auto-reply', description: 'An automatic reply will be sent to incoming emails' },
-  archive: { label: 'Archive emails', description: 'Emails will be archived and no forwarding will occur' },
+  archive: { label: 'Archive emails', description: 'Not available yet. Nothing archives the mailbox; choose Keep mailbox or a forwarding option.' },
   keep: { label: 'Keep mailbox', description: 'Mailbox will remain accessible without changes' },
 };
+
+/**
+ * Actions the backend does not perform. They stay visible so an admin knows they are
+ * coming, but cannot be chosen: an offboarding that promises an archive or a timed
+ * deletion and then does neither is worse than no option. Remove an entry in the same
+ * change that implements it.
+ */
+const UNAVAILABLE_DRIVE_ACTIONS: ReadonlySet<DriveAction> = new Set<DriveAction>(['archive', 'delete']);
+const UNAVAILABLE_EMAIL_ACTIONS: ReadonlySet<EmailAction> = new Set<EmailAction>(['archive']);
 
 const accountActionLabels: Record<AccountAction, { label: string; description: string }> = {
   suspend_immediately: { label: 'Suspend immediately', description: 'Account will be suspended as soon as offboarding runs' },
@@ -471,6 +481,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                         name="driveAction"
                         value={value}
                         checked={template.driveAction === value}
+                        disabled={UNAVAILABLE_DRIVE_ACTIONS.has(value)}
                         onChange={() => setTemplate((prev) => ({ ...prev, driveAction: value }))}
                       />
                       <div className="radio-content">
@@ -543,6 +554,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                         name="emailAction"
                         value={value}
                         checked={template.emailAction === value}
+                        disabled={UNAVAILABLE_EMAIL_ACTIONS.has(value)}
                         onChange={() => setTemplate((prev) => ({ ...prev, emailAction: value }))}
                       />
                       <div className="radio-content">
@@ -795,9 +807,11 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
                   <input
                     type="checkbox"
                     checked={template.removeFromSharedDrives}
+                    // Can be cleared on a legacy template, cannot be newly ticked.
+                    disabled={!template.removeFromSharedDrives}
                     onChange={(e) => setTemplate((prev) => ({ ...prev, removeFromSharedDrives: e.target.checked }))}
                   />
-                  <span>Remove from all Shared Drives</span>
+                  <span>Remove from all Shared Drives <em className="form-hint">(not available yet: remove them in the Google Admin console)</em></span>
                 </label>
                 <label className="checkbox-label">
                   <input

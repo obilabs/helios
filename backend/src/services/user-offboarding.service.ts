@@ -478,7 +478,26 @@ class UserOffboardingService {
       }
 
       // Step 2: Transfer Drive files
-      if (config.driveAction !== 'keep') {
+      //
+      // 'archive' and 'delete' used to reach handleDriveTransfer, get back
+      // { transferred: false, reason: 'unsupported_action' }, and be logged as a
+      // SUCCESS and listed under stepsCompleted. The template editor promised "copied
+      // to a Shared Drive" and "held for N days before permanent deletion"; neither
+      // happened, and the offboarding record said it had. They are now recorded as
+      // skipped with the reason, so the timeline tells the truth.
+      if (config.driveAction === 'archive' || config.driveAction === 'delete') {
+        stepOrder++;
+        const reason =
+          config.driveAction === 'archive'
+            ? 'Archive to a Shared Drive is not implemented yet. No files were copied; they remain in the account.'
+            : 'Timed deletion of Drive files is not implemented yet. Nothing was scheduled; files are removed only if and when the account itself is deleted.';
+        await lifecycleLogService.logSkipped(organizationId, 'offboard', 'transfer_drive_files', reason, {
+          ...logOptions,
+          stepOrder,
+        });
+        result.stepsSkipped.push('transfer_drive_files');
+        result.errors.push(`Drive: ${reason}`);
+      } else if (config.driveAction !== 'keep') {
         stepOrder++;
         const driveStart = Date.now();
         try {
@@ -726,6 +745,25 @@ class UserOffboardingService {
         }
       } else {
         result.stepsSkipped.push('remove_from_groups');
+      }
+
+      // Step 5a: Remove from Shared Drives.
+      //
+      // This flag defaulted to TRUE and was stored, read back and shown as ticked,
+      // but no code ever acted on it: a departing person silently kept every
+      // shared-drive membership while the template said they had been removed.
+      // Until removal is built, a ticked box is recorded as a skipped step with the
+      // reason, so nobody reads the timeline as having revoked access.
+      if (config.removeFromSharedDrives) {
+        stepOrder++;
+        const reason =
+          'Removing shared-drive membership is not implemented yet. The person was NOT removed from any shared drive; remove them in the Google Admin console.';
+        await lifecycleLogService.logSkipped(organizationId, 'offboard', 'remove_from_shared_drives', reason, {
+          ...logOptions,
+          stepOrder,
+        });
+        result.stepsSkipped.push('remove_from_shared_drives');
+        result.errors.push(`Shared drives: ${reason}`);
       }
 
       // Step 5b: Add the departing user to a designated "offboarded" group (in

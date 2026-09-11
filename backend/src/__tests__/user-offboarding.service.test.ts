@@ -931,9 +931,40 @@ describe('UserOffboardingService', () => {
 
         const result = await userOffboardingService.executeOffboarding(testOrgId, config);
 
-        // Step runs (driveAction !== 'keep') but archive has no Data Transfer mapping.
-        expect(result.stepsCompleted).toContain('transfer_drive_files');
+        // This test used to assert stepsCompleted CONTAINED transfer_drive_files for
+        // 'archive' -- it pinned the bug. Nothing is archived (archive has no
+        // implementation), so reporting the step as completed told the admin a copy
+        // existed when none did. It must be skipped, and say why.
+        expect(result.stepsCompleted).not.toContain('transfer_drive_files');
+        expect(result.stepsSkipped).toContain('transfer_drive_files');
+        expect(result.errors.join(' ')).toMatch(/Archive to a Shared Drive is not implemented/);
+        expect(result.success).toBe(true); // a note for the admin, not a failed offboarding
         expect(mockTransfersInsert).not.toHaveBeenCalled();
+      });
+
+      it('reports timed Drive deletion as not done rather than as completed', async () => {
+        primeGoogleDb();
+        primeUserIds();
+
+        const config: OffboardingConfig = { ...baseConfig, driveAction: 'delete' };
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).not.toContain('transfer_drive_files');
+        expect(result.stepsSkipped).toContain('transfer_drive_files');
+        expect(result.errors.join(' ')).toMatch(/Nothing was scheduled/);
+        expect(mockTransfersInsert).not.toHaveBeenCalled();
+      });
+
+      it('never claims shared-drive removal it did not perform', async () => {
+        primeGoogleDb();
+        primeUserIds();
+
+        const config: OffboardingConfig = { ...baseConfig, driveAction: 'keep', removeFromSharedDrives: true };
+        const result = await userOffboardingService.executeOffboarding(testOrgId, config);
+
+        expect(result.stepsCompleted).not.toContain('remove_from_shared_drives');
+        expect(result.stepsSkipped).toContain('remove_from_shared_drives');
+        expect(result.errors.join(' ')).toMatch(/NOT removed from any shared drive/);
       });
     });
 
