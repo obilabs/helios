@@ -1767,10 +1767,18 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       message += '. Microsoft 365 creation failed: ' + microsoftCreationError;
     }
 
+    // An invite that could not be emailed is not a successful invite: nobody will
+    // ever receive the setup link. The server logged the failure; the admin saw
+    // nothing. Say it in the result, and return the flag so the UI can style it.
+    if (method === 'email_link' && !emailSent) {
+      message += '. The password setup email was NOT sent, so nobody has the setup link yet. Email delivery may not be configured (Settings), or send the link another way';
+    }
+
     res.status(201).json({
       success: true,
       message,
       data: {
+        emailSent: method === 'email_link' ? emailSent : null,
         user: {
           id: newUser.id,
           email: newUser.email,

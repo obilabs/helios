@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { userKeys } from '../hooks/queries/useUsers';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { UserPlus, ChevronDown, Download, RefreshCw, CheckCircle, PauseCircle, Trash2, FileSpreadsheet, FileJson, Filter } from 'lucide-react';
@@ -23,6 +25,7 @@ type StatusFilter = 'all' | 'active' | 'pending' | 'suspended' | 'expired' | 'de
 type PlatformFilter = 'all' | 'local' | 'google_workspace' | 'microsoft_365';
 
 export function Users({ organizationId, onNavigate }: UsersProps) {
+  const queryClient = useQueryClient();
   // Get dynamic labels from context (allows customization like "People" instead of "Users")
   const userLabels = useEntityLabels(ENTITIES.USER);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -478,8 +481,11 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
           organizationId={organizationId}
           onClose={() => setShowQuickAddSlideOut(false)}
           onUserCreated={() => {
+            // Refresh, but do NOT close the panel here. Closing it the instant the
+            // user was created meant its result message -- including any warning
+            // that Google creation or the invite email failed -- was never on screen.
             fetchCounts();
-            setShowQuickAddSlideOut(false);
+            queryClient.invalidateQueries({ queryKey: userKeys.all });
           }}
         />
       )}
