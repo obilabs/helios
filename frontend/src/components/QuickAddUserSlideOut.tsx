@@ -94,7 +94,7 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
             authFetch('/api/v1/organization/job-titles'),
             // Managers are people in the organization: staff or local. Asking for every type
             // offered guests and contacts, several with no name, as possible managers.
-            authFetch('/api/v1/organization/users?status=active&userType=staff&limit=100'),
+            authFetch('/api/v1/organization/users?status=active&userType=staff&purpose=person&limit=100'),
             authFetch('/api/v1/organization/licenses'),
             authFetch('/api/v1/dashboard/stats'),
             authFetch('/api/v1/organization/current')

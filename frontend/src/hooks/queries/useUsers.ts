@@ -30,6 +30,8 @@ export interface User {
   status?: string;
   source?: string;
   userType?: 'staff' | 'guest' | 'contact';
+  /** What the account is for: person, shared_mailbox, service, resource. */
+  accountPurpose?: string;
   company?: string;
   guestExpiresAt?: string;
 }
@@ -38,6 +40,8 @@ export interface UserFilters {
   userType: 'staff' | 'guest' | 'contact';
   status?: string;
   platform?: string;
+  /** Account purpose; omitted means every purpose. */
+  purpose?: string;
   search?: string;
   department?: string;
 }
@@ -90,6 +94,9 @@ async function fetchUsers(filters: UserFilters): Promise<User[]> {
   if (filters.platform && filters.platform !== 'all') {
     params.append('platform', filters.platform);
   }
+  if (filters.purpose && filters.purpose !== 'all') {
+    params.append('purpose', filters.purpose);
+  }
 
   const response = await authFetch(`/api/v1/organization/users?${params}`, {
     headers: getCommonHeaders(),
@@ -137,6 +144,7 @@ async function fetchUsers(filters: UserFilters): Promise<User[]> {
     status: normalizeUserStatus(user),
     source: user.source,
     userType: user.userType || user.user_type,
+    accountPurpose: user.accountPurpose || user.account_purpose || 'person',
     company: user.company,
     guestExpiresAt: user.guestExpiresAt || user.guest_expires_at,
   }));

@@ -131,9 +131,11 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         // boolean is not maintained by the sync path, so count on user_type.
         db.query("SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND user_type = 'guest' AND deleted_at IS NULL", [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND role = \'admin\' AND deleted_at IS NULL', [organizationId]),
-        // Orphaned users: no manager assigned, not CEO, active
+        // Orphaned users: no manager assigned, not CEO. Counted from the org chart's own
+        // definition of who belongs on it, so guests, contacts, shared mailboxes and
+        // service accounts (who have no manager by design) are not reported as orphans.
         db.query(`
-          SELECT COUNT(*) as count FROM organization_users
+          SELECT COUNT(*) as count FROM org_chart_members
           WHERE organization_id = $1
             AND is_active = true
             AND status != 'deleted'

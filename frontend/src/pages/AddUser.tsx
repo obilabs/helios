@@ -120,7 +120,7 @@ export function AddUser() {
 
     // Fetch managers (active users)
     try {
-      const managersResponse = await authFetch('/api/v1/organization/users?userType=staff&limit=200');
+      const managersResponse = await authFetch('/api/v1/organization/users?userType=staff&purpose=person&limit=200');
       if (managersResponse.ok) {
         const data = await managersResponse.json();
         setManagers(data.data || []);

@@ -1,3 +1,4 @@
+import { ACCOUNT_PURPOSE_OPTIONS, accountPurposeLabel } from '../config/accountPurpose';
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useTabPersistence } from '../hooks/useTabPersistence';
@@ -10,6 +11,8 @@ import './UserSlideOut.css';
 
 interface User {
   id: string;
+  /** What the account is for: person, shared_mailbox, service, resource. */
+  accountPurpose?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -245,7 +248,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const fetchDropdownData = async () => {
     // Fetch available managers (all active users)
     try {
-      const managersResponse = await authFetch(`/api/v1/organization/users?userType=staff&limit=200`);
+      const managersResponse = await authFetch(`/api/v1/organization/users?userType=staff&purpose=person&limit=200`);
       if (managersResponse.ok) {
         const managersData = await managersResponse.json();
         setAvailableManagers(managersData.data || []);
@@ -535,7 +538,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
 
   /** The editable profile fields whose value differs from the loaded user. */
   function changedFields(original: any, edited: any): Record<string, unknown> {
-    const keys = ['firstName', 'lastName', 'jobTitle', 'department', 'location', 'organizationalUnit', 'mobilePhone', 'workPhone', 'role'] as const;
+    const keys = ['firstName', 'lastName', 'jobTitle', 'department', 'location', 'organizationalUnit', 'mobilePhone', 'workPhone', 'role', 'accountPurpose'] as const;
     const out: Record<string, unknown> = {};
     for (const k of keys) {
       if ((edited?.[k] ?? '') !== (original?.[k] ?? '')) out[k] = edited?.[k] ?? '';
@@ -1026,10 +1029,24 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                 </div>
               </div>
 
-              {(isEditing || user.jobTitle || user.department || user.location || user.organizationalUnit) && (
+              {(isEditing || user.jobTitle || user.department || user.location || user.organizationalUnit || (user.accountPurpose && user.accountPurpose !== 'person')) && (
                 <>
                   <h3>Profile Information</h3>
                   <div className="info-grid">
+                    <div className="info-item">
+                      <label>Account purpose</label>
+                      {isEditing ? (
+                        <select
+                          aria-label="Account purpose"
+                          value={editedUser.accountPurpose || 'person'}
+                          onChange={(e) => setEditedUser({ ...editedUser, accountPurpose: e.target.value })}
+                        >
+                          {ACCOUNT_PURPOSE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                        </select>
+                      ) : (
+                        <div>{accountPurposeLabel(user.accountPurpose)}</div>
+                      )}
+                    </div>
                     <div className="info-item">
                       <label>Job Title</label>
                       {isEditing ? (
