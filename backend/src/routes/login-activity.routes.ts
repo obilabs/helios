@@ -41,7 +41,11 @@ router.use(authenticateToken);
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.organizationId;
+    // Session/JWT auth puts the organization on req.user; only API-key auth sets
+    // req.organizationId. Reading only the latter made every call from the signed-in
+    // UI fail with 401 'No organization context', so the Login Locations widget never
+    // showed data to an admin and said 'connect Google Workspace' instead.
+    const organizationId = req.user?.organizationId ?? req.organizationId;
     if (!organizationId) {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }
@@ -93,7 +97,11 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/map', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.organizationId;
+    // Session/JWT auth puts the organization on req.user; only API-key auth sets
+    // req.organizationId. Reading only the latter made every call from the signed-in
+    // UI fail with 401 'No organization context', so the Login Locations widget never
+    // showed data to an admin and said 'connect Google Workspace' instead.
+    const organizationId = req.user?.organizationId ?? req.organizationId;
     if (!organizationId) {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }
@@ -155,7 +163,11 @@ router.get('/map', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.organizationId;
+    // Session/JWT auth puts the organization on req.user; only API-key auth sets
+    // req.organizationId. Reading only the latter made every call from the signed-in
+    // UI fail with 401 'No organization context', so the Login Locations widget never
+    // showed data to an admin and said 'connect Google Workspace' instead.
+    const organizationId = req.user?.organizationId ?? req.organizationId;
     if (!organizationId) {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }
@@ -213,7 +225,11 @@ router.get('/stats', async (req: Request, res: Response) => {
  */
 router.post('/sync', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.organizationId;
+    // Session/JWT auth puts the organization on req.user; only API-key auth sets
+    // req.organizationId. Reading only the latter made every call from the signed-in
+    // UI fail with 401 'No organization context', so the Login Locations widget never
+    // showed data to an admin and said 'connect Google Workspace' instead.
+    const organizationId = req.user?.organizationId ?? req.organizationId;
     if (!organizationId) {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }
@@ -256,7 +272,11 @@ router.post('/sync', async (req: Request, res: Response) => {
  */
 router.post('/enrich', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.organizationId;
+    // Session/JWT auth puts the organization on req.user; only API-key auth sets
+    // req.organizationId. Reading only the latter made every call from the signed-in
+    // UI fail with 401 'No organization context', so the Login Locations widget never
+    // showed data to an admin and said 'connect Google Workspace' instead.
+    const organizationId = req.user?.organizationId ?? req.organizationId;
     if (!organizationId) {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }

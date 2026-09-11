@@ -51,6 +51,13 @@ export function LoginMapWidget() {
         authFetch(apiPath('/login-activity/stats'))
       ]);
 
+      // A failed request used to fall through silently, leaving the empty state
+      // that tells the admin to connect Google Workspace. Say what failed instead.
+      if (!mapResponse.ok || !statsResponse.ok) {
+        const failed = !mapResponse.ok ? mapResponse : statsResponse;
+        setError(`Could not load login data (HTTP ${failed.status}).`);
+      }
+
       if (mapResponse.ok) {
         const mapData = await mapResponse.json();
         if (mapData.success) {
