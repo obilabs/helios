@@ -60,6 +60,13 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
   const [activityLog, setActivityLog] = useState<any[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [googleAction, setGoogleAction] = useState<'keep' | 'suspend' | 'delete'>('delete');
+  // Preselect the organization's saved default (Advanced settings), which nothing read before.
+  useEffect(() => {
+    authFetch('/api/v1/organization/sync-settings')
+      .then((r) => r.json())
+      .then((d) => { if (d?.success && ['keep', 'suspend', 'delete'].includes(d.data?.deletionDefault)) setGoogleAction(d.data.deletionDefault); })
+      .catch(() => undefined);
+  }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState<User>(user);
   const [isSaving, setIsSaving] = useState(false);
