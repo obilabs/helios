@@ -2270,7 +2270,7 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
     let microsoft: { rows: any[] } = { rows: [] };
     try {
       microsoft = await db.query(
-        `SELECT last_sync_at,
+        `SELECT last_sync_at, sync_status, sync_error,
                 (SELECT COUNT(*) FROM ms_synced_users u WHERE u.organization_id = $1) AS user_count
            FROM ms_credentials WHERE organization_id = $1 AND is_active = true`,
         [organizationId]
@@ -2279,8 +2279,17 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
       // Microsoft tables are optional on an install that never connected it.
     }
 
+    // state/error are carried where the platform records them (Microsoft does; Google's
+    // module row does not). Without them a failing sync looked exactly like an old one.
     const shape = (row: any) =>
-      row ? { lastSync: row.last_sync_at || null, userCount: Number(row.user_count) || 0 } : null;
+      row
+        ? {
+            lastSync: row.last_sync_at || null,
+            userCount: Number(row.user_count) || 0,
+            state: row.sync_status || null,
+            error: row.sync_error || null,
+          }
+        : null;
 
     return res.json({
       success: true,
