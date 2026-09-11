@@ -1975,9 +1975,12 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         employee_id = COALESCE($11, employee_id),
         employee_type = COALESCE($12, employee_type),
         cost_center = COALESCE($13, cost_center),
-        start_date = $14,
-        end_date = $15,
-        bio = $16,
+        -- Written only when the caller sent them. They were assigned unconditionally,
+        -- so every save from the edit form (which never sends them) blanked a user's
+        -- start date, end date and bio.
+        start_date = CASE WHEN $33 THEN $14 ELSE start_date END,
+        end_date = CASE WHEN $34 THEN $15 ELSE end_date END,
+        bio = CASE WHEN $35 THEN $16 ELSE bio END,
         mobile_phone = COALESCE($17, mobile_phone),
         work_phone = COALESCE($18, work_phone),
         work_phone_extension = COALESCE($19, work_phone_extension),
@@ -2026,9 +2029,17 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
         externalAdminValue,
         userId,
         organizationId,
-        managerProvided
+        managerProvided,
+        req.body.startDate !== undefined,
+        req.body.endDate !== undefined,
+        req.body.bio !== undefined
       ]
     );
+
+    // Platform write-through outcomes, reported back instead of swallowed. A refused
+    // update used to return 'User updated successfully' while Helios and the platform
+    // quietly disagreed from then on.
+    const platformWarnings: string[] = [];
 
     const updatedUser = result.rows[0];
 
@@ -2090,6 +2101,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
           error: syncResult.error
         });
         // Continue - don't fail the whole request if Google sync fails
+        platformWarnings.push(`Google Workspace refused the change: ${syncResult.error || 'unknown error'}`);
       } else {
         logger.info('User synced to Google Workspace', { userId, googleWorkspaceId });
       }
@@ -2166,6 +2178,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
       } catch (err) {
         logger.warn('Failed to sync user update to Microsoft 365', { userId, error: (err as Error).message });
         // Continue - don't fail the whole request if the Graph sync fails
+        platformWarnings.push(`Microsoft 365 refused the change: ${(err as Error).message}`);
       }
     }
 
@@ -2204,8 +2217,11 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
 
     res.json({
       success: true,
-      message: 'User updated successfully',
+      message: platformWarnings.length
+        ? `Saved in Helios, but ${platformWarnings.join('; ')}. Helios and the platform now differ until this is fixed.`
+        : 'User updated successfully',
       data: {
+        warnings: platformWarnings,
         user: {
           id: updatedUser.id,
           email: updatedUser.email,

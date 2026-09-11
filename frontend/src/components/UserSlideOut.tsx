@@ -500,23 +500,19 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            firstName: editedUser.firstName,
-            lastName: editedUser.lastName,
-            jobTitle: editedUser.jobTitle,
-            department: editedUser.department,
-            location: editedUser.location,
-            organizationalUnit: editedUser.organizationalUnit,
-            mobilePhone: editedUser.mobilePhone,
-            workPhone: editedUser.workPhone,
-            role: editedUser.role,
-            managerId: editedUser.managerId || null
-          })
+          // Send only what the admin changed. Sending every field from Helios's copy
+          // meant any save pushed Helios's values back over newer ones in Google:
+          // proven 2026-09-11, a phone edit reverted a job title changed in the
+          // Google Admin console.
+          body: JSON.stringify(changedFields(user, editedUser))
         }
       );
 
       if (response.ok) {
-        showSuccess('User updated successfully');
+        const saved = await response.json().catch(() => ({}));
+        // A platform refusal comes back as a warning; show it as one, not as success.
+        if (saved?.data?.warnings?.length) showError(saved.message);
+        else showSuccess(saved?.message || 'User updated successfully');
         setIsEditing(false);
         onUserUpdated?.();
       } else {
@@ -529,6 +525,17 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
       setIsSaving(false);
     }
   };
+
+  /** The editable profile fields whose value differs from the loaded user. */
+  function changedFields(original: any, edited: any): Record<string, unknown> {
+    const keys = ['firstName', 'lastName', 'jobTitle', 'department', 'location', 'organizationalUnit', 'mobilePhone', 'workPhone', 'role'] as const;
+    const out: Record<string, unknown> = {};
+    for (const k of keys) {
+      if ((edited?.[k] ?? '') !== (original?.[k] ?? '')) out[k] = edited?.[k] ?? '';
+    }
+    if ((edited?.managerId || null) !== (original?.managerId || null)) out.managerId = edited?.managerId || null;
+    return out;
+  }
 
   const handleCancelEdit = () => {
     setEditedUser(user);

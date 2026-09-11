@@ -1834,21 +1834,34 @@ export class GoogleWorkspaceService {
       // Build the update request body
       const requestBody: any = {};
 
-      // Update name if provided
-      if (updates.firstName || updates.lastName) {
+      // users.update REPLACES each list or object it is given. Sending a partial one
+      // wipes what was left out: a department-only change erased the job title, a
+      // first-name-only change sent an empty family name, and a mobile-only change
+      // erased the work phone. Read Google's current record once and merge into it,
+      // so a change to one field leaves the others as Google has them.
+      const touchesMerged =
+        updates.firstName !== undefined || updates.lastName !== undefined ||
+        updates.jobTitle !== undefined || updates.department !== undefined ||
+        (updates.phones !== undefined && updates.phones.length > 0);
+      const current: any = touchesMerged
+        ? (await admin.users.get({ userKey: googleWorkspaceId, projection: 'full' })).data
+        : {};
+
+      if (updates.firstName !== undefined || updates.lastName !== undefined) {
         requestBody.name = {
-          givenName: updates.firstName,
-          familyName: updates.lastName
+          givenName: updates.firstName ?? current.name?.givenName,
+          familyName: updates.lastName ?? current.name?.familyName,
         };
       }
 
-      // Update organization info (job title, department)
-      if (updates.jobTitle || updates.department) {
-        requestBody.organizations = [{
-          title: updates.jobTitle,
-          department: updates.department,
-          primary: true
-        }];
+      if (updates.jobTitle !== undefined || updates.department !== undefined) {
+        const orgs: any[] = Array.isArray(current.organizations) ? current.organizations.map((o: any) => ({ ...o })) : [];
+        let primary = orgs.find((o) => o.primary) ?? orgs[0];
+        if (!primary) { primary = { primary: true }; orgs.push(primary); }
+        if (updates.jobTitle !== undefined) primary.title = updates.jobTitle;
+        if (updates.department !== undefined) primary.department = updates.department;
+        primary.primary = true;
+        requestBody.organizations = orgs;
       }
 
       // Location: Google keeps a structured locations[] list; we carry the
@@ -1877,13 +1890,18 @@ export class GoogleWorkspaceService {
         requestBody.orgUnitPath = updates.organizationalUnit;
       }
 
-      // Update phone numbers
+      // Update phone numbers: replace only the types that were sent, keep the rest.
       if (updates.phones && updates.phones.length > 0) {
-        requestBody.phones = updates.phones.map(phone => ({
-          value: phone.value,
-          type: phone.type === 'mobile' ? 'mobile' : 'work',
-          primary: phone.type === 'work'
-        }));
+        const sentTypes = new Set(updates.phones.map(p => (p.type === 'mobile' ? 'mobile' : 'work')));
+        const kept = (Array.isArray(current.phones) ? current.phones : []).filter((p: any) => !sentTypes.has(p.type));
+        requestBody.phones = [
+          ...kept,
+          ...updates.phones.map(phone => ({
+            value: phone.value,
+            type: phone.type === 'mobile' ? 'mobile' : 'work',
+            primary: phone.type === 'work',
+          })),
+        ];
       }
 
       // Update the user in Google Workspace
