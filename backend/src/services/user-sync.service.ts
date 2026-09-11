@@ -1,6 +1,8 @@
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
+import { microsoftUserType } from '../lib/microsoft-classification.js';
+import type { AccountPurpose } from '../lib/account-purpose.js';
 
 export interface UnifiedUser {
   id: string;
@@ -267,10 +269,14 @@ export class UserSyncService {
    */
   async reconcileMicrosoftUsersToOrgUsers(
     organizationId: string,
+    purposes: Map<string, AccountPurpose> = new Map(),
   ): Promise<{ linked: number; created: number }> {
     const msUsers = await db.query(
       `SELECT ms_id, upn, email, given_name, surname, job_title, department,
-              mobile_phone, is_account_enabled, is_admin, assigned_licenses
+              mobile_phone, is_account_enabled, is_admin, assigned_licenses,
+              raw_data->>'userType' AS ms_user_type,
+              raw_data->>'creationType' AS creation_type,
+              raw_data->>'externalUserState' AS external_user_state
          FROM ms_synced_users WHERE organization_id = $1`,
       [organizationId],
     );
@@ -284,6 +290,14 @@ export class UserSyncService {
         // Identity key: prefer the mailbox email, fall back to the UPN.
         const email = String(u.email || u.upn || '').toLowerCase();
         if (!email) continue;
+
+        const userType = microsoftUserType({
+          userType: u.ms_user_type,
+          creationType: u.creation_type,
+          externalUserState: u.external_user_state,
+          userPrincipalName: u.upn,
+        });
+        const purpose = purposes.get(u.ms_id) ?? null;
 
         // Microsoft id first, email second, for the same reason as the Google sync: a
         // rename must not create a second person, and a live row that belongs to a
@@ -302,41 +316,32 @@ export class UserSyncService {
         if (existing.rows.length > 0) {
           // LINK onto the existing (possibly Google-sourced) row. Touch only the
           // microsoft_365_* fields so Google-owned identity/status is preserved.
+          // An account that exists only in Microsoft is filed the way Microsoft files
+          // it (guest or member), which also moves accounts the old rule wrongly filed
+          // as contacts. A row that also has a Google account keeps Google's filing.
           await db.query(
             `UPDATE organization_users SET
                microsoft_365_id = $3,
                microsoft_365_upn = $4,
                microsoft_365_last_sync = NOW(),
                microsoft_365_sync_status = 'synced',
+               user_type = CASE WHEN google_workspace_id IS NULL AND user_type IN ('staff', 'guest', 'contact')
+                                THEN $5 ELSE user_type END,
+               account_purpose = CASE WHEN google_workspace_id IS NULL AND $6::text IS NOT NULL
+                                      THEN $6 ELSE account_purpose END,
                updated_at = NOW()
              WHERE id = $1 AND organization_id = $2`,
-            [existing.rows[0].id, organizationId, u.ms_id, u.upn],
+            [existing.rows[0].id, organizationId, u.ms_id, u.upn, userType, purpose],
           );
           linked++;
         } else {
-          // Classify the M365-only person: #EXT# UPN -> guest; unlicensed (e.g.
-          // a shared mailbox) -> contact; otherwise -> staff.
-          const isGuest = String(u.upn || '').includes('#EXT#');
-          let licenses: unknown[] = [];
-          try {
-            licenses = Array.isArray(u.assigned_licenses)
-              ? u.assigned_licenses
-              : u.assigned_licenses
-                ? JSON.parse(u.assigned_licenses)
-                : [];
-          } catch {
-            licenses = [];
-          }
-          const unlicensed = !licenses || licenses.length === 0;
-          const userType = isGuest ? 'guest' : unlicensed ? 'contact' : 'staff';
-
           await db.query(
             `INSERT INTO organization_users (
                organization_id, email, first_name, last_name,
                role, job_title, department, mobile_phone,
                microsoft_365_id, microsoft_365_upn, microsoft_365_last_sync,
-               microsoft_365_sync_status, is_active, user_type, created_at
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced',$11,$12,NOW())`,
+               microsoft_365_sync_status, is_active, user_type, account_purpose, created_at
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced',$11,$12,$13,NOW())`,
             [
               organizationId,
               email,
@@ -350,6 +355,7 @@ export class UserSyncService {
               u.upn,
               u.is_account_enabled ?? true,
               userType,
+              purpose ?? 'person',
             ],
           );
           created++;

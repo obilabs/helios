@@ -3,6 +3,8 @@ import { logger } from '../utils/logger.js';
 import { microsoftGraphService, MicrosoftUser, MicrosoftGroup, MicrosoftLicense } from './microsoft-graph.service.js';
 import crypto from 'crypto';
 import { userSyncService } from './user-sync.service.js';
+import { purposeFromMicrosoft, type AccountPurpose } from '../lib/account-purpose.js';
+import { isMicrosoftGuest } from '../lib/microsoft-classification.js';
 
 /**
  * Microsoft 365 Sync Service
@@ -49,9 +51,11 @@ class MicrosoftSyncService {
       // them into organization_users (link-by-email = dual source; unmatched =
       // migration candidate). Non-fatal: the primary sync already succeeded, so
       // a reconcile failure logs loudly but does not fail the sync.
+      const purposes = await this.detectMailboxPurposes(organizationId, usersResult.users);
+
       let reconcile = { linked: 0, created: 0 };
       try {
-        reconcile = await userSyncService.reconcileMicrosoftUsersToOrgUsers(organizationId);
+        reconcile = await userSyncService.reconcileMicrosoftUsersToOrgUsers(organizationId, purposes.byId);
       } catch (err: any) {
         logger.error('M365 directory reconciliation failed (users synced but not surfaced)', {
           organizationId,
@@ -74,7 +78,7 @@ class MicrosoftSyncService {
         success: true,
         message: 'Microsoft 365 sync completed successfully',
         stats: {
-          users: usersResult,
+          users: { synced: usersResult.synced, created: usersResult.created, updated: usersResult.updated },
           groups: groupsResult,
           licenses: licensesResult,
           reconcile,
@@ -103,11 +107,12 @@ class MicrosoftSyncService {
   /**
    * Sync users from Microsoft Entra ID
    */
-  async syncUsers(organizationId: string): Promise<{ synced: number; created: number; updated: number }> {
+  async syncUsers(organizationId: string): Promise<{ synced: number; created: number; updated: number; users: MicrosoftUser[] }> {
     const stats = { synced: 0, created: 0, updated: 0 };
+    let users: MicrosoftUser[] = [];
 
     try {
-      const users = await microsoftGraphService.listUsers();
+      users = await microsoftGraphService.listUsers();
       logger.info(`Syncing ${users.length} users from Microsoft 365`, { organizationId });
 
       for (const user of users) {
@@ -126,7 +131,34 @@ class MicrosoftSyncService {
       throw error;
     }
 
-    return stats;
+    return { ...stats, users };
+  }
+
+  /**
+   * Shared mailboxes, rooms and equipment in Microsoft 365 are member accounts without
+   * a licence; the mailbox says which. Asks only for unlicensed members (licensed
+   * members are people, and guests have no mailbox here), and stops at the first
+   * refusal: the permission is optional and a tenant without it is normal.
+   */
+  private async detectMailboxPurposes(
+    organizationId: string,
+    users: MicrosoftUser[],
+  ): Promise<{ byId: Map<string, AccountPurpose>; checked: number; notPermitted: boolean }> {
+    const byId = new Map<string, AccountPurpose>();
+    let checked = 0;
+    for (const u of users) {
+      if (isMicrosoftGuest(u) || (u.assignedLicenses?.length ?? 0) > 0) continue;
+      const r = await microsoftGraphService.getMailboxPurpose(u.id);
+      if (r.notPermitted) {
+        logger.info('Shared mailbox detection is off: the Microsoft connection lacks MailboxSettings.Read', { organizationId });
+        return { byId, checked, notPermitted: true };
+      }
+      checked++;
+      const purpose = purposeFromMicrosoft(r.purpose);
+      if (purpose) byId.set(u.id, purpose);
+    }
+    logger.info('Microsoft mailbox purposes read', { organizationId, checked, found: byId.size });
+    return { byId, checked, notPermitted: false };
   }
 
   /**
