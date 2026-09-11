@@ -135,6 +135,20 @@ class CacheService {
   }
 
   /**
+   * Drop every cached view derived from the directory (who exists, their status,
+   * the counts on the dashboard). Call it whenever the directory changes: a sync,
+   * a create, a delete, a status change.
+   *
+   * Without this the dashboard stats lived for their full 60-second TTL after a
+   * write. Proven in the UI on 2026-09-11: right after pressing "sync now", the
+   * header stamp said 4 Google users while the card beside it still said 5.
+   * One place to extend when another directory-derived key is added.
+   */
+  async invalidateDirectory(organizationId: string): Promise<void> {
+    await this.del(this.keys.dashboardStats(organizationId));
+  }
+
+  /**
    * Invalidate user cache
    */
   async invalidateUser(userId: string): Promise<void> {

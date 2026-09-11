@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { cacheService } from './cache.service.js';
 import { db } from '../database/connection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { decodeServiceAccountKey } from './gw-credentials.js';
@@ -355,6 +356,11 @@ export class SyncSchedulerService {
         userCount: users.length,
         markedDeleted
       });
+
+      // The directory just changed; anything summarising it is now wrong.
+      await cacheService.invalidateDirectory(organizationId).catch((e: any) =>
+        logger.warn('Could not invalidate directory caches after sync', { organizationId, error: e?.message }),
+      );
 
     } catch (error: any) {
       logger.error('Sync failed for organization', { organizationId, error: error.message });
