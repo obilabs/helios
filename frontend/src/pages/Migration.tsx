@@ -58,6 +58,27 @@ interface MigrationUserProgress {
   firstActivity?: string;
   lastActivity?: string;
 }
+/**
+ * What each destination actually is, in the words an admin would use. The table
+ * used to print the internal values ('mailbox', 'delegated', 'group'), which meant
+ * nothing at a glance and hid the one real decision on this page: a shared mailbox
+ * can keep its history for the price of a seat, or go free and lose it.
+ */
+const DESTINATION_TYPES: Record<string, { label: string; detail: string }> = {
+  mailbox: {
+    label: 'Personal account',
+    detail: 'A licensed Google account for one person. Full history is migrated. Uses a seat.',
+  },
+  delegated: {
+    label: 'Shared inbox, full history',
+    detail: 'A licensed Google mailbox the team is given access to. All past mail is migrated. Uses a seat.',
+  },
+  group: {
+    label: 'Shared inbox, new mail only',
+    detail: 'A free Google Group. New mail arrives from the switch-over, but past mail is not migrated.',
+  },
+};
+
 interface MigrationStatus {
   summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string; pagesFetched?: number; truncated?: boolean };
   events?: Array<{ timestamp: string; name: string; target?: string; status?: string }>;
@@ -248,7 +269,14 @@ export default function Migration() {
                 <tr key={t.sourceMs365Id}>
                   <td><div className="mig-email">{t.sourceEmail}</div><div className="mig-sub">{t.sourceName}</div></td>
                   <td>{t.targetGoogleEmail || <span className="mig-sub">—</span>}</td>
-                  <td><span className={`mig-type ${t.destinationType}`}>{t.destinationType}</span></td>
+                  <td>
+                    <span
+                      className={`mig-type ${t.destinationType}`}
+                      title={DESTINATION_TYPES[t.destinationType]?.detail}
+                    >
+                      {DESTINATION_TYPES[t.destinationType]?.label ?? t.destinationType}
+                    </span>
+                  </td>
                   <td className="mig-data">
                     {(['mail', 'drive', 'calendar', 'contacts'] as const).filter((k) => t.transfer[k]).join(', ') || '—'}
                   </td>
@@ -260,6 +288,16 @@ export default function Migration() {
               )}
             </tbody>
           </table>
+          {targets.length > 0 && (
+            <dl className="mig-type-legend">
+              {Object.entries(DESTINATION_TYPES).map(([key, info]) => (
+                <div key={key}>
+                  <dt><span className={`mig-type ${key}`}>{info.label}</span></dt>
+                  <dd>{info.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       )}
 
