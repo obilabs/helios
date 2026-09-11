@@ -186,6 +186,13 @@ jobs:
               RAISE EXCEPTION 'training_completions is missing its immutability trigger';
             END IF;
 
+            -- The org chart reads this view as its single definition of who is in
+            -- the organization (migration 094). Missing it 500s the org chart.
+            IF NOT EXISTS (SELECT 1 FROM information_schema.views
+                            WHERE table_name = 'org_chart_members') THEN
+              RAISE EXCEPTION 'post-migration schema is missing the org_chart_members view';
+            END IF;
+
             -- Columns on organization_users. Without the first two, LOGIN itself
             -- 500s (42703). Without the rest, creating any user 500s.
             SELECT string_agg(c, ', ') INTO missing
