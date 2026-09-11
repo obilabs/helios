@@ -159,6 +159,8 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
     label: string;
     lastSync: string | null;
     userCount: number;
+    state?: string | null;
+    error?: string | null;
   }>);
 
   /** Local date and time, for the details panel. The stamp itself stays relative. */
