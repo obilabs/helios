@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -58,6 +58,23 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<'google' | 'microsoft' | null>(null);
+  const groupRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the details on an outside click or Escape.
+  useEffect(() => {
+    if (!openKey) return;
+    const onDown = (e: MouseEvent) => {
+      if (groupRef.current && !groupRef.current.contains(e.target as Node)) setOpenKey(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenKey(null); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [openKey]);
 
   const load = useCallback(async () => {
     try {
@@ -121,41 +138,83 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
     userCount: number;
   }>);
 
+  /** Local date and time, for the details panel. The stamp itself stays relative. */
+  const absolute = (iso: string | null) =>
+    iso
+      ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+      : 'never';
+
   return (
-    <div className="sync-status-group" role="group" aria-label="Directory sync status">
+    <div className="sync-status-group" role="group" aria-label="Directory sync status" ref={groupRef}>
       {stamps.map((stamp) => {
         const mins = minutesSince(stamp.lastSync);
         const stale = mins === null || mins >= STALE_MINUTES;
         const canSync = isAdmin && stamp.key === 'google';
         const isSyncing = syncing === stamp.key;
+        const isOpen = openKey === stamp.key;
 
-        // The icon already says which platform this is, so the text does not
-        // repeat it. The full name lives in the tooltip and the aria-label,
-        // where a screen reader and a hovering human both get it.
-        const description =
-          `${stamp.label}: synced ${ago(stamp.lastSync)} (${stamp.userCount} users at that sync)` +
-          (canSync ? '\nClick to sync now' : '') +
-          (error && isSyncing ? `\n${error}` : '');
+        // Hover answers "when?"; click opens the details. Clicking the stamp used
+        // to START a sync, which surprised admins who clicked expecting to read
+        // something. Syncing is now an explicit button inside the details.
+        const hover = `${stamp.label} · synced ${ago(stamp.lastSync)} · click for details`;
 
         return (
-          <button
-            key={stamp.key}
-            type="button"
-            className={`sync-status ${stale ? 'is-stale' : ''} ${error && isSyncing ? 'has-error' : ''} ${
-              canSync ? 'is-actionable' : ''
-            }`}
-            title={description}
-            aria-label={description}
-            onClick={() => runSync(stamp.key)}
-            disabled={!canSync || isSyncing}
-          >
-            <PlatformIcon platform={stamp.key} size={13} />
-            {isSyncing ? (
-              <RefreshCw size={12} className="spin" />
-            ) : (
-              <span className="sync-status-text">{ago(stamp.lastSync)}</span>
+          <div className="sync-status-wrap" key={stamp.key}>
+            <button
+              type="button"
+              className={`sync-status ${stale ? 'is-stale' : ''} ${error && isSyncing ? 'has-error' : ''} is-actionable`}
+              title={hover}
+              aria-label={hover}
+              aria-expanded={isOpen}
+              aria-haspopup="dialog"
+              onClick={() => setOpenKey(isOpen ? null : stamp.key)}
+            >
+              {/* The logo carries its own "Google Workspace" tooltip, which the
+                  browser showed instead of the sync time. It is made inert to
+                  the pointer so hovering reaches the stamp's own tooltip. */}
+              <span className="sync-status-icon" aria-hidden="true">
+                <PlatformIcon platform={stamp.key} size={13} />
+              </span>
+              {isSyncing ? (
+                <RefreshCw size={12} className="spin" />
+              ) : (
+                <span className="sync-status-text">{ago(stamp.lastSync)}</span>
+              )}
+            </button>
+
+            {isOpen && (
+              <div className="sync-status-details" role="dialog" aria-label={`${stamp.label} sync details`}>
+                <div className="sync-status-details-title">
+                  <PlatformIcon platform={stamp.key} size={14} />
+                  <span>{stamp.label}</span>
+                </div>
+                <dl>
+                  <div><dt>Last synced</dt><dd>{ago(stamp.lastSync)}<span className="sync-status-abs">{absolute(stamp.lastSync)}</span></dd></div>
+                  <div><dt>Users at that sync</dt><dd>{stamp.userCount}</dd></div>
+                </dl>
+                {error && stamp.key === 'google' && (
+                  <p className="sync-status-error">{error}</p>
+                )}
+                {canSync ? (
+                  <button
+                    type="button"
+                    className="btn-primary sync-status-now"
+                    onClick={() => runSync(stamp.key)}
+                    disabled={isSyncing}
+                  >
+                    <RefreshCw size={13} className={isSyncing ? 'spin' : ''} />
+                    {isSyncing ? 'Syncing…' : 'Sync now'}
+                  </button>
+                ) : (
+                  <p className="sync-status-note">
+                    {stamp.key === 'microsoft'
+                      ? 'Microsoft 365 syncs on its schedule. Manual sync is not available for it yet.'
+                      : 'Only an admin can start a sync.'}
+                  </p>
+                )}
+              </div>
             )}
-          </button>
+          </div>
         );
       })}
     </div>
