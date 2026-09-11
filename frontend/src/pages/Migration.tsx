@@ -59,6 +59,8 @@ interface MigrationUserProgress {
   lastActivity?: string;
 }
 interface MigrationStatus {
+  /** The window the server actually searched, in days. */
+  windowDays?: number;
   summary?: { total: number; failures: number; byName: Record<string, number>; windowStart: string; windowEnd: string; pagesFetched?: number; truncated?: boolean };
   events?: Array<{ timestamp: string; name: string; target?: string; status?: string }>;
   failures?: MigrationFailure[];
@@ -355,7 +357,12 @@ export default function Migration() {
             )}
           </>
         ) : (
-          <p className="mig-sub">No migration activity in the last 7 days. Once you start a transfer in Google, its progress (per-object events + failures) appears here.</p>
+          <p className="mig-sub">
+            No migration activity in the last {status?.windowDays ?? 60} days. This tracks Google's
+            Data Migration service, which imports mail, calendar and contacts from Microsoft 365.
+            Drive and Calendar ownership handovers from offboarding are a different Google feature
+            and appear on that person's offboarding record, not here.
+          </p>
         )}
       </div>
     </div>

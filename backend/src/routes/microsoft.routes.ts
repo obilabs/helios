@@ -1081,7 +1081,12 @@ router.get('/migration/status', requireAdmin, async (req: Request, res: Response
       validationErrorResponse(res, [{ field: 'organizationId', message: 'Organization ID not found' }]);
       return;
     }
-    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '7'), 10) || 7, 1), 60);
+    // Default to the widest window the route allows. It was 7 days, which hid a real
+    // migration: on the obilabs.dev trial the 7-day view said "no activity" while 30 days
+    // held 8,540 events and one unresolved failure. A migration is not a daily event, so a
+    // short default mostly produces a confident empty state that is wrong. maxPages still
+    // bounds the cost, and a truncated result says so.
+    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '60'), 10) || 60, 1), 60);
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);
     // Optional ops override for very large migrations; service clamps to 1–100.
@@ -1089,7 +1094,8 @@ router.get('/migration/status', requireAdmin, async (req: Request, res: Response
       ? parseInt(String(req.query.maxPages), 10) || undefined
       : undefined;
     const result = await googleWorkspaceService.fetchDataMigrationActivity(organizationId, { startTime, endTime, maxPages });
-    successResponse(res, result);
+    // Echo the window so the page can say what it actually searched instead of hard-coding it.
+    successResponse(res, { ...result, windowDays: days });
   } catch (error: any) {
     logger.error('Failed to fetch migration status', { error: error.message });
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to fetch migration status');
