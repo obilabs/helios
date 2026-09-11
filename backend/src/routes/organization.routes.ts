@@ -24,7 +24,27 @@ import {
 } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
 
+import { cacheService } from '../services/cache.service.js';
+
 const router = Router();
+
+/**
+ * Any successful write to the user directory invalidates the views derived from it.
+ * One hook instead of a call in every create/delete/status/restore handler, so a
+ * handler added later cannot forget it. Registered before the routes; it reads the
+ * organization only when the response finishes, after authentication has run.
+ */
+router.use('/users', (req, res, next) => {
+  if (req.method !== 'GET') {
+    res.on('finish', () => {
+      const organizationId = req.user?.organizationId;
+      if (res.statusCode < 400 && organizationId) {
+        cacheService.invalidateDirectory(organizationId).catch((): void => undefined);
+      }
+    });
+  }
+  next();
+});
 
 /**
  * Roles that carry admin privileges. Mirrors isAdminRole() in middleware/auth.ts.
