@@ -56,14 +56,34 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
     syncInterval: '900',
     autoSyncEnabled: true,
     deletionPolicy: 'delete',
-    syncDirection: 'google-to-helios'
   });
   const [originalSyncSettings, setOriginalSyncSettings] = useState({
     syncInterval: '900',
     autoSyncEnabled: true,
     deletionPolicy: 'delete',
-    syncDirection: 'google-to-helios'
   });
+
+  // Load the SAVED settings. There used to be no load at all, so the page always
+  // showed these defaults whatever had been saved.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await authFetch('/api/v1/organization/sync-settings');
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success && data.data) {
+          const loaded = {
+            syncInterval: String(data.data.intervalSeconds),
+            autoSyncEnabled: !!data.data.autoSyncEnabled,
+            deletionPolicy: data.data.deletionDefault,
+          };
+          setSyncSettings(loaded);
+          setOriginalSyncSettings(loaded);
+        }
+      } catch {
+        // Keep the defaults on screen; the save path reports its own errors.
+      }
+    })();
+  }, []);
   const [savingSyncSettings, setSavingSyncSettings] = useState(false);
   const syncSettingsChanged = JSON.stringify(syncSettings) !== JSON.stringify(originalSyncSettings);
 
@@ -204,14 +224,19 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(syncSettings)
+        body: JSON.stringify({
+          intervalSeconds: Number(syncSettings.syncInterval),
+          autoSyncEnabled: syncSettings.autoSyncEnabled,
+          deletionDefault: syncSettings.deletionPolicy,
+        })
       });
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         setOriginalSyncSettings({ ...syncSettings });
-        alert('Sync settings saved successfully');
+        alert('Sync settings saved. The new schedule is already in effect.');
       } else {
-        alert('Failed to save sync settings');
+        alert(`Failed to save sync settings: ${data.error || response.status}`);
       }
     } catch (error) {
       console.error('Failed to save sync settings:', error);
@@ -1038,25 +1063,16 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                   </div>
 
                   <div className="sync-setting-group" style={{ marginTop: '24px' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>Sync Direction</h4>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>Field ownership</h4>
+                    {/* A single "sync direction" was offered here and nothing ever read it.
+                        Sync already runs both ways per operation; the real question is who
+                        wins when a field differs, and that is decided per field. */}
                     <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280' }}>
-                      Choose how user data flows between Helios and Google Workspace
+                      Users created in either place appear in both, and edits made in Helios are sent
+                      to Google as you save them. Choosing which system owns each profile field (title,
+                      department, manager, phones, location) is being added next; until then, edits made
+                      in Google to those fields are not copied back into Helios.
                     </p>
-                    <div className="sync-options">
-                      <label>Direction:</label>
-                      <select
-                        className="form-select"
-                        value={syncSettings.syncDirection}
-                        onChange={(e) => setSyncSettings(prev => ({ ...prev, syncDirection: e.target.value }))}
-                      >
-                        <option value="google-to-helios">Google → Helios (Google is source of truth)</option>
-                        <option value="helios-to-google">Helios → Google (Helios is source of truth)</option>
-                        <option value="bidirectional">Bidirectional (merge changes from both)</option>
-                      </select>
-                      <div className="form-hint">
-                        Recommended: Google → Helios for organizations where users are primarily managed in Google Admin.
-                      </div>
-                    </div>
                   </div>
 
                   <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
