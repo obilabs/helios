@@ -43,9 +43,13 @@
   to { transform: rotate(360deg); }
 }
 
+/* The age is the whole point of the stamp. This rule used to hide it below
+   900px, which was harmless when the stamp had a generic refresh icon and
+   useless once each stamp became a platform icon: at tablet width the header
+   showed a Google logo and a Microsoft logo and said nothing about either.
+   Narrow screens get tighter padding, never a missing age. */
 @media (max-width: 900px) {
-  .sync-status-text { display: none; }
-  .sync-status { padding: 4px 6px; }
+  .sync-status { padding: 4px 7px; gap: 4px; }
 }
 
 /* One stamp per connected platform, sitting together as a single unit.

@@ -133,7 +133,7 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
         // repeat it. The full name lives in the tooltip and the aria-label,
         // where a screen reader and a hovering human both get it.
         const description =
-          `${stamp.label}: synced ${ago(stamp.lastSync)} (${stamp.userCount} users)` +
+          `${stamp.label}: synced ${ago(stamp.lastSync)} (${stamp.userCount} users at that sync)` +
           (canSync ? '\nClick to sync now' : '') +
           (error && isSyncing ? `\n${error}` : '');
 
