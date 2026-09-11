@@ -33,7 +33,7 @@ export const SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/admin.reports.usage.readonly', reason: 'Read usage reports (adoption metrics).' },
   { scope: 'https://www.googleapis.com/auth/admin.datatransfer', reason: "Transfer a departing user's Drive and Calendar data during offboarding." },
   { scope: 'https://www.googleapis.com/auth/apps.licensing', reason: 'Read and assign Workspace licenses.' },
-  { scope: 'https://www.googleapis.com/auth/calendar', reason: 'Manage calendar resources and hand-off during lifecycle actions.' },
+  { scope: 'https://www.googleapis.com/auth/calendar', reason: 'Manage calendars and their sharing (hand-off during lifecycle actions). Rooms and equipment need the separate calendar-resource scope.' },
   { scope: 'https://www.googleapis.com/auth/drive', reason: 'External-sharing audit and bulk-revoke of Drive permissions.' },
   { scope: 'https://www.googleapis.com/auth/drive.file', reason: 'Access files Helios itself creates.' },
   { scope: 'https://www.googleapis.com/auth/drive.readonly', reason: 'Read-only Drive access for the external-sharing audit.' },
@@ -66,6 +66,12 @@ export const REQUIRED_SCOPES_CSV: string = REQUIRED_SCOPES.join(',')
 export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/ediscovery', reason: "Create Google Vault holds to preserve a departing user's Mail and Drive before deletion (Business Plus and above)." },
   { scope: 'https://www.googleapis.com/auth/admin.directory.userschema', reason: 'Define custom user attributes (schemas) so Helios-specific fields can be stored on the Google user record.' },
+  // Buildings, rooms and equipment. The `calendar` contract scope does NOT cover
+  // these: Google refuses resources.calendars.list without one of the two below
+  // (verified live 2026-09-11, ACCESS_TOKEN_SCOPE_INSUFFICIENT). Exact string
+  // match again, so reads and writes each need their own authorisation.
+  { scope: 'https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly', reason: 'List buildings, rooms and equipment (calendar resources).' },
+  { scope: 'https://www.googleapis.com/auth/admin.directory.resource.calendar', reason: 'Create, update and delete buildings, rooms and equipment through the API.' },
   // API relay (Settings > Security): under enforcement a read forwards with a
   // read-only token. DWD matches scope strings exactly, so those read-only
   // variants must be authorised separately or the relay cannot narrow. Verified
@@ -141,6 +147,10 @@ const PATH_SCOPES: PathScopeRule[] = [
   { test: /^admin\/directory\/customer\/[^/]+\/orgunits/, read: [`${G}admin.directory.orgunit`], write: [`${G}admin.directory.orgunit`] },
   { test: /^admin\/directory\/customer\/[^/]+\/domains/, read: [`${G}admin.directory.domain`], write: [`${G}admin.directory.domain`] },
   { test: /^admin\/directory\/customer\/[^/]+\/devices\/mobile/, read: [`${G}admin.directory.device.mobile`], write: [`${G}admin.directory.device.mobile`] },
+  // Directory: calendar resources (calendars, buildings, features). Optional
+  // scopes, per-call only. Both variants are advertised, so unlike the contract
+  // families above a read can use the readonly one.
+  { test: /^admin\/directory\/customer\/[^/]+\/resources/, read: [`${G}admin.directory.resource.calendar.readonly`], write: [`${G}admin.directory.resource.calendar`] },
   // Reports (readonly scopes are the contract scopes here).
   { test: /^admin\/reports\/activity/, read: [`${G}admin.reports.audit.readonly`], write: [`${G}admin.reports.audit.readonly`] },
   { test: /^admin\/reports\/usage/, read: [`${G}admin.reports.usage.readonly`], write: [`${G}admin.reports.usage.readonly`] },
@@ -179,4 +189,52 @@ export function googleScopesForPath(method: string, path: string): { scopes: str
     if (rule.test.test(p)) return { scopes: isRead ? rule.read : rule.write, fellBack: false }
   }
   return { scopes: REQUIRED_SCOPES, fellBack: true }
+}
+
+/**
+ * Scopes for a googleapis SDK client that serves several calls: the union of
+ * what each path needs, in first-seen order. Every path must have a PATH_SCOPES
+ * rule; a fallback would silently widen the client to the whole contract, so it
+ * throws instead.
+ */
+export function googleScopesForPaths(method: string, paths: string[]): string[] {
+  const out: string[] = []
+  for (const path of paths) {
+    const { scopes, fellBack } = googleScopesForPath(method, path)
+    if (fellBack) throw new Error(`google-scopes: no PATH_SCOPES rule for ${method} ${path}`)
+    for (const s of scopes) if (!out.includes(s)) out.push(s)
+  }
+  return out
+}
+
+/**
+ * Default scopes for the long-lived Admin SDK clients in the service layer
+ * (`new JWT({ scopes })`), named by the calls each one serves. These used to be
+ * hard-coded in each service. Contract scopes only: an optional scope here would
+ * fail every call from that client on a tenant that has not authorised it. A
+ * call that needs an optional scope builds its own client from
+ * googleScopesForPath() (see listCalendarResources).
+ */
+export const ADMIN_SDK_CLIENT_SCOPES = {
+  /** google-workspace.service: users, groups, org units, domains, admin audit log. */
+  workspace: googleScopesForPaths('POST', [
+    'admin/directory/v1/users',
+    'admin/directory/v1/groups',
+    'admin/directory/v1/customer/my_customer/orgunits',
+    'admin/directory/v1/customer/my_customer/domains',
+    'admin/reports/v1/activity/users/all/applications/admin',
+  ]),
+  /** user-onboarding.service: create the user, add to groups, place in an org unit. */
+  onboarding: googleScopesForPaths('POST', [
+    'admin/directory/v1/users',
+    'admin/directory/v1/groups',
+    'admin/directory/v1/customer/my_customer/orgunits',
+  ]),
+  /** user-offboarding.service: suspend, revoke tokens and sign out, leave groups, mobile devices. */
+  offboarding: googleScopesForPaths('POST', [
+    'admin/directory/v1/users',
+    'admin/directory/v1/users/{userKey}/tokens',
+    'admin/directory/v1/groups',
+    'admin/directory/v1/customer/my_customer/devices/mobile',
+  ]),
 }
