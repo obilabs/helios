@@ -107,8 +107,9 @@ Since 2026-09-08 (Phase 02 bone 1):
   `googleScopesForPath(method, path)` for the scopes one request needs (one API family, exact
   contract strings, no readonly variants). An unknown path falls back to the frozen contract,
   never anything wider.
-- **New capabilities go in `OPTIONAL_SCOPE_DETAILS`** (today: `ediscovery`, `admin.directory.userschema`)
-  plus a `PATH_SCOPES` row. They are advertised at setup so a new install grants them up front,
+- **New capabilities go in `OPTIONAL_SCOPE_DETAILS`** (today: `ediscovery`, `admin.directory.userschema`,
+  `admin.directory.resource.calendar[.readonly]`, the relay's readonly variants) plus a `PATH_SCOPES` row.
+  Note the base `calendar` scope does **not** cover rooms/buildings (Directory resources). They are advertised at setup so a new install grants them up front,
   and only the path that needs them ever requests them. A tenant that has not authorised one
   sees that one feature fail with a clear `unauthorized_client`; everything else keeps working.
 - Prove a tenant's grant from inside the backend container:

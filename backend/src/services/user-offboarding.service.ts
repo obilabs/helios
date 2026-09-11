@@ -17,6 +17,7 @@ import { assertNotProtectedAdmin } from './admin-protection.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { microsoftGraphService } from './microsoft-graph.service.js';
 import { DATA_TRANSFER_APPLICATION_IDS } from '../config/google-application-ids.js';
+import { ADMIN_SDK_CLIENT_SCOPES } from '../config/google-scopes.js';
 
 /** Google's "already there" answers: HTTP 409, or the message says so. */
 function isAlreadyExists(error: any): boolean {
@@ -2305,15 +2306,11 @@ class UserOffboardingService {
     const jwtClient = new JWT({
       email: credentials.client_email,
       key: credentials.private_key,
-      scopes: [
-        'https://www.googleapis.com/auth/admin.directory.user',
-        // tokens.list / tokens.delete and users.signOut are gated on this
-        // scope; without it "revoke OAuth tokens" and "sign out devices"
-        // failed with "insufficient authentication scopes" (2026-09-08).
-        'https://www.googleapis.com/auth/admin.directory.user.security',
-        'https://www.googleapis.com/auth/admin.directory.group',
-        'https://www.googleapis.com/auth/admin.directory.device.mobile',
-      ],
+      // Includes admin.directory.user.security: tokens.list / tokens.delete and
+      // users.signOut are gated on it; without it "revoke OAuth tokens" and
+      // "sign out devices" failed with "insufficient authentication scopes"
+      // (2026-09-08). The contract test pins this set.
+      scopes: ADMIN_SDK_CLIENT_SCOPES.offboarding,
       subject: adminEmail,
     });
 
