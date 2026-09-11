@@ -2,7 +2,6 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { googleWorkspaceService } from './google-workspace.service.js';
 import { microsoftUserType } from '../lib/microsoft-classification.js';
-import type { AccountPurpose } from '../lib/account-purpose.js';
 
 export interface UnifiedUser {
   id: string;
@@ -269,7 +268,6 @@ export class UserSyncService {
    */
   async reconcileMicrosoftUsersToOrgUsers(
     organizationId: string,
-    purposes: Map<string, AccountPurpose> = new Map(),
   ): Promise<{ linked: number; created: number }> {
     const msUsers = await db.query(
       `SELECT ms_id, upn, email, given_name, surname, job_title, department,
@@ -297,7 +295,6 @@ export class UserSyncService {
           externalUserState: u.external_user_state,
           userPrincipalName: u.upn,
         });
-        const purpose = purposes.get(u.ms_id) ?? null;
 
         // Microsoft id first, email second, for the same reason as the Google sync: a
         // rename must not create a second person, and a live row that belongs to a
@@ -327,11 +324,9 @@ export class UserSyncService {
                microsoft_365_sync_status = 'synced',
                user_type = CASE WHEN google_workspace_id IS NULL AND user_type IN ('staff', 'guest', 'contact')
                                 THEN $5 ELSE user_type END,
-               account_purpose = CASE WHEN google_workspace_id IS NULL AND $6::text IS NOT NULL
-                                      THEN $6 ELSE account_purpose END,
                updated_at = NOW()
              WHERE id = $1 AND organization_id = $2`,
-            [existing.rows[0].id, organizationId, u.ms_id, u.upn, userType, purpose],
+            [existing.rows[0].id, organizationId, u.ms_id, u.upn, userType],
           );
           linked++;
         } else {
@@ -340,8 +335,8 @@ export class UserSyncService {
                organization_id, email, first_name, last_name,
                role, job_title, department, mobile_phone,
                microsoft_365_id, microsoft_365_upn, microsoft_365_last_sync,
-               microsoft_365_sync_status, is_active, user_type, account_purpose, created_at
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced',$11,$12,$13,NOW())`,
+               microsoft_365_sync_status, is_active, user_type, created_at
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced',$11,$12,NOW())`,
             [
               organizationId,
               email,
@@ -355,7 +350,6 @@ export class UserSyncService {
               u.upn,
               u.is_account_enabled ?? true,
               userType,
-              purpose ?? 'person',
             ],
           );
           created++;
