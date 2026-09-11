@@ -59,7 +59,7 @@ Naming used below: the **Phish Check** button (Track A) and **Phishing** module 
 | Close-the-loop notify-reporter: per-verdict templated email with a plain-language summary variable | **MVP** | Copy Sublime's `asa_simple_summary` pattern; brandable, per-verdict. |
 | Simulation auto-close (cross-check the Track B registry, resolve automatically) | **MVP** | Table stakes; every serious product does it. |
 | Metrics: report volume, verdict mix, time-to-triage, top reporters, reporter reputation score | **MVP** | Reporter reputation from Cofense. |
-| Remove-from-other-mailboxes (search + trash/label via DWD `gmail.modify`, reversible) | **MVP-lite** | Basic search-and-trash MVP; this is the one place L3 needs a restricted scope — self-hosted admin authorizes their own DWD, no Marketplace/CASA exposure. |
+| Remove-from-other-mailboxes (search + **trash only** via DWD `gmail.modify`, reversible) | **MVP-lite** | Basic search-and-trash MVP; this is the one place L3 needs a restricted scope — self-hosted admin authorizes their own DWD, no Marketplace/CASA exposure. **Decided 2026-09-11: trash, never permanent delete.** Trashed mail stays recoverable for 30 days, and permanent delete would need the full `https://mail.google.com/` scope, which Helios never requests (a contract test enforces it). The gap it fills: Business Plus can find a message by ID but cannot delete it; Google's native delete from the investigation tool is Enterprise-only. |
 | Slack / Google Chat / webhook notification on new Threat | **MVP** | |
 | RBAC (Security Admin / Auditor / Scoped Manager) | **MVP** | See §2. |
 | Herd-immunity actions for other recipients (label/move; banners later — riskier, need message rewrite) | Later | Material/IRONSCALES pattern. |
@@ -246,7 +246,7 @@ Position **above** Google's native protection (coarse OU-level on/off, one actio
 **Scopes, auth, and injection**
 1. **`gmail.insert` over DWD is a buyer security-review flag** and a known abuse target (Unit 42). Confirm the authorize flow (Super Admin, one-time) and that minting is strictly per-call — it must **never** enter `REQUIRED_SCOPES` (DWD all-or-nothing would blanket-401 every connected workspace, per the documented Helios gotcha).
 2. **Insert vs Import default and the realism caveat.** Insert bypasses filters → tests people only, and inserted mail has no `Authentication-Results`/`Received` chain (a savvy user or downstream tool can tell it was injected). Decide the default (recommend Insert) and how loudly to surface the tell.
-3. **Remove-from-other-mailboxes needs `gmail.modify` (restricted).** Self-hosted sidesteps CASA, but confirm reversibility and the justification copy for the admin.
+3. **Remove-from-other-mailboxes needs `gmail.modify` (restricted).** Self-hosted sidesteps CASA. *Resolved 2026-09-11:* reversible trash only, never permanent delete, never `https://mail.google.com/`. Still open: the justification copy for the admin.
 
 **Add-on / L2**
 4. **BYO AI key handling + prompt-injection.** Where is the key stored (add-on config vs Helios)? The analyzed message is **attacker-controlled** — the AI prompt must treat it as data, not instructions, and we must decide whether content leaves the org (BYO endpoint) or routes through Helios. Data-residency implications.

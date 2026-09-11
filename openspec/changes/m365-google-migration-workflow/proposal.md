@@ -47,7 +47,8 @@ destination-mapping plan service (`migration-plan.service.ts`).
 ## Non-Goals
 
 - **Building a transfer engine** (mail/drive/calendar/contacts import) — Google's native tool
-  does it. The throwaway `scripts/migrate-m365-to-google.ts` remains a fallback only.
+  does it. The throwaway PoC transfer script was deleted on 2026-09-11 so nothing gets built
+  on it by mistake; it is in git history if the proof is ever needed again.
 - The exotic gaps Google's tool does not cover — Microsoft Teams, public folders, SharePoint
   lists/metadata/workflows, file **version history**, OneNote fidelity, resource/room calendars,
   the GAL, **1-to-many mailbox splitting**, and long mail coexistence/delta re-sync — are
