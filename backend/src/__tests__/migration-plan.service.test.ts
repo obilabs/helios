@@ -60,48 +60,6 @@ describe('MigrationPlanService.validatePlan', () => {
   });
 });
 
-describe('MigrationPlanService.toScriptMap', () => {
-  it('includes only ready+existing targets, keyed by source UPN', () => {
-    const m = svc.toScriptMap(
-      plan([
-        target({
-          sourceUpn: 'a@old',
-          sourceEmail: 'a@old.com',
-          targetGoogleEmail: 'a@new.com',
-          targetExists: true,
-          status: 'ready',
-        }),
-        // chosen but destination missing -> excluded (never import into a non-existent mailbox)
-        target({
-          sourceUpn: 'b@old',
-          sourceEmail: 'b@old.com',
-          targetGoogleEmail: 'b@new.com',
-          targetExists: false,
-          status: 'ready',
-        }),
-        // unmapped -> excluded
-        target({ sourceUpn: 'c@old', sourceEmail: 'c@old.com' }),
-      ]),
-    );
-    expect(m).toEqual({ 'a@old': 'a@new.com' });
-  });
-
-  it('supports migrating source X into a DIFFERENT user Y', () => {
-    const m = svc.toScriptMap(
-      plan([
-        target({
-          sourceUpn: 'x@old',
-          sourceEmail: 'x@old.com',
-          targetGoogleEmail: 'manager@new.com',
-          targetExists: true,
-          status: 'ready',
-        }),
-      ]),
-    );
-    expect(m).toEqual({ 'x@old': 'manager@new.com' });
-  });
-});
-
 describe('MigrationPlanService.toGoogleMigrationCsv', () => {
   it('includes ready mailbox/delegated targets and EXCLUDES group destinations', () => {
     const csv = svc.toGoogleMigrationCsv(
@@ -110,7 +68,9 @@ describe('MigrationPlanService.toGoogleMigrationCsv', () => {
         target({ sourceEmail: 'shared@old.com', targetGoogleEmail: 'shared@new.com', targetExists: true, status: 'ready', destinationType: 'delegated' }),
         // group = no history import -> excluded from the Google import CSV
         target({ sourceEmail: 'info@old.com', targetGoogleEmail: 'info@new.com', targetExists: true, status: 'ready', destinationType: 'group' }),
-        // unmapped / not-yet-existing -> excluded
+        // chosen but destination missing -> excluded (never import into a non-existent mailbox)
+        target({ sourceEmail: 'b@old.com', targetGoogleEmail: 'b@new.com', targetExists: false, status: 'ready', destinationType: 'mailbox' }),
+        // unmapped -> excluded
         target({ sourceEmail: 'z@old.com' }),
       ]),
     );
@@ -119,5 +79,12 @@ describe('MigrationPlanService.toGoogleMigrationCsv', () => {
         'a@old.com,a@new.com\n' +
         'shared@old.com,shared@new.com\n',
     );
+  });
+
+  it('supports migrating source X into a DIFFERENT user Y', () => {
+    const csv = svc.toGoogleMigrationCsv(
+      plan([target({ sourceEmail: 'x@old.com', targetGoogleEmail: 'manager@new.com', targetExists: true, status: 'ready', destinationType: 'mailbox' })]),
+    );
+    expect(csv).toBe('Source Email,Destination Email\nx@old.com,manager@new.com\n');
   });
 });
