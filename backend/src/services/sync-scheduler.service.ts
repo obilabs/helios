@@ -6,6 +6,7 @@ import { decodeServiceAccountKey } from './gw-credentials.js';
 import { OAuthTokenSyncService } from './oauth-token-sync.service.js';
 import { loadSyncSettings } from '../lib/sync-settings.js';
 import { microsoftSyncService } from './microsoft-sync.service.js';
+import { fieldDriftService } from './field-drift.service.js';
 
 interface SyncConfig {
   minInterval: number; // Platform minimum in seconds
@@ -253,6 +254,8 @@ export class SyncSchedulerService {
       }
 
       const users = usersResult.users;
+      const { fieldOwnership } = await loadSyncSettings(organizationId);
+      const ownershipTotals = { pulled: 0, drifted: 0, converged: 0 };
 
       // Clear existing synced users for this organization
       await db.query('DELETE FROM gw_synced_users WHERE organization_id = $1', [organizationId]);
@@ -324,6 +327,7 @@ export class SyncSchedulerService {
           await db.query(`UPDATE organization_users SET deleted_at = NULL, status = 'active', updated_at = NOW() WHERE id = $1`, [existingUser.rows[0].id]);
         }
 
+        let heliosUserId: string | null = existingUser.rows[0]?.id ?? null;
         if (existingUser.rows.length > 0) {
           // Update existing user with Google Workspace ID
           await db.query(`
@@ -351,11 +355,12 @@ export class SyncSchedulerService {
           // We set a placeholder hash that cannot be used for login
           const placeholderHash = 'GOOGLE_WORKSPACE_AUTH';
 
-          await db.query(`
+          const inserted = await db.query(`
             INSERT INTO organization_users (
               organization_id, email, first_name, last_name,
               google_workspace_id, is_active, role, password_hash, user_type, created_at, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'staff', NOW(), NOW())
+            RETURNING id
           `, [
             organizationId,
             user.primaryEmail,
@@ -366,12 +371,26 @@ export class SyncSchedulerService {
             'user', // Default role for synced users
             placeholderHash
           ]);
+          heliosUserId = inserted.rows[0]?.id ?? null;
           logger.info('Created new user from Google Workspace', {
             email: user.primaryEmail,
             googleId: user.id
           });
         }
+
+        // Profile fields: pull what Google owns, record what differs. Before this the
+        // sync copied back only names and suspended status, so edits made in Google to
+        // title, department, manager, phones or location never reached Helios.
+        if (heliosUserId) {
+          try {
+            const r = await fieldDriftService.reconcileUser(organizationId, heliosUserId, user, fieldOwnership);
+            ownershipTotals.pulled += r.pulled; ownershipTotals.drifted += r.drifted; ownershipTotals.converged += r.converged;
+          } catch (e: any) {
+            logger.warn('Field ownership reconcile failed for a user', { email: user.primaryEmail, error: e?.message });
+          }
+        }
       }
+      logger.info('Field ownership applied', { organizationId, ...ownershipTotals });
 
       // Users that no longer exist in Google (deleted in the Admin console, or
       // by another tool) used to stay Active in Helios forever. Mark them

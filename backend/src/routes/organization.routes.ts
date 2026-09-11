@@ -26,6 +26,7 @@ import { ErrorCode } from '../types/error-codes.js';
 
 import { cacheService } from '../services/cache.service.js';
 import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '../lib/sync-settings.js';
+import { fieldDriftService } from '../services/field-drift.service.js';
 
 const router = Router();
 
@@ -447,6 +448,44 @@ router.put('/settings', authenticateToken, async (req: Request, res: Response) =
   } catch (error) {
     logger.error('Failed to update organization settings', error);
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update organization settings');
+  }
+});
+
+/**
+ * GET /api/organization/field-drift
+ * Open differences between Helios and Google for owned profile fields.
+ */
+router.get('/field-drift', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
+    return res.json({ success: true, data: await fieldDriftService.listOpen(organizationId) });
+  } catch (error: any) {
+    logger.error('Failed to list field differences', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to list field differences' });
+  }
+});
+
+/**
+ * POST /api/organization/field-drift/:id/resolve  { keep: 'helios' | 'google' }
+ * Keep one side. Keeping Helios writes Helios's value to Google (merged, nothing else
+ * touched); keeping Google copies Google's value into Helios. A refusal is an error,
+ * not a silent success.
+ */
+router.post('/field-drift/:id/resolve', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const adminId = req.user?.userId;
+    if (!organizationId || !adminId) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    const keep = req.body?.keep;
+    if (keep !== 'helios' && keep !== 'google') {
+      return res.status(400).json({ success: false, error: "keep must be 'helios' or 'google'" });
+    }
+    await fieldDriftService.resolve(organizationId, req.params.id, keep, adminId);
+    return res.json({ success: true, message: keep === 'google' ? 'Kept the Google value' : 'Sent the Helios value to Google' });
+  } catch (error: any) {
+    logger.warn('Could not resolve a field difference', { error: error.message });
+    return res.status(409).json({ success: false, error: error.message });
   }
 });
 

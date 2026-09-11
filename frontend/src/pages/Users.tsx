@@ -1,3 +1,4 @@
+import { FieldDriftPanel } from '../components/FieldDriftPanel';
 import { useQueryClient } from '@tanstack/react-query';
 import { userKeys } from '../hooks/queries/useUsers';
 import { useState, useEffect, useRef } from 'react';
@@ -457,6 +458,8 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
       <div className="users-content-card">
 
         {/* User Table - TanStack Table based */}
+        {/* Differences the sync could not resolve on its own; admin-only (the route enforces it). */}
+        <FieldDriftPanel isAdmin />
         <UserTable
           organizationId={organizationId}
           userType={activeTab}

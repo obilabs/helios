@@ -13,6 +13,13 @@
  * the settings live as one JSON document under the key `sync_settings`.
  */
 import { db } from '../database/connection.js';
+import {
+  DEFAULT_FIELD_OWNERSHIP,
+  FieldOwnershipError,
+  validateFieldOwnership,
+  type FieldOwner,
+  type OwnedField,
+} from './field-ownership.js';
 
 export const SYNC_SETTINGS_KEY = 'sync_settings';
 
@@ -29,12 +36,15 @@ export interface SyncSettings {
   /** When false, nothing syncs on its own; admins sync from the header. */
   autoSyncEnabled: boolean;
   deletionDefault: DeletionDefault;
+  /** Which system wins, per profile field, when the sync finds a difference. */
+  fieldOwnership: Record<OwnedField, FieldOwner>;
 }
 
 export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   intervalSeconds: 900,
   autoSyncEnabled: true,
   deletionDefault: 'delete',
+  fieldOwnership: { ...DEFAULT_FIELD_OWNERSHIP },
 };
 
 export class SyncSettingsError extends Error {}
@@ -65,6 +75,13 @@ export function validateSyncSettingsPatch(input: unknown): Partial<SyncSettings>
     }
     out.deletionDefault = body.deletionDefault as DeletionDefault;
   }
+  if (body.fieldOwnership !== undefined) {
+    try {
+      out.fieldOwnership = validateFieldOwnership(body.fieldOwnership);
+    } catch (e) {
+      throw new SyncSettingsError(e instanceof FieldOwnershipError ? e.message : 'Invalid fieldOwnership');
+    }
+  }
   return out;
 }
 
@@ -77,7 +94,7 @@ export async function loadSyncSettings(organizationId: string): Promise<SyncSett
   if (res.rows.length === 0 || !res.rows[0].value) return { ...DEFAULT_SYNC_SETTINGS };
   try {
     const stored = validateSyncSettingsPatch(JSON.parse(res.rows[0].value));
-    return { ...DEFAULT_SYNC_SETTINGS, ...stored };
+    return { ...DEFAULT_SYNC_SETTINGS, ...stored, fieldOwnership: { ...DEFAULT_FIELD_OWNERSHIP, ...(stored.fieldOwnership ?? {}) } };
   } catch {
     return { ...DEFAULT_SYNC_SETTINGS };
   }

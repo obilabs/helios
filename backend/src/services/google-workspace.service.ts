@@ -38,6 +38,7 @@ export interface WorkspaceUser {
   organizations?: any[];
   phones?: any[];
   relations?: any[];
+  locations?: any[];
   department?: string;
   jobTitle?: string;
   managerEmail?: string;
@@ -645,6 +646,7 @@ export class GoogleWorkspaceService {
         organizations: user.organizations || [],
         phones: user.phones || [],
         relations: user.relations || [],
+        locations: user.locations || [],
         department: user.organizations?.[0]?.department || '',
         jobTitle: user.organizations?.[0]?.title || '',
         managerEmail: user.relations?.find((r: any) => r.type === 'manager')?.value || ''
@@ -1896,7 +1898,8 @@ export class GoogleWorkspaceService {
         const kept = (Array.isArray(current.phones) ? current.phones : []).filter((p: any) => !sentTypes.has(p.type));
         requestBody.phones = [
           ...kept,
-          ...updates.phones.map(phone => ({
+          // An empty value removes that phone type rather than writing an empty number.
+          ...updates.phones.filter(phone => phone.value).map(phone => ({
             value: phone.value,
             type: phone.type === 'mobile' ? 'mobile' : 'work',
             primary: phone.type === 'work',
