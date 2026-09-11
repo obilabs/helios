@@ -1550,6 +1550,11 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
         await db.query(
           `UPDATE organization_users
            SET google_workspace_id = $1,
+               -- An account Helios just created inside the organization's own Google
+               -- tenant is a member of it by construction. Without this the row kept
+               -- the column default 'local' ("no platform account") forever: syncs
+               -- did not correct it, so Google-backed staff were typed as Helios-only.
+               user_type = CASE WHEN user_type = 'local' THEN 'staff' ELSE user_type END,
                google_workspace_sync_status = 'synced',
                google_workspace_last_sync = NOW()
            WHERE id = $2`,
@@ -1640,6 +1645,8 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
             await db.query(
               `UPDATE organization_users
                SET microsoft_365_id = $1, microsoft_365_upn = $2,
+                   -- Same reason as the Google path: created in our tenant, so a member.
+                   user_type = CASE WHEN user_type = 'local' THEN 'staff' ELSE user_type END,
                    microsoft_365_sync_status = 'synced', microsoft_365_last_sync = NOW()
                WHERE id = $3`,
               [microsoft365UserId, upn, newUser.id]
