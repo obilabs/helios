@@ -17,8 +17,9 @@ import { googleWorkspaceService } from '../google-workspace.service.js';
  * left unmapped for an explicit choice, since they cannot be recreated as-is.
  *
  * Persistence reuses the existing organization_settings key/value store — no new
- * table. The plan's target list maps 1:1 onto the migration script's source->
- * target mapping, so a reviewed/overridden plan drives the actual transfer.
+ * table. The plan's target list maps 1:1 onto the source->destination CSV that
+ * Google's native Data Migration ingests, so a reviewed/overridden plan drives
+ * the actual transfer. Helios does not move mail or files itself.
  */
 
 export interface MigrateWhat {
@@ -289,29 +290,14 @@ export class MigrationPlanService {
   }
 
   /**
-   * The source->target email map the migration script consumes (--map), built
-   * from the READY targets of a plan. Unmapped/missing-destination targets are
-   * excluded so a run never imports into a non-existent mailbox.
-   */
-  toScriptMap(plan: MigrationPlan): Record<string, string> {
-    const map: Record<string, string> = {};
-    for (const t of plan.targets) {
-      if (t.targetGoogleEmail && t.targetExists) {
-        map[t.sourceUpn || t.sourceEmail] = t.targetGoogleEmail;
-      }
-    }
-    return map;
-  }
-
-  /**
    * Emit the source->destination mapping as CSV for GOOGLE'S NATIVE Data
    * Migration / Data Import (Exchange Online -> Gmail, OneDrive -> Drive), which
    * ingests a source-email -> destination-Google-email mapping and REQUIRES both
    * accounts to already exist. Only READY targets (destination chosen AND known
    * to exist) are included, so the import never targets a missing mailbox. This
-   * is the primary output now that Google's native tool does the transfer; the
-   * legacy `toScriptMap` feeds the throwaway custom script fallback. Adjust the
-   * header row to match the exact columns your Google import tool expects.
+   * is the output: Google's native tool does the transfer (buy, not build;
+   * decided 2026-08-31). Adjust the header row to match the exact columns your
+   * Google import tool expects.
    */
   toGoogleMigrationCsv(plan: MigrationPlan): string {
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);

@@ -12,7 +12,8 @@ provisioning first (Helios's job), then the hand-off + tracking, then UI.
 - [x] Persist the plan (organization_settings key/value); `GET/PUT /microsoft/migration/plan`.
 - [x] **Emit Google's import CSV** (`toGoogleMigrationCsv`, `GET /microsoft/migration/plan/csv`) —
       ready targets only (both accounts must exist).
-- [x] Throwaway PoC transfer script + Graph read-path fixtures — kept as a FALLBACK only.
+- [x] Throwaway PoC transfer script + Graph read-path fixtures. The script proved the path and
+      was deleted 2026-09-11 (buy, not build); the fixtures stay for the replay tests.
 
 ## Phase 1 — Prerequisites (tenant owner)
 
