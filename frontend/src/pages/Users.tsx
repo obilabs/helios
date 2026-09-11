@@ -1,3 +1,4 @@
+import { ACCOUNT_PURPOSE_OPTIONS } from '../config/accountPurpose';
 import { FieldDriftPanel } from '../components/FieldDriftPanel';
 import { useQueryClient } from '@tanstack/react-query';
 import { userKeys } from '../hooks/queries/useUsers';
@@ -34,6 +35,9 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
   const [showPlatformDropdown, setShowPlatformDropdown] = useState(false);
+  // Account purpose: people, shared mailboxes, service accounts, resources.
+  const [purposeFilter, setPurposeFilter] = useState<string>('all');
+  const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
   // Initialize search from URL parameter
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
 
@@ -386,6 +390,35 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
             )}
           </div>
 
+          {/* Account purpose filter (staff only: guests and contacts are outside the organization) */}
+          {activeTab === 'staff' && (
+            <div className="dropdown-wrapper">
+              <button
+                className={`btn-filter-pill ${purposeFilter !== 'all' ? 'active' : ''}`}
+                onClick={() => setShowPurposeDropdown(!showPurposeDropdown)}
+                aria-label="Filter by account purpose"
+              >
+                <Filter size={12} />
+                {purposeFilter === 'all' ? 'All accounts' : ACCOUNT_PURPOSE_OPTIONS.find(o => o.id === purposeFilter)?.label}
+                <ChevronDown size={12} className={showPurposeDropdown ? 'rotate-180' : ''} />
+              </button>
+              {showPurposeDropdown && (
+                <div className="filter-dropdown-menu">
+                  {[{ id: 'all', label: 'All accounts' }, ...ACCOUNT_PURPOSE_OPTIONS].map((option) => (
+                    <button
+                      key={option.id}
+                      className={`filter-dropdown-item ${purposeFilter === option.id ? 'selected' : ''}`}
+                      onClick={() => { setPurposeFilter(option.id); setShowPurposeDropdown(false); }}
+                    >
+                      {option.label}
+                      {purposeFilter === option.id && <CheckCircle size={14} className="check-icon" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Export Dropdown */}
           <div className="dropdown-wrapper" ref={exportDropdownRef}>
             <button
@@ -466,6 +499,7 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
           searchQuery={searchQuery}
           statusFilter={statusFilter}
           platformFilter={platformFilter}
+          purposeFilter={activeTab === 'staff' ? purposeFilter : 'all'}
           onStatusCountsChange={setStatusCounts}
           onDepartmentsChange={setDepartments}
           onNavigate={(page, params) => {

@@ -6,6 +6,7 @@ import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
 import { REQUIRED_SCOPES, SCOPE_DETAILS, DELEGATION_SCOPES, DELEGATION_SCOPE_DETAILS } from '../config/google-scopes.js';
+import { ACCOUNT_PURPOSE_FIELD, HELIOS_SCHEMA_NAME, type AccountPurpose } from '../lib/account-purpose.js';
 
 export interface ServiceAccountCredentials {
   type: string;
@@ -39,6 +40,7 @@ export interface WorkspaceUser {
   phones?: any[];
   relations?: any[];
   locations?: any[];
+  customSchemas?: Record<string, any>;
   department?: string;
   jobTitle?: string;
   managerEmail?: string;
@@ -647,6 +649,7 @@ export class GoogleWorkspaceService {
         phones: user.phones || [],
         relations: user.relations || [],
         locations: user.locations || [],
+        customSchemas: user.customSchemas || {},
         department: user.organizations?.[0]?.department || '',
         jobTitle: user.organizations?.[0]?.title || '',
         managerEmail: user.relations?.find((r: any) => r.type === 'manager')?.value || ''
@@ -1597,6 +1600,99 @@ export class GoogleWorkspaceService {
       return { success: true, user: res.data as Record<string, any> };
     } catch (error: any) {
       return { success: false, error: error?.message || String(error) };
+    }
+  }
+
+  /** Orgs whose Helios custom schema is known to exist, so it is checked once per process. */
+  private heliosSchemaReady = new Set<string>();
+
+  /**
+   * Make sure the Google custom schema that carries Helios attributes exists.
+   *
+   * Uses its own token with only the userschema scope, minted for this call. Google
+   * delegation is all-or-nothing per token, so adding userschema to the shared admin
+   * client would break every workspace whose delegation predates it (that happened in
+   * August 2026). A workspace without the scope gets a plain "not permitted" here and
+   * everything else keeps working.
+   */
+  async ensureHeliosSchema(organizationId: string): Promise<{ ok: boolean; notPermitted?: boolean; error?: string }> {
+    if (this.heliosSchemaReady.has(organizationId)) return { ok: true };
+    const credentials = await this.getCredentials(organizationId);
+    const adminEmail = await this.getAdminEmail(organizationId);
+    if (!credentials || !adminEmail) return { ok: false, notPermitted: false, error: 'Google Workspace not configured' };
+    const auth = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/admin.directory.userschema'],
+      subject: adminEmail,
+    });
+    const admin = google.admin({ version: 'directory_v1', auth });
+    const field = {
+      fieldName: ACCOUNT_PURPOSE_FIELD,
+      fieldType: 'STRING',
+      displayName: 'Account purpose',
+      multiValued: false,
+      readAccessType: 'ADMINS_AND_SELF',
+    };
+    try {
+      let existing: any = null;
+      try {
+        existing = (await admin.schemas.get({ customerId: 'my_customer', schemaKey: HELIOS_SCHEMA_NAME })).data;
+      } catch (e: any) {
+        if (e?.code !== 404 && e?.response?.status !== 404) throw e;
+      }
+      if (!existing) {
+        await admin.schemas.insert({
+          customerId: 'my_customer',
+          requestBody: { schemaName: HELIOS_SCHEMA_NAME, displayName: 'Helios', fields: [field] } as any,
+        });
+        logger.info('Created the Helios custom schema in Google', { organizationId });
+      } else if (!(existing.fields || []).some((f: any) => f.fieldName === ACCOUNT_PURPOSE_FIELD)) {
+        await admin.schemas.patch({
+          customerId: 'my_customer',
+          schemaKey: HELIOS_SCHEMA_NAME,
+          requestBody: { fields: [...(existing.fields || []), field] } as any,
+        });
+        logger.info('Added AccountPurpose to the Helios custom schema in Google', { organizationId });
+      }
+      this.heliosSchemaReady.add(organizationId);
+      return { ok: true };
+    } catch (e: any) {
+      const message = e?.message || String(e);
+      const status = e?.code ?? e?.response?.status;
+      // A scope missing from the delegation fails the token exchange (unauthorized_client).
+      const notPermitted = /unauthorized_client|not authorized|insufficient/i.test(message) || status === 401 || status === 403;
+      logger.warn('Could not prepare the Helios custom schema in Google', { organizationId, notPermitted, error: message });
+      return { ok: false, notPermitted, error: message };
+    }
+  }
+
+  /**
+   * Record an account's purpose on its Google user record (Helios.AccountPurpose).
+   * The user write needs only the user scope; the schema must exist first. Other
+   * attributes in the Helios schema are kept (read, then merged).
+   */
+  async setAccountPurpose(organizationId: string, userKey: string, purpose: AccountPurpose): Promise<{ success: boolean; error?: string }> {
+    const schema = await this.ensureHeliosSchema(organizationId);
+    if (!schema.ok) {
+      return {
+        success: false,
+        error: schema.notPermitted
+          ? 'the Google connection is not allowed to create custom attributes, so the purpose was not recorded in Google. Add the admin.directory.userschema scope to the domain-wide delegation to allow it'
+          : `Google did not accept the Helios custom attribute (${schema.error})`,
+      };
+    }
+    try {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) return { success: false, error: 'Google Workspace not configured' };
+      const admin = this.createAdminClient(credentials, adminEmail);
+      const current = await admin.users.get({ userKey, projection: 'custom', customFieldMask: HELIOS_SCHEMA_NAME });
+      const helios = { ...((current.data.customSchemas as any)?.[HELIOS_SCHEMA_NAME] || {}), [ACCOUNT_PURPOSE_FIELD]: purpose };
+      await admin.users.patch({ userKey, requestBody: { customSchemas: { [HELIOS_SCHEMA_NAME]: helios } } });
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || String(e) };
     }
   }
 

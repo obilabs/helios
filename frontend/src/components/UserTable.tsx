@@ -9,6 +9,7 @@
  * - Row selection for bulk operations
  */
 
+import { accountPurposeLabel } from '../config/accountPurpose';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { VisibilityState, RowSelectionState } from '@tanstack/react-table';
@@ -51,6 +52,7 @@ interface UserTableProps {
   userType: 'staff' | 'guests' | 'contacts';
   statusFilter?: string;
   platformFilter?: string;
+  purposeFilter?: string;
   searchQuery?: string;
   onStatusCountsChange?: (counts: any) => void;
   onDepartmentsChange?: (departments: string[]) => void;
@@ -62,6 +64,7 @@ export function UserTable({
   userType,
   statusFilter = 'all',
   platformFilter = 'all',
+  purposeFilter = 'all',
   searchQuery = '',
   onStatusCountsChange,
   onDepartmentsChange,
@@ -111,6 +114,7 @@ export function UserTable({
     userType: apiUserType as 'staff' | 'guest' | 'contact',
     status: statusFilter !== 'all' ? statusFilter : undefined,
     platform: platformFilter !== 'all' ? platformFilter : undefined,
+    purpose: purposeFilter !== 'all' ? purposeFilter : undefined,
   };
 
   // Fetch users with TanStack Query
@@ -416,7 +420,20 @@ export function UserTable({
         header: 'Email',
         size: 200,
         minSize: 150,
-        cell: (info) => <span className="email-cell">{info.getValue()}</span>,
+        cell: (info) => {
+          const purpose = info.row.original.accountPurpose;
+          return (
+            <span className="email-cell">
+              {info.getValue()}
+              {/* Not a person: a shared mailbox, service or resource account. Kept off the org chart. */}
+              {purpose && purpose !== 'person' && (
+                <span className="purpose-badge" title="Not a person. Kept off the org chart and out of manager lists.">
+                  {accountPurposeLabel(purpose)}
+                </span>
+              )}
+            </span>
+          );
+        },
       }),
     ];
 
