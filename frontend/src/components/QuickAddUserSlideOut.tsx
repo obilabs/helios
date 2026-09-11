@@ -77,9 +77,14 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
     const [googleEnabled, setGoogleEnabled] = useState(false);
     const [microsoftEnabled, setMicrosoftEnabled] = useState(false);
     const [orgDomain, setOrgDomain] = useState('');
+    // Whether Google/Microsoft are connected is learned asynchronously. Until it is,
+    // createInGoogle is forced false in the payload, so a quick submit silently made
+    // a Helios-only user with the Google box apparently ticked. Proven in the UI on
+    // 2026-09-11. Submit waits for it.
+    const [optionsLoaded, setOptionsLoaded] = useState(false);
 
     useEffect(() => {
-        fetchDropdownData();
+        fetchDropdownData().finally(() => setOptionsLoaded(true));
     }, []);
 
     const fetchDropdownData = async () => {
@@ -87,7 +92,9 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
         const [deptRes, jtRes, mgrRes, licRes, statsRes, orgRes] = await Promise.allSettled([
             authFetch('/api/v1/organization/departments'),
             authFetch('/api/v1/organization/job-titles'),
-            authFetch('/api/v1/organization/users?status=active&limit=100'),
+            // Managers are people in the organization: staff or local. Asking for every type
+            // offered guests and contacts, several with no name, as possible managers.
+            authFetch('/api/v1/organization/users?status=active&userType=staff&limit=100'),
             authFetch('/api/v1/organization/licenses'),
             authFetch('/api/v1/dashboard/stats'),
             authFetch('/api/v1/organization/current')
@@ -230,21 +237,27 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
 
             if (response.ok && data.success) {
                 // Check if there was a partial failure (e.g., GW creation failed)
-                const hasGwWarning = data.providerStatus?.google?.requested && !data.providerStatus?.google?.success;
-                const hasMsWarning = data.providerStatus?.microsoft?.requested && !data.providerStatus?.microsoft?.success;
+                // The server nests these under data. Reading them from the top level
+                // meant a failed Google creation was always styled as a success.
+                const providerStatus = data.data?.providerStatus ?? data.providerStatus;
+                const hasGwWarning = providerStatus?.google?.requested && !providerStatus?.google?.success;
+                const hasMsWarning = providerStatus?.microsoft?.requested && !providerStatus?.microsoft?.success;
+                const emailNotSent = data.data?.emailSent === false;
 
                 // Use server message which includes provider status details
                 let message = data.message || `User ${formData.firstName} ${formData.lastName} created successfully!`;
 
                 // Show as warning (not full success) if provider creation failed
-                const isPartialSuccess = hasGwWarning || hasMsWarning;
+                const isPartialSuccess = hasGwWarning || hasMsWarning || emailNotSent;
 
                 setSubmitResult({
                     success: !isPartialSuccess, // false for partial success to show warning styling
                     message: message
                 });
                 onUserCreated?.();
-                setTimeout(() => onClose(), isPartialSuccess ? 4000 : 2000); // Give more time to read warning
+                // A warning stays until the admin closes it: an auto-closing warning is
+                // how "Google creation failed" went unread. A clean success closes itself.
+                if (!isPartialSuccess) setTimeout(() => onClose(), 2500);
             } else {
                 setSubmitResult({
                     success: false,
@@ -411,7 +424,8 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
                                     <option value="">Select manager...</option>
                                     {managers.map((m: any) => (
                                         <option key={m.id} value={m.id}>
-                                            {m.firstName || m.first_name} {m.lastName || m.last_name}
+                                            {[m.firstName || m.first_name, m.lastName || m.last_name].filter(Boolean).join(' ') || m.email}
+                                            {m.email ? ` (${m.email})` : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -573,7 +587,7 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
                     <button className="btn-secondary" onClick={onClose} disabled={isSubmitting}>
                         Cancel
                     </button>
-                    <button className="btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
+                    <button className="btn-primary" onClick={handleSubmit} disabled={isSubmitting || !optionsLoaded} title={optionsLoaded ? undefined : 'Loading organization settings'}>
                         {isSubmitting ? (
                             <>
                                 <Loader2 size={16} className="spinning" />
