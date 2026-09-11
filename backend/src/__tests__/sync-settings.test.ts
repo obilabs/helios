@@ -12,8 +12,17 @@ import {
 } from '../lib/sync-settings.js';
 
 describe('sync settings', () => {
-  it('defaults to every 15 minutes, automatic, delete in the platform', () => {
-    expect(DEFAULT_SYNC_SETTINGS).toEqual({ intervalSeconds: 900, autoSyncEnabled: true, deletionDefault: 'delete' });
+  it('defaults to every 15 minutes, automatic, delete in the platform, Google owning every field', () => {
+    expect(DEFAULT_SYNC_SETTINGS).toEqual({
+      intervalSeconds: 900,
+      autoSyncEnabled: true,
+      deletionDefault: 'delete',
+      fieldOwnership: { jobTitle: 'google', department: 'google', manager: 'google', mobilePhone: 'google', workPhone: 'google', location: 'google' },
+    });
+  });
+
+  it('refuses an ownership map with an unknown owner', () => {
+    expect(() => validateSyncSettingsPatch({ fieldOwnership: { jobTitle: 'both' } })).toThrow(SyncSettingsError);
   });
 
   it('accepts exactly the intervals the page offers', () => {

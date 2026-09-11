@@ -52,15 +52,20 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
   const [savingOrg, setSavingOrg] = useState(false);
 
   // Sync settings state
+  const DEFAULT_OWNERSHIP: Record<string, 'google' | 'helios'> = {
+    jobTitle: 'google', department: 'google', manager: 'google', mobilePhone: 'google', workPhone: 'google', location: 'google',
+  };
   const [syncSettings, setSyncSettings] = useState({
     syncInterval: '900',
     autoSyncEnabled: true,
     deletionPolicy: 'delete',
+    fieldOwnership: DEFAULT_OWNERSHIP,
   });
   const [originalSyncSettings, setOriginalSyncSettings] = useState({
     syncInterval: '900',
     autoSyncEnabled: true,
     deletionPolicy: 'delete',
+    fieldOwnership: DEFAULT_OWNERSHIP,
   });
 
   // Load the SAVED settings. There used to be no load at all, so the page always
@@ -75,6 +80,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
             syncInterval: String(data.data.intervalSeconds),
             autoSyncEnabled: !!data.data.autoSyncEnabled,
             deletionPolicy: data.data.deletionDefault,
+            fieldOwnership: { ...DEFAULT_OWNERSHIP, ...(data.data.fieldOwnership || {}) },
           };
           setSyncSettings(loaded);
           setOriginalSyncSettings(loaded);
@@ -228,6 +234,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
           intervalSeconds: Number(syncSettings.syncInterval),
           autoSyncEnabled: syncSettings.autoSyncEnabled,
           deletionDefault: syncSettings.deletionPolicy,
+          fieldOwnership: syncSettings.fieldOwnership,
         })
       });
       const data = await response.json().catch(() => ({}));
@@ -1068,11 +1075,37 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                         Sync already runs both ways per operation; the real question is who
                         wins when a field differs, and that is decided per field. */}
                     <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280' }}>
-                      Users created in either place appear in both, and edits made in Helios are sent
-                      to Google as you save them. Choosing which system owns each profile field (title,
-                      department, manager, phones, location) is being added next; until then, edits made
-                      in Google to those fields are not copied back into Helios.
+                      Users created in either place appear in both, and edits you save in Helios go to Google
+                      straight away. When the sync finds a field that differs, the owner decides: a Google-owned
+                      field takes Google&apos;s value, a Helios-owned field is listed for you to resolve on the
+                      Users page. An empty value in Google never erases a value in Helios.
                     </p>
+                    <table className="field-ownership-table" style={{ width: '100%', maxWidth: 460, borderCollapse: 'collapse', fontSize: 13 }}>
+                      <tbody>
+                        {([
+                          ['jobTitle', 'Job title'], ['department', 'Department'], ['manager', 'Manager'],
+                          ['mobilePhone', 'Mobile phone'], ['workPhone', 'Work phone'], ['location', 'Location'],
+                        ] as const).map(([key, label]) => (
+                          <tr key={key}>
+                            <td style={{ padding: '6px 0' }}>{label}</td>
+                            <td style={{ padding: '6px 0', textAlign: 'right' }}>
+                              <select
+                                className="form-select"
+                                aria-label={`Owner of ${label}`}
+                                value={syncSettings.fieldOwnership[key]}
+                                onChange={(e) => setSyncSettings(prev => ({
+                                  ...prev,
+                                  fieldOwnership: { ...prev.fieldOwnership, [key]: e.target.value as 'google' | 'helios' },
+                                }))}
+                              >
+                                <option value="google">Google owns it</option>
+                                <option value="helios">Helios owns it</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
                   <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
