@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { db } from '../../database/connection.js';
 import { logger } from '../../utils/logger.js';
 import { googleWorkspaceService } from '../google-workspace.service.js';
+import { microsoftGraphService } from '../microsoft-graph.service.js';
+import { purposeFromMicrosoft, type AccountPurpose } from '../../lib/account-purpose.js';
 
 /**
  * Cross-cloud migration destination mapping (M365 -> Google Workspace).
@@ -41,12 +43,23 @@ export interface MigrationTarget {
   transfer: MigrateWhat;
   /**
    * Destination strategy. Regular users -> 'mailbox' (a licensed Google account).
-   * A SHARED mailbox has a choice: 'group' = a Google Group for NEW mail only,
-   * free, but the old mail is NOT migrated ("miss old emails"); or 'delegated' =
-   * a licensed Google mailbox with delegation to the team, which DOES migrate the
-   * full history but costs a Google seat (no free shared-mailbox equivalent).
+   * A SHARED mailbox has a choice: 'group' = a free Google Group, which Google's
+   * Data Migration Service does NOT fill with the old mail (Google's separate
+   * Groups Migration API can import history into a group's ARCHIVE — 25 MB a
+   * message, readable by members, never delivered to their inboxes — which Helios
+   * has not tested, so do not promise it); or 'delegated' = a licensed Google
+   * mailbox with delegation to the team, which DOES migrate the full history but
+   * costs a Google seat (Google has no free shared-mailbox equivalent).
    */
   destinationType: 'mailbox' | 'group' | 'delegated';
+  /**
+   * What Microsoft says the source mailbox is for, read when the plan is built.
+   * A SUGGESTION, not a fact: Exchange also reports 'shared' for a person's
+   * mailbox once their licence is removed (seen live on 2026-09-11, where five
+   * unlicensed people's mailboxes all reported 'shared'), so the admin confirms it.
+   * null when the connection lacks MailboxSettings.Read or the account has no mailbox.
+   */
+  sourceMailboxPurpose?: AccountPurpose | null;
   /** For 'delegated' = who gets mailbox access; for 'group' = members. */
   delegates?: string[];
   status: 'unmapped' | 'ready';
@@ -95,6 +108,36 @@ export class MigrationPlanService {
   }
 
   /**
+   * What each M365 mailbox is for, straight from Graph. Read only when a plan is
+   * built — never on the sync tick: Helios does not manage Microsoft mailboxes, it
+   * reads them to plan a move. Needs the optional MailboxSettings.Read permission;
+   * without it every answer is null and the admin classifies by hand.
+   */
+  private async readMailboxPurposes(organizationId: string, msIds: string[]): Promise<Map<string, AccountPurpose>> {
+    const byId = new Map<string, AccountPurpose>();
+    try {
+      const ready = await microsoftGraphService.initialize(organizationId);
+      if (!ready) return byId;
+    } catch {
+      return byId;
+    }
+    for (const id of msIds) {
+      try {
+        const r = await microsoftGraphService.getMailboxPurpose(id);
+        if (r.notPermitted) {
+          logger.info('Mailbox purposes not read: the Microsoft connection lacks MailboxSettings.Read', { organizationId });
+          return byId;
+        }
+        const purpose = purposeFromMicrosoft(r.purpose);
+        if (purpose) byId.set(id, purpose);
+      } catch (e: any) {
+        logger.debug('Mailbox purpose unavailable for one account', { error: e?.message });
+      }
+    }
+    return byId;
+  }
+
+  /**
    * Build a default plan from the reconciled directory (organization_users):
    * every M365 user is a source; the default destination is a SAME-IDENTITY
    * proposal (same email) when a Google account already exists at it OR the
@@ -114,12 +157,18 @@ export class MigrationPlanService {
       `SELECT microsoft_365_id,
               microsoft_365_upn,
               user_type,
+              account_purpose,
               LOWER(email) AS email,
               COALESCE(NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), ''), email) AS name
          FROM organization_users
         WHERE organization_id = $1 AND microsoft_365_id IS NOT NULL
         ORDER BY email`,
       [organizationId],
+    );
+
+    const mailboxPurposes = await this.readMailboxPurposes(
+      organizationId,
+      ms.rows.map((r: any) => r.microsoft_365_id).filter(Boolean),
     );
 
     const targets: MigrationTarget[] = ms.rows.map((r: any) => {
@@ -130,10 +179,13 @@ export class MigrationPlanService {
       // provisioned there). Otherwise leave unmapped for an explicit choice.
       const sameIdentityEligible = sameEmailExists || workspaceDomains.has(srcDomain);
       const targetGoogleEmail = sameIdentityEligible ? r.email : null;
-      // A 'contact' is our unlicensed / shared-mailbox candidate. Default it to a
-      // delegated licensed mailbox (keeps history, safe) — the admin can switch it
-      // to 'group' to save the seat at the cost of not migrating old mail.
-      const isShared = r.user_type === 'contact';
+      // Shared mailbox: what Microsoft reports, else what an admin recorded in
+      // Helios. (It used to read user_type === 'contact', which stopped meaning
+      // anything in #130 — an unlicensed Microsoft member is staff now.) Default a
+      // shared mailbox to a delegated licensed Google mailbox, which keeps the
+      // history; the admin can switch it to a Group to save the seat.
+      const mailboxPurpose = mailboxPurposes.get(r.microsoft_365_id) ?? null;
+      const isShared = mailboxPurpose === 'shared_mailbox' || (!mailboxPurpose && r.account_purpose === 'shared_mailbox');
       return {
         sourceMs365Id: r.microsoft_365_id,
         sourceUpn: r.microsoft_365_upn ?? null,
@@ -142,6 +194,7 @@ export class MigrationPlanService {
         targetGoogleEmail,
         targetExists: sameEmailExists,
         transfer: { ...DEFAULT_TRANSFER },
+        sourceMailboxPurpose: mailboxPurpose ?? (r.account_purpose && r.account_purpose !== 'person' ? r.account_purpose : null),
         destinationType: isShared ? 'delegated' : 'mailbox',
         status: targetStatus(targetGoogleEmail),
       };
