@@ -136,11 +136,22 @@ Each organization MUST use their own service account for:
      https://www.googleapis.com/auth/drive.readonly
      https://www.googleapis.com/auth/gmail.settings.basic
      https://www.googleapis.com/auth/gmail.settings.sharing
+     https://www.googleapis.com/auth/ediscovery
+     https://www.googleapis.com/auth/admin.directory.userschema
+     https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly
+     https://www.googleapis.com/auth/admin.directory.resource.calendar
+     https://www.googleapis.com/auth/admin.directory.user.readonly
+     https://www.googleapis.com/auth/admin.directory.group.readonly
+     https://www.googleapis.com/auth/admin.directory.orgunit.readonly
+     https://www.googleapis.com/auth/admin.directory.domain.readonly
      ```
-     > **Source of truth:** this list mirrors `REQUIRED_SCOPES` in
+     > **Source of truth:** this is the full delegation set (`DELEGATION_SCOPES`) from
      > [`backend/src/config/google-scopes.ts`](../../backend/src/config/google-scopes.ts),
-     > where each scope is annotated with the reason Helios needs it. If that file
-     > changes, update this list to match.
+     > where each scope carries the reason Helios needs it. Authorise all of them once:
+     > the last eight cover optional features (Vault holds, the account-purpose
+     > attribute, calendar rooms and buildings, and read-only directory access for the
+     > API relay), and Helios only ever requests the ones a given call needs. A test
+     > fails if this list and that file drift apart.
 3. Click **"Authorize"**
 
 ## Step 4: Configure in Helios
