@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
 
 # Create non-root user FIRST (before any file operations)
 RUN addgroup -g 1001 -S nodejs && \
@@ -20,9 +20,9 @@ USER nodejs
 # Copy package files. @obilabs/* are public on npmjs — no .npmrc, no token.
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install all dependencies (including dev for development). @obilabs/licensing
+# Install all dependencies from the lockfile (including dev). @obilabs/licensing
 # resolves anonymously from npmjs — no BuildKit secret, no NPM_TOKEN.
-RUN npm install
+RUN npm ci
 
 # Copy tsconfig
 COPY --chown=nodejs:nodejs tsconfig.json ./
