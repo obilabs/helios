@@ -66,7 +66,6 @@ function getActionName(method: string, path: string): string {
 
   // Auth actions
   if (path.includes('/auth/login')) return 'auth.login';
-  if (path.includes('/auth/logout')) return 'auth.logout';
   if (path.includes('/auth/refresh')) return 'auth.token.refresh';
   if (path.includes('/auth/password')) return 'auth.password.change';
 
@@ -133,7 +132,7 @@ function getActionCategory(action: string): string {
 }
 
 // Recursively redact sensitive fields
-function redactSensitiveData(obj: any, depth = 0): any {
+export function redactSensitiveData(obj: any, depth = 0): any {
   if (depth > 10) return '[MAX_DEPTH]';
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
@@ -142,17 +141,16 @@ function redactSensitiveData(obj: any, depth = 0): any {
     return obj.map(item => redactSensitiveData(item, depth + 1));
   }
 
-  const redacted: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (REDACTED_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
-      redacted[key] = '[REDACTED]';
-    } else if (typeof value === 'object') {
-      redacted[key] = redactSensitiveData(value, depth + 1);
-    } else {
-      redacted[key] = value;
-    }
-  }
-  return redacted;
+  // Object.fromEntries defines own properties, so a body key such as
+  // "__proto__" stays an ordinary key instead of changing the copy's prototype.
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => {
+      if (REDACTED_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+        return [key, '[REDACTED]'];
+      }
+      return [key, typeof value === 'object' ? redactSensitiveData(value, depth + 1) : value];
+    })
+  );
 }
 
 

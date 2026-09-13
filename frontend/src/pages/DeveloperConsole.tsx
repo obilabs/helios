@@ -5,6 +5,7 @@ import { authFetch } from '../config/api';
 import * as google from '../lib/googleApiRequests';
 import { buildOffboardConfigPayload } from '../lib/offboardConfig';
 import './DeveloperConsole.css';
+import { stripHtmlTags } from '../lib/html-text';
 
 interface ConsoleOutput {
   type: 'command' | 'success' | 'error' | 'info';
@@ -4895,7 +4896,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           addOutput('info', '='.repeat(60));
           if (sendAsData.signature) {
             // Strip HTML tags for display
-            const plainText = sendAsData.signature.replace(/<[^>]*>/g, '').trim();
+            const plainText = stripHtmlTags(sendAsData.signature).trim();
             addOutput('info', plainText || '(empty signature)');
           } else {
             addOutput('info', '(no signature set)');

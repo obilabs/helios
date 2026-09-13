@@ -131,9 +131,12 @@ export function validateFieldOwnership(input: unknown): Record<OwnedField, Field
   if (!input || typeof input !== 'object') throw new FieldOwnershipError('fieldOwnership must be an object');
   const out = { ...DEFAULT_FIELD_OWNERSHIP };
   for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
-    if (!OWNED_FIELDS.includes(k as OwnedField)) throw new FieldOwnershipError(`Unknown field: ${k}`);
-    if (!FIELD_OWNERS.includes(v as FieldOwner)) throw new FieldOwnershipError(`Owner for ${k} must be google or helios`);
-    out[k as OwnedField] = v as FieldOwner;
+    // Resolve the key against the known list so only a constant is ever written.
+    const field = OWNED_FIELDS.find((f) => f === k);
+    if (!field) throw new FieldOwnershipError(`Unknown field: ${k}`);
+    const owner = FIELD_OWNERS.find((o) => o === v);
+    if (!owner) throw new FieldOwnershipError(`Owner for ${k} must be google or helios`);
+    out[field] = owner;
   }
   return out;
 }

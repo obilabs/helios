@@ -588,7 +588,6 @@ app.get('/api/v1/auth/two-factor/status', async (req, res) => {
 //
 // Legacy JWT routes (auth.routes.ts) still available at:
 // - POST /api/v1/auth/login - JWT-based login
-// - POST /api/v1/auth/logout - JWT-based logout
 // - GET /api/v1/auth/verify - Verify JWT token
 //
 // NOTE: Only handle better-auth specific paths, let JWT routes pass through

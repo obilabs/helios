@@ -17,6 +17,7 @@ import {
   MERGE_FIELDS,
 } from '../types/signatures.js';
 import { userTrackingService } from './user-tracking.service.js';
+import { stripHtmlTags, decodeBasicEntities } from '../utils/html-text.js';
 
 // Tracking settings interface
 interface TrackingSettings {
@@ -799,19 +800,13 @@ class SignatureTemplateService {
   }
 
   private htmlToPlainText(html: string): string {
-    return html
-      // Remove HTML tags
+    const withBreaks = html
+      // Line breaks for block elements
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n\n')
-      .replace(/<\/div>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      // Decode HTML entities
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
+      .replace(/<\/div>/gi, '\n');
+    // Remove the remaining tags, then decode entities
+    return decodeBasicEntities(stripHtmlTags(withBreaks))
       // Clean up whitespace
       .replace(/\n{3,}/g, '\n\n')
       .trim();
