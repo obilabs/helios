@@ -1,0 +1,32 @@
+{
+  "family": "groupsmigration",
+  "name": "archive.insert.unknown-group",
+  "note": "A group that does not exist: the error an admin sees when the destination is wrong.",
+  "recordedAt": "2026-09-13T01:27:29.433Z",
+  "request": {
+    "method": "POST",
+    "host": "groupsmigration.googleapis.com",
+    "path": "upload/groups/v1/groups/no-such-group-1789262846507%40example-workspace.test/archive",
+    "query": {
+      "uploadType": "media"
+    },
+    "contentType": "message/rfc822",
+    "body": "From: Michael Agu <external.sender@example-mail.test>\r\nTo: spike.archive@example-workspace.test\r\nSubject: Archived message from a retired mailbox\r\nDate: Mon, 04 Nov 2024 14:22:31 -0700\r\nMessage-ID: <fixture-1789262846507@example-workspace.test>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\nThis message was imported into the group archive during the migration.\r\n"
+  },
+  "response": {
+    "status": 404,
+    "data": {
+      "error": {
+        "code": 404,
+        "message": "Not Found",
+        "errors": [
+          {
+            "message": "Not Found",
+            "domain": "global",
+            "reason": "notFound"
+          }
+        ]
+      }
+    }
+  }
+}

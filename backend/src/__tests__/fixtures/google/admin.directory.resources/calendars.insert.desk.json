@@ -1,0 +1,40 @@
+{
+  "family": "admin.directory.resources",
+  "name": "calendars.insert.desk",
+  "note": "Creating a DESK as a calendar resource — the same object as a room, which is why one model serves both.",
+  "recordedAt": "2026-09-13T01:37:17.940Z",
+  "request": {
+    "method": "POST",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/resources/calendars",
+    "body": {
+      "resourceId": "desk-2-14",
+      "resourceName": "Desk 2-14",
+      "resourceType": "Desk",
+      "resourceCategory": "OTHER",
+      "capacity": 1,
+      "buildingId": "edmonton-hq",
+      "floorName": "2",
+      "floorSection": "North",
+      "userVisibleDescription": "Hot desk, dual monitors"
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#resources#calendars#CalendarResource",
+      "etags": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/MPdBPrVJImPynTBYgilUobTwoIU\"",
+      "resourceId": "desk-2-14",
+      "resourceName": "Desk 2-14",
+      "generatedResourceName": "(Desk)-Edmonton HQ-2-North-Desk 2-14 (1)",
+      "resourceType": "Desk",
+      "resourceEmail": "c_188aaqmftig74jfmg24drfe8b61t4@resource.calendar.google.com",
+      "capacity": 1,
+      "buildingId": "edmonton-hq",
+      "floorName": "2",
+      "floorSection": "North",
+      "resourceCategory": "OTHER",
+      "userVisibleDescription": "Hot desk, dual monitors"
+    }
+  }
+}

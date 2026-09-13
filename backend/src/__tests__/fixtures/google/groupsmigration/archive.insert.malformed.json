@@ -1,0 +1,32 @@
+{
+  "family": "groupsmigration",
+  "name": "archive.insert.malformed",
+  "note": "A body with no headers: shows how the API rejects junk input.",
+  "recordedAt": "2026-09-13T01:27:29.120Z",
+  "request": {
+    "method": "POST",
+    "host": "groupsmigration.googleapis.com",
+    "path": "upload/groups/v1/groups/spike.archive%40example-workspace.test/archive",
+    "query": {
+      "uploadType": "media"
+    },
+    "contentType": "message/rfc822",
+    "body": "this is not an RFC822 message at all"
+  },
+  "response": {
+    "status": 503,
+    "data": {
+      "error": {
+        "code": 503,
+        "message": "Failed to upload message due to backend error",
+        "errors": [
+          {
+            "message": "Failed to upload message due to backend error",
+            "domain": "global",
+            "reason": "backendError"
+          }
+        ]
+      }
+    }
+  }
+}

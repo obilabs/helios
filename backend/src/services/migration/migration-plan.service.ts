@@ -43,13 +43,17 @@ export interface MigrationTarget {
   transfer: MigrateWhat;
   /**
    * Destination strategy. Regular users -> 'mailbox' (a licensed Google account).
-   * A SHARED mailbox has a choice: 'group' = a free Google Group, which Google's
-   * Data Migration Service does NOT fill with the old mail (Google's separate
-   * Groups Migration API can import history into a group's ARCHIVE — 25 MB a
-   * message, readable by members, never delivered to their inboxes — which Helios
-   * has not tested, so do not promise it); or 'delegated' = a licensed Google
-   * mailbox with delegation to the team, which DOES migrate the full history but
-   * costs a Google seat (Google has no free shared-mailbox equivalent).
+   * A SHARED mailbox has a choice: 'group' = a free Google Group, or 'delegated' = a
+   * licensed Google mailbox with delegation to the team, which costs a Google seat
+   * (Google has no free shared-mailbox equivalent).
+   *
+   * History into a Group: Google's Data Migration Service does not do it, but the
+   * separate Groups Migration API does, into the group's ARCHIVE. Proven live
+   * 2026-09-12 (see groups-migration-contract.test.ts): original dates, threading,
+   * senders outside the tenant and UTF-8 all survive; members read the archive and
+   * nothing reaches their inboxes; 25 MB a message; the archive cannot be aged out by
+   * a retention policy. Helios does NOT do this import yet — reading a mailbox needs a
+   * broad Gmail scope we do not ask for.
    */
   destinationType: 'mailbox' | 'group' | 'delegated';
   /**

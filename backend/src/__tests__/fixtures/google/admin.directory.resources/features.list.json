@@ -1,0 +1,19 @@
+{
+  "family": "admin.directory.resources",
+  "name": "features.list",
+  "note": "Resource features (projector, accessible, etc.) — the vocabulary a booking filter would use.",
+  "recordedAt": "2026-09-13T01:37:20.160Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/resources/features",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#resources#features#featuresList",
+      "etag": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/vyGp6PvFo4RvsFtPoIWeCReyIC8\""
+    }
+  }
+}
