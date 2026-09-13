@@ -236,16 +236,6 @@ export const getWidgetData = (
     };
   }
 
-  if (widgetId === 'helios-recent-signups') {
-    // TODO: Add this to stats API
-    return {
-      ...baseData,
-      value: 0,
-      label: 'signups (7 days)',
-      footer: 'Coming soon',
-      state: 'default',
-    };
-  }
 
   // System Widgets
   if (widgetId === 'system-alerts') {

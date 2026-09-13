@@ -123,6 +123,11 @@ services:
       NODE_ENV: production
       PORT: 3001
 
+      # Feature profile (docs/RELEASING.md). `release` = only finished (stable)
+      # features on; preview features can be enabled by an admin in
+      # Settings > Advanced; experimental features are unavailable.
+      HELIOS_FEATURE_PROFILE: ${HELIOS_FEATURE_PROFILE:-release}
+
       # Database (internal postgres, no SSL needed)
       DB_HOST: postgres
       DB_PORT: 5432

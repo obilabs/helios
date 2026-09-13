@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, UserX, Shield, Package, RefreshCw, AlertCircle, Activity, UserPlus, Trash2, Clock, UserMinus, Key, Calendar, ShieldCheck, AppWindow, AlertTriangle } from 'lucide-react';
+import { Users, UserX, Shield, Package, RefreshCw, AlertCircle, UserPlus, Trash2, Clock, UserMinus, Key, Calendar, ShieldCheck, AppWindow, AlertTriangle } from 'lucide-react';
 
 export type WidgetId = string;
 export type WidgetCategory = 'google' | 'microsoft' | 'helios' | 'system' | 'security';
@@ -162,15 +162,6 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     icon: <UserPlus size={16} />,
     gridColumn: 3,
     enabled: true,
-    platformColor: 'var(--theme-primary)',
-  },
-  {
-    id: 'helios-recent-signups',
-    category: 'helios',
-    title: 'Recent Signups',
-    icon: <Activity size={16} />,
-    gridColumn: 3,
-    enabled: false, // Hidden by default
     platformColor: 'var(--theme-primary)',
   },
 

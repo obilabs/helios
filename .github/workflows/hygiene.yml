@@ -1,0 +1,17 @@
+name: Hygiene
+
+# Leak prevention for commits in a PR or push: secret scan (gitleaks), commit
+# identity and attribution check, absolute user-home paths in added lines.
+# The checks live in the shared org workflow.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    uses: obilabs/.github/.github/workflows/hygiene.yml@main

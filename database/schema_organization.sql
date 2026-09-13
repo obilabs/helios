@@ -207,7 +207,7 @@ BEGIN
     INSERT INTO custom_labels (organization_id, canonical_name, label_singular, label_plural)
     VALUES
         (org_id, 'entity.user', 'User', 'Users'),
-        (org_id, 'entity.workspace', 'Team', 'Teams'),
+        (org_id, 'entity.workspace', 'Space', 'Spaces'),
         (org_id, 'entity.access_group', 'Group', 'Groups'),
         (org_id, 'entity.policy_container', 'Org Unit', 'Org Units'),
         (org_id, 'entity.device', 'Device', 'Devices')
@@ -1100,74 +1100,14 @@ CREATE TABLE public.feature_flags (
     is_enabled boolean DEFAULT false,
     category character varying(50) DEFAULT 'general'::character varying,
     metadata jsonb DEFAULT '{}'::jsonb,
+    is_override boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
 
--- Seed default feature flags
--- These control which features are visible in the UI
-INSERT INTO public.feature_flags (feature_key, name, description, is_enabled, category) VALUES
-    -- Automation features
-    ('automation.offboarding_templates', 'Offboarding Templates', 'Create and manage offboarding templates', true, 'automation'),
-    ('automation.offboarding_execution', 'Offboarding Execution', 'Execute offboarding workflows', true, 'automation'),
-    ('automation.onboarding_templates', 'Onboarding Templates', 'Create and manage onboarding templates', true, 'automation'),
-    ('automation.onboarding_execution', 'Onboarding Execution', 'Execute onboarding workflows', true, 'automation'),
-    ('automation.scheduled_actions', 'Scheduled Actions', 'View and manage scheduled automation tasks', true, 'automation'),
-    ('automation.workflows', 'Workflows', 'Custom workflow builder (advanced)', false, 'automation'),
-    -- Insights features (advanced - disabled by default)
-    ('insights.reports', 'Reports', 'Generate and view reports', false, 'insights'),
-    ('insights.team_analytics', 'Team Analytics', 'View team analytics and metrics', false, 'insights'),
-    -- Developer Console (power user - disabled by default)
-    ('console.pop_out', 'Pop-out Console', 'Open console in separate window', false, 'console'),
-    ('console.pinnable_help', 'Pinnable Help Panel', 'Dock help panel to side of console', false, 'console'),
-    ('console.command_audit', 'Command Audit Logging', 'Log console commands to audit trail', false, 'console'),
-    -- User management
-    ('users.export', 'User Export', 'Export users to CSV/JSON', false, 'users'),
-    ('users.platform_filter', 'Platform Filter', 'Filter users by platform', false, 'users'),
-    ('users.delete', 'User Deletion', 'Delete users from the system', true, 'users'),
-    -- Integrations
-    ('integrations.email_archive', 'Email Archive', 'Archive departed user emails', false, 'integrations'),
-    ('integrations.microsoft_365_relay', 'Microsoft 365 Relay', 'Transparent proxy for Microsoft Graph API', false, 'integrations'),
-    ('integrations.google_workspace', 'Google Workspace', 'Google Workspace integration', true, 'integrations'),
-    ('integrations.microsoft_365', 'Microsoft 365', 'Microsoft 365 integration', true, 'integrations'),
-    -- Signatures
-    ('signatures.templates', 'Signature Templates', 'Create and manage email signature templates', true, 'signatures'),
-    ('signatures.campaigns', 'Signature Campaigns', 'Time-limited signature campaigns with tracking', true, 'signatures'),
-    ('signatures.tracking', 'Signature Tracking', 'Track signature views with pixels', true, 'signatures'),
-    -- Navigation sections
-    ('nav.section.automation', 'Automation Section', 'Show Automation section in navigation', true, 'navigation'),
-    ('nav.section.assets', 'Assets Section', 'Show Assets section in navigation', true, 'navigation'),
-    ('nav.section.security', 'Security Section', 'Show Security section in navigation', true, 'navigation'),
-    ('nav.section.journeys', 'Journeys Section', 'Show Journeys section in navigation', true, 'navigation'),
-    ('nav.section.insights', 'Insights Section', 'Show Insights section in navigation', false, 'navigation'),
-    -- Navigation - Journeys
-    ('nav.onboarding', 'Onboarding', 'Show Onboarding in navigation', true, 'navigation'),
-    ('nav.offboarding', 'Offboarding', 'Show Offboarding in navigation', true, 'navigation'),
-    ('nav.requests', 'Requests', 'Show Requests in navigation', false, 'navigation'),
-    ('nav.tasks', 'My Tasks', 'Show My Tasks in navigation', true, 'navigation'),
-    ('nav.training', 'Training', 'Show Training in navigation', false, 'navigation'),
-    -- Navigation - Automation
-    ('nav.signatures', 'Signatures', 'Show Signatures in navigation', true, 'navigation'),
-    ('nav.scheduled_actions', 'Scheduled Actions', 'Show Scheduled Actions in navigation', true, 'navigation'),
-    ('nav.rules_engine', 'Rules Engine', 'Show Rules Engine in navigation', false, 'navigation'),
-    ('nav.workflows', 'Workflows Navigation', 'Show Workflows in navigation', false, 'navigation'),
-    -- Navigation - Assets
-    ('nav.it_assets', 'IT Assets', 'Show IT Assets in navigation', true, 'navigation'),
-    ('nav.media_files', 'Media Files', 'Show Media Files in navigation', true, 'navigation'),
-    -- Navigation - Security
-    ('nav.mail_search', 'Mail Search', 'Show Mail Search in navigation', true, 'navigation'),
-    ('nav.security_events', 'Security Events', 'Show Security Events in navigation', true, 'navigation'),
-    ('nav.oauth_apps', 'OAuth Apps', 'Show OAuth Apps in navigation', true, 'navigation'),
-    ('nav.audit_logs', 'Audit Logs', 'Show Audit Logs in navigation', true, 'navigation'),
-    ('nav.licenses', 'Licenses', 'Show Licenses in navigation', true, 'navigation'),
-    ('nav.external_sharing', 'External Sharing', 'Show External Sharing in navigation', true, 'navigation'),
-    -- Navigation - Insights (disabled by default)
-    ('nav.hr_dashboard', 'HR Dashboard', 'Show HR Dashboard in navigation', false, 'navigation'),
-    ('nav.manager_dashboard', 'Manager Dashboard', 'Show Manager Dashboard in navigation', false, 'navigation'),
-    ('nav.lifecycle_analytics', 'Lifecycle Analytics', 'Show Analytics in navigation', false, 'navigation'),
-    ('nav.reports', 'Reports Navigation', 'Show Reports in navigation', false, 'navigation'),
-    -- Navigation - Incomplete/Beta
-    ('nav.email_archive', 'Email Archive Navigation', 'Show Email Archive in navigation', false, 'navigation');
+-- No default rows: flag defaults live in backend/src/config/feature-registry.ts
+-- and are resolved against HELIOS_FEATURE_PROFILE. This table holds only an
+-- organization's overrides (is_override = true). See docs/RELEASING.md.
 
 
 -- Name: gw_credentials; Type: TABLE; Schema: public; Owner: -

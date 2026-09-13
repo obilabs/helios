@@ -250,7 +250,7 @@ export async function resetLabelsToDefaults(
   try {
     const defaults = {
       'entity.user': { singular: 'User', plural: 'Users' },
-      'entity.workspace': { singular: 'Team', plural: 'Teams' },
+      'entity.workspace': { singular: 'Space', plural: 'Spaces' },
       'entity.access_group': { singular: 'Group', plural: 'Groups' },
       'entity.policy_container': { singular: 'Org Unit', plural: 'Org Units' },
       'entity.device': { singular: 'Device', plural: 'Devices' },

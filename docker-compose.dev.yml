@@ -95,6 +95,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      # Every feature on while developing (docs/RELEASING.md).
+      HELIOS_FEATURE_PROFILE: development
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: helios

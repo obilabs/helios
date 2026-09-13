@@ -307,7 +307,9 @@ jobs:
                 ('organization_users','linkedin_url'),
                 -- 2026-09-10: company details signatures read (migration 090).
                 ('organizations','website_url'),
-                ('organizations','phone')
+                ('organizations','phone'),
+                -- 2026-09-13: flag defaults moved to the code registry; the table holds overrides only (migration 100).
+                ('feature_flags','is_override')
               ) AS v(t,c)
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.columns
@@ -376,3 +378,7 @@ jobs:
       - run: npm ci
       - name: Build
         run: npm run build
+      # Navigation/flag registry invariants (every nav item tied to a registered
+      # flag, one nav entry per page, no "coming soon" on release surfaces).
+      - name: Test
+        run: npm test

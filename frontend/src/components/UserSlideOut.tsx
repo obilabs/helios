@@ -8,6 +8,7 @@ import { useToast } from '../contexts/ToastContext';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import './UserSlideOut.css';
+import { useMicrosoftConnected } from '../hooks/useMicrosoftConnected';
 
 interface User {
   id: string;
@@ -57,6 +58,7 @@ interface ForwardingSettings {
 }
 
 export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: UserSlideOutProps) {
+  const microsoftConnected = useMicrosoftConnected();
   const [activeTab, setActiveTab] = useTabPersistence<TabType>('helios_user_slideout_tab', 'overview');
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
@@ -1574,48 +1576,6 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                         </div>
                       )}
 
-                      {/* M365 placeholder (when available) */}
-                      {user.microsoft365Id && (
-                        <div style={{
-                          padding: '12px 16px',
-                          backgroundColor: '#f9fafb',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          opacity: 0.6
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{
-                              width: '28px',
-                              height: '28px',
-                              backgroundColor: '#00a4ef',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'white',
-                              fontWeight: 600,
-                              fontSize: '12px'
-                            }}>M</div>
-                            <div>
-                              <div style={{ fontWeight: 500, fontSize: '14px' }}>Microsoft 365</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280' }}>Coming soon</div>
-                            </div>
-                          </div>
-                          <div style={{
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            backgroundColor: '#e5e7eb',
-                            color: '#6b7280',
-                            fontSize: '12px',
-                            fontWeight: 500
-                          }}>
-                            Pending
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -1892,7 +1852,9 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                   </div>
                 </div>
 
-                {/* Microsoft 365 Integration */}
+                {/* Microsoft 365 Integration — only when a tenant is connected or
+                    this user is already linked to one. */}
+                {(microsoftConnected || user.microsoft365Id) && (
                 <div className="platform-card connection-card microsoft">
                   <div className="platform-header">
                     <div className="platform-icon" style={{ backgroundColor: '#00a4ef' }}>
@@ -1936,6 +1898,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </div>
           )}
@@ -2073,7 +2036,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                   </select>
-                  <p className="setting-hint">Role changes coming soon</p>
+                  <p className="setting-hint">Administrator access is granted in Settings &gt; Roles &amp; Admins.</p>
                 </div>
               </div>
 

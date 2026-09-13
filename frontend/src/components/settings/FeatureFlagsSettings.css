@@ -253,3 +253,24 @@
   color: #9ca3af;
   font-weight: 400;
 }
+
+/* Maturity badges (feature registry: preview / experimental) */
+.ff-maturity-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.ff-maturity-preview {
+  background: var(--color-primary-50, #f5f3ff);
+  color: var(--color-primary-700, #6d28d9);
+}
+
+.ff-maturity-experimental {
+  background: #fef3c7;
+  color: #92400e;
+}

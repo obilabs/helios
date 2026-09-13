@@ -793,7 +793,7 @@ export function AddUser() {
                 </option>
               ))}
             </select>
-            <p className="field-hint">Assign a license to this user for Google Workspace or Microsoft 365</p>
+            <p className="field-hint">{microsoftEnabled ? 'Assign a license to this user for Google Workspace or Microsoft 365' : 'Assign a Google Workspace license to this user'}</p>
           </div>
         </div>
       )}

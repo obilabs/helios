@@ -1,47 +1,46 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
+import { RefreshCw, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { ToggleSwitch } from '@/components/ui';
 import { authFetch } from '../../config/api';
 import { useFeatureFlags } from '../../contexts/FeatureFlagsContext';
 import './FeatureFlagsSettings.css';
 
+/** Shape served by GET /organization/feature-flags/details. */
 interface FeatureFlag {
-  id: string;
   feature_key: string;
   name: string;
-  description: string | null;
-  is_enabled: boolean;
+  description: string;
   category: string;
-}
-
-interface GroupedFlags {
-  [category: string]: FeatureFlag[];
+  maturity: 'stable' | 'preview' | 'experimental';
+  is_enabled: boolean;
+  is_available: boolean;
+  is_required: boolean;
+  is_overridden: boolean;
+  default_enabled: boolean;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  navigation: 'Navigation & Menus',
-  automation: 'Automation Features',
-  signatures: 'Email Signatures',
-  insights: 'Insights & Reports',
-  integrations: 'Integrations',
-  users: 'User Management',
-  console: 'Developer Console',
-  general: 'General',
+  directory: 'Directory',
+  signatures: 'Signatures',
+  lifecycle: 'Lifecycle & automation',
+  security: 'Security',
+  insights: 'Insights',
+  assets: 'Assets',
+  employee: 'Employee view',
+  platform: 'Platform',
 };
 
-const CATEGORY_ORDER = ['navigation', 'automation', 'assets', 'signatures', 'insights', 'integrations', 'users', 'console', 'general'];
+const CATEGORY_ORDER = ['directory', 'signatures', 'lifecycle', 'security', 'employee', 'platform', 'insights', 'assets'];
 
-// Define navigation hierarchy for clear display
-const NAV_HIERARCHY: Record<string, string[]> = {
-  'nav.section.journeys': ['nav.onboarding', 'nav.offboarding', 'nav.training', 'nav.requests', 'nav.tasks'],
-  'nav.section.automation': ['nav.signatures', 'nav.scheduled_actions', 'nav.rules_engine'],
-  'nav.section.insights': ['nav.hr_dashboard', 'nav.manager_dashboard', 'nav.lifecycle_analytics'],
-  'nav.section.assets': ['nav.it_assets', 'nav.media_files'],
-  'nav.section.security': ['nav.mail_search', 'nav.security_events', 'nav.oauth_apps', 'nav.audit_logs', 'nav.licenses', 'nav.external_sharing'],
-};
-
+/**
+ * Features this installation has switched on. Flags and their maturity are
+ * defined in backend/src/config/feature-registry.ts; the server's profile
+ * (HELIOS_FEATURE_PROFILE) decides the defaults. Core features are not listed
+ * (always on). In a release, experimental features are unavailable and hidden.
+ */
 export function FeatureFlagsSettings() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [profile, setProfile] = useState<'release' | 'development' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -51,15 +50,16 @@ export function FeatureFlagsSettings() {
     try {
       setLoading(true);
       setError(null);
-      const response = await authFetch('/api/v1/organization/feature-flags/details');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch feature flags');
-      }
-
-      const data = await response.json();
-      if (data.success && data.data) {
-        setFlags(data.data);
+      const [detailsRes, profileRes] = await Promise.all([
+        authFetch('/api/v1/organization/feature-flags/details'),
+        authFetch('/api/v1/organization/feature-flags/profile'),
+      ]);
+      if (!detailsRes.ok) throw new Error('Failed to fetch feature flags');
+      const details = await detailsRes.json();
+      if (details.success && Array.isArray(details.data)) setFlags(details.data);
+      if (profileRes.ok) {
+        const p = await profileRes.json();
+        if (p.success && p.data?.profile) setProfile(p.data.profile);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feature flags');
@@ -72,28 +72,18 @@ export function FeatureFlagsSettings() {
     fetchFlags();
   }, [fetchFlags]);
 
-  const toggleFlag = async (featureKey: string, currentValue: boolean) => {
+  const apply = async (featureKey: string, request: RequestInit) => {
     try {
       setUpdating(featureKey);
       setError(null);
-      const response = await authFetch(`/api/v1/organization/feature-flags/${featureKey}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ is_enabled: !currentValue }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update feature flag');
+      const response = await authFetch(`/api/v1/organization/feature-flags/${featureKey}`, request);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || data.message || 'Failed to update feature flag');
       }
-
-      // Update local state
-      setFlags(prev => prev.map(f =>
-        f.feature_key === featureKey ? { ...f, is_enabled: !currentValue } : f
-      ));
-
-      // Refresh global context so navigation updates immediately
+      setFlags(prev => prev.map(f => (f.feature_key === featureKey ? data.data : f)));
+      // Navigation and pages read the global context: refresh it so the change
+      // shows up everywhere immediately.
       await refreshGlobalFlags();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update feature flag');
@@ -102,41 +92,40 @@ export function FeatureFlagsSettings() {
     }
   };
 
-  // Group flags by category
-  const groupedFlags: GroupedFlags = flags.reduce((acc, flag) => {
-    const category = flag.category || 'general';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(flag);
-    return acc;
-  }, {} as GroupedFlags);
+  const toggleFlag = (flag: FeatureFlag) =>
+    apply(flag.feature_key, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_enabled: !flag.is_enabled }),
+    });
 
-  // Sort categories
-  const sortedCategories = Object.keys(groupedFlags).sort((a, b) => {
-    const aIndex = CATEGORY_ORDER.indexOf(a);
-    const bIndex = CATEGORY_ORDER.indexOf(b);
-    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
+  const resetFlag = (flag: FeatureFlag) => apply(flag.feature_key, { method: 'DELETE' });
+
+  const listed = flags.filter(f => !f.is_required && (f.is_available || profile === 'development'));
+  const categories = [...new Set(listed.map(f => f.category))].sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a);
+    const bi = CATEGORY_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.localeCompare(b);
   });
 
   if (loading) {
     return (
       <div className="feature-flags-loading">
         <Loader2 className="spin" size={24} />
-        <span>Loading feature flags...</span>
+        <span>Loading features...</span>
       </div>
     );
   }
 
   return (
-    <div className="feature-flags-settings">
+    <div className="feature-flags-settings" data-testid="feature-flags-settings">
       <div className="ff-header">
         <div className="ff-header-info">
-          <h3>Feature Flags</h3>
-          <p>Enable or disable features and navigation items</p>
+          <p>
+            {profile === 'development'
+              ? 'Development profile: every feature is on, including preview and experimental work.'
+              : 'Finished features are on. Preview features are off by default and can be turned on here.'}
+          </p>
         </div>
         <button className="btn-icon" onClick={fetchFlags} title="Refresh">
           <RefreshCw size={16} />
@@ -151,115 +140,47 @@ export function FeatureFlagsSettings() {
       )}
 
       <div className="ff-categories">
-        {sortedCategories.map(category => {
-          // Special handling for navigation category - show hierarchy
-          if (category === 'navigation') {
-            const navFlags = groupedFlags[category];
-            const sectionFlags = navFlags.filter(f => f.feature_key.startsWith('nav.section.'));
-
-            return (
-              <div key={category} className="ff-category">
-                <div className="ff-category-header">
-                  {CATEGORY_LABELS[category] || category}
-                </div>
-                <div className="ff-list ff-nav-hierarchy">
-                  {sectionFlags.map(sectionFlag => {
-                    const childKeys = NAV_HIERARCHY[sectionFlag.feature_key] || [];
-                    const childFlags = navFlags.filter(f => childKeys.includes(f.feature_key));
-                    const sectionName = sectionFlag.name.replace(' Section', '');
-
-                    return (
-                      <div key={sectionFlag.id} className="ff-nav-section">
-                        {/* Section toggle */}
-                        <div className={`ff-item ff-section-header ${!sectionFlag.is_enabled ? 'ff-disabled' : ''}`}>
-                          <div className="ff-item-info">
-                            <span className="ff-item-name">{sectionName}</span>
-                            <span className="ff-item-desc">
-                              {sectionFlag.is_enabled ? 'Section visible' : 'Entire section hidden'}
-                            </span>
-                          </div>
-                          <div className="ff-item-toggle">
-                            <ToggleSwitch
-                              checked={sectionFlag.is_enabled}
-                              onChange={() => toggleFlag(sectionFlag.feature_key, sectionFlag.is_enabled)}
-                              size="medium"
-                              disabled={updating === sectionFlag.feature_key}
-                            />
-                            {updating === sectionFlag.feature_key && (
-                              <Loader2 className="spin ff-updating" size={14} />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Child items - indented */}
-                        {childFlags.map(flag => (
-                          <div
-                            key={flag.id}
-                            className={`ff-item ff-child-item ${!sectionFlag.is_enabled ? 'ff-parent-disabled' : ''}`}
-                          >
-                            <div className="ff-item-info">
-                              <ChevronRight size={14} className="ff-indent-icon" />
-                              <span className="ff-item-name">{flag.name}</span>
-                            </div>
-                            <div className="ff-item-toggle">
-                              <ToggleSwitch
-                                checked={flag.is_enabled}
-                                onChange={() => toggleFlag(flag.feature_key, flag.is_enabled)}
-                                size="medium"
-                                disabled={updating === flag.feature_key || !sectionFlag.is_enabled}
-                              />
-                              {updating === flag.feature_key && (
-                                <Loader2 className="spin ff-updating" size={14} />
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
-
-          // Default rendering for other categories
-          return (
-            <div key={category} className="ff-category">
-              <div className="ff-category-header">
-                {CATEGORY_LABELS[category] || category}
-              </div>
-              <div className="ff-list">
-                {groupedFlags[category].map(flag => (
-                  <div key={flag.id} className="ff-item">
-                    <div className="ff-item-info">
-                      <span className="ff-item-name">{flag.name}</span>
-                      {flag.description && (
-                        <span className="ff-item-desc">{flag.description}</span>
+        {categories.map(category => (
+          <div key={category} className="ff-category">
+            <div className="ff-category-header">{CATEGORY_LABELS[category] || category}</div>
+            <div className="ff-list">
+              {listed.filter(f => f.category === category).map(flag => (
+                <div key={flag.feature_key} className="ff-item" data-testid={`feature-flag-${flag.feature_key}`}>
+                  <div className="ff-item-info">
+                    <span className="ff-item-name">
+                      {flag.name}
+                      {flag.maturity !== 'stable' && (
+                        <span className={`ff-maturity-badge ff-maturity-${flag.maturity}`}>
+                          {flag.maturity === 'preview' ? 'Preview' : 'Experimental'}
+                        </span>
                       )}
-                      <span className="ff-item-key">{flag.feature_key}</span>
-                    </div>
-                    <div className="ff-item-toggle">
-                      <ToggleSwitch
-                        checked={flag.is_enabled}
-                        onChange={() => toggleFlag(flag.feature_key, flag.is_enabled)}
-                        size="medium"
-                        disabled={updating === flag.feature_key}
-                      />
-                      {updating === flag.feature_key && (
-                        <Loader2 className="spin ff-updating" size={14} />
-                      )}
-                    </div>
+                    </span>
+                    <span className="ff-item-desc">{flag.description}</span>
                   </div>
-                ))}
-              </div>
+                  <div className="ff-item-toggle">
+                    {flag.is_overridden && flag.is_enabled !== flag.default_enabled && (
+                      <button
+                        className="btn-icon"
+                        onClick={() => resetFlag(flag)}
+                        title="Reset to default"
+                        disabled={updating === flag.feature_key}
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    )}
+                    <ToggleSwitch
+                      checked={flag.is_enabled}
+                      onChange={() => toggleFlag(flag)}
+                      size="medium"
+                      disabled={updating === flag.feature_key || !flag.is_available}
+                    />
+                    {updating === flag.feature_key && <Loader2 className="spin ff-updating" size={14} />}
+                  </div>
+                </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
-
-      <div className="ff-note">
-        <AlertCircle size={14} />
-        <span>Changes update navigation immediately. Disabling a section hides all items within it.</span>
+          </div>
+        ))}
       </div>
     </div>
   );

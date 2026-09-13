@@ -48,8 +48,8 @@ export const DEFAULT_LABELS: Record<EntityName, { singular: string; plural: stri
     plural: 'Users',
   },
   [ENTITIES.WORKSPACE]: {
-    singular: 'Team',
-    plural: 'Teams',
+    singular: 'Space',
+    plural: 'Spaces',
   },
   [ENTITIES.ACCESS_GROUP]: {
     singular: 'Group',
