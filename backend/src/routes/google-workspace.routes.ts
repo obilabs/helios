@@ -424,7 +424,10 @@ router.post('/sync-now', requireAdmin, [
 
     const result = await syncScheduler.manualSync(organizationId);
 
-    res.json(result);
+    // A failed sync answered 200 with success:false in the body, so every caller that
+    // checked only the status code read it as success (2026-09-13). 502: Helios is
+    // fine, the platform upstream refused.
+    res.status(result.success ? 200 : 502).json(result);
   } catch (error: any) {
     logger.error('Manual sync failed', { error: error.message });
     res.status(500).json({

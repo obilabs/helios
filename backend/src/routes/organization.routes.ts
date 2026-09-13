@@ -2383,11 +2383,16 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
       return res.status(401).json({ success: false, error: 'Organization ID not found' });
     }
 
+    // The outcome now comes from gw_credentials (migration 099), the way Microsoft's
+    // always has. The module row only knows when a sync last RAN, not whether it worked.
     const google = await db.query(
-      `SELECT om.last_sync_at,
+      `SELECT COALESCE(c.last_sync_at, om.last_sync_at) AS last_sync_at,
+              c.sync_status,
+              c.sync_error,
               (SELECT COUNT(*) FROM gw_synced_users g WHERE g.organization_id = $1) AS user_count
          FROM organization_modules om
          JOIN modules m ON m.id = om.module_id
+         LEFT JOIN gw_credentials c ON c.organization_id = om.organization_id
         WHERE om.organization_id = $1 AND m.slug = 'google_workspace' AND om.is_enabled = true`,
       [organizationId]
     );
@@ -2404,8 +2409,9 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
       // Microsoft tables are optional on an install that never connected it.
     }
 
-    // state/error are carried where the platform records them (Microsoft does; Google's
-    // module row does not). Without them a failing sync looked exactly like an old one.
+    // Both platforms now carry state and error. Without them a failing sync looked
+    // exactly like an old one — proven on 2026-09-13, when a deleted workspace kept
+    // reporting "synced 21m ago" while every attempt failed.
     const shape = (row: any) =>
       row
         ? {
