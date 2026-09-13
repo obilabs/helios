@@ -34,6 +34,7 @@ import {
   CreateOffboardingTemplateDTO,
   UpdateOffboardingTemplateDTO,
 } from '../types/user-lifecycle.js';
+import { trimTrailing } from '../utils/strings.js';
 
 interface OffboardingResult {
   success: boolean;
@@ -210,7 +211,7 @@ class UserOffboardingService {
       dto.isDefault ?? false,
       createdBy || null,
       dto.emailReleaseAddress ?? false,
-      (dto.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, ''),
+      trimTrailing((dto.emailReleasePrefix || 'deprovisioned').trim(), '.'),
       dto.emailReleaseGroupEnabled ?? true,
     ];
 
@@ -1919,7 +1920,7 @@ class UserOffboardingService {
     const oldEmail = config.userEmail.toLowerCase();
     const googleId = localUser?.google_workspace_id;
     if (!googleId) return { success: false, error: 'User has no Google Workspace account' };
-    const prefix = (config.emailReleasePrefix || 'deprovisioned').trim().replace(/\.+$/, '') || 'deprovisioned';
+    const prefix = trimTrailing((config.emailReleasePrefix || 'deprovisioned').trim(), '.') || 'deprovisioned';
     const [local, domain] = oldEmail.split('@');
     if (!local || !domain) return { success: false, error: `Not a mailbox address: ${oldEmail}` };
     if (local.startsWith(`${prefix}.`)) {

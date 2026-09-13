@@ -9,6 +9,7 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 import { LifecycleNotificationService } from './lifecycle-notification.service.js';
+import { logSafe } from '../utils/log-safe.js';
 
 // Types
 export type RequestType = 'onboard' | 'offboard' | 'transfer';
@@ -155,7 +156,7 @@ class LifecycleRequestService {
       performedBy: requested_by || null,
     });
 
-    logger.info(`Created ${request_type} request for ${email}`, { requestId: request.id });
+    logger.info(`Created ${logSafe(request_type)} request for ${logSafe(email)}`, { requestId: request.id });
 
     return request;
   }

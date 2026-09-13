@@ -8,6 +8,7 @@ import {
   type ApiScope,
 } from '../utils/apiKey.js';
 import { db } from '../database/connection.js';
+import { isEmailFormat } from '../utils/email-format.js';
 
 /**
  * MTP pairing-key authentication (OpenSpec: mtp-integration)
@@ -251,11 +252,6 @@ export const requireMtpScope = (scope: ApiScope) => (
   next();
 };
 
-/** Minimal RFC-5322-ish check — the MTP already validates before sending. */
-function looksLikeEmail(v: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
 /**
  * Require actor assertion on an MTP write action (design D4, task 3.2). The
  * bearer key auths the MSP firm; `X-Actor-Email` / `X-Actor-Name` identify the
@@ -276,7 +272,7 @@ export const requireActorAssertion = (
   const email = typeof emailRaw === 'string' ? emailRaw.trim() : '';
   const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
 
-  if (!email || !name || !looksLikeEmail(email)) {
+  if (!email || !name || !isEmailFormat(email)) {
     res.status(400).json({
       success: false,
       kind: 'missing_actor_context',

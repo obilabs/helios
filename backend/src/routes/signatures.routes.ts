@@ -3,6 +3,8 @@ import { db } from '../database/connection.js';
 import { requireAuth, requirePermission, requireAdmin } from '../middleware/auth.js';
 import { signatureTemplateService } from '../services/signature-template.service.js';
 import { MERGE_FIELDS } from '../types/signatures.js';
+import { logger } from '../utils/logger.js';
+import { logSafe } from '../utils/log-safe.js';
 
 const router = Router();
 
@@ -315,7 +317,7 @@ router.post('/templates/preview', requireAuth, requireAdmin, async (req: Request
       },
     });
   } catch (error: any) {
-    console.error('Error previewing template:', error);
+    logger.error('Error previewing template', { error: logSafe(error) });
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to preview template',
