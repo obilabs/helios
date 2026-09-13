@@ -23,9 +23,6 @@ import { encryptionService } from '../services/encryption.service.js';
 // useGraphReplay(); setting HELIOS_GRAPH_RECORD=1 captures sanitized fixtures.
 // See testing/graph-replay.ts.
 import { graphHttp } from '../testing/graph-replay.js';
-import { Client } from '@microsoft/microsoft-graph-client';
-import { ClientSecretCredential } from '@azure/identity';
-import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js';
 
 export const microsoftTransparentProxyRouter = Router();
 

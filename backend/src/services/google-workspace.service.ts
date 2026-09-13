@@ -6,8 +6,6 @@ import { db } from '../database/connection.js';
 import { encodeServiceAccountKey, decodeServiceAccountKey } from './gw-credentials.js';
 import { assertNotProtectedAdmin } from './admin-protection.js';
 import {
-  REQUIRED_SCOPES,
-  SCOPE_DETAILS,
   DELEGATION_SCOPES,
   DELEGATION_SCOPE_DETAILS,
   ADMIN_SDK_CLIENT_SCOPES,
@@ -142,7 +140,7 @@ export class GoogleWorkspaceService {
       });
 
       // Test groups access
-      const groupsResponse = await admin.groups.list({
+      await admin.groups.list({
         domain: domain,
         maxResults: 1
       });
@@ -497,7 +495,7 @@ export class GoogleWorkspaceService {
       const adminClient = this.createAdminClient(credentials, testAdminEmail);
 
       // Test basic domain access
-      const domains = await adminClient.domains.list({ customer: 'my_customer' });
+      await adminClient.domains.list({ customer: 'my_customer' });
 
       // Test user access to verify DWD is working
       const users = await adminClient.users.list({
@@ -969,7 +967,7 @@ export class GoogleWorkspaceService {
         return { success: false, error: 'No credentials found for this organization' };
       }
 
-      const { service_account_key, admin_email, domain } = credResult.rows[0];
+      const { service_account_key, admin_email } = credResult.rows[0];
       const credentials = decodeServiceAccountKey(service_account_key);
 
       // Create admin client

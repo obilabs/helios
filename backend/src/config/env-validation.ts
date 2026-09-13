@@ -1,5 +1,4 @@
 import Joi from 'joi';
-import { logger } from '../utils/logger.js';
 import { assertSecretsConfigured } from './secrets.js';
 
 /**
@@ -13,10 +12,6 @@ import { assertSecretsConfigured } from './secrets.js';
  * - production: Strict validation, requires secure configuration
  * - test: Minimal validation for testing
  */
-
-// Helper to check if we're in production
-const isProduction = process.env['NODE_ENV'] === 'production';
-const isTest = process.env['NODE_ENV'] === 'test';
 
 // Base schema for all environments
 const baseSchema = Joi.object({

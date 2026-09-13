@@ -21,7 +21,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { openApiToMcpTools, getToolDefinitions, OpenApiSpec } from '../mcp/openapi-converter.js';
-import { getToolsSummary } from '../mcp/server.js';
 import { swaggerSpec } from '../config/swagger.js';
 import { logger } from '../utils/logger.js';
 

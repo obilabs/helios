@@ -88,7 +88,7 @@ export async function executeSearchKnowledge(params: {
   output += ':\n\n';
 
   for (const result of response.results) {
-    const { entry, matchedOn } = result;
+    const { entry } = result;
 
     output += `## ${entry.title}\n`;
     output += `**Type:** ${entry.type} | **Category:** ${entry.subcategory || entry.category}\n\n`;

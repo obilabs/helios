@@ -39,7 +39,7 @@ async function purgeGoogleWorkspace() {
     console.log(`Converted ${userResult.rowCount} users to local`);
 
     // 4. Update modules table
-    const moduleResult = await client.query(`
+    await client.query(`
       UPDATE modules
       SET
         config = NULL

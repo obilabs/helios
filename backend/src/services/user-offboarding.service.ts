@@ -33,7 +33,6 @@ import {
   DEFAULT_OFFBOARDING_POLICY,
   CreateOffboardingTemplateDTO,
   UpdateOffboardingTemplateDTO,
-  OFFBOARDING_STEPS,
 } from '../types/user-lifecycle.js';
 
 interface OffboardingResult {

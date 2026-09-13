@@ -19,7 +19,7 @@ cd "${1:-.}" || exit 2
 
 EXCL=(
   ':(exclude)**/node_modules/**' ':(exclude)**/.claude/**'
-  ':(exclude)**/scripts/data/**' ':(exclude)**/openspec/testing/**'
+  ':(exclude)**/scripts/data/**'
   ':(exclude)**/reports/**' ':(exclude)**/*.jsonl'
   ':(exclude)**/*-lock.json' ':(exclude)**/pnpm-lock.yaml'
   ':(exclude)**/check-abspaths.sh'

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { llmGatewayService, ChatMessage, Tool, ToolCall, AIRole, OllamaModel, ToolTestResult } from '../services/llm-gateway.service.js';
+import { llmGatewayService, ChatMessage, Tool, ToolCall, AIRole } from '../services/llm-gateway.service.js';
 import { logger } from '../utils/logger.js';
 import {
   successResponse,
@@ -698,13 +698,6 @@ function getToolsForRole(role: AIRole): Tool[] {
   // }
 
   return tools;
-}
-
-/**
- * Get all AI tools (knowledge base + data query) - legacy function for backwards compatibility
- */
-function getAllAITools(): Tool[] {
-  return getToolsForRole('admin');
 }
 
 // List of data query tool names (these need organizationId)

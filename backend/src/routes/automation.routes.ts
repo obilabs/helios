@@ -10,7 +10,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { isAdminRole } from '../utils/roles.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { rulesEngineService, RuleType, ConditionGroup } from '../services/rules-engine.service.js';
+import { rulesEngineService, RuleType } from '../services/rules-engine.service.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();

@@ -19,18 +19,20 @@ function isEmployeeUser(isExternalAdmin: boolean | undefined): boolean {
 
 // Express Request type extensions are defined in types/express.d.ts
 
-/**
- * Try to get user from better-auth session cookie
- * Returns null if no valid session
- */
-async function getUserFromSession(req: Request): Promise<{
+interface AuthenticatedUser {
   userId: string;
   email: string;
   role: string;
   organizationId: string;
   isAdmin: boolean;
   isEmployee: boolean;
-} | null> {
+}
+
+/**
+ * Try to get user from better-auth session cookie
+ * Returns null if no valid session
+ */
+async function getUserFromSession(req: Request): Promise<AuthenticatedUser | null> {
   try {
     // Convert Express request to a Headers object for better-auth
     const headers = new Headers();
@@ -66,6 +68,35 @@ async function getUserFromSession(req: Request): Promise<{
 }
 
 /**
+ * The user carried by a valid `Authorization: Bearer <access token>`, or null.
+ *
+ * The token is always passed to jwt.verify (an absent or malformed header
+ * becomes an empty token, which fails verification), so the outcome depends
+ * only on verification, never on the shape of the header alone.
+ */
+function userFromBearerToken(req: Request): AuthenticatedUser | null {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.substring(7) : '';
+  try {
+    const decoded: any = jwt.verify(token, getJwtSecret());
+    if (decoded?.type !== 'access') return null;
+    return {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      organizationId: decoded.organizationId,
+      isAdmin: isAdminRole(decoded.role),
+      isEmployee: isEmployeeUser(decoded.isExternalAdmin)
+    };
+  } catch (error) {
+    if (token) {
+      logger.debug('JWT auth failed, trying session', { error: (error as Error).message });
+    }
+    return null;
+  }
+}
+
+/**
  * Middleware to verify authentication (JWT token or session cookie)
  *
  * Supports two authentication methods:
@@ -74,32 +105,11 @@ async function getUserFromSession(req: Request): Promise<{
  */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    // Method 1: Check for JWT Bearer token
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-
-      try {
-        const decoded: any = jwt.verify(token, getJwtSecret());
-
-        if (decoded && decoded.type === 'access') {
-          // Attach user info from JWT
-          req.user = {
-            userId: decoded.userId,
-            email: decoded.email,
-            role: decoded.role,
-            organizationId: decoded.organizationId,
-            isAdmin: isAdminRole(decoded.role),
-            isEmployee: isEmployeeUser(decoded.isExternalAdmin)
-          };
-          next();
-          return;
-        }
-      } catch (jwtError) {
-        // JWT invalid, try session auth below
-        logger.debug('JWT auth failed, trying session', { error: (jwtError as Error).message });
-      }
+    // Method 1: JWT Bearer token
+    const bearerUser = userFromBearerToken(req);
+    if (bearerUser) {
+      req.user = bearerUser;
+      return next();
     }
 
     // Method 2: Check for better-auth session cookie
@@ -230,29 +240,11 @@ export const requirePlatformOwner = (req: Request, res: Response, next: NextFunc
  * Supports both JWT tokens and better-auth session cookies.
  */
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-
-  // Method 1: Check for JWT Bearer token
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-
-    try {
-      const decoded: any = jwt.verify(token, getJwtSecret());
-
-      if (decoded && decoded.type === 'access') {
-        req.user = {
-          userId: decoded.userId,
-          email: decoded.email,
-          role: decoded.role,
-          organizationId: decoded.organizationId,
-          isAdmin: isAdminRole(decoded.role),
-          isEmployee: isEmployeeUser(decoded.isExternalAdmin)
-        };
-        return next();
-      }
-    } catch (error) {
-      // Token invalid, try session auth
-    }
+  // Method 1: JWT Bearer token
+  const bearerUser = userFromBearerToken(req);
+  if (bearerUser) {
+    req.user = bearerUser;
+    return next();
   }
 
   // Method 2: Check for better-auth session cookie
@@ -276,30 +268,12 @@ export const requireAuth = authenticateToken;
  */
 export const requirePermission = (permission: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
+    // Method 1: JWT Bearer token
+    const bearerUser = userFromBearerToken(req);
     let authenticated = false;
-
-    // Method 1: Check for JWT Bearer token
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-
-      try {
-        const decoded: any = jwt.verify(token, getJwtSecret());
-
-        if (decoded && decoded.type === 'access') {
-          req.user = {
-            userId: decoded.userId,
-            email: decoded.email,
-            role: decoded.role,
-            organizationId: decoded.organizationId,
-            isAdmin: isAdminRole(decoded.role),
-            isEmployee: isEmployeeUser(decoded.isExternalAdmin)
-          };
-          authenticated = true;
-        }
-      } catch (error) {
-        // JWT invalid, try session auth
-      }
+    if (bearerUser) {
+      req.user = bearerUser;
+      authenticated = true;
     }
 
     // Method 2: Check for better-auth session cookie

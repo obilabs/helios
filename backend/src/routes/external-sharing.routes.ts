@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { driveSharingAuditService, type RiskLevel, type ExternalShare } from '../services/drive-sharing-audit.service.js';
 import { logger } from '../utils/logger.js';

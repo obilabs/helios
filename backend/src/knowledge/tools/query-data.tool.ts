@@ -5,8 +5,6 @@
  * and Microsoft 365. They are READ-ONLY and cannot modify any data.
  */
 
-import { googleWorkspaceService } from '../../services/google-workspace.service.js';
-import { microsoftGraphService } from '../../services/microsoft-graph.service.js';
 import { db } from '../../database/connection.js';
 import { logger } from '../../utils/logger.js';
 

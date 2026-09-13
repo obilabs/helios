@@ -1,7 +1,7 @@
 import { db } from '../../../database/connection.js';
 import { logger } from '../../../utils/logger.js';
-import { listUsers, UserQueryResult } from './user.tools.js';
-import { listGroups, GroupQueryResult } from './group.tools.js';
+import { listUsers } from './user.tools.js';
+import { listGroups } from './group.tools.js';
 
 /**
  * Dashboard stats summary

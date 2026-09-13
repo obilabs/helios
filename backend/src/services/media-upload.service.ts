@@ -108,11 +108,6 @@ class MediaUploadService {
       // Delete existing media of this type if it exists
       await this.deleteMedia(userId, mediaType);
 
-      // Generate storage path
-      const timestamp = Date.now();
-      const extension = fileName.split('.').pop() || 'bin';
-      const storagePath = `${organizationId}/media/${userId}/${mediaType}_${timestamp}.${extension}`;
-
       // Upload to S3
       const uploadResult = await s3Service.uploadFile(
         buffer,

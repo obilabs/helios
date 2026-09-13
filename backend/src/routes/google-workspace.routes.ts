@@ -179,7 +179,7 @@ router.post('/setup', requireAdmin, [
   body('credentials.client_id').notEmpty().withMessage('Client ID is required'),
 ], validateRequest, async (req: Request, res: Response) => {
   try {
-    const { organizationId, domain, organizationName, adminEmail, credentials } = req.body;
+    const { organizationId, domain, adminEmail, credentials } = req.body;
 
     logger.info('Setting up Google Workspace DWD', { organizationId, domain });
 

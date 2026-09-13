@@ -59,8 +59,6 @@ import peopleRoutes from './routes/people.routes.js';
 import bulkOperationsRoutes from './routes/bulk-operations.routes.js';
 import { authenticateApiKey } from './middleware/api-key-auth.js';
 import { SignatureSchedulerService } from './services/signature-scheduler.service.js';
-import { cacheService } from './services/cache.service.js';
-import { activityTracker } from './services/activity-tracker.service.js';
 import { initializeBulkOperationsGateway } from './websocket/bulk-operations.gateway.js';
 import { startScheduledActionProcessor, stopScheduledActionProcessor } from './jobs/scheduled-action-processor.js';
 import { startSignatureSyncJob, stopSignatureSyncJob } from './jobs/signature-sync.job.js';

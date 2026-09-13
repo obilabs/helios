@@ -426,7 +426,6 @@ router.post('/:moduleSlug/disable', requirePermission('admin'), async (req: Requ
  */
 router.post('/google-workspace/test', requirePermission('admin'), async (req: Request, res: Response) => {
   try {
-    const organizationId = req.user?.organizationId;
     const { serviceAccount, adminEmail, domain } = req.body;
 
     if (!serviceAccount || !adminEmail || !domain) {

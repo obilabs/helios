@@ -24,7 +24,7 @@ async function purgeGoogleWorkspaceConfig() {
     logger.info(`Removed ${credResult.rowCount || 0} Google Workspace credentials`);
 
     // 2. Update modules to mark Google Workspace as disabled
-    const moduleResult = await db.query(`
+    await db.query(`
       UPDATE modules
       SET
         enabled_at = NULL
