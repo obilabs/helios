@@ -1,0 +1,70 @@
+{
+  "family": "calendar.booking",
+  "name": "events.insert.double-booking",
+  "note": "Does the API refuse a clashing booking? (It returns 200 — it does not.)",
+  "recordedAt": "2026-09-13T01:42:15.422Z",
+  "request": {
+    "method": "POST",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/mike%40example-workspace.test/events?sendUpdates=none",
+    "body": {
+      "summary": "Booking check — clashing second",
+      "start": {
+        "dateTime": "2026-09-15T01:00:00.000Z"
+      },
+      "end": {
+        "dateTime": "2026-09-15T02:00:00.000Z"
+      },
+      "attendees": [
+        {
+          "email": "c_resource@resource.calendar.google.com",
+          "resource": true
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#event",
+      "etag": "\"3578527469001822\"",
+      "id": "v0tfnkrv3ourmlqlanui4gcqf8",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=djB0Zm5rcnYzb3VybWxxbGFudWk0Z2NxZjggbWlrZUBvYmlsYWJzLmRldg",
+      "created": "2026-09-13T01:42:14.000Z",
+      "updated": "2026-09-13T01:42:14.500Z",
+      "summary": "Booking check — clashing second",
+      "location": "Edmonton HQ-2-North-Boardroom (10)",
+      "creator": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "organizer": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-09-15T01:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-15T02:00:00Z",
+        "timeZone": "UTC"
+      },
+      "iCalUID": "v0tfnkrv3ourmlqlanui4gcqf8@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "c_resource@resource.calendar.google.com",
+          "displayName": "Edmonton HQ-2-North-Boardroom (10)",
+          "resource": true,
+          "responseStatus": "needsAction"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    }
+  }
+}

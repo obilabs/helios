@@ -1,0 +1,55 @@
+{
+  "family": "calendar.booking",
+  "name": "events.get.double-booking-outcome",
+  "note": "The clashing booking 20s later: this is what decides whether Helios must prevent conflicts itself.",
+  "recordedAt": "2026-09-13T01:42:34.681Z",
+  "request": {
+    "method": "GET",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/mike%40example-workspace.test/events/v0tfnkrv3ourmlqlanui4gcqf8",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#event",
+      "etag": "\"3578527501793950\"",
+      "id": "v0tfnkrv3ourmlqlanui4gcqf8",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=djB0Zm5rcnYzb3VybWxxbGFudWk0Z2NxZjggbWlrZUBvYmlsYWJzLmRldg",
+      "created": "2026-09-13T01:42:14.000Z",
+      "updated": "2026-09-13T01:42:30.896Z",
+      "summary": "Booking check — clashing second",
+      "creator": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "organizer": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-09-15T01:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-15T02:00:00Z",
+        "timeZone": "UTC"
+      },
+      "iCalUID": "v0tfnkrv3ourmlqlanui4gcqf8@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "c_resource@resource.calendar.google.com",
+          "displayName": "Edmonton HQ-2-North-Boardroom (10)",
+          "resource": true,
+          "responseStatus": "declined"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    }
+  }
+}

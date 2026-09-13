@@ -1,0 +1,16 @@
+{
+  "family": "calendar.booking",
+  "name": "events.delete.second",
+  "note": "Cancelling a booking releases the room.",
+  "recordedAt": "2026-09-13T01:42:35.902Z",
+  "request": {
+    "method": "DELETE",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/mike%40example-workspace.test/events/v0tfnkrv3ourmlqlanui4gcqf8?sendUpdates=none",
+    "body": null
+  },
+  "response": {
+    "status": 204,
+    "data": ""
+  }
+}
