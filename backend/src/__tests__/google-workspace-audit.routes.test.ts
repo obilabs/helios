@@ -192,7 +192,7 @@ describe('google-workspace REST mutations write the audit trail', () => {
       .post('/gw/groups')
       .send({ organizationId: ORG_ID, email: 'team@corp.test', name: 'Team' });
 
-    expect(res.status).toBe(200); // route echoes the service result
+    expect(res.status).toBe(502); // a failed Google op is an error, not a 200
     expect(auditFor('group.create')).toBeUndefined();
   });
 });

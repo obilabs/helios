@@ -22,6 +22,7 @@ jest.unstable_mockModule('../middleware/auth.js', () => ({
     next();
   },
   requireAdmin: (_req: any, _res: any, next: any) => next(),
+  optionalAuth: (_req: any, _res: any, next: any) => next(),
 }));
 jest.unstable_mockModule('../services/auth.service.js', () => ({ authService: { generateAccessToken: jest.fn(() => 't') } }));
 jest.unstable_mockModule('../services/password-setup.service.js', () => ({ PasswordSetupService: { sendPasswordSetupEmail: jest.fn(async () => true) } }));

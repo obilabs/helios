@@ -7,7 +7,7 @@
  * those variables: a fallback string is the same key on every installation.
  */
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -94,10 +94,11 @@ describe('config/secrets', () => {
     const fallback =
       /process\.env(?:\.|\[\s*['"])(JWT_SECRET|BETTER_AUTH_SECRET)(?:['"]\s*\])?\s*(\|\||\?\?)\s*(['"`]|process\.env\[['"]JWT_SECRET['"]\]\s*(\|\||\?\?)\s*['"`])/;
     const walk = (dir: string) => {
-      for (const name of readdirSync(dir)) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const name = entry.name;
         const full = join(dir, name);
         if (name === 'node_modules' || name === '__tests__') continue;
-        if (statSync(full).isDirectory()) walk(full);
+        if (entry.isDirectory()) walk(full);
         else if (name.endsWith('.ts') && fallback.test(readFileSync(full, 'utf8'))) {
           offenders.push(full.slice(SRC.length + 1));
         }

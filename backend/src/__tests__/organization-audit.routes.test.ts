@@ -36,6 +36,7 @@ jest.unstable_mockModule('../middleware/auth.js', () => ({
     next();
   },
   requireAdmin: (_req: any, _res: any, next: any) => next(),
+  optionalAuth: (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.unstable_mockModule('../services/auth.service.js', () => ({
