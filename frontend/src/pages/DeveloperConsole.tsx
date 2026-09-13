@@ -601,7 +601,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               break;
             case 'm365':
             case 'microsoft':
-              addOutput('info', 'Microsoft 365 sync coming soon...');
+              addOutput('error', 'Microsoft 365 sync is not available from the console. Supported: sync gw');
               break;
             default:
               addOutput('error', `Unknown platform: ${platform}. Use: sync gw, sync m365`);
@@ -5961,7 +5961,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
   // ===== HELIOS GROUPS COMMAND HANDLER =====
   const handleGroupsCommand = async (_args: string[]) => {
-    addOutput('info', 'Helios groups commands coming soon...');
+    addOutput('error', 'Helios groups commands are not available. Use: helios gw groups');
   };
 
   // ----- Helper: Parse --key=value arguments -----

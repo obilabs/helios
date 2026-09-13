@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useMicrosoftConnected } from '../../hooks/useMicrosoftConnected';
 import {
   ArrowLeft,
   Save,
@@ -130,6 +131,7 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
   onSave,
   onCancel,
 }) => {
+  const microsoftConnected = useMicrosoftConnected();
   const [template, setTemplate] = useState<OnboardingTemplate>(defaultTemplate);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -441,6 +443,9 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
                 </div>
               </div>
 
+              {/* Microsoft 365 provisioning only once a tenant is connected (or
+                  when an existing template already uses it). */}
+              {(microsoftConnected || template.createInMicrosoft) && (<>
               <div className="form-group">
                 <label className="checkbox-label">
                   <input
@@ -470,6 +475,7 @@ const OnboardingTemplateEditor: React.FC<OnboardingTemplateEditorProps> = ({
                   <p className="form-hint">Optional. Leave blank to create the account without a license.</p>
                 </div>
               )}
+              </>)}
 
               <div className="form-group">
                 <label>Google Services</label>

@@ -43,8 +43,6 @@ const KNOWN_BROKEN = new Set([
   '/helpdesk/tickets',
   '/media/upload',
   '/organization/domains',
-  '/public-files',
-  '/public-files/upload',
   '/security/2fa-status',
   '/security/oauth-apps',
   '/settings/tracking',

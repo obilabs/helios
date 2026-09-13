@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Check, Info } from 'lucide-react';
-import { themeService } from '../services/theme.service';
+import { themeService, coreThemes } from '../services/theme.service';
 import type { ThemeName, Theme } from '../services/theme.service';
+import { useFeatureFlags } from '../contexts/FeatureFlagsContext';
 import './ThemeSelector.css';
 
 export function ThemeSelector() {
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(themeService.getTheme());
-  const [themes] = useState<Theme[]>(themeService.getAllThemes());
+  const { isEnabled } = useFeatureFlags();
+  const themes: Theme[] = isEnabled('ui.extra_themes') ? themeService.getAllThemes() : coreThemes;
 
   useEffect(() => {
     setCurrentTheme(themeService.getTheme());

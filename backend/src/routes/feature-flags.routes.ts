@@ -1,11 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
-import { featureFlagsService, FeatureFlag } from '../services/feature-flags.service.js';
+import { featureFlagsService, FeatureFlag, FeatureFlagError } from '../services/feature-flags.service.js';
 import { successResponse, errorResponse, notFoundResponse, validationErrorResponse } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
+
+/** Registry/profile violations are the caller's mistake, not a server error. */
+function flagErrorResponse(res: Response, error: FeatureFlagError): Response {
+  return error.code === 'unknown_flag'
+    ? notFoundResponse(res, 'Feature flag')
+    : errorResponse(res, ErrorCode.CONFLICT, error.message);
+}
 
 /**
  * @openapi
@@ -141,6 +148,27 @@ router.get('/categories', requireAuth, async (req: Request, res: Response) => {
 
 /**
  * @openapi
+ * /organization/feature-flags/profile:
+ *   get:
+ *     summary: Get the active feature profile
+ *     description: |
+ *       Returns the release profile (`release` or `development`) this server runs
+ *       with, set by HELIOS_FEATURE_PROFILE. See docs/RELEASING.md.
+ *     tags: [Feature Flags]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active profile
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/profile', requireAuth, async (_req: Request, res: Response) => {
+  return successResponse(res, { profile: featureFlagsService.profile });
+});
+
+/**
+ * @openapi
  * /organization/feature-flags/bulk:
  *   put:
  *     summary: Bulk update feature flags
@@ -211,6 +239,7 @@ router.put('/bulk', requireAuth, requirePermission('admin'), async (req: Request
 
     return successResponse(res, { message: `Updated ${flags.length} feature flags` });
   } catch (error) {
+    if (error instanceof FeatureFlagError) return flagErrorResponse(res, error);
     logger.error('Error bulk updating feature flags', { error });
     return errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update feature flags');
   }
@@ -327,10 +356,6 @@ router.put('/:key', requireAuth, requirePermission('admin'), async (req: Request
 
     const flag = await featureFlagsService.setFlag(key, is_enabled);
 
-    if (!flag) {
-      return notFoundResponse(res, 'Feature flag');
-    }
-
     logger.info('Feature flag updated', {
       key,
       is_enabled,
@@ -339,6 +364,7 @@ router.put('/:key', requireAuth, requirePermission('admin'), async (req: Request
 
     return successResponse(res, flag);
   } catch (error) {
+    if (error instanceof FeatureFlagError) return flagErrorResponse(res, error);
     logger.error('Error updating feature flag', { error });
     return errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to update feature flag');
   }
@@ -346,110 +372,14 @@ router.put('/:key', requireAuth, requirePermission('admin'), async (req: Request
 
 /**
  * @openapi
- * /organization/feature-flags:
- *   post:
- *     summary: Create a new feature flag
- *     description: Create a new feature flag. Admin only.
- *     tags: [Feature Flags]
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - feature_key
- *               - name
- *             properties:
- *               feature_key:
- *                 type: string
- *                 description: Unique key for the feature (e.g., myfeature.subfeature)
- *               name:
- *                 type: string
- *                 description: Human-readable name
- *               description:
- *                 type: string
- *                 description: Description of what the feature does
- *               is_enabled:
- *                 type: boolean
- *                 default: false
- *               category:
- *                 type: string
- *                 default: general
- *     responses:
- *       201:
- *         description: Feature flag created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/FeatureFlag'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.post('/', requireAuth, requirePermission('admin'), async (req: Request, res: Response) => {
-  try {
-    const { feature_key, name, description, is_enabled, category, metadata } = req.body;
-
-    if (!feature_key || !name) {
-      return validationErrorResponse(res, [
-        { field: 'feature_key', message: 'Required' },
-        { field: 'name', message: 'Required' }
-      ]);
-    }
-
-    // Validate feature_key format (lowercase, dots and underscores allowed)
-    if (!/^[a-z][a-z0-9_.]*$/.test(feature_key)) {
-      return validationErrorResponse(res, [
-        { field: 'feature_key', message: 'Must start with lowercase letter and contain only lowercase letters, numbers, dots, and underscores' }
-      ]);
-    }
-
-    const flag = await featureFlagsService.createFlag({
-      feature_key,
-      name,
-      description,
-      is_enabled,
-      category,
-      metadata
-    });
-
-    logger.info('Feature flag created', {
-      feature_key,
-      userId: req.user?.userId
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: flag
-    });
-  } catch (error: any) {
-    if (error.code === '23505') { // unique_violation
-      return validationErrorResponse(res, [
-        { field: 'feature_key', message: 'A feature flag with this key already exists' }
-      ]);
-    }
-    logger.error('Error creating feature flag', { error });
-    return errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to create feature flag');
-  }
-});
-
-/**
- * @openapi
  * /organization/feature-flags/{key}:
  *   delete:
- *     summary: Delete a feature flag
- *     description: Delete a feature flag. Admin only. Use with caution.
+ *     summary: Reset a feature flag to its default
+ *     description: |
+ *       Removes the organization's override so the registry default for the
+ *       active profile applies again. Flags themselves are defined in code
+ *       (backend/src/config/feature-registry.ts) and cannot be created or
+ *       deleted through the API. Admin only.
  *     tags: [Feature Flags]
  *     security:
  *       - BearerAuth: []
@@ -459,10 +389,10 @@ router.post('/', requireAuth, requirePermission('admin'), async (req: Request, r
  *         required: true
  *         schema:
  *           type: string
- *         description: Feature flag key to delete
+ *         description: Feature flag key to reset
  *     responses:
  *       200:
- *         description: Feature flag deleted
+ *         description: Override removed; returns the resolved flag
  *         content:
  *           application/json:
  *             schema:
@@ -482,21 +412,21 @@ router.post('/', requireAuth, requirePermission('admin'), async (req: Request, r
 router.delete('/:key', requireAuth, requirePermission('admin'), async (req: Request, res: Response) => {
   try {
     const { key } = req.params;
-    const deleted = await featureFlagsService.deleteFlag(key);
+    const flag = await featureFlagsService.clearOverride(key);
 
-    if (!deleted) {
+    if (!flag) {
       return notFoundResponse(res, 'Feature flag');
     }
 
-    logger.info('Feature flag deleted', {
+    logger.info('Feature flag override cleared', {
       key,
       userId: req.user?.userId
     });
 
-    return successResponse(res, { message: 'Feature flag deleted' });
+    return successResponse(res, flag);
   } catch (error) {
-    logger.error('Error deleting feature flag', { error });
-    return errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to delete feature flag');
+    logger.error('Error resetting feature flag', { error });
+    return errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to reset feature flag');
   }
 });
 

@@ -29,7 +29,7 @@ interface FeatureFlagsContextValue {
 
 const defaultValue: FeatureFlagsContextValue = {
   flags: {},
-  isEnabled: () => false,
+  isEnabled: (featureKey: string) => featureKey.startsWith('core.'),
   allEnabled: () => false,
   anyEnabled: () => false,
   refresh: async () => {},
@@ -38,6 +38,17 @@ const defaultValue: FeatureFlagsContextValue = {
 };
 
 const FeatureFlagsContext = createContext<FeatureFlagsContextValue>(defaultValue);
+
+/**
+ * Flags are defined, with their maturity and release-profile defaults, in
+ * backend/src/config/feature-registry.ts; this context only consumes the
+ * resolved map. `core.*` flags are required there (always on), so they stay on
+ * here even before the map loads or if the request fails — Home, Users,
+ * Settings and My Profile must never disappear behind a network error.
+ */
+export function isFlagOn(flags: FeatureFlags, featureKey: string): boolean {
+  return featureKey.startsWith('core.') || flags[featureKey] === true;
+}
 
 /**
  * Fetch feature flags from the API
@@ -140,21 +151,21 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps): R
    * Check if a feature is enabled
    */
   const isEnabled = useCallback((featureKey: string): boolean => {
-    return flags[featureKey] === true;
+    return isFlagOn(flags, featureKey);
   }, [flags]);
 
   /**
    * Check if all features are enabled
    */
   const allEnabled = useCallback((...featureKeys: string[]): boolean => {
-    return featureKeys.every(key => flags[key] === true);
+    return featureKeys.every(key => isFlagOn(flags, key));
   }, [flags]);
 
   /**
    * Check if any feature is enabled
    */
   const anyEnabled = useCallback((...featureKeys: string[]): boolean => {
-    return featureKeys.some(key => flags[key] === true);
+    return featureKeys.some(key => isFlagOn(flags, key));
   }, [flags]);
 
   /**

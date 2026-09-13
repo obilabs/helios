@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Palette, AlertTriangle } from 'lucide-react';
-import { themeService, availableThemes, type ThemeName } from '../services/theme.service';
+import { themeService, coreThemes, type ThemeName } from '../services/theme.service';
 import './AccountSetup.css';
 
 interface AccountSetupProps {
@@ -277,7 +277,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
               </p>
 
               <div className="theme-grid">
-                {availableThemes.map((theme) => (
+                {coreThemes.map((theme) => (
                   <button
                     key={theme.id}
                     className={`theme-card ${selectedTheme === theme.id ? 'selected' : ''}`}

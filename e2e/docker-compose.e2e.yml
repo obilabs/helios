@@ -34,6 +34,9 @@ services:
     container_name: helios_e2e_minio
   backend:
     container_name: helios_e2e_backend
+    environment:
+      # E2E exercises everything, including preview/experimental surfaces.
+      HELIOS_FEATURE_PROFILE: development
   frontend:
     container_name: helios_e2e_frontend
 

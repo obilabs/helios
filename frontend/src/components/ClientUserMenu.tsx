@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Terminal, Key, Users, Lock, Settings as SettingsIcon, LogOut, Book, ChevronDown, User, RefreshCw } from 'lucide-react';
-import { useView } from '../contexts/ViewContext';
+import { Key, LogOut, ChevronDown, User } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { authFetch } from '../config/api';
 import './ClientUserMenu.css';
 
 interface ClientUserMenuProps {
@@ -11,19 +9,18 @@ interface ClientUserMenuProps {
   userRole: string;
   onLogout: () => void;
   onChangePassword?: () => void;
-  onNavigateToSettings?: () => void;
-  onNavigateToUserSettings?: () => void;
-  onNavigateToAdministrators?: () => void;
-  onNavigateToConsole?: () => void;
   onNavigateToMyProfile?: () => void;
 }
 
-export function ClientUserMenu({ userName, userEmail, userRole, onLogout, onChangePassword, onNavigateToSettings, onNavigateToUserSettings, onNavigateToAdministrators, onNavigateToConsole, onNavigateToMyProfile }: ClientUserMenuProps) {
-  const { currentView } = useView();
+/**
+ * The user menu is about the signed-in person only: profile, password, sign out.
+ * Organization settings, administrators, API keys, API documentation and the
+ * Developer Console each have one home, in Settings (Roles and Advanced), so
+ * they are deliberately not duplicated here.
+ */
+export function ClientUserMenu({ userName, userEmail, userRole, onLogout, onChangePassword, onNavigateToMyProfile }: ClientUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncNote, setSyncNote] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,85 +90,15 @@ export function ClientUserMenu({ userName, userEmail, userRole, onLogout, onChan
               <User size={14} className="menu-icon-svg" />
               <span>My Profile</span>
             </button>
-            <button className="menu-item" onClick={() => {
-              setIsOpen(false);
-              if (onChangePassword) {
+            {onChangePassword && (
+              <button className="menu-item" onClick={() => {
+                setIsOpen(false);
                 onChangePassword();
-              } else if (onNavigateToSettings) {
-                onNavigateToSettings();
-              }
-            }}>
-              <Key size={14} className="menu-icon-svg" />
-              <span>Change Password</span>
-            </button>
-            {/* Admin-only menu items - hidden in user view */}
-            {currentView === 'admin' && (
-              <>
-                <button className="menu-item" onClick={() => {
-                  setIsOpen(false);
-                  if (onNavigateToAdministrators) {
-                    onNavigateToAdministrators();
-                  }
-                }}>
-                  <Users size={14} className="menu-icon-svg" />
-                  <span>Administrators</span>
-                </button>
-                <button className="menu-item" disabled={syncing} onClick={async () => {
-                  // Quick "pull what Google has now" for admins; the scheduler
-                  // runs anyway, this just skips the wait. Result goes to the
-                  // notification area, not a blocking alert.
-                  setSyncing(true);
-                  setSyncNote(null);
-                  try {
-                    const res = await authFetch('/api/v1/google-workspace/sync-now', { method: 'POST' });
-                    const data = await res.json().catch(() => ({}));
-                    setSyncNote(res.ok && data.success ? 'Google Workspace synced' : `Sync failed: ${data.error || data.message || res.status}`);
-                  } catch (e: any) {
-                    setSyncNote(`Sync failed: ${e?.message || 'network error'}`);
-                  } finally {
-                    setSyncing(false);
-                  }
-                }}>
-                  <RefreshCw size={14} className="menu-icon-svg" />
-                  <span>{syncing ? 'Syncing Google Workspace...' : 'Sync Google Workspace now'}</span>
-                </button>
-                {syncNote && <div className="menu-note" style={{ padding: '4px 12px 6px', fontSize: 12, opacity: 0.85 }}>{syncNote}</div>}
-                <button className="menu-item" onClick={() => alert('API Keys coming soon!')}>
-                  <Lock size={14} className="menu-icon-svg" />
-                  <span>My API Keys</span>
-                </button>
-                <button className="menu-item" onClick={() => {
-                  setIsOpen(false);
-                  window.open('/api/v1/docs', '_blank');
-                }}>
-                  <Book size={14} className="menu-icon-svg" />
-                  <span>API Documentation</span>
-                </button>
-                <button className="menu-item" onClick={() => {
-                  setIsOpen(false);
-                  if (onNavigateToConsole) {
-                    onNavigateToConsole();
-                  }
-                }}>
-                  <Terminal size={14} className="menu-icon-svg" />
-                  <span>Developer Console</span>
-                </button>
-              </>
+              }}>
+                <Key size={14} className="menu-icon-svg" />
+                <span>Change Password</span>
+              </button>
             )}
-            <button className="menu-item" onClick={() => {
-              setIsOpen(false);
-              // Navigate based on current view context
-              if (currentView === 'user' && onNavigateToUserSettings) {
-                onNavigateToUserSettings();
-              } else if (onNavigateToSettings) {
-                onNavigateToSettings();
-              } else {
-                alert('Settings coming soon!');
-              }
-            }}>
-              <SettingsIcon size={14} className="menu-icon-svg" />
-              <span>Settings</span>
-            </button>
           </div>
 
           <div className="menu-divider"></div>

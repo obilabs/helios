@@ -46,6 +46,13 @@ export const availableThemes: Theme[] = [
   }
 ];
 
+/**
+ * The themes a release ships: one light, one dark. The rest are behind the
+ * `ui.extra_themes` feature flag (preview).
+ */
+export const CORE_THEME_IDS: readonly ThemeName[] = ['helios-purple', 'helios-dark'];
+export const coreThemes: Theme[] = availableThemes.filter(t => CORE_THEME_IDS.includes(t.id));
+
 class ThemeService {
   private currentTheme: ThemeName;
   private initialized: boolean = false;

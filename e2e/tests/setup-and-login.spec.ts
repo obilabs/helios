@@ -55,7 +55,7 @@ async function suppressViewOnboarding(page: Page): Promise<void> {
 async function expectDashboard(page: Page): Promise<void> {
   await dismissViewOnboarding(page);
   await expect(page.locator('.dashboard-content')).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -120,7 +120,7 @@ test.describe('First-run: setup wizard and login form', () => {
 
     // Org now exists (created by the wizard test) -> app serves the login form.
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('heading', { name: 'Helios Admin Portal' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Helios', exact: true })).toBeVisible();
     // Exact match: a passkey-capable browser (Chromium) also renders a
     // "Sign in with Passkey" button, so /Sign In/i would be ambiguous.
     await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible();

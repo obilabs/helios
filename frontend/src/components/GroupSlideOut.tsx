@@ -6,6 +6,7 @@ import { TreeSelect } from './ui/TreeSelect';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { authFetch } from '../config/api';
 import './GroupSlideOut.css';
+import { useMicrosoftConnected } from '../hooks/useMicrosoftConnected';
 
 // Dynamic group types
 type DynamicGroupField = 'department' | 'location' | 'job_title' | 'reports_to' | 'org_unit_path' | 'employee_type' | 'user_type' | 'email' | 'cost_center';
@@ -114,6 +115,7 @@ const OPERATOR_OPTIONS: { value: DynamicGroupOperator; label: string }[] = [
 
 export function GroupSlideOut({ groupId, platform, organizationId: _organizationId, onClose, onGroupUpdated }: GroupSlideOutProps) {
   const isMicrosoft = platform === 'microsoft_365';
+  const microsoftConnected = useMicrosoftConnected();
   const [activeTab, setActiveTab] = useTabPersistence<TabType>('helios_group_slideout_tab', 'overview');
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<Group | null>(null);
@@ -1145,6 +1147,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
                   )}
                 </div>
 
+                {(microsoftConnected || isMicrosoft) && (
                 <div className="sync-platform">
                   <div className="sync-platform-header">
                     <PlatformIcon platform="microsoft" size={24} />
@@ -1175,6 +1178,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           )}

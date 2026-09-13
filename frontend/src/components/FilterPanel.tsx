@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Building2, Shield, Cloud, Check } from 'lucide-react';
 import './FilterPanel.css';
+import { useMicrosoftConnected } from '../hooks/useMicrosoftConnected';
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function FilterPanel({
   departments,
   roles: _roles  // Available for future custom role support
 }: FilterPanelProps) {
+  const microsoftConnected = useMicrosoftConnected();
   const panelRef = useRef<HTMLDivElement>(null);
   const [localFilters, setLocalFilters] = useState<FilterOptions>(currentFilters);
 
@@ -257,7 +259,7 @@ export function FilterPanel({
                 checked={localFilters.integrationStatus === 'synced'}
                 onChange={() => handleFilterChange('integrationStatus', 'synced')}
               />
-              <span>Synced (Google/Microsoft)</span>
+              <span>{microsoftConnected ? 'Synced (Google/Microsoft)' : 'Synced with Google'}</span>
               {localFilters.integrationStatus === 'synced' && <Check size={14} className="check-icon" />}
             </label>
             <label className={`filter-option ${localFilters.integrationStatus === 'local' ? 'selected' : ''}`}>

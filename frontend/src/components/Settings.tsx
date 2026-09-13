@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Settings.css';
+import { Administrators } from './Administrators';
+import { useFeatureFlags } from '../contexts/FeatureFlagsContext';
 import { RolesManagement } from './RolesManagement';
 import { ThemeSelector } from './ThemeSelector';
 import GoogleWorkspaceWizard from './modules/GoogleWorkspaceWizard';
@@ -15,7 +18,8 @@ import { RelayAccessSettings } from './settings/RelayAccessSettings';
 import { EntityLabelSettings } from './settings/EntityLabelSettings';
 import { LicenseLimitsSection } from './LicenseLimitsSection';
 import { useTabPersistence } from '../hooks/useTabPersistence';
-import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link } from 'lucide-react';
+import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link, Book, Terminal } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
@@ -39,8 +43,32 @@ interface ModuleStatus {
   updatedAt?: string;
 }
 
+type SettingsTabId = 'modules' | 'organization' | 'roles' | 'security' | 'customization' | 'masterdata' | 'ai' | 'advanced';
+
+/**
+ * Settings tabs and the feature flag behind each (flags: backend
+ * config/feature-registry.ts). `core.settings` tabs are always present.
+ */
+const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; icon: LucideIcon; flag: string }> = [
+  { id: 'modules', label: 'Google Workspace', icon: Package, flag: 'core.settings' },
+  { id: 'organization', label: 'Organization', icon: Building2, flag: 'core.settings' },
+  { id: 'roles', label: 'Roles & Admins', icon: Shield, flag: 'core.settings' },
+  { id: 'security', label: 'Security', icon: Lock, flag: 'core.settings' },
+  { id: 'customization', label: 'Customization', icon: Palette, flag: 'settings.customization' },
+  { id: 'masterdata', label: 'Master Data', icon: Database, flag: 'settings.master_data' },
+  { id: 'ai', label: 'AI Assistant', icon: Bot, flag: 'settings.ai_assistant' },
+  { id: 'advanced', label: 'Advanced', icon: SettingsIcon, flag: 'core.settings' },
+];
+
 export function Settings({ organizationName, domain, organizationId, showPasswordModal: externalShowPasswordModal, onPasswordModalChange, currentUser, onAIConfigChange }: SettingsProps) {
-  const [activeTab, setActiveTab] = useTabPersistence<'modules' | 'organization' | 'roles' | 'security' | 'customization' | 'integrations' | 'masterdata' | 'ai' | 'features' | 'advanced'>('helios_settings_tab', 'modules');
+  const [storedTab, setActiveTab] = useTabPersistence<SettingsTabId | 'integrations' | 'features'>('helios_settings_tab', 'modules');
+  const { isEnabled } = useFeatureFlags();
+  const navigate = useNavigate();
+  const visibleTabs = SETTINGS_TABS.filter(t => isEnabled(t.flag));
+  // API keys and feature flags used to have their own tabs; both now live in
+  // Advanced. A tab whose flag is off falls back to the first tab.
+  const requestedTab: SettingsTabId = storedTab === 'integrations' || storedTab === 'features' ? 'advanced' : storedTab;
+  const activeTab: SettingsTabId = visibleTabs.some(t => t.id === requestedTab) ? requestedTab : 'modules';
   const [showModuleConfig, setShowModuleConfig] = useState(false);
   const [configuringModule, setConfiguringModule] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -263,76 +291,20 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
       <div className="settings-layout">
         <div className="settings-sidebar">
           <nav className="settings-nav">
-            <button
-              className={`settings-nav-item ${activeTab === 'modules' ? 'active' : ''}`}
-              onClick={() => setActiveTab('modules')}
-            >
-              <Package className="nav-icon" size={16} />
-              <span>Modules</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'organization' ? 'active' : ''}`}
-              onClick={() => setActiveTab('organization')}
-            >
-              <Building2 className="nav-icon" size={16} />
-              <span>Organization</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'roles' ? 'active' : ''}`}
-              onClick={() => setActiveTab('roles')}
-            >
-              <Shield className="nav-icon" size={16} />
-              <span>Roles</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'security' ? 'active' : ''}`}
-              onClick={() => setActiveTab('security')}
-            >
-              <Lock className="nav-icon" size={16} />
-              <span>Security</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'customization' ? 'active' : ''}`}
-              onClick={() => setActiveTab('customization')}
-            >
-              <Palette className="nav-icon" size={16} />
-              <span>Customization</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'integrations' ? 'active' : ''}`}
-              onClick={() => setActiveTab('integrations')}
-            >
-              <Key className="nav-icon" size={16} />
-              <span>Integrations</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'masterdata' ? 'active' : ''}`}
-              onClick={() => setActiveTab('masterdata')}
-            >
-              <Database className="nav-icon" size={16} />
-              <span>Master Data</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'ai' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ai')}
-            >
-              <Bot className="nav-icon" size={16} />
-              <span>AI Assistant</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'features' ? 'active' : ''}`}
-              onClick={() => setActiveTab('features')}
-            >
-              <ToggleLeft className="nav-icon" size={16} />
-              <span>Features</span>
-            </button>
-            <button
-              className={`settings-nav-item ${activeTab === 'advanced' ? 'active' : ''}`}
-              onClick={() => setActiveTab('advanced')}
-            >
-              <SettingsIcon className="nav-icon" size={16} />
-              <span>Advanced</span>
-            </button>
+            {visibleTabs.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  className={`settings-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  data-testid={`settings-tab-${tab.id}`}
+                >
+                  <Icon className="nav-icon" size={16} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </div>
 
@@ -340,8 +312,8 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
           {activeTab === 'modules' && (
             <div className="settings-section">
               <div className="section-header">
-                <h2>Modules</h2>
-                <p>Enable and configure SaaS integrations for your organization</p>
+                <h2>Google Workspace</h2>
+                <p>Connect and sync the Google Workspace this installation manages</p>
               </div>
 
               <div className="modules-grid">
@@ -541,6 +513,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                   </div>
                 </div>
 
+                {isEnabled('integrations.microsoft_365') && (
                 <div className="module-card">
                   <div className="module-header">
                     <div className="module-info">
@@ -642,6 +615,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                     )}
                   </div>
                 </div>
+                )}
 
               </div>
             </div>
@@ -719,11 +693,21 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
               </div>
             </div>
             <LicenseLimitsSection />
+            {currentUser?.role === 'admin' && (
+              <div className="settings-section" style={{ marginTop: 24 }}>
+                <ThemeSelector />
+              </div>
+            )}
             </>
           )}
 
           {activeTab === 'roles' && (
-            <RolesManagement />
+            <>
+              <Administrators />
+              <div style={{ marginTop: 24 }}>
+                <RolesManagement />
+              </div>
+            </>
           )}
 
           {activeTab === 'security' && (
@@ -734,6 +718,9 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
               </div>
 
               <div className="security-section">
+                {/* These policy editors are not wired to the backend (nothing
+                    saves), so they stay behind an experimental flag. */}
+                {isEnabled('settings.security_policies') && (<>
                 <div className="security-card">
                   <h3><Lock size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Password Policy</h3>
                   <p>Set password requirements for all users in your organization</p>
@@ -866,6 +853,7 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                     SSO configuration requires enterprise setup. Contact support for assistance.
                   </div>
                 </div>
+                </>)}
 
                 {/* API Relay Access — least-privilege gate on the Google API proxy */}
                 <RelayAccessSettings />
@@ -881,20 +869,6 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
               </div>
 
               <div className="customization-section">
-                {/* Theme Settings - Admin Only */}
-                {currentUser?.role === 'admin' ? (
-                  <ThemeSelector />
-                ) : (
-                  <div className="customization-card">
-                    <h3><Palette size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Theme Settings</h3>
-                    <p>Theme customization is restricted to administrators</p>
-                    <div className="info-box">
-                      <Info size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
-                      <span>Only organization administrators can change the theme. Please contact your admin if you'd like to request a different theme.</span>
-                    </div>
-                  </div>
-                )}
-
                 {/* Entity Label Customization */}
                 <EntityLabelSettings
                   isAdmin={currentUser?.role === 'admin'}
@@ -955,22 +929,6 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
             </div>
           )}
 
-          {activeTab === 'integrations' && (
-            <div className="settings-section">
-              <div className="section-header">
-                <h2>Integrations</h2>
-                <p>Manage API keys and external integrations</p>
-              </div>
-
-              <div className="integrations-section">
-                <ApiKeyList
-                  organizationId={organizationId}
-                  onCreateKey={() => setShowApiKeyWizard(true)}
-                />
-              </div>
-            </div>
-          )}
-
           {activeTab === 'masterdata' && (
             <div className="settings-section">
               <div className="section-header">
@@ -988,16 +946,6 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 <p>Configure the AI-powered help and command assistant</p>
               </div>
               <AISettings organizationId={organizationId} onConfigSaved={onAIConfigChange} />
-            </div>
-          )}
-
-          {activeTab === 'features' && (
-            <div className="settings-section">
-              <div className="section-header">
-                <h2>Features</h2>
-                <p>Enable or disable features across your organization</p>
-              </div>
-              <FeatureFlagsSettings />
             </div>
           )}
 
@@ -1131,10 +1079,40 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                   </div>
                 </div>
 
-                {/* Email Tracking Settings */}
-                <div style={{ marginTop: '24px' }}>
-                  <TrackingSettings />
+                {/* Email Tracking Settings — its API route is not mounted yet
+                    (see frontend-route-coverage KNOWN_BROKEN), so it stays behind
+                    an experimental flag. */}
+                {isEnabled('settings.email_tracking') && (
+                  <div style={{ marginTop: '24px' }}>
+                    <TrackingSettings />
+                  </div>
+                )}
+
+                {/* Features: what this installation has switched on */}
+                <div className="advanced-card" style={{ marginTop: '24px' }}>
+                  <h3><ToggleLeft size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Features</h3>
+                  <FeatureFlagsSettings />
                 </div>
+
+                {/* Developer tools: one home for API keys, API docs and the console */}
+                {isEnabled('developer.tools') && (
+                  <div className="advanced-card" style={{ marginTop: '24px' }} data-testid="settings-developer-tools">
+                    <h3><Key size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />API keys &amp; developer tools</h3>
+                    <p>API keys for integrations, the API reference, and the Developer Console</p>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', margin: '12px 0 16px' }}>
+                      <button className="btn-secondary" onClick={() => window.open('/api/v1/docs', '_blank', 'noopener')}>
+                        <Book size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />API documentation
+                      </button>
+                      <button className="btn-secondary" onClick={() => navigate('/admin/console')}>
+                        <Terminal size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Developer Console
+                      </button>
+                    </div>
+                    <ApiKeyList
+                      organizationId={organizationId}
+                      onCreateKey={() => setShowApiKeyWizard(true)}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

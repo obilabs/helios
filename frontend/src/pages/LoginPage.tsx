@@ -246,9 +246,9 @@ export function LoginPage({ onLoginSuccess, organizationDomain: _organizationDom
     <div className="login-page">
       <div className="login-form-section">
         <div className="login-header">
-          <h1>Helios Admin Portal</h1>
+          <h1>Helios</h1>
           <h2>{organizationName || 'Your Organization'}</h2>
-          <p>Administrative Dashboard</p>
+          <p>Google Workspace administration, self-hosted</p>
         </div>
 
         {twoFactorRequired ? (

@@ -49,6 +49,10 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
+# The published image ships the release profile: only stable features on.
+# docker-compose.dev.yml and the E2E stack override this with `development`.
+ENV HELIOS_FEATURE_PROFILE=release
+
 # Run as node user (already exists in node:alpine)
 USER node
 

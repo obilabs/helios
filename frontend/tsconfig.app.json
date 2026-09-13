@@ -30,5 +30,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Unit tests run under Vitest, not the production build. navigation.test.ts
+  // imports the backend feature registry, which is outside the frontend image's
+  // Docker build context.
+  "exclude": ["src/**/*.test.ts"]
 }
