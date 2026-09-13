@@ -1,39 +1,40 @@
 name: E2E Auth Flows
 
-# Browser coverage for the two first-run screens the headless/API tests skip:
-# the setup wizard and the login form. This is heavier than the other CI jobs
-# (it builds and boots the whole docker stack + a real browser), so it is
-# path-gated to the auth/first-run surface and always available via manual
-# dispatch. Widen the `paths:` list if you want it on every PR.
+# Browser coverage for the first-run screens the headless/API tests skip (setup
+# wizard, login form) plus a signed-in settings save, which exercises session
+# cookies and the CSRF token end to end. It builds and boots the whole docker
+# stack + a real browser, so it runs on application source changes (backend,
+# frontend, e2e, compose, nginx) and is always available via manual dispatch.
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'frontend/src/components/AccountSetup.tsx'
-      - 'frontend/src/pages/LoginPage.tsx'
-      - 'frontend/src/lib/auth-client.ts'
-      - 'frontend/src/App.tsx'
-      - 'backend/src/lib/auth.ts'
-      - 'backend/src/routes/organization.routes.ts'
-      - 'backend/src/database/init.ts'
+      - 'backend/src/**'
+      - 'backend/package*.json'
+      - 'backend/Dockerfile*'
+      - 'frontend/src/**'
+      - 'frontend/package*.json'
+      - 'frontend/Dockerfile*'
       - 'e2e/**'
       - 'docker-compose.yml'
       - 'nginx/**'
+      - 'database/**'
       - '.github/workflows/e2e-auth-flows.yml'
   push:
     branches: [main]
     paths:
-      - 'frontend/src/components/AccountSetup.tsx'
-      - 'frontend/src/pages/LoginPage.tsx'
-      - 'frontend/src/lib/auth-client.ts'
-      - 'backend/src/lib/auth.ts'
-      - 'backend/src/routes/organization.routes.ts'
+      - 'backend/src/**'
+      - 'backend/package*.json'
+      - 'backend/Dockerfile*'
+      - 'frontend/src/**'
+      - 'frontend/package*.json'
+      - 'frontend/Dockerfile*'
       - 'e2e/**'
+      - 'docker-compose.yml'
+      - 'nginx/**'
+      - 'database/**'
 
-# Least privilege: the workflow token can only read the repo. Jobs that need
-# more (packages: write to publish, security-events: write to upload findings)
-# raise it for themselves, so a compromised step in any other job cannot write.
 permissions:
   contents: read
 
