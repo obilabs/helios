@@ -16,6 +16,10 @@
  *    looking real. This is the "UI said OK, nothing actually happened" failure this
  *    codebase keeps finding, built into Google's own model.
  *
+ * 4. **Capacity is not enforced.** Fifteen attendees went into a ten-seat room and the
+ *    room accepted. If an admin wants "that room is too small", Helios says it, using
+ *    the resource's own capacity field.
+ *
  * What that means for the bones: a booking needs its own state (requested → confirmed /
  * declined), the room's answer has to be reconciled after the fact, and a decline must
  * be surfaced to the person who booked. `freebusy` is the availability read, and it only
@@ -64,6 +68,15 @@ describe('booking a Google calendar resource (recorded live)', () => {
     const outcome = fixture('events.get.double-booking-outcome').response.data;
     expect(roomAttendee(outcome).responseStatus).toBe('declined');
     expect(outcome.status).toBe('confirmed');
+  });
+
+  it('Google does NOT enforce capacity: 15 people went into a 10-seat room', () => {
+    // Capacity is advisory in Google's model. If Helios wants "you are over capacity"
+    // it has to say so itself, from the resource's own capacity field.
+    const f = fixture('events.insert.over-capacity');
+    expect(f.response.status).toBe(200);
+    expect(f.response.data.attendees.filter((a: any) => !a.resource).length).toBe(15);
+    expect(roomAttendee(fixture('events.get.over-capacity-outcome').response.data).responseStatus).toBe('accepted');
   });
 
   it('cancelling releases the room', () => {
