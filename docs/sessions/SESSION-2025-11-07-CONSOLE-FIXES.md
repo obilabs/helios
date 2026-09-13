@@ -191,7 +191,7 @@ EOSQL
 - `openspec/testing/tests/developer-console.test.ts` - 25 automated tests
 - `openspec/testing/DEVELOPER-CONSOLE-TESTS.md` - Test documentation
 - `openspec/testing/TEST-CREDENTIALS.md` - Test credentials
-- `D:\personal-projects\helios\helios\update-jack-password.sql` - Password reset SQL
+- `<repo-root>/update-jack-password.sql` - Password reset SQL
 
 ## Next Session Start Here
 

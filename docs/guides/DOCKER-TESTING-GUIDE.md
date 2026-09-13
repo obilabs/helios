@@ -41,7 +41,7 @@ Windows: Start Docker Desktop application
 
 ### Step 2: Rebuild Backend Container
 ```bash
-cd D:/personal-projects/helios/helios
+cd <repo-root>
 
 # Stop everything
 docker-compose down
@@ -131,12 +131,3 @@ docker exec helios_backend ls -la /app/node_modules | head
 docker-compose build backend
 ```
 
----
-
-## 📋 Dockerfile Check
-
-Let me verify your backend Dockerfile is correct:
-
-<function_calls>
-<invoke name="Read">
-<parameter name="file_path">D:/personal-projects/helios/helios/backend/Dockerfile

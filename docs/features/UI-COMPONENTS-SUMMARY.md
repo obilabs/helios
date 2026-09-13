@@ -1,7 +1,7 @@
 # Helios UI Component Library - Implementation Summary
 
 **Date:** November 2, 2025
-**Location:** `D:\personal-projects\helios\helios\frontend\src\components\ui\`
+**Location:** `<repo-root>/frontend/src/components/ui/`
 **Status:** Complete and Ready for Use
 
 ---
@@ -309,8 +309,8 @@ These components integrate with existing Helios features:
 3. **UI-COMPONENTS-SUMMARY.md** - This file (implementation overview)
 
 ### Reference
-- Design System: `D:\personal-projects\helios\helios\DESIGN-SYSTEM.md`
-- Project Guidelines: `D:\personal-projects\helios\helios\CLAUDE.md`
+- Design System: `<repo-root>/DESIGN-SYSTEM.md`
+- Project Guidelines: `<repo-root>/CLAUDE.md`
 
 ---
 

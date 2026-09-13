@@ -97,14 +97,6 @@ const PUBLIC_ROUTERS: Record<string, { reason: string; publicPaths: string[] }> 
     reason: 'Serves public assets by opaque slug; includes a health check.',
     publicPaths: ['/_health', '/'],
   },
-  'assets-public.routes.ts': {
-    reason: 'Public asset serving by slug; rate-limited.',
-    publicPaths: ['/:slug'],
-  },
-  'public-assets.routes.ts': {
-    reason: 'Public asset serving by slug.',
-    publicPaths: ['/:slug', '/:slug/info'],
-  },
   'help.routes.ts': {
     reason:
       'Static knowledge-base help content for the pre-login help widget. ' +
@@ -113,9 +105,10 @@ const PUBLIC_ROUTERS: Record<string, { reason: string; publicPaths: string[] }> 
   },
   'organization.routes.ts': {
     reason:
-      'Contains the second bootstrap path (POST /setup, 409-guarded at the data ' +
-      'layer) and GET /current for login-page branding. FLAGGED: /current should ' +
-      'return only branding fields, not the whole org record.',
+      'Contains the one-time bootstrap (POST /setup: requires the first-run setup ' +
+      'token and answers 409 once an organization exists), the setup status probe, ' +
+      'and GET /current, which returns only the organization display name to an ' +
+      'anonymous caller (login-page branding) and the session org record otherwise.',
     publicPaths: ['/setup', '/setup/status', '/current'],
   },
 };
@@ -195,10 +188,11 @@ describe('Route authentication coverage (deny-by-default)', () => {
   });
 
   it('regression: the routers fixed on 2026-07-23 are guarded, not allowlisted', () => {
-    // photos and login-activity were fixed with a real router-level guard.
-    // If someone "fixes" a future failure by dumping them into the allowlist
+    // login-activity was fixed with a real router-level guard (photos.routes.ts,
+    // fixed the same day, was never mounted and was deleted 2026-09-13).
+    // If someone "fixes" a future failure by dumping it into the allowlist
     // instead, this catches it.
-    for (const file of ['photos.routes.ts', 'login-activity.routes.ts']) {
+    for (const file of ['login-activity.routes.ts']) {
       const source = readFileSync(join(ROUTES_DIR, file), 'utf8');
       expect(PUBLIC_ROUTERS[file]).toBeUndefined();
       expect(ROUTER_LEVEL_GUARD.test(source)).toBe(true);

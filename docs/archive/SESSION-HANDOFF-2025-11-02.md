@@ -170,7 +170,7 @@ npm run build
 taskkill //IM node.exe //F
 
 # 3. Rebuild and start
-cd D:/personal-projects/helios/helios-client
+cd <repo-root>
 docker-compose build backend
 docker-compose up -d
 

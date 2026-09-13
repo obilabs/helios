@@ -173,7 +173,7 @@
 
 **To deploy:**
 ```bash
-cd D:/personal-projects/helios/helios-client
+cd <repo-root>
 
 # Production build
 docker-compose -f docker-compose.prod.yml up -d

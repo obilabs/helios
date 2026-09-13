@@ -20,6 +20,37 @@
  *
  * SCANS TRACKED FILES ONLY — by definition a gitignored file cannot be the
  * problem this is looking for.
+ *
+ * TWO RULES
+ * ---------
+ * 1. SECRET — a credential-shaped name followed by a quoted literal of 12+
+ *    chars. Fixture-shaped values (all lowercase, placeholders, env var names)
+ *    are exempt via ALLOW below.
+ *
+ * 2. ENV_FALLBACK — a literal used as the runtime fallback for a secret-named
+ *    environment variable:
+ *
+ *        process.env.JWT_SECRET || '<literal>'
+ *        process.env['BETTER_AUTH_SECRET'] ?? "<literal>"
+ *        process.env.A_SECRET || process.env.B_SECRET || '<literal>'
+ *
+ *    Flagged REGARDLESS OF CASE OR LENGTH. The lowercase-fixture exemption in
+ *    rule 1 does not apply: a lowercase fallback is still the value the server
+ *    signs with whenever the variable is unset, so its shape says nothing about
+ *    whether it matters. Missing secrets must fail at startup instead.
+ *
+ *    A name counts as secret-like when it ENDS in SECRET, TOKEN, PASSWORD /
+ *    PASSWD, or a credential KEY (API_KEY, ACCESS_KEY, SECRET_KEY,
+ *    PRIVATE_KEY, ENCRYPTION_KEY, SIGNING_KEY). Suffix-anchored on purpose:
+ *    JWT_EXPIRES_IN or TOKEN_SYNC_INTERVAL_SECONDS are settings, not secrets.
+ *
+ *    Not flagged by rule 2:
+ *    - test code (__tests__/, e2e/, tests/, fixtures/, openspec/testing/,
+ *      *.test.* / *.spec.*) — fixtures there are expected; rule 1 still runs.
+ *    - a database-engine password name (DB_PASSWORD, POSTGRES_PASSWORD,
+ *      PGPASSWORD) falling back to exactly 'postgres' — the stock local
+ *      container default, not a generated credential.
+ *    - an empty literal ('') — that is "unset", not a value.
  */
 
 import { execSync } from 'node:child_process'
@@ -80,6 +111,23 @@ const ALLOW = [
   /^[A-Za-z0-9_-]*(_KEY|_SECRET|_TOKEN|_PASSWORD)$/, // an env var NAME, not a value
 ]
 
+/**
+ * Rule 2. Captures the whole `process.env.X [|| process.env.Y ...] || 'literal'`
+ * chain so every env name in it can be checked; group 3 is the literal.
+ */
+const ENV_REF = String.raw`process\.env(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\s*['"][A-Za-z_][A-Za-z0-9_]*['"]\s*\])`
+const ENV_FALLBACK = new RegExp(
+  String.raw`(${ENV_REF}(?:\s*(?:\|\||\?\?)\s*${ENV_REF})*)\s*(?:\|\||\?\?)\s*(['"\`])([^'"\`]*)\2`,
+  'g'
+)
+const SECRET_ENV_NAME =
+  /(SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|ACCESS_?KEY|SECRET_?KEY|PRIVATE_?KEY|ENCRYPTION_?KEY|SIGNING_?KEY)$/i
+const DB_ENGINE_PASSWORD = /^(DB_PASSWORD|POSTGRES_PASSWORD|PGPASSWORD|DATABASE_PASSWORD)$/i
+const TEST_PATH = [
+  /(^|\/)(__tests__|e2e|tests?|fixtures|openspec\/testing)\//,
+  /\.(test|spec)\.[cm]?[jt]sx?$/,
+]
+
 const SKIP_PATH = [
   /(^|\/)(node_modules|\.next|dist|build|coverage)\//,
   /(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/,
@@ -112,13 +160,25 @@ for (const file of files) {
       if (ALLOW.some((re) => re.test(value))) continue
       findings.push({ file, line: i + 1, name: m[1], value })
     }
+    if (TEST_PATH.some((re) => re.test(file))) return
+    for (const m of line.matchAll(ENV_FALLBACK)) {
+      const value = m[3]
+      if (!value) continue
+      const names = [...m[1].matchAll(/process\.env(?:\.([A-Za-z0-9_]+)|\[\s*['"]([A-Za-z0-9_]+)['"]\s*\])/g)].map(
+        (n) => n[1] || n[2]
+      )
+      const secretNames = names.filter((n) => SECRET_ENV_NAME.test(n))
+      if (!secretNames.length) continue
+      if (value === 'postgres' && secretNames.every((n) => DB_ENGINE_PASSWORD.test(n))) continue
+      findings.push({ file, line: i + 1, name: `${secretNames.join('|')} fallback`, value })
+    }
   })
 }
 
 if (findings.length) {
   console.error('Committed-credential gate FAILED\n')
   for (const f of findings) {
-    const masked = `${f.value.slice(0, 3)}…${f.value.slice(-2)}`
+    const masked = f.value.length > 6 ? `${f.value.slice(0, 3)}…${f.value.slice(-2)}` : '…'
     console.error(`  ${f.file}:${f.line}  ${f.name} = "${masked}" (${f.value.length} chars)`)
   }
   console.error(
