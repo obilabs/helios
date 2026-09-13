@@ -1,9 +1,12 @@
 import axios from 'axios';
 import { apiPath } from '../config/api';
+import { CSRF_COOKIE, CSRF_HEADER } from '../lib/csrf';
 
 // Configure axios defaults for session-based auth
 const authAxios = axios.create({
   withCredentials: true, // Send cookies with requests
+  xsrfCookieName: CSRF_COOKIE,
+  xsrfHeaderName: CSRF_HEADER,
   headers: {
     'Content-Type': 'application/json',
   },
