@@ -679,7 +679,7 @@ db.query(`SELECT * FROM users WHERE email = '${email}'`);  // SQL injection!
 
 ```
 POST   /api/auth/login
-POST   /api/auth/logout
+POST   /api/auth/sign-out
 POST   /api/auth/refresh
 GET    /api/auth/verify
 

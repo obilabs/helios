@@ -79,7 +79,7 @@ const ROUTER_LEVEL_GUARD =
 const PUBLIC_ROUTERS: Record<string, { reason: string; publicPaths: string[] }> = {
   'auth.routes.ts': {
     reason: 'Authentication endpoints must be reachable before a session exists.',
-    publicPaths: ['/login', '/logout', '/verify', '/verify-setup-token', '/setup-password'],
+    publicPaths: ['/login', '/verify', '/verify-setup-token', '/setup-password'],
   },
   'training-contract.routes.ts': {
     reason:

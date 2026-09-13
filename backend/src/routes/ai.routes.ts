@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { validateLlmEndpoint, LlmEndpointError } from '../lib/llm-endpoint.js';
 import { llmGatewayService, ChatMessage, Tool, ToolCall, AIRole } from '../services/llm-gateway.service.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -213,11 +214,24 @@ router.put('/config', requireAdmin, async (req: Request, res: Response): Promise
       return;
     }
 
+    let checkedPrimaryUrl: string | undefined;
+    let checkedFallbackUrl: string | undefined;
+    try {
+      checkedPrimaryUrl = primaryEndpointUrl ? validateLlmEndpoint(primaryEndpointUrl) : primaryEndpointUrl;
+      checkedFallbackUrl = fallbackEndpointUrl ? validateLlmEndpoint(fallbackEndpointUrl) : undefined;
+    } catch (error) {
+      if (error instanceof LlmEndpointError) {
+        validationErrorResponse(res, [{ field: 'endpointUrl', message: error.message }]);
+        return;
+      }
+      throw error;
+    }
+
     await llmGatewayService.saveConfig(organizationId, {
-      primaryEndpointUrl,
+      primaryEndpointUrl: checkedPrimaryUrl as string,
       primaryApiKey,
       primaryModel,
-      fallbackEndpointUrl: fallbackEndpointUrl || undefined,
+      fallbackEndpointUrl: checkedFallbackUrl,
       fallbackApiKey: fallbackApiKey || undefined,
       fallbackModel: fallbackModel || undefined,
       toolCallModel: toolCallModel || undefined,
@@ -311,7 +325,18 @@ router.post('/test-connection', requireAdmin, async (req: Request, res: Response
       return;
     }
 
-    const result = await llmGatewayService.testConnection(endpoint, apiKey, model);
+    let checkedEndpoint: string;
+    try {
+      checkedEndpoint = validateLlmEndpoint(endpoint);
+    } catch (error) {
+      if (error instanceof LlmEndpointError) {
+        validationErrorResponse(res, [{ field: 'endpoint', message: error.message }]);
+        return;
+      }
+      throw error;
+    }
+
+    const result = await llmGatewayService.testConnection(checkedEndpoint, apiKey, model);
     successResponse(res, result);
   } catch (error: any) {
     logger.error('Connection test failed', { error: error.message });
@@ -370,7 +395,15 @@ router.get('/models', requireAdmin, async (req: Request, res: Response): Promise
     // Use endpoint from query param if provided, otherwise use saved config
     let endpoint: string;
     if (req.query.endpoint && typeof req.query.endpoint === 'string') {
-      endpoint = req.query.endpoint;
+      try {
+        endpoint = validateLlmEndpoint(req.query.endpoint);
+      } catch (error) {
+        if (error instanceof LlmEndpointError) {
+          validationErrorResponse(res, [{ field: 'endpoint', message: error.message }]);
+          return;
+        }
+        throw error;
+      }
     } else {
       const config = await llmGatewayService.getConfig(organizationId);
       endpoint = config?.primaryEndpointUrl || 'http://localhost:11434/v1';
@@ -448,7 +481,18 @@ router.post('/test-tools', requireAdmin, async (req: Request, res: Response): Pr
       return;
     }
 
-    const result = await llmGatewayService.testToolSupport(endpoint, apiKey, model);
+    let checkedEndpoint: string;
+    try {
+      checkedEndpoint = validateLlmEndpoint(endpoint);
+    } catch (error) {
+      if (error instanceof LlmEndpointError) {
+        validationErrorResponse(res, [{ field: 'endpoint', message: error.message }]);
+        return;
+      }
+      throw error;
+    }
+
+    const result = await llmGatewayService.testToolSupport(checkedEndpoint, apiKey, model);
     successResponse(res, result);
   } catch (error: any) {
     logger.error('Tool support test failed', { error: error.message });
