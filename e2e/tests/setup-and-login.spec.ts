@@ -181,7 +181,7 @@ test.describe('First-run: setup wizard and login form', () => {
     await expect(page.locator('.dashboard-content')).toHaveCount(0);
   });
 
-  test('a signed-in admin saves an organization setting through the UI, and it persists', async ({
+  test('a signed-in admin saves an organization setting through the UI, it persists, and a PUT without the CSRF token gets 403', async ({
     page,
     context,
   }) => {
@@ -226,15 +226,9 @@ test.describe('First-run: setup wizard and login form', () => {
 
     const current = await page.request.get('/api/v1/organization/current');
     expect((await current.json()).data.name).toBe(RENAMED_ORG);
-  });
 
-  test('a cookie-authenticated PUT without X-CSRF-Token is refused with 403', async ({
-    page,
-    context,
-  }) => {
-    await context.clearCookies();
-    await signInViaForm(page);
-
+    // API level, reusing this signed-in session rather than signing in again:
+    // a cookie-authenticated PUT without X-CSRF-Token is refused.
     const cookies = await context.cookies();
     expect(cookies.find((c) => /helios\.session_token/.test(c.name)), 'session cookie').toBeTruthy();
     const csrf = cookies.find((c) => c.name === 'helios_csrf');
