@@ -59,9 +59,10 @@ class VideoService {
       return null;
     }
 
-    const tempDir = os.tmpdir();
-    const tempInputPath = path.join(tempDir, `video_${Date.now()}.mp4`);
-    const tempOutputPath = path.join(tempDir, `thumb_${Date.now()}.jpg`);
+    // A private directory per call (mkdtemp, mode 0700) instead of predictable names in the shared temp dir.
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'helios-video-'));
+    const tempInputPath = path.join(tempDir, 'input.mp4');
+    const tempOutputPath = path.join(tempDir, 'thumb.jpg');
 
     try {
       // Write video buffer to temp file
@@ -109,8 +110,7 @@ class VideoService {
     } finally {
       // Cleanup temp files
       try {
-        await fs.promises.unlink(tempInputPath).catch(() => {});
-        await fs.promises.unlink(tempOutputPath).catch(() => {});
+        await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       } catch {
         // Ignore cleanup errors
       }
@@ -126,8 +126,8 @@ class VideoService {
       return null;
     }
 
-    const tempDir = os.tmpdir();
-    const tempPath = path.join(tempDir, `video_${Date.now()}.mp4`);
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'helios-video-'));
+    const tempPath = path.join(tempDir, 'input.mp4');
 
     try {
       await fs.promises.writeFile(tempPath, videoBuffer);
@@ -187,7 +187,7 @@ class VideoService {
       return null;
     } finally {
       try {
-        await fs.promises.unlink(tempPath).catch(() => {});
+        await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       } catch {
         // Ignore cleanup errors
       }
