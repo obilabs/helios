@@ -374,7 +374,7 @@ docker-compose logs -f backend
 ### **Full Reset (Clean Slate):**
 
 ```bash
-cd D:/personal-projects/helios/helios-client
+cd <repo-root>
 
 # Stop everything
 docker-compose down

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
+import { isAdminRole } from '../utils/roles.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import {
   getLabels,
   updateLabels,
@@ -175,7 +176,7 @@ router.get('/with-availability', async (req: Request, res: Response): Promise<vo
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.patch('/', async (req: Request, res: Response): Promise<void> => {
+router.patch('/', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -190,7 +191,7 @@ router.patch('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check admin role
-    if (userRole !== 'admin') {
+    if (!isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Forbidden',
@@ -256,7 +257,7 @@ router.patch('/', async (req: Request, res: Response): Promise<void> => {
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/reset', async (req: Request, res: Response): Promise<void> => {
+router.post('/reset', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -271,7 +272,7 @@ router.post('/reset', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check admin role
-    if (userRole !== 'admin') {
+    if (!isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Forbidden',

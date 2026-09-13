@@ -14,6 +14,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>('helios-purple');
 
   const [formData, setFormData] = useState({
+    setupToken: '',
     organizationName: '',
     domain: '',
     adminFirstName: '',
@@ -30,7 +31,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
   };
 
   const handleSubmit = async () => {
-    if (!formData.organizationName || !formData.domain || !formData.adminFirstName ||
+    if (!formData.setupToken.trim() || !formData.organizationName || !formData.domain || !formData.adminFirstName ||
         !formData.adminLastName || !formData.adminEmail || !formData.adminPassword) {
       setError('Please fill in all fields');
       return;
@@ -56,6 +57,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          setupToken: formData.setupToken.trim(),
           organizationName: formData.organizationName,
           organizationDomain: formData.domain,
           adminEmail: formData.adminEmail,
@@ -71,6 +73,8 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
       console.log('[Setup] Response data:', data);
 
       if (!response.ok) {
+        // A missing or wrong setup token is entered on the first step.
+        if (response.status === 403) setStep(1);
         throw new Error(data.error?.message || data.error || data.message || 'Setup failed');
       }
 
@@ -148,13 +152,28 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
               </p>
 
               <div className="form-group">
+                <label>Setup Token</label>
+                <input
+                  type="text"
+                  value={formData.setupToken}
+                  onChange={e => setFormData({...formData, setupToken: e.target.value})}
+                  placeholder="Paste the one-time setup token"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoFocus
+                />
+                <div className="form-hint">
+                  Find it in the container logs: <code>docker compose logs backend | grep 'setup token'</code>
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label>Organization Name</label>
                 <input
                   type="text"
                   value={formData.organizationName}
                   onChange={e => setFormData({...formData, organizationName: e.target.value})}
                   placeholder="Acme Corporation"
-                  autoFocus
                 />
               </div>
 
@@ -311,6 +330,10 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
           {step === 1 && (
             <button
               onClick={() => {
+                if (!formData.setupToken.trim()) {
+                  setError('Please enter the setup token from the backend logs');
+                  return;
+                }
                 if (!formData.organizationName || !formData.domain) {
                   setError('Please fill in organization information');
                   return;

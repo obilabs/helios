@@ -68,11 +68,11 @@ function patternToRegex(path: string): RegExp {
   return new RegExp(`^${escaped}/?$`);
 }
 
-/** `registerRoute('/organization', organizationRoutes)` -> prefix per router variable. */
+/** `apiRouter.use('/organization', organizationRoutes)` -> prefix per router variable. */
 function readMounts(): Array<{ prefix: string; variable: string }> {
   const src = readFileSync(INDEX_TS, 'utf8');
   const mounts: Array<{ prefix: string; variable: string }> = [];
-  for (const m of src.matchAll(/registerRoute\(\s*'([^']+)'\s*,\s*([A-Za-z0-9_]+)/g)) {
+  for (const m of src.matchAll(/apiRouter\.use\(\s*'([^']+)'\s*,\s*([A-Za-z0-9_]+)/g)) {
     mounts.push({ prefix: m[1], variable: m[2] });
   }
   for (const m of src.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*([A-Za-z0-9_]+Routes)\s*\)/g)) {
@@ -169,7 +169,7 @@ function normalise(raw: string): string | null {
 }
 
 /**
- * Served outside the registerRoute helper: docs, tracking pixels, the
+ * Served outside apiRouter: docs, tracking pixels, the
  * transparent cloud proxies (generic passthrough with no declared route table),
  * better-auth's own handler, health and first-run setup.
  */

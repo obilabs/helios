@@ -380,7 +380,7 @@ grep -r "[\p{Emoji_Presentation}\p{Extended_Pictographic}]" . --include="*.tsx" 
 
 # Or using Grep tool in Claude Code:
 # Pattern: [\p{Emoji_Presentation}\p{Extended_Pictographic}]
-# Path: D:\personal-projects\helios\helios-client\frontend\src
+# Path: <repo-root>/frontend/src
 # Output: files_with_matches
 ```
 
@@ -476,7 +476,7 @@ A page/component is considered fully aligned when:
 
 ### Design System File
 ```
-D:\personal-projects\helios\helios-client\DESIGN-SYSTEM.md
+<repo-root>/DESIGN-SYSTEM.md
 ```
 
 ### Lucide Icon Library

@@ -38,7 +38,7 @@ COPY database ./database
 
 # Create logs directory — owned by the non-root `node` user that runs the process
 # (USER node below), otherwise winston's File transport silently fails to write.
-RUN mkdir -p /app/logs && chown -R node:node /app/logs
+RUN mkdir -p /app/logs /app/data && chown -R node:node /app/logs /app/data
 
 # Ensure the database directory exists (schema file is mounted here at runtime)
 RUN mkdir -p /app/database

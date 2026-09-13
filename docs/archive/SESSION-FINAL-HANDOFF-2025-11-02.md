@@ -307,7 +307,7 @@ UI pattern: Expandable selection blocks instead of radio buttons
 
 **Start Docker:**
 ```bash
-cd D:/personal-projects/helios/helios-client
+cd <repo-root>
 docker-compose up -d
 ```
 

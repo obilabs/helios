@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -329,6 +329,7 @@ router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
  */
 router.post('/',
   authenticateToken,
+  requireAdmin,
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('code').optional().trim(),
@@ -475,6 +476,7 @@ router.post('/',
  */
 router.put('/:id',
   authenticateToken,
+  requireAdmin,
   [
     body('name').optional().trim().notEmpty(),
     body('code').optional().trim(),
@@ -625,7 +627,7 @@ router.put('/:id',
  * DELETE /api/locations/:id
  * Delete a location (only if no users assigned)
  */
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;

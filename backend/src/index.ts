@@ -8,27 +8,9 @@ if (!globalThis.crypto) {
 // Import type augmentation for Express Request (must be .ts for ts-node compatibility)
 import './types/express.js';
 
-// Load environment variables FIRST before any imports that use them
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// ESM equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// .env is in project root, two levels up from src/
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
-
-// Validate environment variables immediately after loading
-import { validateEnv } from './config/env-validation.js';
-try {
-  validateEnv();
-  console.log(`✅ Environment validated (${process.env['NODE_ENV'] || 'development'} mode)`);
-} catch (error) {
-  console.error('❌ Environment validation failed. Exiting...');
-  process.exit(1);
-}
+// Load .env and validate the environment (including signing secrets) FIRST,
+// before any module that reads configuration at import time is evaluated.
+import './config/load-env.js';
 
 import express from 'express';
 import { createServer } from 'http';
@@ -38,6 +20,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { logger } from './utils/logger.js';
+import { setupTokenStore } from './services/setup-token.service.js';
 import { db } from './database/connection.js';
 import { dbInitializer } from './database/init.js';
 import { migrationRunner } from './database/migrate.js';
@@ -637,105 +620,110 @@ if (auditEnabled) {
   logger.info('🔍 Audit middleware enabled');
 }
 
-// Helper to register routes on both versioned and unversioned paths
-const registerRoute = (path: string, router: express.Router) => {
-  app.use(`/api/v1${path}`, router);  // Primary: /api/v1/*
-  app.use(`/api${path}`, router);      // Deprecated: /api/*
-};
+// Every API router is mounted on one `apiRouter`, which serves both the
+// versioned and the unversioned prefix:
+//   /api/v1/*  primary
+//   /api/*     deprecated
+// Mount routers with a direct `apiRouter.use('/path', router)` call (one line
+// per router) rather than through a helper function, so static analysis can
+// follow each router back to the app-level middleware (rate limiting) above.
+const apiRouter = express.Router();
+app.use('/api/v1', apiRouter);
+app.use('/api', apiRouter);
 
 // Dashboard
-registerRoute('/dashboard', dashboardRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 
 // Organization management routes (more specific first)
-registerRoute('/organization/api-keys', apiKeysRoutes);
-registerRoute('/organization/labels', labelsRoutes);
-registerRoute('/organization/workspaces', workspacesRoutes);
-registerRoute('/organization/access-groups', accessGroupsRoutes);
-registerRoute('/organization/security-events', securityEventsRoutes);
-registerRoute('/organization/security', securityRoutes);
-registerRoute('/organization/audit-logs', auditLogsRoutes);
-registerRoute('/organization/custom-fields', customFieldsRoutes);
-registerRoute('/organization/departments', departmentsRoutes);
-registerRoute('/organization/locations', locationsRoutes);
-registerRoute('/organization/cost-centers', costCentersRoutes);
-registerRoute('/organization/job-titles', jobTitlesRoutes);
-registerRoute('/organization/licenses', licensesRoutes);
-registerRoute('/organization/data-quality', dataQualityRoutes);
-registerRoute('/organization', orgChartRoutes);
-registerRoute('/organization', organizationRoutes);
+apiRouter.use('/organization/api-keys', apiKeysRoutes);
+apiRouter.use('/organization/labels', labelsRoutes);
+apiRouter.use('/organization/workspaces', workspacesRoutes);
+apiRouter.use('/organization/access-groups', accessGroupsRoutes);
+apiRouter.use('/organization/security-events', securityEventsRoutes);
+apiRouter.use('/organization/security', securityRoutes);
+apiRouter.use('/organization/audit-logs', auditLogsRoutes);
+apiRouter.use('/organization/custom-fields', customFieldsRoutes);
+apiRouter.use('/organization/departments', departmentsRoutes);
+apiRouter.use('/organization/locations', locationsRoutes);
+apiRouter.use('/organization/cost-centers', costCentersRoutes);
+apiRouter.use('/organization/job-titles', jobTitlesRoutes);
+apiRouter.use('/organization/licenses', licensesRoutes);
+apiRouter.use('/organization/data-quality', dataQualityRoutes);
+apiRouter.use('/organization', orgChartRoutes);
+apiRouter.use('/organization', organizationRoutes);
 
 // Email features
-registerRoute('/email-security', emailSecurityRoutes);
-registerRoute('/signatures/v2/assignments', signatureAssignmentsRoutes);
-registerRoute('/signatures/sync', signatureSyncRoutes);
-registerRoute('/signatures/campaigns', signatureCampaignsRoutes);
-registerRoute('/signatures/permissions', signaturePermissionsRoutes);
-registerRoute('/signatures', signaturesRoutes);
+apiRouter.use('/email-security', emailSecurityRoutes);
+apiRouter.use('/signatures/v2/assignments', signatureAssignmentsRoutes);
+apiRouter.use('/signatures/sync', signatureSyncRoutes);
+apiRouter.use('/signatures/campaigns', signatureCampaignsRoutes);
+apiRouter.use('/signatures/permissions', signaturePermissionsRoutes);
+apiRouter.use('/signatures', signaturesRoutes);
 
 // Authentication & User
-registerRoute('/auth', authRoutes);
-registerRoute('/user', userRoutes);
-registerRoute('/user-preferences', userPreferencesRoutes);
-registerRoute('/me', meRoutes);
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/user', userRoutes);
+apiRouter.use('/user-preferences', userPreferencesRoutes);
+apiRouter.use('/me', meRoutes);
 
 // People & Bulk operations
-registerRoute('/people', peopleRoutes);
-registerRoute('/bulk', bulkOperationsRoutes);
+apiRouter.use('/people', peopleRoutes);
+apiRouter.use('/bulk', bulkOperationsRoutes);
 
 // Integrations
-registerRoute('/google-workspace', GoogleWorkspaceRoutes);
-registerRoute('/microsoft', microsoftRoutes);
-registerRoute('/modules', modulesRoutes);
+apiRouter.use('/google-workspace', GoogleWorkspaceRoutes);
+apiRouter.use('/microsoft', microsoftRoutes);
+apiRouter.use('/modules', modulesRoutes);
 
 // Assets & Lifecycle
-registerRoute('/assets', assetsRoutes);
-registerRoute('/lifecycle', lifecycleRoutes);
+apiRouter.use('/assets', assetsRoutes);
+apiRouter.use('/lifecycle', lifecycleRoutes);
 // Training contract v1 (Phase 02 bone). Mounted BEFORE the local training routes so
 // /training/v1/* is not swallowed by a :param route on the content player. Inert until
 // an admin enables it per organization.
-registerRoute('/training/v1', trainingContractRoutes);
-registerRoute('/training', trainingRoutes);
+apiRouter.use('/training/v1', trainingContractRoutes);
+apiRouter.use('/training', trainingRoutes);
 
 // Automation & Rules Engine
-registerRoute('/automation', automationRoutes);
+apiRouter.use('/automation', automationRoutes);
 
 // Tracking Analytics (user and admin engagement stats)
-registerRoute('/tracking', trackingAnalyticsRoutes);
+apiRouter.use('/tracking', trackingAnalyticsRoutes);
 // Also register settings routes (tracking settings are at /settings/tracking)
-registerRoute('/settings', trackingAnalyticsRoutes);
+apiRouter.use('/settings', trackingAnalyticsRoutes);
 // Admin tracking routes are at /admin/tracking
-registerRoute('/admin', trackingAnalyticsRoutes);
+apiRouter.use('/admin', trackingAnalyticsRoutes);
 
 // MTP (MSP multi-tenant portal) surface — pairing-key bearer auth only
 // (OpenSpec: mtp-integration). Handshake completes the single-use bind;
 // poll returns the directory/security aggregate.
-registerRoute('/mtp', mtpRoutes);
+apiRouter.use('/mtp', mtpRoutes);
 
 // MCP (Model Context Protocol) for AI integration
-registerRoute('/mcp', mcpRoutes);
+apiRouter.use('/mcp', mcpRoutes);
 
 // AI Assistant
-registerRoute('/ai', aiRoutes);
+apiRouter.use('/ai', aiRoutes);
 
 // Help System (context-based help, works without AI)
-registerRoute('/help', helpRoutes);
+apiRouter.use('/help', helpRoutes);
 
 // External Sharing Audit (Google Drive)
-registerRoute('/external-sharing', externalSharingRoutes);
+apiRouter.use('/external-sharing', externalSharingRoutes);
 
 // Login Activity (security monitoring)
-registerRoute('/login-activity', loginActivityRoutes);
+apiRouter.use('/login-activity', loginActivityRoutes);
 
 // Initial Passwords (for newly created users)
-registerRoute('/initial-passwords', initialPasswordsRoutes);
+apiRouter.use('/initial-passwords', initialPasswordsRoutes);
 
 // Feature Flags
-registerRoute('/organization/feature-flags', featureFlagsRoutes);
+apiRouter.use('/organization/feature-flags', featureFlagsRoutes);
 
 // API Relay Authorization — admin authoring surface for the least-privilege
 // gate (config toggles + allow/deny rules). Enforcement itself lives in the
 // transparent proxy behind the `api_relay` feature flag.
-registerRoute('/organization/relay', relayRoutes);
+apiRouter.use('/organization/relay', relayRoutes);
 
 // Transparent Proxy for Google Workspace APIs (must be before catch-all)
 app.use(transparentProxyRouter);
@@ -828,6 +816,12 @@ async function startServer(): Promise<void> {
     // Seed default admin if configured via environment variables
     // This only runs ONCE if no organization exists yet
     await dbInitializer.seedDefaultAdmin();
+
+    // First-run setup token: while no organization exists, POST
+    // /organization/setup requires a one-time token that is only available in
+    // this log and the data directory (services/setup-token.service.ts).
+    const orgCountResult = await db.query('SELECT COUNT(*)::int AS count FROM organizations');
+    setupTokenStore.initialize(Number(orgCountResult.rows[0]?.count ?? 0) === 0);
 
     // CRITICAL: Verify single-tenant integrity
     // This ensures only ONE organization exists in the system

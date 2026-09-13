@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { db } from '../database/connection.js';
 
 const router = Router();
@@ -180,7 +180,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
  *       400:
  *         description: Name required
  */
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -261,7 +261,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
  *       404:
  *         description: Workspace not found
  */
-router.post('/:id/members', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/members', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;

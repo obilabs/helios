@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { dismissViewOnboarding } from './utils/test-helpers';
+import { readSetupTokenFromLogs } from './utils/setup-token';
 
 /**
  * First-run UI coverage: the setup wizard and the login form.
@@ -78,6 +79,8 @@ test.describe('First-run: setup wizard and login form', () => {
 
     // --- Step 1: Organization ---
     await expect(page.getByRole('heading', { name: 'Organization Information' })).toBeVisible();
+    // The one-time setup token is only available from the backend log.
+    await page.fill('input[placeholder="Paste the one-time setup token"]', readSetupTokenFromLogs());
     await page.fill('input[placeholder="Acme Corporation"]', ORG.name);
     await page.fill('input[placeholder="acme.com"]', ORG.domain);
     await page.getByRole('button', { name: 'Next', exact: true }).click();

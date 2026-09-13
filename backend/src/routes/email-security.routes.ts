@@ -8,7 +8,8 @@
  */
 
 import express from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { isAdminRole } from '../utils/roles.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { db } from '../database/connection.js';
 import axios from 'axios';
 
@@ -68,7 +69,7 @@ interface MessageSearchResult {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/search', requireAuth, async (req: express.Request, res: express.Response) => {
+router.get('/search', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
   try {
     const { searchBy, value, dateFrom, dateTo } = req.query;
     const organizationId = req.user?.organizationId;
@@ -262,7 +263,7 @@ router.get('/search', requireAuth, async (req: express.Request, res: express.Res
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/delete', requireAuth, async (req: express.Request, res: express.Response) => {
+router.post('/delete', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
   try {
     const { searchBy, value, reason, dateFrom, dateTo } = req.body;
     const organizationId = req.user?.organizationId;
@@ -279,7 +280,7 @@ router.post('/delete', requireAuth, async (req: express.Request, res: express.Re
     }
 
     // Verify user has admin role
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can delete messages organization-wide'
@@ -433,7 +434,7 @@ router.post('/delete', requireAuth, async (req: express.Request, res: express.Re
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/history', requireAuth, async (req: express.Request, res: express.Response) => {
+router.get('/history', requireAuth, requireAdmin, async (req: express.Request, res: express.Response) => {
   try {
     const organizationId = req.user?.organizationId;
 

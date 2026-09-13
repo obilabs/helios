@@ -1,43 +1,24 @@
 name: CodeQL
 
-# Static analysis for security vulnerabilities. Results surface in the repo's
-# Security tab (Code scanning alerts) — a public, verifiable signal.
+# Static analysis. Results surface in the repo's Security tab (Code scanning
+# alerts) — a public, verifiable signal.
 #
-# ── WHY THIS IS MANUAL-ONLY RIGHT NOW (2026-08-17) ──────────────────────────
-# This workflow failed on EVERY run from 2026-08-11 onward. Not a code problem:
+# Runs on every push to main, every PR targeting main, and weekly (so new
+# query packs are applied to unchanged code too). Code scanning is free on
+# public repositories; the triggers were manual-only while the repo was private.
 #
-#     Advanced Security must be enabled for this repository to use code scanning
-#
-# Code scanning requires GitHub Advanced Security on a PRIVATE repository. It is
-# free on PUBLIC repositories. `obilabs/helios` is private, GHAS is not enabled,
-# so CodeQL literally cannot upload results — every run is red before it starts.
-#
-# Verification Rule 4: red is red. A permanently-failing check is WORSE than no
-# check, because it trains everyone to ignore the signal — and it did: this sat
-# red for six days across every branch while "security scanning" looked
-# configured. So the automatic triggers are removed rather than left failing.
-#
-# TO RE-ENABLE, pick one:
-#   1. Make the repo public. Helios is AGPL-3.0 and intended to be public, so
-#      this is likely the real answer and costs nothing. CodeQL then just works.
-#   2. Enable GitHub Advanced Security on the private repo (paid).
-# Then restore the `push` / `pull_request` / `schedule` triggers below.
-#
-# Two real bugs were ALSO fixed here, which would have bitten immediately after
-# whichever of those is chosen:
-#   * `language:` -> `languages:`. The action reported "Unexpected input(s)
-#     'language'" and ignored it. The input has always been plural.
-#   * v3 -> v4. CodeQL Action v3 is deprecated in December 2026.
+# Two input details worth keeping:
+#   * `languages:` is plural — `language:` is silently ignored
+#     ("Unexpected input(s)").
+#   * v4 of the CodeQL Action; v3 is deprecated in December 2026.
 
 on:
-  # Automatic triggers deliberately disabled — see the note above. Restore
-  # these together with GHAS (or with the repo going public):
-  #   push:
-  #     branches: [main]
-  #   pull_request:
-  #     branches: [main]
-  #   schedule:
-  #     - cron: "27 4 * * 1"
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "27 4 * * 1"
   workflow_dispatch:
 
 # Least privilege: the workflow token can only read the repo. Jobs that need

@@ -35,7 +35,7 @@
 
 #### 1. Stop Everything
 ```bash
-cd D:/personal-projects/helios/helios-client
+cd <repo-root>
 
 # Stop all containers
 docker-compose down

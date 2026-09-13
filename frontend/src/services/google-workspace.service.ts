@@ -24,16 +24,34 @@ interface OrgUnit {
   parentOrgUnitPath: string;
 }
 
+/**
+ * The backend answers a failed Google call with a 4xx/5xx status AND a
+ * `{ success: false, error }` body. Surface that error message instead of a
+ * bare "HTTP error! status: 502".
+ */
+async function readResult<T>(response: Response): Promise<ApiResponse<T>> {
+  let body: any = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  if (!response.ok) {
+    if (body && body.success === false) {
+      const error = typeof body.error === 'string' ? body.error : body.error?.message;
+      return { ...body, error: error || `Request failed (HTTP ${response.status})` };
+    }
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return body;
+}
+
 class GoogleWorkspaceService {
   async getGroups(organizationId: string): Promise<ApiResponse<{ groups: Group[] }>> {
     try {
       const response = await authFetch(apiPath(`/google-workspace/groups/${organizationId}`));
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await readResult(response);
     } catch (error: any) {
       console.error('Failed to fetch groups:', error);
       return {
@@ -51,11 +69,7 @@ class GoogleWorkspaceService {
         body: JSON.stringify({ organizationId })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await readResult(response);
     } catch (error: any) {
       console.error('Failed to sync groups:', error);
       return {
@@ -69,11 +83,7 @@ class GoogleWorkspaceService {
     try {
       const response = await authFetch(apiPath(`/google-workspace/org-units/${organizationId}`));
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await readResult(response);
     } catch (error: any) {
       console.error('Failed to fetch org units:', error);
       return {
@@ -91,11 +101,7 @@ class GoogleWorkspaceService {
         body: JSON.stringify({ organizationId })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await readResult(response);
     } catch (error: any) {
       console.error('Failed to sync org units:', error);
       return {
@@ -109,11 +115,7 @@ class GoogleWorkspaceService {
     try {
       const response = await authFetch(apiPath(`/google-workspace/cached-groups/${organizationId}`));
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await readResult(response);
     } catch (error: any) {
       console.error('Failed to fetch cached groups:', error);
       return {

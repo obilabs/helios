@@ -12,7 +12,7 @@
  *      audit: photos.routes.ts was called CRITICAL, then runtime probing on
  *      2026-07-25 returned 404 — it is not mounted.)
  *   2. Latent risk — the file sits there looking legitimate. Someone later wires
- *      it up with a one-line registerRoute() and, if it lacked a guard, ships a
+ *      it up with a one-line apiRouter.use() and, if it lacked a guard, ships a
  *      hole with no fresh review.
  *
  * WHAT THIS TESTS
@@ -27,9 +27,7 @@
  * The point is that "this router is not wired up" is always a CONSCIOUS, recorded
  * decision, never an accident.
  *
- * DECISION STILL OWED (owner): each entry below is dead code today. It should be
- * either wired up (after an auth review) or deleted. Until then it is quarantined
- * here so it cannot be forgotten.
+ * Any entry below is dead code: wire it up (after an auth review) or delete it.
  */
 import { describe, it, expect } from '@jest/globals';
 import { readdirSync, readFileSync } from 'fs';
@@ -47,14 +45,9 @@ const INDEX_TS = join(HERE, '..', 'index.ts');
 const KNOWN_UNMOUNTED: Record<string, string> = {
   // contacts/users/setup deleted 2026-07-27 — superseded dead code (people /
   // singular user / organization bootstrap). Removed from the tree, so removed here.
-  'photos.routes.ts': 'Never wired up. Guarded defensively (route-auth-coverage) but unreachable. Wire-and-review or delete.',
-  'helpdesk.routes.ts': 'Not mounted. Likely a planned feature. Wire-and-review or delete.',
-  'domains.routes.ts': 'Not mounted. Wire-and-review or delete.',
-  'assets-public.routes.ts': 'Not mounted. Public asset serving — if wired, must stay public-by-design and be reviewed.',
-  'assets-simple.routes.ts': 'Not mounted. Wire-and-review or delete.',
-  'public-assets.routes.ts': 'Not mounted. Public-by-design if wired; review.',
-  'public-files.routes.ts': 'Not mounted. Public-by-design if wired; review.',
-  'signature-templates.routes.ts': 'Not mounted; signature surface is served by signatures.routes.ts and the signature-* family. Wire-and-review or delete.',
+  // photos/helpdesk/domains/assets-public/assets-simple/public-assets/public-files/
+  // signature-templates deleted 2026-09-13 — never mounted, never imported. If one
+  // of those features comes back it is a new router with a fresh auth review.
 };
 
 const routeFiles = readdirSync(ROUTES_DIR).filter((f) => f.endsWith('.routes.ts'));

@@ -112,13 +112,22 @@ class ScheduledActionService {
   }
 
   /**
-   * Get a single scheduled action by ID
+   * Get a single scheduled action by ID.
+   *
+   * Pass `organizationId` from every request-driven caller so an action from
+   * another organization resolves as not found. Only internal processors that
+   * already hold a trusted row may omit it.
    */
-  async getAction(id: string): Promise<ScheduledUserAction | null> {
-    const result = await db.query(
-      'SELECT * FROM scheduled_user_actions WHERE id = $1',
-      [id]
-    );
+  async getAction(id: string, organizationId?: string): Promise<ScheduledUserAction | null> {
+    const result = organizationId
+      ? await db.query(
+          'SELECT * FROM scheduled_user_actions WHERE id = $1 AND organization_id = $2',
+          [id, organizationId]
+        )
+      : await db.query(
+          'SELECT * FROM scheduled_user_actions WHERE id = $1',
+          [id]
+        );
 
     if (result.rows.length === 0) return null;
     return this.mapRowToAction(result.rows[0]);
@@ -273,9 +282,10 @@ class ScheduledActionService {
    */
   async updateAction(
     id: string,
-    dto: UpdateScheduledActionDTO
+    dto: UpdateScheduledActionDTO,
+    organizationId?: string
   ): Promise<ScheduledUserAction | null> {
-    const action = await this.getAction(id);
+    const action = await this.getAction(id, organizationId);
     if (!action) return null;
 
     // Can only update pending actions
@@ -344,9 +354,10 @@ class ScheduledActionService {
   async approveAction(
     id: string,
     approvedBy: string,
-    notes?: string
+    notes?: string,
+    organizationId?: string
   ): Promise<ScheduledUserAction | null> {
-    const action = await this.getAction(id);
+    const action = await this.getAction(id, organizationId);
     if (!action) return null;
 
     if (action.status !== 'pending') {
@@ -378,9 +389,10 @@ class ScheduledActionService {
   async rejectAction(
     id: string,
     rejectedBy: string,
-    reason: string
+    reason: string,
+    organizationId?: string
   ): Promise<ScheduledUserAction | null> {
-    const action = await this.getAction(id);
+    const action = await this.getAction(id, organizationId);
     if (!action) return null;
 
     if (action.status !== 'pending') {
@@ -407,9 +419,10 @@ class ScheduledActionService {
   async cancelAction(
     id: string,
     cancelledBy: string,
-    reason?: string
+    reason?: string,
+    organizationId?: string
   ): Promise<ScheduledUserAction | null> {
-    const action = await this.getAction(id);
+    const action = await this.getAction(id, organizationId);
     if (!action) return null;
 
     if (action.status !== 'pending') {

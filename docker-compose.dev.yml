@@ -15,7 +15,7 @@
 
 services:
   nginx:
-    image: nginx:alpine
+    image: nginx:1.30-alpine
     container_name: helios_nginx
     ports:
       - "80:80"
@@ -31,7 +31,7 @@ services:
       - helios_network
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     container_name: helios_postgres
     environment:
       POSTGRES_DB: helios
@@ -51,7 +51,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: helios_redis
     # Internal only - accessible via Docker network, not externally
     networks:
@@ -102,7 +102,10 @@ services:
       DB_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: dev-secret-key-not-for-production
+      # LOCAL DEVELOPMENT ONLY. A fixed, publicly known value so the dev stack boots
+      # without a .env file. The backend refuses to start without a JWT_SECRET of
+      # >= 32 characters (config/secrets.ts); never reuse this value anywhere real.
+      JWT_SECRET: ${JWT_SECRET:-helios-local-dev-only-jwt-signing-key-0123456789abcdef}
       JWT_EXPIRES_IN: 8h
       REFRESH_TOKEN_EXPIRES_IN: 7d
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}

@@ -9,7 +9,7 @@
 
 ### **1. Verify Docker is Running**
 ```bash
-cd D:/personal-projects/helios/helios
+cd <repo-root>
 docker-compose ps
 
 # Expected: All 4 containers healthy
@@ -77,7 +77,7 @@ docker-compose ps
 **When ready to test fresh onboarding:**
 
 ```bash
-cd D:/personal-projects/helios/helios
+cd <repo-root>
 
 # Stop
 docker-compose down

@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { logger } from '../utils/logger.js';
+import { assertSecretsConfigured } from './secrets.js';
 
 /**
  * Environment variable validation schema
@@ -77,13 +78,12 @@ const baseSchema = Joi.object({
     .description('Redis password (optional)'),
 
   // JWT configuration
+  // No default: presence, length and placeholder checks live in
+  // config/secrets.ts (assertSecretsConfigured), which applies in every
+  // NODE_ENV except test.
   JWT_SECRET: Joi.string()
-    .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.string().min(32).required(),
-      otherwise: Joi.string().min(8).default('dev-jwt-secret-change-in-production')
-    })
-    .description('JWT signing secret'),
+    .allow('')
+    .description('JWT signing secret (see config/secrets.ts)'),
 
   JWT_EXPIRES_IN: Joi.string()
     .default('8h')
@@ -358,11 +358,21 @@ export function validateEnv(): EnvConfig {
     convert: true, // Convert strings to appropriate types
   });
 
-  if (error) {
-    const errorMessages = error.details.map(detail => {
-      const key = detail.path.join('.');
-      return `  - ${key}: ${detail.message}`;
-    });
+  const secretProblems: string[] = [];
+  try {
+    assertSecretsConfigured();
+  } catch (secretError) {
+    secretProblems.push(`  - ${(secretError as Error).message}`);
+  }
+
+  if (error || secretProblems.length > 0) {
+    const errorMessages = [
+      ...(error ? error.details.map(detail => {
+        const key = detail.path.join('.');
+        return `  - ${key}: ${detail.message}`;
+      }) : []),
+      ...secretProblems,
+    ];
 
     const errorOutput = [
       '',
@@ -395,9 +405,6 @@ export function validateEnv(): EnvConfig {
 
   // Check for development defaults in production
   if (envMode === 'production') {
-    if (value.JWT_SECRET?.includes('change') || value.JWT_SECRET?.includes('dev')) {
-      warnings.push('  - JWT_SECRET appears to use a default/development value');
-    }
     if (value.ENCRYPTION_KEY?.includes('change') || value.ENCRYPTION_KEY?.includes('dev')) {
       warnings.push('  - ENCRYPTION_KEY appears to use a default/development value');
     }

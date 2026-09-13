@@ -223,7 +223,7 @@ Each test maps to spec scenarios!
 ### Documentation (New/Updated):
 - `SESSION-HANDOFF-2025-11-01.md`
 - `IMPLEMENTATION-STATUS-2025-11-01.md`
-- `D:\personal-projects\ai-collab\spec-driven-development.md` (completely rewritten!)
+- `spec-driven-development.md` (external notes, not part of this repo) (completely rewritten!)
 
 ### OpenSpec Proposals:
 - `openspec/changes/add-api-key-management/` (validated, approved)

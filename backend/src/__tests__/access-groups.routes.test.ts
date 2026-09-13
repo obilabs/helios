@@ -57,6 +57,7 @@ jest.unstable_mockModule('../middleware/auth.js', () => ({
     };
     next();
   },
+  requireAdmin: (_req: any, _res: any, next: any) => next(),
 }));
 
 // Import routes after mocking

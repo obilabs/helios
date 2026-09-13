@@ -48,8 +48,10 @@ class S3Service {
   constructor() {
     this.config = {
       endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-      accessKey: process.env.S3_ACCESS_KEY || 'minioadmin',
-      secretKey: process.env.S3_SECRET_KEY || 'minioadmin123',
+      // No literal fallback: credentials come from the environment (the dev and
+      // production compose files both set them explicitly).
+      accessKey: process.env.S3_ACCESS_KEY || '',
+      secretKey: process.env.S3_SECRET_KEY || '',
       bucketPrivate: process.env.S3_BUCKET_PRIVATE || 'helios-uploads',
       bucketPublic: process.env.S3_BUCKET_PUBLIC || 'helios-public',
       region: process.env.S3_REGION || 'us-east-1',

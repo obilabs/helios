@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { dataQualityService } from '../services/data-quality.service.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -311,6 +311,7 @@ router.get('/managers', authenticateToken, async (req: Request, res: Response) =
  */
 router.post('/resolve-orphan',
   authenticateToken,
+  requireAdmin,
   [
     body('entityType').isIn(['department', 'location', 'cost_center']).withMessage('Invalid entity type'),
     body('orphanedValue').trim().notEmpty().withMessage('Orphaned value is required'),
@@ -425,6 +426,7 @@ router.post('/resolve-orphan',
  */
 router.post('/auto-import',
   authenticateToken,
+  requireAdmin,
   [
     body('entityType').isIn(['departments', 'locations', 'cost_centers']).withMessage('Invalid entity type'),
   ],

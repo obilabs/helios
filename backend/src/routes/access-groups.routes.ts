@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { db } from '../database/connection.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { activityTracker } from '../services/activity-tracker.service.js';
@@ -251,7 +251,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -378,7 +378,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -490,7 +490,7 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -546,7 +546,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
  * POST /api/organization/access-groups/:id/members
  * Add a member to an access group
  */
-router.post('/:id/members', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/members', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -636,7 +636,7 @@ router.post('/:id/members', async (req: Request, res: Response): Promise<void> =
  * DELETE /api/organization/access-groups/:id/members/:userId
  * Remove a member from an access group
  */
-router.delete('/:id/members/:userId', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id/members/:userId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, userId } = req.params;
     const organizationId = req.user?.organizationId;
@@ -763,7 +763,7 @@ router.get('/:id/rules', async (req: Request, res: Response): Promise<void> => {
  * POST /api/organization/access-groups/:id/rules
  * Add a rule to a dynamic group
  */
-router.post('/:id/rules', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/rules', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -829,7 +829,7 @@ router.post('/:id/rules', async (req: Request, res: Response): Promise<void> => 
  * PUT /api/organization/access-groups/:id/rules/:ruleId
  * Update a rule
  */
-router.put('/:id/rules/:ruleId', async (req: Request, res: Response): Promise<void> => {
+router.put('/:id/rules/:ruleId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, ruleId } = req.params;
     const organizationId = req.user?.organizationId;
@@ -877,7 +877,7 @@ router.put('/:id/rules/:ruleId', async (req: Request, res: Response): Promise<vo
  * DELETE /api/organization/access-groups/:id/rules/:ruleId
  * Delete a rule
  */
-router.delete('/:id/rules/:ruleId', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id/rules/:ruleId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, ruleId } = req.params;
     const organizationId = req.user?.organizationId;
@@ -925,7 +925,7 @@ router.delete('/:id/rules/:ruleId', async (req: Request, res: Response): Promise
  * POST /api/organization/access-groups/:id/evaluate
  * Evaluate rules and return matching users (preview)
  */
-router.post('/:id/evaluate', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/evaluate', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -958,7 +958,7 @@ router.post('/:id/evaluate', async (req: Request, res: Response): Promise<void> 
  * POST /api/organization/access-groups/:id/apply-rules
  * Apply rules and update group membership
  */
-router.post('/:id/apply-rules', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/apply-rules', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -1011,7 +1011,7 @@ router.post('/:id/apply-rules', async (req: Request, res: Response): Promise<voi
  * PUT /api/organization/access-groups/:id/membership-type
  * Update group membership type (static/dynamic)
  */
-router.put('/:id/membership-type', async (req: Request, res: Response): Promise<void> => {
+router.put('/:id/membership-type', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;
@@ -1068,7 +1068,7 @@ router.put('/:id/membership-type', async (req: Request, res: Response): Promise<
  * POST /api/organization/access-groups/:id/sync/google
  * Sync group members to Google Workspace
  */
-router.post('/:id/sync/google', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/sync/google', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;

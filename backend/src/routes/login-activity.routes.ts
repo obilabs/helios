@@ -8,7 +8,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
 import { googleWorkspaceService } from '../services/google-workspace.service.js';
 import { geoipService } from '../services/geoip.service.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -39,7 +39,7 @@ router.use(authenticateToken);
  * GET /api/v1/login-activity
  * Get recent login activity
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     // Session/JWT auth puts the organization on req.user; only API-key auth sets
     // req.organizationId. Reading only the latter made every call from the signed-in
@@ -95,7 +95,7 @@ router.get('/', async (req: Request, res: Response) => {
  * GET /api/v1/login-activity/map
  * Get login activity aggregated by country for map widget
  */
-router.get('/map', async (req: Request, res: Response) => {
+router.get('/map', requireAdmin, async (req: Request, res: Response) => {
   try {
     // Session/JWT auth puts the organization on req.user; only API-key auth sets
     // req.organizationId. Reading only the latter made every call from the signed-in
@@ -161,7 +161,7 @@ router.get('/map', async (req: Request, res: Response) => {
  * GET /api/v1/login-activity/stats
  * Get login activity statistics for dashboard
  */
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
   try {
     // Session/JWT auth puts the organization on req.user; only API-key auth sets
     // req.organizationId. Reading only the latter made every call from the signed-in
@@ -223,7 +223,7 @@ router.get('/stats', async (req: Request, res: Response) => {
  * POST /api/v1/login-activity/sync
  * Manually trigger login activity sync
  */
-router.post('/sync', async (req: Request, res: Response) => {
+router.post('/sync', requireAdmin, async (req: Request, res: Response) => {
   try {
     // Session/JWT auth puts the organization on req.user; only API-key auth sets
     // req.organizationId. Reading only the latter made every call from the signed-in
@@ -270,7 +270,7 @@ router.post('/sync', async (req: Request, res: Response) => {
  * POST /api/v1/login-activity/enrich
  * Enrich existing login activity with GeoIP data
  */
-router.post('/enrich', async (req: Request, res: Response) => {
+router.post('/enrich', requireAdmin, async (req: Request, res: Response) => {
   try {
     // Session/JWT auth puts the organization on req.user; only API-key auth sets
     // req.organizationId. Reading only the latter made every call from the signed-in

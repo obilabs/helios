@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { isAdminRole } from '../utils/roles.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { customFieldsService } from '../services/custom-fields.service.js';
 import { logger } from '../utils/logger.js';
 
@@ -218,7 +219,7 @@ router.get('/available-defaults', async (req: Request, res: Response): Promise<v
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/definitions', async (req: Request, res: Response): Promise<void> => {
+router.post('/definitions', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -233,7 +234,7 @@ router.post('/definitions', async (req: Request, res: Response): Promise<void> =
     }
 
     // Only admins can create/modify field definitions
-    if (userRole !== 'admin') {
+    if (!isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Only administrators can manage custom field definitions'
@@ -297,7 +298,7 @@ router.post('/definitions', async (req: Request, res: Response): Promise<void> =
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.delete('/definitions/:fieldKey', async (req: Request, res: Response): Promise<void> => {
+router.delete('/definitions/:fieldKey', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userRole = req.user?.role;
@@ -312,7 +313,7 @@ router.delete('/definitions/:fieldKey', async (req: Request, res: Response): Pro
     }
 
     // Only admins can delete field definitions
-    if (userRole !== 'admin') {
+    if (!isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Only administrators can delete custom field definitions'
@@ -375,7 +376,7 @@ router.get('/user/:userId', async (req: Request, res: Response): Promise<void> =
     const userRole = req.user?.role;
 
     // Users can only view their own fields unless they're admin
-    if (userId !== requestingUserId && userRole !== 'admin' && userRole !== 'manager') {
+    if (userId !== requestingUserId && !isAdminRole(userRole) && userRole !== 'manager') {
       res.status(403).json({
         success: false,
         error: 'Insufficient permissions to view user custom fields'
@@ -438,7 +439,7 @@ router.put('/user/:userId', async (req: Request, res: Response): Promise<void> =
     const fieldValues = req.body;
 
     // Users can only update their own fields unless they're admin
-    if (userId !== requestingUserId && userRole !== 'admin') {
+    if (userId !== requestingUserId && !isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Insufficient permissions to update user custom fields'
@@ -478,7 +479,7 @@ router.put('/user/:userId', async (req: Request, res: Response): Promise<void> =
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/initialize-defaults', async (req: Request, res: Response): Promise<void> => {
+router.post('/initialize-defaults', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const organizationId = req.user?.organizationId;
     const userId = req.user?.userId;
@@ -493,7 +494,7 @@ router.post('/initialize-defaults', async (req: Request, res: Response): Promise
     }
 
     // Only admins can initialize defaults
-    if (userRole !== 'admin') {
+    if (!isAdminRole(userRole)) {
       res.status(403).json({
         success: false,
         error: 'Only administrators can initialize default fields'

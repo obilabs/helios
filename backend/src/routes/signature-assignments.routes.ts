@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { requireAuth, requirePermission, requireAdmin } from '../middleware/auth.js';
 import { signatureAssignmentService } from '../services/signature-assignment.service.js';
 import { AssignmentType } from '../types/signatures.js';
 
@@ -511,7 +511,7 @@ router.get('/effective/all', requireAuth, async (req: Request, res: Response) =>
  *       200:
  *         description: Affected users preview
  */
-router.post('/preview', requireAuth, async (req: Request, res: Response) => {
+router.post('/preview', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
 

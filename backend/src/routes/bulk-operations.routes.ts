@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { bulkOperationsService } from '../services/bulk-operations.service.js';
 import { csvParserService, ValidationRule } from '../services/csv-parser.service.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -122,7 +122,7 @@ const upload = multer({
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/upload', authenticateToken, upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload', authenticateToken, requireAdmin, upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -233,7 +233,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req: Req
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/preview', authenticateToken, async (req: Request, res: Response) => {
+router.post('/preview', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { operationType, items } = req.body;
 
@@ -317,7 +317,7 @@ router.post('/preview', authenticateToken, async (req: Request, res: Response) =
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/execute', authenticateToken, async (req: Request, res: Response) => {
+router.post('/execute', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { operationType, operationName, items } = req.body;
     const organizationId = req.user?.organizationId;
@@ -407,7 +407,7 @@ router.post('/execute', authenticateToken, async (req: Request, res: Response) =
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/status/:id', authenticateToken, async (req: Request, res: Response) => {
+router.get('/status/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const operation = await bulkOperationsService.getBulkOperation(id);
@@ -473,7 +473,7 @@ router.get('/status/:id', authenticateToken, async (req: Request, res: Response)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/history', authenticateToken, async (req: Request, res: Response) => {
+router.get('/history', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -528,7 +528,7 @@ router.get('/history', authenticateToken, async (req: Request, res: Response) =>
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/template/:operationType', authenticateToken, (req: Request, res: Response) => {
+router.get('/template/:operationType', authenticateToken, requireAdmin, (req: Request, res: Response) => {
   try {
     const { operationType } = req.params;
     const template = csvParserService.generateTemplate(operationType);
@@ -593,7 +593,7 @@ router.get('/template/:operationType', authenticateToken, (req: Request, res: Re
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/export', authenticateToken, async (req: Request, res: Response) => {
+router.post('/export', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { data, headers, filename } = req.body;
 
@@ -665,7 +665,7 @@ router.post('/export', authenticateToken, async (req: Request, res: Response) =>
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/templates', authenticateToken, async (req: Request, res: Response) => {
+router.post('/templates', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, description, operationType, templateData } = req.body;
     const organizationId = req.user?.organizationId;
@@ -734,7 +734,7 @@ router.post('/templates', authenticateToken, async (req: Request, res: Response)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/templates', authenticateToken, async (req: Request, res: Response) => {
+router.get('/templates', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
 
@@ -794,7 +794,7 @@ router.get('/templates', authenticateToken, async (req: Request, res: Response) 
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/templates/:id', authenticateToken, async (req: Request, res: Response) => {
+router.get('/templates/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const template = await bulkOperationsService.getTemplate(id);
@@ -864,7 +864,7 @@ router.get('/templates/:id', authenticateToken, async (req: Request, res: Respon
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.put('/templates/:id', authenticateToken, async (req: Request, res: Response) => {
+router.put('/templates/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, description, templateData } = req.body;
@@ -921,7 +921,7 @@ router.put('/templates/:id', authenticateToken, async (req: Request, res: Respon
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.delete('/templates/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/templates/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     await bulkOperationsService.deleteTemplate(id);
@@ -990,7 +990,7 @@ router.delete('/templates/:id', authenticateToken, async (req: Request, res: Res
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/sync/users', authenticateToken, async (req: Request, res: Response) => {
+router.post('/sync/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { items, syncToGoogleWorkspace = true } = req.body;
     const organizationId = req.user?.organizationId;
@@ -1082,7 +1082,7 @@ router.post('/sync/users', authenticateToken, async (req: Request, res: Response
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/sync/suspend', authenticateToken, async (req: Request, res: Response) => {
+router.post('/sync/suspend', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userEmails } = req.body;
     const organizationId = req.user?.organizationId;
@@ -1170,7 +1170,7 @@ router.post('/sync/suspend', authenticateToken, async (req: Request, res: Respon
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/sync/move-ou', authenticateToken, async (req: Request, res: Response) => {
+router.post('/sync/move-ou', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userEmails, targetOU } = req.body;
     const organizationId = req.user?.organizationId;
@@ -1276,7 +1276,7 @@ router.post('/sync/move-ou', authenticateToken, async (req: Request, res: Respon
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/sync/group-members', authenticateToken, async (req: Request, res: Response) => {
+router.post('/sync/group-members', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { operations } = req.body;
     const organizationId = req.user?.organizationId;
@@ -1383,7 +1383,7 @@ router.post('/sync/group-members', authenticateToken, async (req: Request, res: 
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/sync/estimate', authenticateToken, (req: Request, res: Response) => {
+router.get('/sync/estimate', authenticateToken, requireAdmin, (req: Request, res: Response) => {
   try {
     const itemCount = parseInt(req.query.itemCount as string) || 0;
     const includeGoogleWorkspace = req.query.syncToGoogleWorkspace === 'true';

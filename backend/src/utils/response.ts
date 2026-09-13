@@ -242,3 +242,38 @@ export function forbiddenResponse(
 ): Response {
   return errorResponse(res, ErrorCode.FORBIDDEN, message);
 }
+
+/**
+ * Pick an HTTP status for a `{ success: false, error }` result returned by an
+ * integration service (Google Workspace, Microsoft Graph, ...), from the error
+ * text those services produce.
+ *
+ *   - integration not configured / no credentials -> 409 (fix configuration first)
+ *   - "... not found"                              -> 404
+ *   - missing/invalid input                        -> 400
+ *   - anything else (the upstream call failed)     -> 502
+ */
+export function statusForServiceError(error: unknown): number {
+  const text = typeof error === 'string' ? error : (error as any)?.message ?? '';
+  if (/not configured|no credentials|credentials not (found|configured)|no admin email|admin email not configured|no domain configured|no google workspace credentials/i.test(text)) {
+    return 409;
+  }
+  if (/not found|does not exist/i.test(text)) return 404;
+  if (/\brequired\b|invalid|must be/i.test(text)) return 400;
+  return 502;
+}
+
+/**
+ * Send an integration service result, keeping its body shape (`{ success, error,
+ * ... }`, which existing clients read) but with an honest status code: 200 only
+ * when the service succeeded, otherwise a 4xx/5xx from statusForServiceError.
+ */
+export function serviceResultResponse<T extends { success?: boolean; error?: unknown }>(
+  res: Response,
+  result: T
+): Response {
+  if (result && result.success === false) {
+    return res.status(statusForServiceError(result.error)).json(result);
+  }
+  return res.status(200).json(result);
+}

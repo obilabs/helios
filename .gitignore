@@ -102,3 +102,7 @@ openspec/testing/reports/
 
 # Raw M365 Graph write recordings — scrub before copying into __tests__/fixtures
 .record-fixtures/
+
+# Per-developer agent tool settings (local permission allowlists — never shared)
+.claude/settings.local.json
+.claude_settings_autonomous.json
