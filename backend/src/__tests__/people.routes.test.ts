@@ -161,6 +161,26 @@ describe('People Routes', () => {
     });
   });
 
+  describe('GET /api/people sort order', () => {
+    it.each([
+      ['desc', 'DESC'],
+      ['DESC', 'DESC'],
+      ['asc', 'ASC'],
+      ["asc; DROP TABLE organization_users; --", 'ASC'],
+    ])('sortOrder=%s sorts %s and nothing else reaches the SQL', async (sortOrder, keyword) => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ total: '0' }] });
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      await request(app)
+        .get(`/api/people?sortBy=name&sortOrder=${encodeURIComponent(sortOrder)}`)
+        .expect(200);
+
+      const listSql = mockQuery.mock.calls.map((c) => String(c[0])).find((sql) => sql.includes('ORDER BY'))!;
+      expect(listSql).toContain(`ou.first_name ${keyword}, ou.last_name ${keyword}`);
+      expect(listSql).not.toMatch(/DROP|--/);
+    });
+  });
+
   describe('GET /api/people/new', () => {
     it('should return recently joined people', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [{ total: '1' }] });

@@ -143,7 +143,8 @@ class PeopleService {
 
       // Build ORDER BY clause
       let orderBy: string;
-      const order = sortOrder.toUpperCase();
+      // Only the two keywords reach the SQL text; anything else sorts ascending.
+      const order = String(sortOrder).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
       switch (sortBy) {
         case 'department':
           orderBy = `ou.department ${order} NULLS LAST, ou.first_name ${order}`;

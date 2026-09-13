@@ -3,6 +3,7 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import crypto from 'crypto';
 import { resolveEncryptionKey } from '../config/encryption-key.js';
+import { stripHtmlTags, decodeBasicEntities } from '../utils/html-text.js';
 
 // Fails fast in production if unset/weak; stable dev key otherwise. Previously
 // fell back to a hardcoded, world-readable key ('your-32-character-...'), so SMTP
@@ -321,12 +322,6 @@ export class EmailService {
    * Convert HTML to plain text (simple version)
    */
   private htmlToText(html: string): string {
-    return html
-      .replace(/<[^>]*>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .trim();
+    return decodeBasicEntities(stripHtmlTags(html)).trim();
   }
 }
