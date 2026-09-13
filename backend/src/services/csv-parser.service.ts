@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { logger } from '../utils/logger.js';
+import { isEmailFormat } from '../utils/email-format.js';
 
 export interface ParsedCSVResult {
   success: boolean;
@@ -193,8 +194,7 @@ export class CSVParserService {
    * Validate email format
    */
   private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return isEmailFormat(email);
   }
 
   /**

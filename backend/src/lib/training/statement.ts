@@ -22,6 +22,7 @@ import {
   type CompletionStatement,
   type TrainingVerb,
 } from './contract.js';
+import { isEmailFormat } from '../../utils/email-format.js';
 
 export interface ParsedCompletion {
   actorIdentifier: string;
@@ -127,7 +128,7 @@ export function parseCompletionStatement(
   if (hasMbox) {
     const raw = requireString(statement.actor.mbox, 'actor.mbox');
     const email = raw.startsWith('mailto:') ? raw.slice('mailto:'.length) : raw;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isEmailFormat(email)) {
       throw new StatementError('invalid_actor', 'actor.mbox must be a mailto: email address', 'actor.mbox');
     }
     actorIdentifier = canonicalMbox(email);

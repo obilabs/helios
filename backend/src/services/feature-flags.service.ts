@@ -151,7 +151,7 @@ class FeatureFlagsService {
       [def.key, def.name, def.description, enabled, def.category]
     );
     await cacheService.del(CACHE_KEY);
-    logger.info(`Feature flag override set: ${featureKey} = ${enabled}`);
+    logger.info('Feature flag override set', { featureKey: def.key, enabled: enabled === true });
     return this.describe(def, await this.safeOverrides());
   }
 
@@ -161,7 +161,7 @@ class FeatureFlagsService {
     if (!def) return null;
     await db.query('UPDATE feature_flags SET is_override = false, updated_at = NOW() WHERE feature_key = $1', [featureKey]);
     await cacheService.del(CACHE_KEY);
-    logger.info(`Feature flag override cleared: ${featureKey}`);
+    logger.info('Feature flag override cleared', { featureKey: def.key });
     return this.describe(def, await this.safeOverrides());
   }
 

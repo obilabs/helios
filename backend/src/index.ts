@@ -94,6 +94,7 @@ import { csrfProtection, CSRF_HEADER } from './middleware/csrf.js';
 import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.js';
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
+import { logSafe } from './utils/log-safe.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -209,7 +210,7 @@ app.use(requestIdMiddleware);
 // Logging middleware - now includes requestId
 app.use((req, res, next) => {
   // Log incoming request
-  logger.info(`${req.method} ${req.url}`, {
+  logger.info(`${req.method} ${logSafe(req.url)}`, {
     requestId: req.requestId,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
