@@ -111,7 +111,6 @@ class MediaUploadService {
       // Generate storage path
       const timestamp = Date.now();
       const extension = fileName.split('.').pop() || 'bin';
-      const storagePath = `${organizationId}/media/${userId}/${mediaType}_${timestamp}.${extension}`;
 
       // Upload to S3
       const uploadResult = await s3Service.uploadFile(

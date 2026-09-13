@@ -153,7 +153,6 @@ export async function listGroups(
     const {
       search,
       groupType = 'all',
-      source = 'all',
       includeMembers = false,
       limit = 50,
       offset = 0

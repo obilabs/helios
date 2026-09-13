@@ -9,7 +9,7 @@
  * - Caching per organization
  */
 
-import { Engine, Rule, RuleProperties, Almanac, EngineResult, TopLevelCondition, NestedCondition, AllConditions, AnyConditions, Fact } from 'json-rules-engine';
+import { Engine, Almanac, TopLevelCondition } from 'json-rules-engine';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 
@@ -252,8 +252,6 @@ class RulesEngineService {
           event: { type: 'match' }
         });
 
-        // Get all facts from the parent almanac
-        const facts: Record<string, any> = {};
         // We need to evaluate with the same facts
         // This is a simplified approach - in practice, we'd pass through the almanac
         try {

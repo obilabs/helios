@@ -1,6 +1,5 @@
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { v4 as uuidv4 } from 'uuid';
 
 interface TicketCreateData {
   organizationId: string;

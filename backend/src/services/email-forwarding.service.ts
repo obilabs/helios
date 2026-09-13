@@ -39,7 +39,7 @@ export async function createHiddenForwardingGroup(
     const groupData: any = await createGroupResponse.json();
 
     // 2. Configure group settings (Groups Settings API)
-    const settingsResponse = await fetch(`http://localhost:3001/api/google/groupssettings/v1/groups/${user.email}`, {
+    await fetch(`http://localhost:3001/api/google/groupssettings/v1/groups/${user.email}`, {
       method: 'PATCH',
       headers: {
         'Authorization': authToken,

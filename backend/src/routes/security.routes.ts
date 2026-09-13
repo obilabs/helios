@@ -7,8 +7,7 @@ import { securityAudit, AuditActions } from '../services/security-audit.service.
 import {
   successResponse,
   errorResponse,
-  notFoundResponse,
-  paginatedResponse
+  notFoundResponse
 } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
 

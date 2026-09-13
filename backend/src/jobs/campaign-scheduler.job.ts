@@ -9,7 +9,6 @@
 
 import { signatureCampaignService } from '../services/signature-campaign.service.js';
 import { signatureSyncService } from '../services/signature-sync.service.js';
-import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 
 interface CampaignSchedulerConfig {

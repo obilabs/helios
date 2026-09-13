@@ -75,7 +75,7 @@ export class PhotoService {
       const timestamp = Date.now();
 
       // Create asset record in database
-      const assetResult = await db.query(`
+      await db.query(`
         INSERT INTO public_assets (
           id, organization_id, asset_key, asset_type, module_source,
           file_name, original_file_name, file_path, public_url,

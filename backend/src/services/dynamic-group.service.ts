@@ -723,7 +723,7 @@ class DynamicGroupService {
       directManagerId: string | null;
     }>;
   }> {
-    const { includeManager = false, maxDepth = 20 } = options;
+    const { maxDepth = 20 } = options;
 
     const result = await db.query(
       `WITH RECURSIVE reports AS (

@@ -1,7 +1,6 @@
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { queueService, BulkOperationJobData } from './queue.service.js';
-import { csvParserService, ValidationRule } from './csv-parser.service.js';
 import { bulkOperationEvents } from '../websocket/bulk-operations.gateway.js';
 import { googleWorkspaceBatchService, BulkUserUpdate, BulkGroupMemberOperation } from './google-workspace-batch.service.js';
 

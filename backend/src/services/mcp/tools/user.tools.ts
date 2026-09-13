@@ -166,7 +166,6 @@ export async function listUsers(
       status = 'active',
       role,
       search,
-      source = 'all',
       limit = 50,
       offset = 0
     } = params;
@@ -277,7 +276,7 @@ export async function getUser(
   }
 ): Promise<UserQueryResult | null> {
   try {
-    const { userId, email, includeGroups = true, includeActivity = false } = params;
+    const { userId, email, includeGroups = true } = params;
 
     if (!userId && !email) {
       throw new Error('Either userId or email must be provided');

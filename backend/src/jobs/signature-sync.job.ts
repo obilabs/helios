@@ -126,60 +126,6 @@ async function processPendingSignatures(config: SignatureSyncJobConfig): Promise
 }
 
 /**
- * Detect signatures that were changed externally (outside Helios)
- * and mark them for re-sync
- */
-async function detectExternalChanges(): Promise<number> {
-  try {
-    // Get organizations with signature tracking enabled
-    const orgsResult = await db.query(`
-      SELECT DISTINCT o.id, o.name, gc.service_account_key, gc.admin_email
-      FROM organizations o
-      INNER JOIN gw_credentials gc ON gc.organization_id = o.id
-      WHERE gc.service_account_key IS NOT NULL
-    `);
-
-    let totalDetected = 0;
-
-    for (const org of orgsResult.rows) {
-      try {
-        // Get users who have been synced
-        const usersResult = await db.query(`
-          SELECT uss.user_id, uss.google_signature_hash, ou.email
-          FROM user_signature_status uss
-          INNER JOIN organization_users ou ON ou.id = uss.user_id
-          WHERE uss.organization_id = $1
-            AND uss.sync_status = 'synced'
-            AND uss.google_signature_hash IS NOT NULL
-        `, [org.id]);
-
-        // Note: Full external change detection would require fetching current
-        // signatures from Gmail and comparing hashes. This is expensive in API
-        // calls, so we defer full implementation to a less frequent job.
-        // For now, we just log that we would check.
-
-        if (usersResult.rows.length > 0) {
-          logger.debug('External change detection: would check signatures', {
-            organizationId: org.id,
-            userCount: usersResult.rows.length
-          });
-        }
-      } catch (error: any) {
-        logger.debug('Error checking external changes for org', {
-          organizationId: org.id,
-          error: error.message
-        });
-      }
-    }
-
-    return totalDetected;
-  } catch (error: any) {
-    logger.error('Error in external change detection', { error: error.message });
-    return 0;
-  }
-}
-
-/**
  * Mark affected users for re-sync when an assignment changes
  * Called by assignment service when assignments are created/updated/deleted
  */

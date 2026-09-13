@@ -190,7 +190,6 @@ export class MediaAssetStorageService {
       const hash = crypto.randomBytes(8).toString('hex');
       const extension = filename.split('.').pop() || 'bin';
       const folderPrefix = folderId ? `${folderId}/` : 'assets/';
-      const key = `${organizationId}/${folderPrefix}${timestamp}_${hash}.${extension}`;
 
       // Upload to MinIO via S3 service (public bucket for assets)
       const uploadResult = await s3Service.uploadFile(
@@ -584,7 +583,7 @@ export class MediaAssetStorageService {
       try {
         // Test MinIO by checking if we can list files
         await s3Service.initialize();
-        const testFiles = await s3Service.listFiles(`${organizationId}/`, true);
+        await s3Service.listFiles(`${organizationId}/`, true);
         return {
           isConfigured: true,
           backend: 'minio',

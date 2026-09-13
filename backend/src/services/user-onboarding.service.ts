@@ -19,8 +19,6 @@ import {
   OnboardingConfig,
   CreateOnboardingTemplateDTO,
   UpdateOnboardingTemplateDTO,
-  ONBOARDING_STEPS,
-  OnboardingStep,
 } from '../types/user-lifecycle.js';
 
 interface OnboardingResult {

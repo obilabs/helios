@@ -162,7 +162,6 @@ export class PresenceGateway {
 
   private async handleTicketView(socket: Socket, ticketId: string) {
     const userId = socket.data.user.id;
-    const organizationId = socket.data.user.organizationId;
 
     // Join ticket room
     socket.join(`ticket:${ticketId}`);

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import {

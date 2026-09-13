@@ -18,11 +18,8 @@ import { securityAudit, AuditActions } from '../services/security-audit.service.
 import {
   successResponse,
   errorResponse,
-  createdResponse,
   notFoundResponse,
-  validationErrorResponse,
-  forbiddenResponse,
-  paginatedResponse
+  validationErrorResponse
 } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
 
@@ -1324,12 +1321,9 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
       expiryHours,
       // Extended profile fields
       jobTitle,
-      professionalDesignations,
-      pronouns,
       department,
       departmentId,
       organizationalUnit,
-      orgUnitId,
       location,
       reportingManagerId,
       employeeId,

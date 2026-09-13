@@ -91,21 +91,13 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
     const stats = await cacheService.remember(cacheKey, async () => {
       // Get real statistics from database
       const [
-        totalUsers,
-        activeUsers,
-        suspendedUsers,
         googleSuspendedUsers,
-        deletedUsers,
-        totalGroups,
         googleUsers,
         localUsers,
         guestUsers,
         admins,
         orphanedUsers
       ] = await Promise.all([
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = true', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND is_active = false AND deleted_at IS NULL', [organizationId]),
         // Suspended IN GOOGLE, which is a different question from inactive in
         // Helios. The Google card used the org-wide inactive count, so it read
         // "13 suspended users in Google Workspace" on a tenant where Google had
@@ -123,8 +115,6 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
               AND COALESCE(status, '') <> 'invited'`,
           [organizationId],
         ),
-        db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND status = \'deleted\'', [organizationId]),
-        db.query('SELECT COUNT(*) as count FROM access_groups WHERE organization_id = $1', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NOT NULL AND deleted_at IS NULL', [organizationId]),
         db.query('SELECT COUNT(*) as count FROM organization_users WHERE organization_id = $1 AND google_workspace_id IS NULL AND deleted_at IS NULL', [organizationId]),
         // Guest users are classified by user_type ('guest'); the legacy is_guest
