@@ -211,8 +211,9 @@ test.describe('First-run: setup wizard and login form', () => {
     const sent = await response.request().allHeaders();
     expect(sent['x-csrf-token'], 'the UI sends the CSRF token').toBeTruthy();
     expect(sent['authorization'], 'cookie session only, no bearer token').toBeUndefined();
+    // The page reloads itself after a successful save, so the body is not read here;
+    // the read-back below confirms what was stored.
     expect(response.status()).toBe(200);
-    expect((await response.json()).success).toBe(true);
 
     // Persistence: a fresh page load, then read it back from the UI and the API.
     await page.goto('/admin/settings');
