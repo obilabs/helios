@@ -12,7 +12,7 @@
  *      audit: photos.routes.ts was called CRITICAL, then runtime probing on
  *      2026-07-25 returned 404 — it is not mounted.)
  *   2. Latent risk — the file sits there looking legitimate. Someone later wires
- *      it up with a one-line registerRoute() and, if it lacked a guard, ships a
+ *      it up with a one-line apiRouter.use() and, if it lacked a guard, ships a
  *      hole with no fresh review.
  *
  * WHAT THIS TESTS

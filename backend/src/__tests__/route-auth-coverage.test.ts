@@ -3,7 +3,7 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * Helios mounts every router via `registerRoute()` in index.ts, which injects
+ * Helios mounts every router via `apiRouter.use()` in index.ts, which injects
  * NO middleware, and the app-level `authenticateApiKey` returns next() when no
  * API key header is present (it populates, it does not gate). So every router
  * is solely responsible for its own authentication. There is no app-level
