@@ -1,0 +1,11 @@
+name: helios CodeQL config
+
+# Test code is not deployed: unit tests, Playwright specs and their fixtures
+# build throwaway servers and fake credentials on purpose. Everything else,
+# including backend/src/testing (a harness shipped in the source tree), stays
+# scanned.
+paths-ignore:
+  - '**/__tests__/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - 'e2e/**'
