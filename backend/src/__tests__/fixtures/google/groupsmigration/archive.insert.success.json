@@ -1,0 +1,23 @@
+{
+  "family": "groupsmigration",
+  "name": "archive.insert.success",
+  "note": "A well-formed RFC822 message accepted into the archive.",
+  "recordedAt": "2026-09-13T01:27:27.593Z",
+  "request": {
+    "method": "POST",
+    "host": "groupsmigration.googleapis.com",
+    "path": "upload/groups/v1/groups/spike.archive%40example-workspace.test/archive",
+    "query": {
+      "uploadType": "media"
+    },
+    "contentType": "message/rfc822",
+    "body": "From: Michael Agu <external.sender@example-mail.test>\r\nTo: spike.archive@example-workspace.test\r\nSubject: Archived message from a retired mailbox\r\nDate: Mon, 04 Nov 2024 14:22:31 -0700\r\nMessage-ID: <fixture-1789262846507@example-workspace.test>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\nThis message was imported into the group archive during the migration.\r\n"
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "groupsmigration#groups",
+      "responseCode": "SUCCESS"
+    }
+  }
+}

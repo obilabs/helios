@@ -1,0 +1,56 @@
+{
+  "family": "calendar.booking",
+  "name": "events.get.after-booking",
+  "note": "Read back: what responseStatus did the room give, and how quickly?",
+  "recordedAt": "2026-09-13T01:40:55.023Z",
+  "request": {
+    "method": "GET",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/calendars/mike%40example-workspace.test/events/511bp3tsjk0u4bn42ec633m89g",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#event",
+      "etag": "\"3578527299522238\"",
+      "id": "511bp3tsjk0u4bn42ec633m89g",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=NTExYnAzdHNqazB1NGJuNDJlYzYzM204OWcgbWlrZUBvYmlsYWJzLmRldg",
+      "created": "2026-09-13T01:40:49.000Z",
+      "updated": "2026-09-13T01:40:49.761Z",
+      "summary": "Booking check — first",
+      "location": "Edmonton HQ-2-North-Boardroom (10)",
+      "creator": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "organizer": {
+        "email": "mike@example-workspace.test",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2026-09-14T01:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-09-14T02:00:00Z",
+        "timeZone": "UTC"
+      },
+      "iCalUID": "511bp3tsjk0u4bn42ec633m89g@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "c_resource@resource.calendar.google.com",
+          "displayName": "Edmonton HQ-2-North-Boardroom (10)",
+          "resource": true,
+          "responseStatus": "needsAction"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    }
+  }
+}

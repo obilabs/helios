@@ -1,0 +1,33 @@
+{
+  "family": "calendar.booking",
+  "name": "freebusy.after",
+  "note": "The same availability read once the room is taken.",
+  "recordedAt": "2026-09-13T01:40:55.393Z",
+  "request": {
+    "method": "POST",
+    "host": "www.googleapis.com",
+    "path": "calendar/v3/freeBusy",
+    "body": {
+      "timeMin": "2026-09-14T01:00:00.000Z",
+      "timeMax": "2026-09-14T02:00:00.000Z",
+      "items": [
+        {
+          "id": "c_resource@resource.calendar.google.com"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "calendar#freeBusy",
+      "timeMin": "2026-09-14T01:00:00.000Z",
+      "timeMax": "2026-09-14T02:00:00.000Z",
+      "calendars": {
+        "c_resource@resource.calendar.google.com": {
+          "busy": []
+        }
+      }
+    }
+  }
+}
