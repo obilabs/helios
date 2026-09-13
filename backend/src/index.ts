@@ -922,7 +922,7 @@ async function startServer(): Promise<void> {
     }
 
     // Initialize licence heartbeat (fail-open — never blocks boot). Helios is
-    // community-licensed: this reports liveness + donor status and NEVER gates.
+    // community-licensed: this reports liveness and NEVER gates.
     try {
       await licenseService.init();
     } catch (err) {

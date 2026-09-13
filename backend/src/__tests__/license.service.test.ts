@@ -20,11 +20,11 @@ function makeResult(overrides: Partial<LicenseResult>): LicenseResult {
     reason: 'ok',
     message: '',
     product: 'helios',
-    plan: 'donor',
+    plan: 'community',
     features: null,
     expiresAt: null,
     // Trial lifecycle fields are part of the published LicenseResult contract;
-    // a non-trial community/donor licence sets them to their inactive defaults.
+    // a non-trial community licence sets them to their inactive defaults.
     trial: false,
     trialEndsAt: null,
     daysRemaining: null,

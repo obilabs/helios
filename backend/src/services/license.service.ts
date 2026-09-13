@@ -3,7 +3,7 @@
  *
  * Helios is fully open-source and community-licensed: NOTHING is gated when the
  * operator does not pay (only the MSP portal, MTP, gates on payment). So this
- * service is a HEARTBEAT + donor/supporter attribution that NEVER blocks or
+ * service is a liveness HEARTBEAT that NEVER blocks or
  * degrades the product — the same fail-open posture Aegis ships. It:
  *
  *   - routes the actual check through the shared @obilabs/licensing client (the
@@ -40,7 +40,8 @@ const BOOT_TIMEOUT_MS = 10_000; // boot path can't wait long.
 
 // Community feature floor. Helios never gates on the licence, so these are the
 // features EVERY install has; a `valid` result may carry the control plane's
-// `features` map, which we overlay for display only (donor == community today).
+// `features` map, which we overlay for display only. The plan key is never
+// interpreted: any plan (including an unknown one) gets this same floor.
 const COMMUNITY_FEATURES: Record<string, boolean> = {
   support_chat: false,
   priority_updates: false,
@@ -130,7 +131,7 @@ class LicenseService {
     return result;
   }
 
-  /** Current plan (donor/community/…), or 'community' when unknown. Never gates. */
+  /** Current plan key as reported, or 'community' when none. Display only; never gates. */
   getPlan(): string {
     return this.lastResult?.plan ?? 'community';
   }
@@ -138,7 +139,7 @@ class LicenseService {
   /**
    * Feature map for display. Null-safe: community floor overlaid with the control
    * plane's `features` when we have a valid result. Helios does not gate on any
-   * of these — they exist for parity + future UI (e.g. a supporter badge).
+   * of these — they exist for parity + future UI (e.g. a licence badge).
    */
   getFeatures(): Record<string, boolean> {
     const fromCp = this.lastResult?.features ?? null;
@@ -155,7 +156,7 @@ class LicenseService {
     return this.getFeatures()[feature] ?? false;
   }
 
-  /** True when the control plane last confirmed a valid (donor/supporter) licence. */
+  /** True when the control plane last confirmed a valid licence. */
   isLicensed(): boolean {
     return this.lastResult?.state === 'valid';
   }
