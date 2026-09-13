@@ -41,12 +41,12 @@ describe('trimTrailing', () => {
 });
 
 describe('logSafe', () => {
-  it('flattens line breaks', () => {
-    expect(logSafe('GET /x\r\n[info]: forged')).toBe('GET /x  [info]: forged');
+  it('removes line breaks', () => {
+    expect(logSafe('GET /x\r\n[info]: forged')).toBe('GET /x[info]: forged');
   });
 
   it('uses an Error message and truncates long values', () => {
-    expect(logSafe(new Error('bad\nthing'))).toBe('bad thing');
+    expect(logSafe(new Error('bad\nthing'))).toBe('badthing');
     const out = logSafe('x'.repeat(MAX_LOG_VALUE_LENGTH + 10));
     expect(out.length).toBe(MAX_LOG_VALUE_LENGTH + 3);
   });
