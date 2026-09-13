@@ -6,6 +6,7 @@
  */
 
 import { db } from '../database/connection.js';
+import { isAdminRole } from '../utils/roles.js';
 import { logger } from '../utils/logger.js';
 import { lifecycleLogService } from './lifecycle-log.service.js';
 
@@ -284,7 +285,7 @@ class LifecycleTaskService {
     let paramIndex = 3;
 
     // Add role-based assignment
-    if (userRole === 'admin' || userRole === 'super_admin') {
+    if (isAdminRole(userRole)) {
       // Admins can see IT and HR tasks
       assigneeCondition += ` OR t.assignee_type IN ('it', 'hr')`;
     }

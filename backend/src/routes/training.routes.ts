@@ -5,6 +5,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
+import { isAdminRole } from '../utils/roles.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { trainingService, type ContentType } from '../services/training.service.js';
 
@@ -438,7 +439,7 @@ router.get('/users/:userId/summary', async (req: Request, res: Response) => {
     }
 
     // Users can only see their own summary, admins can see anyone's
-    if (targetUserId !== currentUserId && req.user?.role !== 'admin' && req.user?.role !== 'super_admin') {
+    if (targetUserId !== currentUserId && !isAdminRole(req.user?.role)) {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { mediaAssetStorageService } from '../services/media-asset-storage.service.js';
 import { mediaAssetCacheService } from '../services/media-asset-cache.service.js';
 import { googleDriveService } from '../services/google-drive.service.js';
@@ -427,7 +427,7 @@ router.get('/:id', async (req: Request, res: Response, next) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const userId = getUserId(req);
   const body: CreateMediaAssetRequest = req.body;
@@ -556,7 +556,7 @@ router.post('/', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.put('/:id', async (req: Request, res: Response, next) => {
+router.put('/:id', requireAdmin, async (req: Request, res: Response, next) => {
   const { id } = req.params;
 
   // Skip if id is not a valid UUID
@@ -677,7 +677,7 @@ router.put('/:id', async (req: Request, res: Response, next) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.delete('/:id', async (req: Request, res: Response, next) => {
+router.delete('/:id', requireAdmin, async (req: Request, res: Response, next) => {
   const { id } = req.params;
 
   // Skip if id is not a valid UUID
@@ -783,7 +783,7 @@ router.delete('/:id', async (req: Request, res: Response, next) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload', requireAdmin, upload.single('file'), async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const userId = getUserId(req);
 
@@ -1030,7 +1030,7 @@ router.get('/folders', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/folders', async (req: Request, res: Response) => {
+router.post('/folders', requireAdmin, async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const body: CreateMediaAssetFolderRequest = req.body;
 
@@ -1150,7 +1150,7 @@ router.post('/folders', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.delete('/folders/:id', async (req: Request, res: Response) => {
+router.delete('/folders/:id', requireAdmin, async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const { id } = req.params;
 
@@ -1308,7 +1308,7 @@ router.get('/settings', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.put('/settings', async (req: Request, res: Response) => {
+router.put('/settings', requireAdmin, async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const body: UpdateMediaAssetSettingsRequest = req.body;
 
@@ -1451,7 +1451,7 @@ router.get('/status', async (req: Request, res: Response) => {
  *       500:
  *         description: Failed to setup storage
  */
-router.post('/setup', async (req: Request, res: Response) => {
+router.post('/setup', requireAdmin, async (req: Request, res: Response) => {
   const organizationId = getOrganizationId(req);
   const { backend = 'google_drive' } = req.body;
 

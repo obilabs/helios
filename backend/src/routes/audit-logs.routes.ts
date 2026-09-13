@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -129,7 +129,7 @@ router.use(authenticateToken);
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     const {
@@ -307,7 +307,7 @@ router.get('/', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/export', async (req: Request, res: Response) => {
+router.get('/export', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     const { action, userId, startDate, endDate, actorType, vendorName, result } = req.query;

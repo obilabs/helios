@@ -20,7 +20,9 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_key_here';
+import { getJwtSecret } from '../config/secrets.js';
+
+const JWT_SECRET = getJwtSecret();
 
 /**
  * Generate a test JWT token

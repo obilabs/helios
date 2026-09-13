@@ -30,7 +30,7 @@ This project is currently in active development. Features, database schemas, and
 
 ## What is Helios?
 
-Helios is a web-based admin portal for Google Workspace, with Microsoft 365 alongside it. It gives you a modern UI for managing users, groups, email signatures, lifecycle automation and licences — while keeping all your data, and the credentials that reach your tenant, on your own infrastructure. Every action is logged: who did what, when.
+Helios is a web-based admin portal for Google Workspace, with Microsoft 365 alongside it. It gives you a modern UI for managing users, groups, email signatures, lifecycle automation and licences — while keeping your data, and the credentials that reach your tenant, on your own infrastructure — apart from optional, off-by-default connections listed under [Privacy & Telemetry](#privacy--telemetry). Every action is logged: who did what, when.
 
 Google Workspace is the primary platform. Microsoft 365 support covers users, groups and licences (create, update, licence, disable, delete) and is CLI-first; deeper Microsoft management (Exchange, mailboxes, SharePoint) is deliberately out of scope.
 
@@ -52,7 +52,7 @@ Google Workspace is the primary platform. Microsoft 365 support covers users, gr
 
 ### Why Self-Hosted?
 
-- **Data Sovereignty** - Your data never leaves your infrastructure
+- **Data Sovereignty** - Your data stays on your infrastructure and talks only to your own Google / Microsoft tenant, except for optional connections that are off by default (usage telemetry, an AI provider you configure, licence validation when a licence key is set)
 - **No Per-User Fees** - One fixed cost, not $3-5/user/month like SaaS alternatives
 - **Full Control** - Customize, extend, integrate however you want
 - **Compliance Ready** - Every action logged for audit
@@ -70,11 +70,19 @@ cd helios
 
 # Copy environment template and configure
 cp .env.example .env
-# Edit .env with your secrets (DB_PASSWORD, JWT_SECRET, etc.)
+# Edit .env with your secrets (DB_PASSWORD, JWT_SECRET, etc.).
+# Generate each secret with: openssl rand -hex 32
+# The backend refuses to start if JWT_SECRET is missing, shorter than
+# 32 characters, or still a placeholder.
 
 # Production
 docker compose up -d --build
-# Access: http://localhost (setup wizard on first run)
+
+# First run: the setup wizard asks for a one-time setup token, printed by the
+# backend at boot (and stored in the backend_data volume until setup completes)
+docker compose logs backend | grep 'setup token'
+# Access: http://localhost and paste the token into the setup wizard
+# (to preset it instead, set HELIOS_SETUP_TOKEN in the backend environment)
 
 # Development (with hot-reload and default admin)
 docker compose -f docker-compose.dev.yml up -d --build
@@ -87,7 +95,7 @@ docker compose -f docker-compose.dev.yml up -d --build
 | `docker-compose.yml` | **Production** - Secure defaults, requires `.env` configuration |
 | `docker-compose.dev.yml` | **Development** - Hot reload, default admin credentials |
 
-See [docs/guides/SETUP.md](docs/guides/SETUP.md) for complete setup including Google Workspace service account configuration.
+See [docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md) for Google Workspace service account configuration.
 
 ### Option 2: Hosted by Us — coming soon
 
@@ -112,16 +120,19 @@ Not available yet. When it is: we run the server, you keep full admin access, an
 
 Telemetry is **disabled by default** for self-hosted instances.
 
-If you choose to enable it, we collect:
-- Instance health (version, uptime)
-- Anonymous usage metrics (user count range, enabled modules)
+If you choose to enable it (`HELIOS_TELEMETRY_ENABLED=true`), the instance sends a heartbeat (daily, or hourly when a licence key is set) containing:
+- A random instance ID, the Helios version and uptime
+- A user count range and the list of enabled modules
+- Last sync status (success / error / none)
+- Counts of API calls, commands and UI actions by name
+- The licence key, if one is set
 
 We **never** collect:
 - Your organization name or domain
 - User names, emails, or any PII
 - Your Google Workspace data
 
-See [TELEMETRY.md](projects/helios-web/docs/TELEMETRY.md) for full details.
+The payload is defined in [`backend/src/services/telemetry.service.ts`](backend/src/services/telemetry.service.ts).
 
 ### How to Control Telemetry
 
@@ -129,6 +140,11 @@ See [TELEMETRY.md](projects/helios-web/docs/TELEMETRY.md) for full details.
 # In your .env file
 HELIOS_TELEMETRY_ENABLED=false  # Default: disabled
 ```
+
+### Other optional outbound connections
+
+- **AI assistant** — disabled until an admin enables it and configures an endpoint. When enabled, prompts and the data the assistant is asked about go to the endpoint you choose (which can be a model you host yourself).
+- **Licence validation** — only when `HELIOS_LICENSE_KEY` is set. Without a key, Helios runs in community mode and makes no licence calls.
 
 ---
 
@@ -193,10 +209,10 @@ Product clients (Helios, Aegis) are free and open source. MTP and services fund 
 
 | Document | Description |
 |----------|-------------|
-| [SETUP.md](docs/guides/SETUP.md) | Complete setup guide |
-| [GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/GOOGLE-WORKSPACE-SETUP-GUIDE.md) | Google Workspace integration |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
-| [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) | UI/UX guidelines |
+| [GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md) | Google Workspace integration |
+| [MICROSOFT-365-SETUP-GUIDE.md](docs/guides/MICROSOFT-365-SETUP-GUIDE.md) | Microsoft 365 integration |
+| [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | System architecture |
+| [DESIGN-SYSTEM.md](docs/architecture/DESIGN-SYSTEM.md) | UI/UX guidelines |
 
 ---
 

@@ -12,7 +12,7 @@
 
 services:
   nginx:
-    image: nginx:alpine
+    image: nginx:1.30-alpine
     container_name: helios_nginx
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     container_name: helios_postgres
     # NO ports exposed - internal only
     environment:
@@ -56,10 +56,16 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: helios_redis
     # NO ports exposed - internal only
-    # Note: No password by default for simplicity. Set REDIS_PASSWORD in .env for production.
+    # No `requirepass` yet: the backend's Redis clients (services/cache.service.ts,
+    # services/media-asset-cache.service.ts, services/queue.service.ts) connect with
+    # host/port only and do not read REDIS_PASSWORD, so a password here would stop
+    # them connecting. Redis is reachable only on helios_network (no ports block).
+    # Once those clients pass REDIS_PASSWORD, add
+    #   command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    # and switch the healthcheck to authenticate.
     networks:
       - helios_network
     healthcheck:
@@ -168,9 +174,17 @@ services:
       DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-}
       DEFAULT_ORG_DOMAIN: ${DEFAULT_ORG_DOMAIN:-}
 
+      # First-run setup token (optional preset). When unset, a random one-time
+      # token is generated at boot and printed to the log while no organization
+      # exists: docker compose logs backend | grep 'setup token'
+      HELIOS_SETUP_TOKEN: ${HELIOS_SETUP_TOKEN:-}
+
     volumes:
       # Mount schema file for database initialization
       - ./database/schema_organization.sql:/app/database/schema_organization.sql:ro
+      # Backend state. Holds the one-time first-run setup token file
+      # (/app/data/setup-token) until setup completes.
+      - backend_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -219,6 +233,7 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  backend_data:
 
 networks:
   helios_network:

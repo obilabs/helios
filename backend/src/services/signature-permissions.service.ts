@@ -6,6 +6,7 @@
  */
 
 import { db } from '../database/connection.js';
+import { isAdminRole } from '../utils/roles.js';
 import { logger } from '../utils/logger.js';
 import {
   SignaturePermission,
@@ -289,7 +290,7 @@ class SignaturePermissionsService {
     }
 
     // Warn if user is already org admin (they already have full access)
-    if (userCheck.rows[0].role === 'admin') {
+    if (isAdminRole(userCheck.rows[0].role)) {
       logger.info('Setting explicit permission for org admin (redundant)', {
         userId,
         permissionLevel,

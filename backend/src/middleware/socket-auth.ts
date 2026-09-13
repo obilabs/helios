@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../config/secrets.js';
 import { db } from '../database/connection.js';
 
 export interface SocketUser {
@@ -14,7 +15,7 @@ export async function authenticateSocketToken(token: string): Promise<SocketUser
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
 
     // Get user from database to ensure they still exist and are active
     const query = `

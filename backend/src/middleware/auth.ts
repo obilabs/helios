@@ -3,14 +3,10 @@ import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger.js';
 import { auth } from '../lib/auth.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_key_here';
+import { getJwtSecret } from '../config/secrets.js';
+import { isAdminRole } from '../utils/roles.js';
 
-/**
- * Determine if a role has admin privileges
- */
-function isAdminRole(role: string): boolean {
-  return role === 'admin' || role === 'super_admin' || role === 'platform_owner';
-}
+export { isAdminRole };
 
 /**
  * Determine if user is an employee (can access user/employee UI)
@@ -85,7 +81,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       const token = authHeader.substring(7);
 
       try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const decoded: any = jwt.verify(token, getJwtSecret());
 
         if (decoded && decoded.type === 'access') {
           // Attach user info from JWT
@@ -130,10 +126,24 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 };
 
 /**
- * Middleware to require admin privileges
- * Use for routes that require administrative access
+ * The canonical admin guard. Apply it to every route that mutates
+ * organization-wide state or reads org-wide sensitive data.
+ *
+ * Order-independent: if no authentication middleware has run yet it
+ * authenticates the request itself first, so `router.post('/x', requireAdmin, ...)`
+ * is safe even on a router without `router.use(authenticateToken)`.
+ *
+ * Admin = isAdminRole(role) (utils/roles.ts): admin, super_admin, platform_owner.
+ * Enforced by __tests__/route-authorization.test.ts.
  */
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return authenticateToken(req, res, () => checkAdmin(req, res, next));
+  }
+  return checkAdmin(req, res, next);
+};
+
+function checkAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -141,7 +151,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
     });
   }
 
-  if (!req.user.isAdmin) {
+  if (!isAdminRole(req.user.role)) {
     logger.warn('Unauthorized admin access attempt', {
       userId: req.user.userId,
       role: req.user.role,
@@ -156,7 +166,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
   }
 
   next();
-};
+}
 
 /**
  * Middleware to require employee status
@@ -227,7 +237,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     const token = authHeader.substring(7);
 
     try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
+      const decoded: any = jwt.verify(token, getJwtSecret());
 
       if (decoded && decoded.type === 'access') {
         req.user = {
@@ -274,7 +284,7 @@ export const requirePermission = (permission: string) => {
       const token = authHeader.substring(7);
 
       try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const decoded: any = jwt.verify(token, getJwtSecret());
 
         if (decoded && decoded.type === 'access') {
           req.user = {
@@ -310,7 +320,7 @@ export const requirePermission = (permission: string) => {
     }
 
     // Now check permission
-    if (permission === 'admin' && !req.user!.isAdmin) {
+    if (permission === 'admin' && !isAdminRole(req.user!.role)) {
       return res.status(403).json({
         success: false,
         error: 'Insufficient permissions',

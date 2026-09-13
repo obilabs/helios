@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -171,7 +171,7 @@ router.get('/', async (req: Request, res: Response) => {
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.patch('/:id/acknowledge', async (req: Request, res: Response) => {
+router.patch('/:id/acknowledge', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { note } = req.body;

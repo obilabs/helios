@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { isAdminRole } from '../utils/roles.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { db } from '../database/connection.js';
 
 const router = Router();
@@ -366,7 +367,7 @@ router.get('/org-chart', requireAuth, async (req: Request, res: Response) => {
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.put('/users/:userId/manager', requireAuth, async (req: Request, res: Response) => {
+router.put('/users/:userId/manager', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { managerId } = req.body;
@@ -379,8 +380,9 @@ router.put('/users/:userId/manager', requireAuth, async (req: Request, res: Resp
       });
     }
 
-    // Check if user has permission (must be admin or manager)
-    if (!['admin', 'manager'].includes(req.user?.role || '')) {
+    // Admin only (requireAdmin above): a reporting line is org-wide structure,
+    // and a manager could otherwise re-parent anyone in the organization.
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Insufficient permissions'

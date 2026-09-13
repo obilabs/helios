@@ -4,7 +4,9 @@ import crypto from 'crypto';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authService } from '../services/auth.service.js';
-import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { authenticateToken, optionalAuth, requireAdmin } from '../middleware/auth.js';
+import { ADMIN_ROLES, isAdminRole } from '../utils/roles.js';
+import { setupTokenStore, presentedSetupToken } from '../services/setup-token.service.js';
 import { PasswordSetupService } from '../services/password-setup.service.js';
 import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { orgPolicyService } from '../services/org-policy.service.js';
@@ -50,7 +52,7 @@ router.use('/users', (req, res, next) => {
 });
 
 /**
- * Roles that carry admin privileges. Mirrors isAdminRole() in middleware/auth.ts.
+ * Roles that carry admin privileges — the canonical list in utils/roles.ts.
  *
  * PRINCIPLE ("Admin is bootstrapped once, then only granted — never self-served"):
  * - Account creation NEVER sets one of these roles from client input.
@@ -58,7 +60,7 @@ router.use('/users', (req, res, next) => {
  *   (POST /organization/setup) and the admin-gated, audited elevation route
  *   (POST /organization/admins/promote/:userId).
  */
-const PRIVILEGED_ROLES = ['admin', 'super_admin', 'platform_owner'];
+const PRIVILEGED_ROLES = ADMIN_ROLES;
 
 /**
  * LAST-ADMIN GUARD helper: count active, non-deleted admins in the
@@ -208,6 +210,24 @@ router.post('/setup', async (req: Request, res: Response) => {
       adminLastName
     } = req.body;
 
+    // Closed for good once an organization exists (checked before the token so
+    // an installed system always answers 409, token or not).
+    const alreadySetUp = await db.query('SELECT id FROM organizations LIMIT 1');
+    if (alreadySetUp.rows.length > 0) {
+      return errorResponse(res, ErrorCode.CONFLICT, 'Organization already exists');
+    }
+
+    // One-time setup token (services/setup-token.service.ts): printed to the
+    // backend log at boot. Header X-Helios-Setup-Token or body `setupToken`.
+    if (!setupTokenStore.verify(presentedSetupToken(req.headers, req.body))) {
+      return errorResponse(
+        res,
+        ErrorCode.FORBIDDEN,
+        'A valid setup token is required. Find it in the backend logs: ' +
+          "docker compose logs backend | grep 'setup token'"
+      );
+    }
+
     // Validate input
     if (!organizationName || !organizationDomain || !adminEmail || !adminPassword || !adminFirstName || !adminLastName) {
       return validationErrorResponse(res, [{ message: 'All fields are required' }]);
@@ -301,6 +321,9 @@ router.post('/setup', async (req: Request, res: Response) => {
       // Commit transaction
       await db.query('COMMIT');
 
+      // Setup is done: the one-time token must never work again.
+      setupTokenStore.destroy();
+
       // Generate token for auto-login with organizationId
       const token = authService.generateAccessToken(
         admin.id,
@@ -389,19 +412,32 @@ router.post('/setup', async (req: Request, res: Response) => {
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.get('/current', async (req: Request, res: Response) => {
+router.get('/current', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const result = await db.query(
-      `SELECT id, name, domain, is_setup_complete, created_at
-       FROM organizations
-       LIMIT 1`
-    );
+    // Signed in: the session's own organization record.
+    // Anonymous: the login page shows the organization name before anyone has
+    // a session, so return ONLY the display name — no id, domain or dates.
+    const organizationId = req.user?.organizationId;
+    if (organizationId) {
+      const result = await db.query(
+        `SELECT id, name, domain, is_setup_complete, created_at
+         FROM organizations
+         WHERE id = $1`,
+        [organizationId]
+      );
+      if (result.rows.length === 0) {
+        return notFoundResponse(res, 'Organization');
+      }
+      return successResponse(res, result.rows[0]);
+    }
+
+    const result = await db.query('SELECT name FROM organizations ORDER BY created_at ASC LIMIT 1');
 
     if (result.rows.length === 0) {
       return notFoundResponse(res, 'Organization');
     }
 
-    successResponse(res, result.rows[0]);
+    successResponse(res, { name: result.rows[0].name });
   } catch (error) {
     logger.error('Failed to get organization', error);
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to get organization');
@@ -409,7 +445,7 @@ router.get('/current', async (req: Request, res: Response) => {
 });
 
 // Update organization settings
-router.put('/settings', authenticateToken, async (req: Request, res: Response) => {
+router.put('/settings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, domain } = req.body;
 
@@ -435,9 +471,9 @@ router.put('/settings', authenticateToken, async (req: Request, res: Response) =
     const result = await db.query(
       `UPDATE organizations
        SET ${updates.join(', ')}, updated_at = NOW()
-       WHERE id = (SELECT id FROM organizations LIMIT 1)
+       WHERE id = ${paramIndex}
        RETURNING id, name, domain, updated_at`,
-      values
+      [...values, req.user!.organizationId]
     );
 
     if (result.rows.length === 0) {
@@ -956,7 +992,7 @@ router.get('/users/count', authenticateToken, async (req: Request, res: Response
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/users/export', authenticateToken, async (req: Request, res: Response) => {
+router.get('/users/export', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     let organizationId = req.user?.organizationId;
     const userType = req.query.userType as string || 'staff';
@@ -2357,11 +2393,11 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
  * Snapshots taken of this user's Google account before a suspend, offboard or
  * delete. Summary only (counts, OU, what was partial); the full record stays server-side.
  */
-router.get('/users/:userId/snapshots', authenticateToken, async (req: Request, res: Response) => {
+router.get('/users/:userId/snapshots', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
-    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Only administrators can view snapshots' });
+    if (!isAdminRole(req.user?.role)) return res.status(403).json({ success: false, error: 'Only administrators can view snapshots' });
     const rows = await userSnapshotService.list(organizationId, req.params.userId);
     return res.json({ success: true, data: rows });
   } catch (error: any) {
@@ -2439,7 +2475,7 @@ router.get('/sync-status', authenticateToken, async (req: Request, res: Response
   }
 });
 
-router.delete('/users/:userId', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/users/:userId', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
@@ -2453,7 +2489,7 @@ router.delete('/users/:userId', authenticateToken, async (req: Request, res: Res
     }
 
     // Check if requesting user is admin
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can delete users'
@@ -2709,8 +2745,12 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
       });
     }
 
-    // Check if requesting user is admin or manager
-    if (req.user?.role !== 'admin' && req.user?.role !== 'manager') {
+    // Admins may change anyone's status. A manager may change the status of
+    // their OWN direct reports only (documented exception: a manager staging or
+    // suspending someone on their team is a legitimate delegated action; an
+    // org-wide suspend by any manager is not).
+    const callerIsAdmin = isAdminRole(req.user?.role);
+    if (!callerIsAdmin && req.user?.role !== 'manager') {
       return res.status(403).json({
         success: false,
         error: 'Only administrators and managers can change user status'
@@ -2719,7 +2759,7 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
 
     // Get current user info
     const userResult = await db.query(
-      `SELECT id, email, status, role, google_workspace_id, microsoft_365_id
+      `SELECT id, email, status, role, google_workspace_id, microsoft_365_id, reporting_manager_id
          FROM organization_users WHERE id = $1 AND organization_id = $2 AND status != 'deleted'`,
       [userId, organizationId]
     );
@@ -2728,6 +2768,13 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
       return res.status(404).json({
         success: false,
         error: 'User not found'
+      });
+    }
+
+    if (!callerIsAdmin && userResult.rows[0].reporting_manager_id !== req.user?.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Managers can only change the status of their direct reports'
       });
     }
 
@@ -2871,7 +2918,7 @@ router.patch('/users/:userId/status', authenticateToken, async (req: Request, re
  * PATCH /api/organization/users/:userId/restore
  * Restore a soft-deleted user
  */
-router.patch('/users/:userId/restore', authenticateToken, async (req: Request, res: Response) => {
+router.patch('/users/:userId/restore', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
@@ -2885,7 +2932,7 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
     }
 
     // Check if requesting user is admin
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can restore users'
@@ -3040,7 +3087,7 @@ router.patch('/users/:userId/restore', authenticateToken, async (req: Request, r
  * POST /api/organization/users/:userId/reset-password
  * Send password reset email to user
  */
-router.post('/users/:userId/reset-password', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users/:userId/reset-password', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
@@ -3054,7 +3101,7 @@ router.post('/users/:userId/reset-password', authenticateToken, async (req: Requ
     }
 
     // Check if requesting user is admin
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can trigger password resets'
@@ -3382,7 +3429,7 @@ router.post('/admins/promote/:userId', authenticateToken, requireAdmin, async (r
     }
 
     // Check if requesting user is admin
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can promote users'
@@ -3475,7 +3522,7 @@ router.post('/admins/demote/:userId', authenticateToken, requireAdmin, async (re
     }
 
     // Check if requesting user is admin
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Only administrators can demote users'
@@ -3563,7 +3610,7 @@ router.post('/admins/demote/:userId', authenticateToken, requireAdmin, async (re
  * POST /api/organization/users/:userId/block
  * Block user account (security lockout while maintaining delegation capability)
  */
-router.post('/users/:userId/block', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users/:userId/block', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { reason, delegateTo, emailForwarding, dataTransfer } = req.body;
@@ -3574,7 +3621,7 @@ router.post('/users/:userId/block', authenticateToken, async (req: Request, res:
     }
 
     // Check admin permissions
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
@@ -4071,7 +4118,7 @@ router.get('/users/validate-delegate', authenticateToken, async (req: Request, r
  *       404:
  *         description: User not found
  */
-router.post('/users/:userId/transfer', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users/:userId/transfer', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { toUserId, applications } = req.body;
@@ -4083,7 +4130,7 @@ router.post('/users/:userId/transfer', authenticateToken, async (req: Request, r
     }
 
     // Check admin permissions
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
@@ -4230,7 +4277,7 @@ router.post('/users/:userId/transfer', authenticateToken, async (req: Request, r
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users/:userId/reassign-reports', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { mode, targetManagerId, assignments } = req.body;
@@ -4241,7 +4288,7 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
     }
 
     // Check admin permissions
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
@@ -4349,7 +4396,7 @@ router.post('/users/:userId/reassign-reports', authenticateToken, async (req: Re
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.get('/users/:userId/email-settings', authenticateToken, async (req: Request, res: Response) => {
+router.get('/users/:userId/email-settings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const organizationId = req.user?.organizationId;
@@ -4465,7 +4512,7 @@ router.get('/users/:userId/email-settings', authenticateToken, async (req: Reque
  *       500:
  *         $ref: '#/components/responses/InternalError'
  */
-router.post('/users/:userId/email-settings', authenticateToken, async (req: Request, res: Response) => {
+router.post('/users/:userId/email-settings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const organizationId = req.user?.organizationId;
@@ -4633,7 +4680,7 @@ router.post('/users/:userId/email-settings', authenticateToken, async (req: Requ
 async function loadGoogleBoundUser(req: Request, res: Response): Promise<{ organizationId: string; email: string } | null> {
   const organizationId = req.user?.organizationId;
   if (!organizationId) { res.status(401).json({ success: false, error: 'Organization ID not found' }); return null; }
-  if (req.user?.role !== 'admin') { res.status(403).json({ success: false, error: 'Only administrators can manage licences' }); return null; }
+  if (!isAdminRole(req.user?.role)) { res.status(403).json({ success: false, error: 'Only administrators can manage licences' }); return null; }
   const { userId } = req.params;
   const r = await db.query(
     `SELECT email, google_workspace_id FROM organization_users WHERE id = $1 AND organization_id = $2`,
@@ -4644,7 +4691,7 @@ async function loadGoogleBoundUser(req: Request, res: Response): Promise<{ organ
   return { organizationId, email: r.rows[0].email };
 }
 
-router.get('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+router.get('/users/:userId/google-license', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const u = await loadGoogleBoundUser(req, res);
     if (!u) return;
@@ -4657,7 +4704,7 @@ router.get('/users/:userId/google-license', authenticateToken, async (req: Reque
   }
 });
 
-router.put('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+router.put('/users/:userId/google-license', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const u = await loadGoogleBoundUser(req, res);
     if (!u) return;
@@ -4684,7 +4731,7 @@ router.put('/users/:userId/google-license', authenticateToken, async (req: Reque
   }
 });
 
-router.delete('/users/:userId/google-license', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/users/:userId/google-license', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const u = await loadGoogleBoundUser(req, res);
     if (!u) return;

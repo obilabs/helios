@@ -8,6 +8,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { isAdminRole } from '../utils/roles.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rulesEngineService, RuleType, ConditionGroup } from '../services/rules-engine.service.js';
 import { logger } from '../utils/logger.js';
@@ -17,14 +18,18 @@ const router = Router();
 // All routes require authentication
 router.use(authenticateToken);
 
-// Helper middleware to require specific roles
+/**
+ * Admin roles (utils/roles.ts) always pass; `allowedRoles` adds delegated roles
+ * such as hr_admin. Counted as an admin-inclusive guard by
+ * __tests__/route-authorization.test.ts.
+ */
 const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!isAdminRole(req.user.role) && !allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',
@@ -555,7 +560,7 @@ router.post('/rules/evaluate', requireRole(['admin', 'hr_admin']), async (req: R
  * POST /api/v1/automation/validate
  * Validate conditions without creating a rule
  */
-router.post('/validate', async (req: Request, res: Response) => {
+router.post('/validate', requireRole(['hr_admin']), async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
 
@@ -585,7 +590,7 @@ router.post('/validate', async (req: Request, res: Response) => {
  * POST /api/v1/automation/test
  * Test conditions without creating a rule
  */
-router.post('/test', async (req: Request, res: Response) => {
+router.post('/test', requireRole(['hr_admin']), async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
 

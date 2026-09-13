@@ -21,6 +21,7 @@ import { twoFactor } from 'better-auth/plugins';
 import { passkey } from '@better-auth/passkey';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
+import { getAuthSecret } from '../config/secrets.js';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -38,8 +39,9 @@ export const auth = betterAuth({
   // Database configuration
   database: pool,
 
-  // Secret for signing tokens and cookies
-  secret: process.env['BETTER_AUTH_SECRET'] || process.env['JWT_SECRET'] || 'dev-secret-change-in-production',
+  // Secret for signing tokens and cookies. Loaded (and validated) by
+  // config/secrets.ts — throws rather than falling back to a literal.
+  secret: getAuthSecret(),
 
   // Base URL for callbacks (backend URL)
   baseURL: process.env['APP_URL'] || 'http://localhost:3001',

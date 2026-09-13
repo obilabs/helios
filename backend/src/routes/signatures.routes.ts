@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
-import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { requireAuth, requirePermission, requireAdmin } from '../middleware/auth.js';
 import { signatureTemplateService } from '../services/signature-template.service.js';
 import { MERGE_FIELDS } from '../types/signatures.js';
 
@@ -210,7 +210,7 @@ router.get('/merge-fields/list', requireAuth, async (req: Request, res: Response
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/templates/validate', requireAuth, async (req: Request, res: Response) => {
+router.post('/templates/validate', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { html_content } = req.body;
 
@@ -284,7 +284,7 @@ router.post('/templates/validate', requireAuth, async (req: Request, res: Respon
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.post('/templates/preview', requireAuth, async (req: Request, res: Response) => {
+router.post('/templates/preview', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { html_content, user_id } = req.body;
 

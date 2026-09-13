@@ -7,6 +7,7 @@ import { syncScheduler } from '../services/sync-scheduler.service.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { decodeServiceAccountKey } from '../services/gw-credentials.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
+import { serviceResultResponse } from '../utils/response.js';
 
 const router = Router();
 
@@ -66,12 +67,31 @@ router.use(authenticateToken);
  */
 router.use((req: Request, res: Response, next: NextFunction) => {
   const sessionOrg = req.user?.organizationId;
-  if (!sessionOrg) return next();
+  if (!sessionOrg) {
+    return res.status(403).json({ success: false, error: 'No organization on this session' });
+  }
+  const queryOrg = req.query?.organizationId;
+  if (queryOrg !== undefined && queryOrg !== sessionOrg) {
+    return res.status(403).json({ success: false, error: 'organizationId does not match your session' });
+  }
   if (req.body && typeof req.body === 'object') {
     if (req.body.organizationId && req.body.organizationId !== sessionOrg) {
       return res.status(403).json({ success: false, error: 'organizationId does not match your session' });
     }
     if (!req.body.organizationId) req.body.organizationId = sessionOrg;
+  }
+  return next();
+});
+
+/**
+ * Route parameters are only known once a route matches, so the body/query check
+ * above cannot see them. Every `:organizationId` path parameter must equal the
+ * session organization as well, so every route stays scoped to the caller's own
+ * organization.
+ */
+router.param('organizationId', (req: Request, res: Response, next: NextFunction, value: string) => {
+  if (!req.user?.organizationId || value !== req.user.organizationId) {
+    return res.status(403).json({ success: false, error: 'organizationId does not match your session' });
   }
   return next();
 });
@@ -313,7 +333,7 @@ router.post('/test-connection', requireAdmin, [
 
     const result = await googleWorkspaceService.testConnection(organizationId, domain, adminEmail);
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Google Workspace connection test failed', { error: error.message });
     res.status(500).json({
@@ -345,7 +365,7 @@ router.post('/test-credentials', requireAdmin, [
       adminEmail
     );
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Google Workspace credential test failed', { error: error.message });
     res.status(500).json({
@@ -379,7 +399,7 @@ router.get('/users', async (req: Request, res: Response) => {
       maxResults ? parseInt(maxResults as string) : 100
     );
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to fetch Google Workspace users', { error: error.message });
     res.status(500).json({
@@ -498,7 +518,7 @@ router.get('/org-units/:organizationId', async (req: Request, res: Response) => 
 
     const result = await googleWorkspaceService.getOrgUnits(organizationId);
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to fetch org units', { error: error.message });
     res.status(500).json({
@@ -522,7 +542,7 @@ router.post('/sync-org-units', requireAdmin, [
 
     const result = await googleWorkspaceService.syncOrgUnits(organizationId);
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Org units sync failed', { error: error.message });
     res.status(500).json({
@@ -628,7 +648,7 @@ router.get('/groups/:organizationId', async (req: Request, res: Response) => {
 
     const result = await googleWorkspaceService.getGroups(organizationId);
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to fetch groups', { error: error.message });
     res.status(500).json({
@@ -652,7 +672,7 @@ router.post('/sync-groups', requireAdmin, [
 
     const result = await googleWorkspaceService.syncGroups(organizationId);
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Groups sync failed', { error: error.message });
     res.status(500).json({
@@ -685,7 +705,7 @@ router.get('/groups/:groupId/members', async (req: Request, res: Response) => {
       groupId
     );
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to fetch group members', { error: error.message });
     res.status(500).json({
@@ -699,7 +719,7 @@ router.get('/groups/:groupId/members', async (req: Request, res: Response) => {
  * POST /api/google-workspace/groups/:groupId/members
  * Add a member to a group
  */
-router.post('/groups/:groupId/members', [
+router.post('/groups/:groupId/members', requireAdmin, [
   body('organizationId').notEmpty().withMessage('Organization ID is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('role').optional().isIn(['MEMBER', 'MANAGER', 'OWNER']).withMessage('Invalid role')
@@ -735,7 +755,7 @@ router.post('/groups/:groupId/members', [
       });
     }
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to add group member', { error: error.message });
     res.status(500).json({
@@ -749,7 +769,7 @@ router.post('/groups/:groupId/members', [
  * DELETE /api/google-workspace/groups/:groupId/members/:memberEmail
  * Remove a member from a group
  */
-router.delete('/groups/:groupId/members/:memberEmail', async (req: Request, res: Response) => {
+router.delete('/groups/:groupId/members/:memberEmail', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { groupId, memberEmail } = req.params;
     const { organizationId } = req.query;
@@ -787,7 +807,7 @@ router.delete('/groups/:groupId/members/:memberEmail', async (req: Request, res:
       });
     }
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to remove group member', { error: error.message });
     res.status(500).json({
@@ -801,7 +821,7 @@ router.delete('/groups/:groupId/members/:memberEmail', async (req: Request, res:
  * POST /api/google-workspace/groups
  * Create a new group
  */
-router.post('/groups', [
+router.post('/groups', requireAdmin, [
   body('organizationId').notEmpty().withMessage('Organization ID is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('name').notEmpty().withMessage('Group name is required'),
@@ -844,7 +864,7 @@ router.post('/groups', [
       });
     }
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to create group', { error: error.message });
     res.status(500).json({
@@ -858,7 +878,7 @@ router.post('/groups', [
  * PATCH /api/google-workspace/groups/:groupId
  * Update group settings
  */
-router.patch('/groups/:groupId', [
+router.patch('/groups/:groupId', requireAdmin, [
   body('organizationId').notEmpty().withMessage('Organization ID is required'),
   body('name').optional().isString(),
   body('description').optional().isString()
@@ -893,7 +913,7 @@ router.patch('/groups/:groupId', [
       });
     }
 
-    res.json(result);
+    serviceResultResponse(res, result);
   } catch (error: any) {
     logger.error('Failed to update group', { error: error.message });
     res.status(500).json({
@@ -1166,7 +1186,7 @@ router.post('/enable', requireAdmin, [
  *       500:
  *         description: Server error
  */
-router.post('/users', async (req: Request, res: Response) => {
+router.post('/users', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = (req as any).user?.organizationId;
     if (!organizationId) {

@@ -8,27 +8,9 @@ if (!globalThis.crypto) {
 // Import type augmentation for Express Request (must be .ts for ts-node compatibility)
 import './types/express.js';
 
-// Load environment variables FIRST before any imports that use them
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// ESM equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// .env is in project root, two levels up from src/
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
-
-// Validate environment variables immediately after loading
-import { validateEnv } from './config/env-validation.js';
-try {
-  validateEnv();
-  console.log(`✅ Environment validated (${process.env['NODE_ENV'] || 'development'} mode)`);
-} catch (error) {
-  console.error('❌ Environment validation failed. Exiting...');
-  process.exit(1);
-}
+// Load .env and validate the environment (including signing secrets) FIRST,
+// before any module that reads configuration at import time is evaluated.
+import './config/load-env.js';
 
 import express from 'express';
 import { createServer } from 'http';
@@ -38,6 +20,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { logger } from './utils/logger.js';
+import { setupTokenStore } from './services/setup-token.service.js';
 import { db } from './database/connection.js';
 import { dbInitializer } from './database/init.js';
 import { migrationRunner } from './database/migrate.js';
@@ -828,6 +811,12 @@ async function startServer(): Promise<void> {
     // Seed default admin if configured via environment variables
     // This only runs ONCE if no organization exists yet
     await dbInitializer.seedDefaultAdmin();
+
+    // First-run setup token: while no organization exists, POST
+    // /organization/setup requires a one-time token that is only available in
+    // this log and the data directory (services/setup-token.service.ts).
+    const orgCountResult = await db.query('SELECT COUNT(*)::int AS count FROM organizations');
+    setupTokenStore.initialize(Number(orgCountResult.rows[0]?.count ?? 0) === 0);
 
     // CRITICAL: Verify single-tenant integrity
     // This ensures only ONE organization exists in the system

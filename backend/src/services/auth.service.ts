@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_key_here';
+import { getJwtSecret } from '../config/secrets.js';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
@@ -51,7 +51,7 @@ export class AuthService {
       payload.organizationId = organizationId;
     }
 
-    return jwt.sign(payload, JWT_SECRET, {
+    return jwt.sign(payload, getJwtSecret(), {
       expiresIn: JWT_EXPIRES_IN
     } as any);
   }
@@ -72,7 +72,7 @@ export class AuthService {
       payload.organizationId = organizationId;
     }
 
-    return jwt.sign(payload, JWT_SECRET, {
+    return jwt.sign(payload, getJwtSecret(), {
       expiresIn: JWT_REFRESH_EXPIRES_IN
     } as any);
   }
@@ -82,7 +82,7 @@ export class AuthService {
    */
   verifyToken(token: string): TokenPayload | null {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+      const decoded = jwt.verify(token, getJwtSecret()) as TokenPayload;
       return decoded;
     } catch (error) {
       logger.warn('Token verification failed', { error });

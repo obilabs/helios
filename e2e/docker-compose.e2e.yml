@@ -44,6 +44,8 @@ volumes:
     name: helios_e2e_postgres_data
   minio_data:
     name: helios_e2e_minio_data
+  backend_data:
+    name: helios_e2e_backend_data
 
 networks:
   helios_network:

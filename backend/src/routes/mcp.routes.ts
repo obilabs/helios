@@ -19,7 +19,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { openApiToMcpTools, getToolDefinitions, OpenApiSpec } from '../mcp/openapi-converter.js';
 import { getToolsSummary } from '../mcp/server.js';
 import { swaggerSpec } from '../config/swagger.js';
@@ -290,7 +290,7 @@ router.get('/tools', authenticateToken, async (req: Request, res: Response) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/tools/:name', authenticateToken, async (req: Request, res: Response) => {
+router.post('/tools/:name', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const args = req.body || {};

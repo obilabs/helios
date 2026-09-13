@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isAdminRole } from '../utils/roles.js';
 import { body, validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -18,7 +19,7 @@ import { securityAudit, AuditActions } from '../services/security-audit.service.
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_key_here';
+import { getJwtSecret } from '../config/secrets.js';
 
 /**
  * @openapi
@@ -170,13 +171,13 @@ router.post('/login',
     // Generate tokens (include isExternalAdmin for access control)
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role, organizationId: user.organization_id, isExternalAdmin, type: 'access' },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '24h' }
     );
 
     const refreshToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role, organizationId: user.organization_id, isExternalAdmin, type: 'refresh' },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -218,7 +219,7 @@ router.post('/login',
 
     // Determine access capabilities
     // isExternalAdmin already determined above for JWT
-    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+    const isAdmin = isAdminRole(user.role);
     const isEmployee = !isExternalAdmin; // Internal users are employees
 
     // Determine default view
@@ -307,7 +308,7 @@ router.get('/verify', asyncHandler(async (req: Request, res: Response) => {
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
 
     // Verify user still exists and is active
     const result = await db.query(
@@ -330,7 +331,7 @@ router.get('/verify', asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Determine access capabilities
-    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+    const isAdmin = isAdminRole(user.role);
     const isExternalAdmin = user.is_external_admin === true;
     const isEmployee = !isExternalAdmin; // Internal users are employees
 
@@ -622,13 +623,13 @@ router.post('/setup-password',
     // Generate JWT tokens for auto-login
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role, organizationId: user.organization_id, type: 'access' },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '24h' }
     );
 
     const refreshToken = jwt.sign(
       { userId: user.id, email: user.email, role: user.role, organizationId: user.organization_id, type: 'refresh' },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 

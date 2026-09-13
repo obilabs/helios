@@ -16,7 +16,7 @@ import { lifecycleLogService } from '../services/lifecycle-log.service.js';
 import { lifecycleRequestService, RequestStatus, RequestType } from '../services/lifecycle-request.service.js';
 import { lifecycleTaskService, TaskStatus, AssigneeType } from '../services/lifecycle-task.service.js';
 import { timelineGeneratorService } from '../services/timeline-generator.service.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -130,7 +130,7 @@ router.get('/onboarding-templates/:id', async (req: Request, res: Response) => {
  *       201:
  *         description: Template created
  */
-router.post('/onboarding-templates', async (req: Request, res: Response) => {
+router.post('/onboarding-templates', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -170,7 +170,7 @@ router.post('/onboarding-templates', async (req: Request, res: Response) => {
  *       404:
  *         description: Template not found
  */
-router.put('/onboarding-templates/:id', async (req: Request, res: Response) => {
+router.put('/onboarding-templates/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const template = await userOnboardingService.updateTemplate(req.params.id, req.body);
 
@@ -205,7 +205,7 @@ router.put('/onboarding-templates/:id', async (req: Request, res: Response) => {
  *       404:
  *         description: Template not found
  */
-router.delete('/onboarding-templates/:id', async (req: Request, res: Response) => {
+router.delete('/onboarding-templates/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const deleted = await userOnboardingService.deleteTemplate(req.params.id);
 
@@ -308,7 +308,7 @@ router.get('/offboarding-templates/:id', async (req: Request, res: Response) => 
  *       201:
  *         description: Template created
  */
-router.post('/offboarding-templates', async (req: Request, res: Response) => {
+router.post('/offboarding-templates', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -348,7 +348,7 @@ router.post('/offboarding-templates', async (req: Request, res: Response) => {
  *       404:
  *         description: Template not found
  */
-router.put('/offboarding-templates/:id', async (req: Request, res: Response) => {
+router.put('/offboarding-templates/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const template = await userOffboardingService.updateTemplate(req.params.id, req.body);
 
@@ -383,7 +383,7 @@ router.put('/offboarding-templates/:id', async (req: Request, res: Response) => 
  *       404:
  *         description: Template not found
  */
-router.delete('/offboarding-templates/:id', async (req: Request, res: Response) => {
+router.delete('/offboarding-templates/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const deleted = await userOffboardingService.deleteTemplate(req.params.id);
 
@@ -441,7 +441,7 @@ router.delete('/offboarding-templates/:id', async (req: Request, res: Response) 
  *       400:
  *         description: Missing required fields
  */
-router.post('/onboard', async (req: Request, res: Response) => {
+router.post('/onboard', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -592,7 +592,7 @@ router.post('/onboard', async (req: Request, res: Response) => {
  *       207:
  *         description: Partial success
  */
-router.post('/offboard', async (req: Request, res: Response) => {
+router.post('/offboard', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -812,7 +812,7 @@ router.get('/scheduled-actions/pending-approval', async (req: Request, res: Resp
  */
 router.get('/scheduled-actions/:id', async (req: Request, res: Response) => {
   try {
-    const action = await scheduledActionService.getAction(req.params.id);
+    const action = await scheduledActionService.getAction(req.params.id, req.user?.organizationId);
 
     if (!action) {
       return res.status(404).json({ success: false, error: 'Action not found' });
@@ -845,9 +845,9 @@ router.get('/scheduled-actions/:id', async (req: Request, res: Response) => {
  *       404:
  *         description: Action not found
  */
-router.put('/scheduled-actions/:id', async (req: Request, res: Response) => {
+router.put('/scheduled-actions/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const action = await scheduledActionService.updateAction(req.params.id, req.body);
+    const action = await scheduledActionService.updateAction(req.params.id, req.body, req.user?.organizationId);
 
     if (!action) {
       return res.status(404).json({ success: false, error: 'Action not found' });
@@ -880,14 +880,15 @@ router.put('/scheduled-actions/:id', async (req: Request, res: Response) => {
  *       404:
  *         description: Action not found
  */
-router.post('/scheduled-actions/:id/approve', async (req: Request, res: Response) => {
+router.post('/scheduled-actions/:id/approve', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { notes } = req.body;
 
     const action = await scheduledActionService.approveAction(
       req.params.id,
       req.user?.userId!,
-      notes
+      notes,
+      req.user?.organizationId
     );
 
     if (!action) {
@@ -934,7 +935,7 @@ router.post('/scheduled-actions/:id/approve', async (req: Request, res: Response
  *       404:
  *         description: Action not found
  */
-router.post('/scheduled-actions/:id/reject', async (req: Request, res: Response) => {
+router.post('/scheduled-actions/:id/reject', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
 
@@ -945,7 +946,8 @@ router.post('/scheduled-actions/:id/reject', async (req: Request, res: Response)
     const action = await scheduledActionService.rejectAction(
       req.params.id,
       req.user?.userId!,
-      reason
+      reason,
+      req.user?.organizationId
     );
 
     if (!action) {
@@ -979,14 +981,15 @@ router.post('/scheduled-actions/:id/reject', async (req: Request, res: Response)
  *       404:
  *         description: Action not found
  */
-router.delete('/scheduled-actions/:id', async (req: Request, res: Response) => {
+router.delete('/scheduled-actions/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
 
     const action = await scheduledActionService.cancelAction(
       req.params.id,
       req.user?.userId!,
-      reason
+      reason,
+      req.user?.organizationId
     );
 
     if (!action) {
@@ -1387,7 +1390,7 @@ router.get('/requests/:id', async (req: Request, res: Response) => {
  *       404:
  *         description: Request not found
  */
-router.patch('/requests/:id', async (req: Request, res: Response) => {
+router.patch('/requests/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -1433,7 +1436,7 @@ router.patch('/requests/:id', async (req: Request, res: Response) => {
  *       404:
  *         description: Request not found
  */
-router.post('/requests/:id/approve', async (req: Request, res: Response) => {
+router.post('/requests/:id/approve', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -1493,7 +1496,7 @@ router.post('/requests/:id/approve', async (req: Request, res: Response) => {
  *       404:
  *         description: Request not found
  */
-router.post('/requests/:id/reject', async (req: Request, res: Response) => {
+router.post('/requests/:id/reject', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -1542,7 +1545,7 @@ router.post('/requests/:id/reject', async (req: Request, res: Response) => {
  *       404:
  *         description: Request not found
  */
-router.delete('/requests/:id', async (req: Request, res: Response) => {
+router.delete('/requests/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {

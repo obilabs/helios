@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -184,6 +184,7 @@ router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
  */
 router.post('/',
   authenticateToken,
+  requireAdmin,
   [
     body('code').trim().notEmpty().withMessage('Code is required'),
     body('name').trim().notEmpty().withMessage('Name is required'),
@@ -292,6 +293,7 @@ router.post('/',
  */
 router.put('/:id',
   authenticateToken,
+  requireAdmin,
   [
     body('code').optional().trim().notEmpty(),
     body('name').optional().trim().notEmpty(),
@@ -399,7 +401,7 @@ router.put('/:id',
  * DELETE /api/cost-centers/:id
  * Delete a cost center (only if no users assigned)
  */
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const organizationId = req.user?.organizationId;

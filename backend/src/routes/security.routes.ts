@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
+import { isAdminRole } from '../utils/roles.js';
 import { logger } from '../utils/logger.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { oauthTokenSyncService } from '../services/oauth-token-sync.service.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
 import {
@@ -540,7 +541,7 @@ router.get('/oauth-apps/:clientId/users', async (req: Request, res: Response) =>
  *                     failedCount:
  *                       type: integer
  */
-router.delete('/oauth-apps/:clientId', async (req: Request, res: Response) => {
+router.delete('/oauth-apps/:clientId', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -586,7 +587,7 @@ router.delete('/oauth-apps/:clientId', async (req: Request, res: Response) => {
  *       200:
  *         description: Sync result
  */
-router.post('/oauth-apps/sync', async (req: Request, res: Response) => {
+router.post('/oauth-apps/sync', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -636,6 +637,11 @@ router.get('/users/:email/oauth-tokens', async (req: Request, res: Response) => 
     }
 
     const { email } = req.params;
+
+    // Admins may read any user's security details; everyone else only their own.
+    if (!isAdminRole(req.user?.role) && (req.user?.email || '').toLowerCase() !== String(email).toLowerCase()) {
+      return errorResponse(res, ErrorCode.FORBIDDEN, 'You can only view your own security details');
+    }
     const tokens = await oauthTokenSyncService.getUserTokens(organizationId, email);
 
     successResponse(res, {
@@ -681,7 +687,7 @@ router.get('/users/:email/oauth-tokens', async (req: Request, res: Response) => 
  *       404:
  *         description: Token not found
  */
-router.delete('/users/:email/oauth-tokens/:clientId', async (req: Request, res: Response) => {
+router.delete('/users/:email/oauth-tokens/:clientId', requireAdmin, async (req: Request, res: Response) => {
   try {
     const organizationId = req.user?.organizationId;
     if (!organizationId) {
@@ -798,6 +804,11 @@ router.get('/users/:email/security', async (req: Request, res: Response) => {
     }
 
     const { email } = req.params;
+
+    // Admins may read any user's security details; everyone else only their own.
+    if (!isAdminRole(req.user?.role) && (req.user?.email || '').toLowerCase() !== String(email).toLowerCase()) {
+      return errorResponse(res, ErrorCode.FORBIDDEN, 'You can only view your own security details');
+    }
 
     // Get unified 2FA status
     const unified2FA = await oauthTokenSyncService.getUserUnified2FAStatus(organizationId, email);
