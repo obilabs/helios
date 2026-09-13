@@ -452,6 +452,15 @@ export class SyncSchedulerService {
         markedDeleted
       });
 
+      // Record the outcome where the admin screens can read it. Google never did
+      // this (Microsoft always has), so a broken connection looked healthy: the
+      // deleted-workspace failure on 2026-09-13 still showed "synced 21m ago".
+      await db.query(
+        `UPDATE gw_credentials SET last_sync_at = NOW(), sync_status = 'completed', sync_error = NULL, updated_at = NOW()
+          WHERE organization_id = $1`,
+        [organizationId],
+      ).catch((e: any) => logger.warn('Could not record the Google sync outcome', { organizationId, error: e?.message }));
+
       // The directory just changed; anything summarising it is now wrong.
       await cacheService.invalidateDirectory(organizationId).catch((e: any) =>
         logger.warn('Could not invalidate directory caches after sync', { organizationId, error: e?.message }),
@@ -459,6 +468,11 @@ export class SyncSchedulerService {
 
     } catch (error: any) {
       logger.error('Sync failed for organization', { organizationId, error: error.message });
+      await db.query(
+        `UPDATE gw_credentials SET sync_status = 'failed', sync_error = $2, updated_at = NOW()
+          WHERE organization_id = $1`,
+        [organizationId, String(error?.message || error).slice(0, 1000)],
+      ).catch((e: any) => logger.warn('Could not record the Google sync failure', { organizationId, error: e?.message }));
       throw error;
     }
   }

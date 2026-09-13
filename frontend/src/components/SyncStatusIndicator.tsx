@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { PlatformIcon } from './ui/PlatformIcon';
 import './SyncStatusIndicator.css';
@@ -22,18 +22,16 @@ interface SyncStatus {
 /** "every 15 minutes, next in 7" / "automatic sync is off", from the real schedule. */
 function scheduleNote(schedule: SyncStatus['schedule']): string {
   if (!schedule) return '';
-  if (!schedule.autoSyncEnabled || !schedule.scheduled) {
-    return 'Automatic sync is off. Sync from here when needed.';
-  }
+  if (!schedule.autoSyncEnabled || !schedule.scheduled) return 'Automatic sync is off.';
   const every = schedule.intervalSeconds >= 3600
-    ? `${Math.round(schedule.intervalSeconds / 3600)} hour${schedule.intervalSeconds >= 7200 ? 's' : ''}`
-    : `${Math.round(schedule.intervalSeconds / 60)} minutes`;
+    ? `${Math.round(schedule.intervalSeconds / 3600)} hr`
+    : `${Math.round(schedule.intervalSeconds / 60)} min`;
   let next = '';
   if (schedule.nextSyncAt) {
     const mins = Math.max(0, Math.round((new Date(schedule.nextSyncAt).getTime() - Date.now()) / 60000));
-    next = mins < 1 ? ', next in under a minute' : `, next in ${mins} min`;
+    next = mins < 1 ? ' · next in under a minute' : ` · next in ${mins} min`;
   }
-  return `Syncs automatically every ${every}${next}.`;
+  return `Sync interval: ${every}${next}`;
 }
 
 /** "just now", "6m", "3h", "2d" — short enough for a header. */
@@ -201,7 +199,9 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
         // Hover answers "when?"; click opens the details. Clicking the stamp used
         // to START a sync, which surprised admins who clicked expecting to read
         // something. Syncing is now an explicit button inside the details.
-        const hover = `${stamp.label} · synced ${ago(stamp.lastSync)} · click for details`;
+        const hover = failed && stamp.error
+          ? `${stamp.label} · last sync FAILED: ${stamp.error} · click for details`
+          : `${stamp.label} · synced ${ago(stamp.lastSync)} · click for details`;
 
         return (
           <div className="sync-status-wrap" key={stamp.key}>
@@ -223,7 +223,12 @@ export function SyncStatusIndicator({ isAdmin }: { isAdmin: boolean }) {
               {isSyncing ? (
                 <RefreshCw size={12} className="spin" />
               ) : (
-                <span className="sync-status-text">{ago(stamp.lastSync)}</span>
+                <>
+                  <span className="sync-status-text">{ago(stamp.lastSync)}</span>
+                  {/* A broken connection must not look like a healthy one. The sign is
+                      always visible; the reason is one hover away, so nothing overflows. */}
+                  {failed && <AlertTriangle size={12} className="sync-status-warn" aria-hidden="true" />}
+                </>
               )}
             </button>
 
