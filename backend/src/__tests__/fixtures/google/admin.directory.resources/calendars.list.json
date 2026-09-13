@@ -1,0 +1,51 @@
+{
+  "family": "admin.directory.resources",
+  "name": "calendars.list",
+  "note": "Listing every bookable resource.",
+  "recordedAt": "2026-09-13T01:37:18.951Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/resources/calendars",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#resources#calendars#calendarResourcesList",
+      "etag": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/1KicCh8JZrrmjbStwseDYHWW8s0\"",
+      "items": [
+        {
+          "kind": "admin#directory#resources#calendars#CalendarResource",
+          "etags": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/oCcZdXI8r0JDzDnThZauMzPnzao\"",
+          "resourceId": "boardroom-1",
+          "resourceName": "Boardroom",
+          "generatedResourceName": "Edmonton HQ-2-North-Boardroom (10)",
+          "resourceType": "Conference Room",
+          "resourceEmail": "c_188egrb028uiuj1mm0s77mhtfr48g@resource.calendar.google.com",
+          "capacity": 10,
+          "buildingId": "edmonton-hq",
+          "floorName": "2",
+          "floorSection": "North",
+          "resourceCategory": "CONFERENCE_ROOM",
+          "userVisibleDescription": "Ten seats, display, whiteboard"
+        },
+        {
+          "kind": "admin#directory#resources#calendars#CalendarResource",
+          "etags": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/MPdBPrVJImPynTBYgilUobTwoIU\"",
+          "resourceId": "desk-2-14",
+          "resourceName": "Desk 2-14",
+          "generatedResourceName": "(Desk)-Edmonton HQ-2-North-Desk 2-14 (1)",
+          "resourceType": "Desk",
+          "resourceEmail": "c_188aaqmftig74jfmg24drfe8b61t4@resource.calendar.google.com",
+          "capacity": 1,
+          "buildingId": "edmonton-hq",
+          "floorName": "2",
+          "floorSection": "North",
+          "resourceCategory": "OTHER",
+          "userVisibleDescription": "Hot desk, dual monitors"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "family": "admin.directory.resources",
+  "name": "buildings.list",
+  "note": "Listing buildings.",
+  "recordedAt": "2026-09-13T01:37:19.571Z",
+  "request": {
+    "method": "GET",
+    "host": "admin.googleapis.com",
+    "path": "admin/directory/v1/customer/my_customer/resources/buildings",
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "admin#directory#resources#buildings#buildingsList",
+      "etag": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/IlvGdbVPu7s5GsevsyV02AdQAvU\"",
+      "buildings": [
+        {
+          "kind": "admin#directory#resources#buildings#Building",
+          "etags": "\"RxQ_zS8vUeMDpfQeRulTz7TSa0RACJETA9jfNilf5LE/JbhPj8wP6EjQ4KY7sNAUsPx7-40\"",
+          "buildingId": "edmonton-hq",
+          "buildingName": "Edmonton HQ",
+          "description": "Head office",
+          "coordinates": {
+            "latitude": 53.5461,
+            "longitude": -113.4938
+          },
+          "floorNames": [
+            "1",
+            "2"
+          ]
+        }
+      ]
+    }
+  }
+}
