@@ -471,7 +471,7 @@ router.put('/settings', authenticateToken, requireAdmin, async (req: Request, re
     const result = await db.query(
       `UPDATE organizations
        SET ${updates.join(', ')}, updated_at = NOW()
-       WHERE id = ${paramIndex}
+       WHERE id = $${paramIndex}
        RETURNING id, name, domain, updated_at`,
       [...values, req.user!.organizationId]
     );

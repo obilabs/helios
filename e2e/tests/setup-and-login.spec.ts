@@ -28,6 +28,9 @@ const ORG = {
   domain: 'e2e-firstrun.test',
 };
 
+// The organization name the settings test saves through the UI.
+const RENAMED_ORG = 'E2E Renamed Org';
+
 const ADMIN = {
   firstName: 'Ada',
   lastName: 'Setup',
@@ -56,6 +59,17 @@ async function expectDashboard(page: Page): Promise<void> {
   await dismissViewOnboarding(page);
   await expect(page.locator('.dashboard-content')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+}
+
+// Cold sign-in through the login form (fresh context, session cookie only).
+async function signInViaForm(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 20_000 });
+  await page.fill('input[type="email"]', ADMIN.email);
+  await page.fill('input[type="password"]', ADMIN.password);
+  await page.click('button[type="submit"]');
+  await page.waitForSelector('input[type="email"]', { state: 'hidden', timeout: 20_000 });
+  await expectDashboard(page);
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -165,5 +179,71 @@ test.describe('First-run: setup wizard and login form', () => {
     await expect(page.locator('.login-error')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('.dashboard-content')).toHaveCount(0);
+  });
+
+  test('a signed-in admin saves an organization setting through the UI, it persists, and a PUT without the CSRF token gets 403', async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await signInViaForm(page);
+
+    // The login form authenticates with the session cookie only; no bearer token
+    // is stored, so this save exercises the CSRF-token path.
+    expect(await page.evaluate(() => localStorage.getItem('helios_token'))).toBeNull();
+
+    await page.goto('/admin/settings');
+    await page.getByTestId('settings-tab-organization').click();
+    await expect(page.getByRole('heading', { name: 'Organization Settings' })).toBeVisible({ timeout: 20_000 });
+
+    const nameInput = page.locator('.form-group', { hasText: 'Organization Name' }).locator('input');
+    await expect(nameInput).toHaveValue(ORG.name);
+
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await nameInput.fill(RENAMED_ORG);
+
+    // Settings reloads the page itself after a successful save.
+    const reloaded = page.waitForEvent('load');
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/api/v1/organization/settings') && r.request().method() === 'PUT',
+      ),
+      page.getByRole('button', { name: 'Save', exact: true }).click(),
+    ]);
+    const sent = await response.request().allHeaders();
+    expect(sent['x-csrf-token'], 'the UI sends the CSRF token').toBeTruthy();
+    expect(sent['authorization'], 'cookie session only, no bearer token').toBeUndefined();
+    // The page reloads itself after a successful save, so the body is not read here;
+    // the read-back below confirms what was stored.
+    expect(response.status()).toBe(200);
+
+    // Persistence: after that fresh page load, read it back from the UI and the API.
+    await reloaded;
+    await page.getByTestId('settings-tab-organization').click({ timeout: 20_000 });
+    await expect(
+      page.locator('.form-group', { hasText: 'Organization Name' }).locator('input'),
+    ).toHaveValue(RENAMED_ORG, { timeout: 20_000 });
+
+    const current = await page.request.get('/api/v1/organization/current');
+    expect((await current.json()).data.name).toBe(RENAMED_ORG);
+
+    // API level, reusing this signed-in session rather than signing in again:
+    // a cookie-authenticated PUT without X-CSRF-Token is refused.
+    const cookies = await context.cookies();
+    expect(cookies.find((c) => /helios\.session_token/.test(c.name)), 'session cookie').toBeTruthy();
+    const csrf = cookies.find((c) => c.name === 'helios_csrf');
+    expect(csrf, 'CSRF cookie issued').toBeTruthy();
+
+    // page.request shares the browser context's cookie jar (session + CSRF cookie).
+    const body = { name: RENAMED_ORG, domain: ORG.domain };
+    const refused = await page.request.put('/api/v1/organization/settings', { data: body });
+    expect(refused.status()).toBe(403);
+
+    // Same request with the token succeeds, so the 403 above is the CSRF check.
+    const accepted = await page.request.put('/api/v1/organization/settings', {
+      data: body,
+      headers: { 'X-CSRF-Token': csrf!.value },
+    });
+    expect(accepted.status()).toBe(200);
   });
 });

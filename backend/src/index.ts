@@ -92,6 +92,7 @@ import initialPasswordsRoutes from './routes/initial-passwords.routes.js';
 import securityRoutes from './routes/security.routes.js';
 import mtpRoutes from './routes/mtp.routes.js';
 import relayRoutes from './routes/relay.routes.js';
+import { csrfProtection, CSRF_HEADER } from './middleware/csrf.js';
 import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.js';
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
@@ -182,6 +183,7 @@ const corsOptions = {
     'Content-Type',
     'Authorization',
     'X-Requested-With',
+    CSRF_HEADER,
     'X-API-Key',
     'X-Actor-Name',
     'X-Actor-Email',
@@ -198,6 +200,10 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// CSRF: state-changing requests that ride the session cookie must echo the
+// double-submit token (middleware/csrf.ts).
+app.use(csrfProtection);
 
 // Request ID middleware - MUST be early in chain for tracing
 app.use(requestIdMiddleware);

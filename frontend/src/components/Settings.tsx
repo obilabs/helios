@@ -238,7 +238,19 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
       if (response.ok) {
         setIsEditingOrg(false);
-        // Optionally trigger a page refresh to update the header
+        // The shell restores the organization name/domain from this stored copy
+        // on load, so refresh it from the saved record before reloading.
+        const saved = (await response.json())?.data;
+        try {
+          const stored = JSON.parse(localStorage.getItem('helios_organization') || '{}');
+          localStorage.setItem('helios_organization', JSON.stringify({
+            ...stored,
+            organizationName: saved?.name ?? editedOrgName,
+            domain: saved?.domain ?? editedDomain,
+          }));
+        } catch {
+          // Storage unavailable: the reload still shows the server copy after sign-in.
+        }
         window.location.reload();
       } else {
         console.error('Failed to save organization settings');

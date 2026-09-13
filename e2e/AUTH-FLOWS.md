@@ -15,7 +15,7 @@ and authenticate over the API, so neither screen is otherwise exercised.
 
 | File | Purpose |
 | --- | --- |
-| `tests/setup-and-login.spec.ts` | The suite: wizard → login → wrong-password (serial). |
+| `tests/setup-and-login.spec.ts` | The suite: wizard → login → wrong-password → settings save through the UI → cookie-authenticated PUT without the CSRF token is refused (serial). |
 | `playwright.auth-flows.config.ts` | Dedicated config (own `globalSetup`, no retries). |
 | `global-setup.auth-flows.ts` | Resets DB to a fresh install + asserts setup is incomplete. |
 | `tests/utils/db-reset.ts` | TRUNCATEs org/admin/auth via `docker exec` (postgres isn't host-exposed). |
