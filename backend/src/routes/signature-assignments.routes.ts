@@ -9,6 +9,8 @@ import { Router, Request, Response } from 'express';
 import { requireAuth, requirePermission, requireAdmin } from '../middleware/auth.js';
 import { signatureAssignmentService } from '../services/signature-assignment.service.js';
 import { AssignmentType } from '../types/signatures.js';
+import { logger } from '../utils/logger.js';
+import { logSafe } from '../utils/log-safe.js';
 
 const router = Router();
 
@@ -238,7 +240,7 @@ router.post('/', requireAuth, requirePermission('admin'), async (req: Request, r
       data: assignment,
     });
   } catch (error: any) {
-    console.error('Error creating assignment:', error);
+    logger.error('Error creating assignment', { error: logSafe(error) });
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to create assignment',

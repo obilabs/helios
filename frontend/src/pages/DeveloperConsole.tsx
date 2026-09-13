@@ -6,6 +6,7 @@ import * as google from '../lib/googleApiRequests';
 import { buildOffboardConfigPayload } from '../lib/offboardConfig';
 import './DeveloperConsole.css';
 import { stripHtmlTags } from '../lib/html-text';
+import { secureRandomInt } from '../lib/secure-random';
 
 interface ConsoleOutput {
   type: 'command' | 'success' | 'error' | 'info';
@@ -192,9 +193,9 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   ];
 
   const generateMemorablePassword = () => {
-    const adj = PASSWORD_ADJECTIVES[Math.floor(Math.random() * PASSWORD_ADJECTIVES.length)];
-    const noun = PASSWORD_NOUNS[Math.floor(Math.random() * PASSWORD_NOUNS.length)];
-    const num = Math.floor(Math.random() * 900) + 100; // 100-999
+    const adj = PASSWORD_ADJECTIVES[secureRandomInt(PASSWORD_ADJECTIVES.length)];
+    const noun = PASSWORD_NOUNS[secureRandomInt(PASSWORD_NOUNS.length)];
+    const num = secureRandomInt(900) + 100; // 100-999
     return `${adj}${noun}#${num}`;
   };
 

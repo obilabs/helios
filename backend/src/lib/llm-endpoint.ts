@@ -11,6 +11,8 @@
  *     host names.
  */
 
+import { trimTrailing } from '../utils/strings.js';
+
 export class LlmEndpointError extends Error {}
 
 const METADATA_HOSTS = new Set(['metadata.google.internal', 'metadata', 'instance-data']);
@@ -44,5 +46,5 @@ export function validateLlmEndpoint(raw: unknown): string {
   if (isLinkLocal(url.hostname) || METADATA_HOSTS.has(url.hostname.toLowerCase())) {
     throw new LlmEndpointError('Endpoint address is not allowed');
   }
-  return `${url.origin}${url.pathname}`.replace(/\/+$/, '');
+  return trimTrailing(`${url.origin}${url.pathname}`, '/');
 }

@@ -44,6 +44,7 @@
  * The MEANING of an existing value is frozen. Renaming or removing one is a deliberate,
  * noted decision in north-star/BUILD-WINDOW-2026.md, never a refactor.
  */
+import { trimTrailing } from '../../utils/strings.js';
 
 /**
  * Bumped only for a BREAKING change to the wire shape. Additive fields do not bump it.
@@ -125,7 +126,7 @@ export function canonicalMbox(email: string): string {
 }
 
 export function canonicalAccount(homePage: string, name: string): string {
-  return `${homePage.trim().replace(/\/+$/, '')}#${name.trim()}`;
+  return `${trimTrailing(homePage.trim(), '/')}#${name.trim()}`;
 }
 
 /** Recover the email from a canonical mbox, for resolving the actor to a Helios user. */

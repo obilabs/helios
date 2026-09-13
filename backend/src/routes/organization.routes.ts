@@ -27,6 +27,7 @@ import { cacheService } from '../services/cache.service.js';
 import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '../lib/sync-settings.js';
 import { fieldDriftService } from '../services/field-drift.service.js';
 import { ACCOUNT_PURPOSE_LABELS, isAccountPurpose } from '../lib/account-purpose.js';
+import { isEmailFormat } from '../utils/email-format.js';
 
 const router = Router();
 
@@ -1383,8 +1384,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isEmailFormat(email)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid email format'
@@ -1400,7 +1400,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     }
 
     // Validate alternate email format if provided
-    if (alternateEmail && !emailRegex.test(alternateEmail)) {
+    if (alternateEmail && !isEmailFormat(alternateEmail)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid alternate email format'

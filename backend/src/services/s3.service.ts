@@ -12,6 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { logger } from '../utils/logger.js';
 import { Readable } from 'stream';
 import crypto from 'crypto';
+import { logSafe } from '../utils/log-safe.js';
 
 interface S3Config {
   endpoint: string;
@@ -162,7 +163,7 @@ class S3Service {
         url = await this.getPresignedUrl(key, false);
       }
 
-      logger.info(`File uploaded to S3: ${key}`);
+      logger.info(`File uploaded to S3: ${logSafe(key)}`);
 
       return {
         success: true,
