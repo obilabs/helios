@@ -202,6 +202,8 @@ test.describe('First-run: setup wizard and login form', () => {
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await nameInput.fill(RENAMED_ORG);
 
+    // Settings reloads the page itself after a successful save.
+    const reloaded = page.waitForEvent('load');
     const [response] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/api/v1/organization/settings') && r.request().method() === 'PUT',
@@ -215,9 +217,9 @@ test.describe('First-run: setup wizard and login form', () => {
     // the read-back below confirms what was stored.
     expect(response.status()).toBe(200);
 
-    // Persistence: a fresh page load, then read it back from the UI and the API.
-    await page.goto('/admin/settings');
-    await page.getByTestId('settings-tab-organization').click();
+    // Persistence: after that fresh page load, read it back from the UI and the API.
+    await reloaded;
+    await page.getByTestId('settings-tab-organization').click({ timeout: 20_000 });
     await expect(
       page.locator('.form-group', { hasText: 'Organization Name' }).locator('input'),
     ).toHaveValue(RENAMED_ORG, { timeout: 20_000 });
