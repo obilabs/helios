@@ -362,6 +362,87 @@ jobs:
           END $$;
           SQL
 
+      # Phishing bones (Build Window 2026, Phase 02; migration 075). These are the FROZEN
+      # database behaviours the event stream depends on. A migration that drops the
+      # immutability trigger, or a "cleanup" that lets evidence be rewritten, fails here.
+      - name: Assert phishing event-stream contract
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE missing text; org uuid; camp uuid; rcpt uuid; ev bigint; caught boolean;
+          BEGIN
+            SELECT string_agg(t, ', ') INTO missing
+              FROM unnest(ARRAY['phish_campaign','phish_campaign_recipient','phish_report',
+                                'phish_event','phish_event_classification','phish_outbox']) AS t
+             WHERE NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = t);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'phishing bones: missing table(s): %', missing;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'phish_recipient_state') THEN
+              RAISE EXCEPTION 'phishing bones: missing projection view phish_recipient_state';
+            END IF;
+            IF EXISTS (SELECT 1 FROM feature_flags WHERE feature_key IN ('phishing.detection','phishing.simulation') AND is_enabled) THEN
+              RAISE EXCEPTION 'phishing bones: feature flags must ship DISABLED';
+            END IF;
+
+            -- Behaviour: append-only evidence. Everything below is rolled back with the DO block.
+            INSERT INTO organizations (name, domain) VALUES ('ci-bones','ci-bones.test') RETURNING id INTO org;
+            INSERT INTO phish_campaign (organization_id, name) VALUES (org, 'ci') RETURNING id INTO camp;
+            INSERT INTO phish_campaign_recipient (campaign_id, organization_id, user_ref, email, token_hash, delivered_at)
+              VALUES (camp, org, 'u', 'u@ci-bones.test', 'ci-hash', now()) RETURNING id INTO rcpt;
+            INSERT INTO phish_event (organization_id, campaign_id, recipient_id, user_ref, event_type, source, request_meta)
+              VALUES (org, camp, rcpt, 'u', 'clicked', 'redirect', '{"ip_full":"203.0.113.9"}') RETURNING id INTO ev;
+
+            caught := false;
+            BEGIN
+              UPDATE phish_event SET event_type = 'opened' WHERE id = ev;
+            EXCEPTION WHEN integrity_constraint_violation THEN caught := true;
+            END;
+            IF NOT caught THEN RAISE EXCEPTION 'phishing bones: phish_event UPDATE of event_type was ALLOWED'; END IF;
+
+            caught := false;
+            BEGIN
+              DELETE FROM phish_event WHERE id = ev;
+            EXCEPTION WHEN integrity_constraint_violation THEN caught := true;
+            END;
+            IF NOT caught THEN RAISE EXCEPTION 'phishing bones: phish_event DELETE was ALLOWED'; END IF;
+
+            -- The one sanctioned mutation: redacting request_meta.
+            UPDATE phish_event SET request_meta = request_meta - 'ip_full' WHERE id = ev;
+            IF (SELECT request_meta ? 'ip_full' FROM phish_event WHERE id = ev) THEN
+              RAISE EXCEPTION 'phishing bones: request_meta redaction did not apply';
+            END IF;
+
+            -- Verdicts are derived: a provisional click never counts until a human verdict lands.
+            IF (SELECT state FROM phish_recipient_state WHERE recipient_id = rcpt) <> 'delivered' THEN
+              RAISE EXCEPTION 'phishing bones: unclassified click must project as delivered';
+            END IF;
+            INSERT INTO phish_event_classification (event_id, classifier_version, verdict) VALUES (ev, 'ci-1', 'human');
+            IF (SELECT state FROM phish_recipient_state WHERE recipient_id = rcpt) <> 'clicked' THEN
+              RAISE EXCEPTION 'phishing bones: human-classified click must project as clicked';
+            END IF;
+
+            -- Outbox idempotency: one failed event per phish_event.
+            INSERT INTO phish_outbox (organization_id, event_id, contract_type, schema_version, payload)
+              VALUES (org, ev, 'phishing.recipient.failed', 1, '{}');
+            caught := false;
+            BEGIN
+              INSERT INTO phish_outbox (organization_id, event_id, contract_type, schema_version, payload)
+                VALUES (org, ev, 'phishing.recipient.failed', 1, '{}');
+            EXCEPTION WHEN unique_violation THEN caught := true;
+            END;
+            IF NOT caught THEN RAISE EXCEPTION 'phishing bones: duplicate outbox row was ALLOWED'; END IF;
+
+            RAISE NOTICE 'Phishing event-stream contract OK';
+            RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = '__rollback__';
+          EXCEPTION WHEN SQLSTATE 'P0001' THEN
+            IF SQLERRM <> '__rollback__' THEN RAISE; END IF;
+          END $$;
+          SQL
+
 
   frontend:
     runs-on: ubuntu-latest
