@@ -15,7 +15,6 @@ import {
   TemplateWithAssignmentCount,
   RenderedSignature,
   MERGE_FIELDS,
-  getMergeField,
 } from '../types/signatures.js';
 import { userTrackingService } from './user-tracking.service.js';
 

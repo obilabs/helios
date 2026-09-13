@@ -2,7 +2,6 @@ import { logger } from '../utils/logger.js';
 import { db } from '../database/connection.js';
 import { googleDriveService } from './google-drive.service.js';
 import { s3Service } from './s3.service.js';
-import crypto from 'crypto';
 import type {
   StorageBackend,
   StorageUploadResult,
@@ -185,12 +184,6 @@ export class MediaAssetStorageService {
     folderId?: string
   ): Promise<{ success: boolean; result?: StorageUploadResult; error?: string }> {
     try {
-      // Generate a unique storage path for assets
-      const timestamp = Date.now();
-      const hash = crypto.randomBytes(8).toString('hex');
-      const extension = filename.split('.').pop() || 'bin';
-      const folderPrefix = folderId ? `${folderId}/` : 'assets/';
-
       // Upload to MinIO via S3 service (public bucket for assets)
       const uploadResult = await s3Service.uploadFile(
         file,
