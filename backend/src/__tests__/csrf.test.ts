@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from '@jest/globals';
 import express, { Express } from 'express';
-import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import request from 'supertest';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -19,7 +19,18 @@ const SESSION = 'helios.session_token=sess-123';
 
 function buildApp(): Express {
   const app = express();
-  app.use(cookieParser());
+  app.use(rateLimit({ windowMs: 60_000, max: 10_000 }));
+  // Minimal stand-in for cookie-parser: req.cookies from the Cookie header.
+  app.use((req, _res, next) => {
+    req.cookies = Object.fromEntries(
+      (req.headers.cookie ?? '')
+        .split(';')
+        .map((part) => part.trim().split('='))
+        .filter(([name]) => name)
+        .map(([name, ...rest]) => [name, rest.join('=')])
+    );
+    next();
+  });
   app.use(csrfProtection);
   app.all('*', (_req, res) => {
     res.status(200).json({ ok: true });
