@@ -1,6 +1,6 @@
 /**
  * Make a request-derived value safe to put in a log line: line breaks are
- * replaced so one request cannot start a forged log entry, and long values
+ * removed so one request cannot start a forged log entry, and long values
  * are cut off.
  */
 export const MAX_LOG_VALUE_LENGTH = 500;
