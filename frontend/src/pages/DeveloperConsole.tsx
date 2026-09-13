@@ -2141,9 +2141,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             role: 'user',
             userType: 'synced' // Mark as synced since we're creating in GW
           };
-          if (password) {
-            (heliosBody as any).password = password;
-          }
+          (heliosBody as any).password = password;
           await apiRequest('POST', '/api/v1/organization/users', heliosBody);
           addOutput('success', `  ✓ Created in Helios`);
           heliosCreated = true;
