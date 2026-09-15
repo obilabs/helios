@@ -42,6 +42,7 @@ export function loadKnowledgeBase(): KnowledgeEntry[] {
   const contentFiles = [
     'commands.json',
     'guides.json',
+    'google-groups.json',
     'features.json',
     'settings.json',
     'troubleshooting.json',

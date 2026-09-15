@@ -23,6 +23,9 @@ export const SYNONYMS: Record<string, string[]> = {
   // Entities
   'users': ['user', 'people', 'members', 'employees', 'staff', 'accounts', 'person'],
   'groups': ['group', 'teams', 'team', 'distribution', 'mailing'],
+  // Google Groups for Business (shared inboxes, moderation, delivery settings)
+  'inbox': ['mailbox', 'shared-inbox', 'shared-mailbox', 'collaborative-inbox', 'helpdesk', 'queue'],
+  'moderation': ['moderate', 'moderated', 'pending', 'held', 'spam', 'quarantine'],
   'orgunits': ['ou', 'organizational-units', 'org-units', 'departments', 'units'],
   'delegates': ['delegate', 'delegation', 'access', 'permissions'],
 
