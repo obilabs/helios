@@ -106,8 +106,11 @@ export function parseMembers(text: string): { members: Array<{ email: string; ro
     if (!line) continue;
     const [email, roleRaw] = line.split(/[\s,;]+/);
     const role = (roleRaw || 'MEMBER').toUpperCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) problems.push(`"${line}": not an email address`);
-    else if (role !== 'OWNER' && role !== 'MANAGER' && role !== 'MEMBER') problems.push(`"${line}": role must be OWNER, MANAGER or MEMBER`);
+    // Shape only (the API validates fully). indexOf keeps this linear-time.
+    const at = email.indexOf('@');
+    if (at <= 0 || at !== email.lastIndexOf('@') || email.indexOf('.', at + 2) === -1 || email.endsWith('.')) {
+      problems.push(`"${line}": not an email address`);
+    } else if (role !== 'OWNER' && role !== 'MANAGER' && role !== 'MEMBER') problems.push(`"${line}": role must be OWNER, MANAGER or MEMBER`);
     else members.push({ email, role });
   }
   return { members, problems };
