@@ -1779,12 +1779,10 @@ class UserOffboardingService {
     const intervalMs = Math.max(0, parseInt(process.env.HELIOS_TRANSFER_POLL_INTERVAL_MS || '5000', 10));
     const windowMs = Math.max(0, parseInt(process.env.HELIOS_TRANSFER_POLL_WINDOW_MS || '120000', 10));
     const deadline = Date.now() + windowMs;
-    let status = 'unknown';
-    let applications: Array<{ applicationId: string; status: string }> = [];
     for (;;) {
       const res = await datatransfer.transfers.get({ dataTransferId: transferId });
-      status = String(res?.data?.overallTransferStatusCode || 'unknown');
-      applications = (res?.data?.applicationDataTransfers || []).map((a: any) => ({
+      const status = String(res?.data?.overallTransferStatusCode || 'unknown');
+      const applications: Array<{ applicationId: string; status: string }> = (res?.data?.applicationDataTransfers || []).map((a: any) => ({
         applicationId: String(a.applicationId),
         status: String(a.applicationTransferStatus || 'unknown'),
       }));

@@ -12,6 +12,7 @@ import {
   googleScopesForPath,
 } from '../config/google-scopes.js';
 import { ACCOUNT_PURPOSE_FIELD, HELIOS_SCHEMA_NAME, type AccountPurpose } from '../lib/account-purpose.js';
+import { errorKind } from '../utils/log-safe.js';
 
 /**
  * A tenant that has not authorised an optional scope refuses the token
@@ -463,7 +464,7 @@ export class GoogleWorkspaceService {
 
       return decodeServiceAccountKey(result.rows[0].service_account_key);
     } catch (error) {
-      logger.error('Failed to get credentials', { organizationId, error });
+      logger.error('Failed to get credentials', { organizationId, error: errorKind(error) });
       return null;
     }
   }
