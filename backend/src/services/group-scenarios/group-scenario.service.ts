@@ -32,6 +32,7 @@ import {
   type GroupsGateway,
   type ScopeProbe,
 } from './google-groups.gateway.js';
+import { isEmailFormat } from '../../utils/email-format.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -132,7 +133,6 @@ export interface ServiceDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MEMBERS = 50;
 const MAX_NAME = 73;
 
@@ -414,7 +414,7 @@ export class GroupScenarioService {
     const problems: Array<{ field: string; message: string }> = [];
     const warnings: string[] = [];
     const email = normaliseEmail(input.email);
-    if (!EMAIL.test(email)) problems.push({ field: 'email', message: 'A valid group email is required' });
+    if (!isEmailFormat(email)) problems.push({ field: 'email', message: 'A valid group email is required' });
     const local = email.split('@')[0];
     if (RESERVED_GROUP_LOCAL_PARTS.includes(local)) {
       problems.push({ field: 'email', message: `${local}@ is reserved by Google and cannot be a group address. Add it as an alias of an existing group instead.` });
@@ -434,7 +434,7 @@ export class GroupScenarioService {
       const seen = new Set<string>();
       for (const raw of aliases) {
         const a = normaliseEmail(raw);
-        if (!EMAIL.test(a)) problems.push({ field: 'aliases', message: `${raw} is not a valid email address` });
+        if (!isEmailFormat(a)) problems.push({ field: 'aliases', message: `${raw} is not a valid email address` });
         else if (a === email) problems.push({ field: 'aliases', message: `${raw} is the group's own address` });
         else if (seen.has(a)) problems.push({ field: 'aliases', message: `${raw} is listed twice` });
         seen.add(a);
@@ -450,7 +450,7 @@ export class GroupScenarioService {
     } else {
       if (members.length > MAX_MEMBERS) problems.push({ field: 'members', message: `At most ${MAX_MEMBERS} members can be added here` });
       for (const m of members) {
-        if (!m || !EMAIL.test(normaliseEmail(m.email))) problems.push({ field: 'members', message: `${m?.email} is not a valid email address` });
+        if (!m || !isEmailFormat(normaliseEmail(m.email))) problems.push({ field: 'members', message: `${m?.email} is not a valid email address` });
         if (m?.role !== undefined && !MEMBER_ROLES.includes(m.role)) problems.push({ field: 'members', message: `role must be one of ${MEMBER_ROLES.join(', ')}` });
       }
     }
