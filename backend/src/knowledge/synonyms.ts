@@ -30,6 +30,10 @@ export const SYNONYMS: Record<string, string[]> = {
   'gw': ['google', 'google-workspace', 'workspace', 'gsuite'],
   'microsoft': ['ms', 'm365', 'microsoft-365', 'office365', 'azure', 'entra'],
 
+  // Google Workspace AI features (Gemini, Workspace Studio flows, Gems, Gemini Notebook)
+  'agents': ['agent', 'flows', 'flow', 'studio', 'workspace-studio', 'automation', 'automations'],
+  'gemini': ['ai', 'generative-ai', 'genai', 'gems', 'gem', 'notebooklm', 'notebook'],
+
   // General
   'all': ['every', 'entire', 'complete', 'full'],
   'help': ['?', 'commands', 'usage', 'how'],

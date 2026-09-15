@@ -296,4 +296,31 @@ describe('Knowledge Base Search', () => {
       expect(response.results.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Google Workspace agents guide', () => {
+    const ID = 'guide-google-workspace-agents';
+
+    it('is registered in the knowledge base with a verification date', () => {
+      const entry = getKnowledgeById(ID);
+      expect(entry).not.toBeNull();
+      expect(entry!.type).toBe('guide');
+      expect(entry!.content).toContain('Last verified: September 2026');
+      // The article must stay honest about Helios's role: agents are configured in the Admin console.
+      expect(entry!.content).toContain('Helios does **not** create, configure, pause or audit');
+    });
+
+    it('is found by the terms admins actually type', () => {
+      for (const query of ['workspace agents', 'workspace studio', 'gemini', 'turn off gemini', 'stop a flow']) {
+        const ids = searchKnowledge(query, { limit: 5 }).results.map(r => r.entry.id);
+        expect(ids).toContain(ID);
+      }
+    });
+
+    it('links only to existing related entries', () => {
+      const entry = getKnowledgeById(ID)!;
+      for (const relatedId of entry.relatedIds || []) {
+        expect(getKnowledgeById(relatedId)).not.toBeNull();
+      }
+    });
+  });
 });
