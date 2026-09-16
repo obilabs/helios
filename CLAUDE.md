@@ -24,6 +24,25 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 **Status:** 85% Complete - Core functionality working, needs Google Workspace integration completion
 **Architecture:** Single-tenant (one organization per installation)
 
+## Commits and identity
+
+These are org-wide standing rules (canonical: the private `obilabs/north-star` repo,
+`PRINCIPLES.md` → Engineering). They are repeated here because this is where an agent
+working in Helios looks.
+
+- Commit as `Michael Agu <36439190+openmoto@users.noreply.github.com>` (or your own
+  GitHub noreply address). Never a personal webmail address: GitHub push protection
+  and the shared hygiene workflow reject it.
+- **No AI co-author trailers** (`Co-authored-by: Claude …`) and no "Generated with
+  Claude Code" lines in commits or PR bodies. AI is a tool, not a per-commit author;
+  AI-assisted development is disclosed once, in the README. `.claude/settings.json`
+  in this repo turns that attribution off — keep it committed.
+- Work on a branch and land it through a pull request. Never commit to, force-push or
+  `git branch -f` `main`.
+- This is a public repository: commit messages, PR titles and PR bodies use routine
+  engineering wording. Never narrate a security finding in public; the reasoning
+  lives in the private north-star repo.
+
 ## 🎯 CRITICAL: This is NOT Multi-Tenant
 
 **IMPORTANT:** This is the CLIENT PORTAL for single organizations.
