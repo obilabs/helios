@@ -184,6 +184,11 @@ services:
       # exists: docker compose logs backend | grep 'setup token'
       HELIOS_SETUP_TOKEN: ${HELIOS_SETUP_TOKEN:-}
 
+      # Telemetry (README "Privacy & Telemetry"). Empty = the in-app settings
+      # decide (anonymous liveness ping on, usage data off). `false` turns off
+      # ALL outbound telemetry, liveness ping and licence re-validation included.
+      HELIOS_TELEMETRY_ENABLED: ${HELIOS_TELEMETRY_ENABLED:-}
+
     volumes:
       # Mount schema file for database initialization
       - ./database/schema_organization.sql:/app/database/schema_organization.sql:ro

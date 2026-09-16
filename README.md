@@ -30,7 +30,7 @@ This project is currently in active development. Features, database schemas, and
 
 ## What is Helios?
 
-Helios is a web-based admin portal for Google Workspace, with Microsoft 365 alongside it. It gives you a modern UI for managing users, groups, email signatures, lifecycle automation and licences — while keeping your data, and the credentials that reach your tenant, on your own infrastructure — apart from optional, off-by-default connections listed under [Privacy & Telemetry](#privacy--telemetry). Every action is logged: who did what, when.
+Helios is a web-based admin portal for Google Workspace, with Microsoft 365 alongside it. It gives you a modern UI for managing users, groups, email signatures, lifecycle automation and licences — while keeping your data, and the credentials that reach your tenant, on your own infrastructure — apart from an anonymous liveness ping you can turn off and optional, off-by-default connections, all listed under [Privacy & Telemetry](#privacy--telemetry). Every action is logged: who did what, when.
 
 Google Workspace is the primary platform. Microsoft 365 support covers users, groups and licences (create, update, licence, disable, delete) and is CLI-first; deeper Microsoft management (Exchange, mailboxes, SharePoint) is deliberately out of scope.
 
@@ -52,7 +52,7 @@ Google Workspace is the primary platform. Microsoft 365 support covers users, gr
 
 ### Why Self-Hosted?
 
-- **Data Sovereignty** - Your data stays on your infrastructure and talks only to your own Google / Microsoft tenant, except for optional connections that are off by default (usage telemetry, an AI provider you configure, licence validation when a licence key is set)
+- **Data Sovereignty** - Your data stays on your infrastructure and talks only to your own Google / Microsoft tenant, except for an anonymous liveness ping (a random ID and the version, one setting to turn off) and optional connections that are off by default (usage telemetry, an AI provider you configure, licence validation when a licence key is set)
 - **No Per-User Fees** - One fixed cost, not $3-5/user/month like SaaS alternatives
 - **Full Control** - Customize, extend, integrate however you want
 - **Compliance Ready** - Every action logged for audit
@@ -116,30 +116,44 @@ Not available yet. When it is: we run the server, you keep full admin access, an
 
 ## Privacy & Telemetry
 
-### What We Collect (If Enabled)
+Helios separates two things and defaults them differently.
 
-Telemetry is **disabled by default** for self-hosted instances.
+### Anonymous liveness ping (on by default)
 
-If you choose to enable it (`HELIOS_TELEMETRY_ENABLED=true`), the instance sends a heartbeat (daily, or hourly when a licence key is set) containing:
-- A random instance ID, the Helios version and uptime
-- A user count range and the list of enabled modules
-- Last sync status (success / error / none)
+Sent once when first-run setup completes, then daily. The payload is exactly:
+
+```json
+{ "instance_id": "helios_<random>", "version": "<helios version>" }
+```
+
+The instance ID is random and not derived from your organization. The ping exists so running installs without a licence key can be counted. It is shown in the setup wizard, where you can untick it, and can be turned off any time under **Settings > Advanced > Telemetry**. Nothing is sent before setup is complete. On an install with `HELIOS_LICENSE_KEY` set, the licence check already reports the install as running, so no separate ping is sent.
+
+### Usage telemetry (off by default, opt-in)
+
+Turned on under **Settings > Advanced > Telemetry**. When on, it replaces the liveness ping and is sent daily (hourly when a licence key is set). It adds to the fields above:
+- A user count range (`1-10`, `11-50`, ...) and the list of enabled modules
+- Uptime in hours and the last sync outcome (success / error / none)
 - Counts of API calls, commands and UI actions by name
 - The licence key, if one is set
 
-We **never** collect:
+### Never sent
+
 - Your organization name or domain
-- User names, emails, or any PII
-- Your Google Workspace data
+- User names, emails, or any other personal data
+- IP addresses (none are included in any payload)
+- Credentials, or any Google Workspace / Microsoft 365 data
 
-The payload is defined in [`backend/src/services/telemetry.service.ts`](backend/src/services/telemetry.service.ts).
+Both payloads are built in [`backend/src/lib/telemetry-policy.ts`](backend/src/lib/telemetry-policy.ts) and sent to `https://api.obilabs.dev/api/instances/heartbeat` (override with `HELIOS_TELEMETRY_URL`).
 
-### How to Control Telemetry
+### Turning everything off
 
 ```env
-# In your .env file
-HELIOS_TELEMETRY_ENABLED=false  # Default: disabled
+# Disable ALL outbound telemetry: the liveness ping, usage telemetry and
+# licence re-validation. Nothing in Helios is gated, so it keeps working.
+HELIOS_TELEMETRY_ENABLED=false
 ```
+
+The environment variable beats the in-app settings. Unset, the in-app settings decide. `HELIOS_TELEMETRY_ENABLED=true` keeps its earlier meaning and turns usage telemetry on. Every change made in the setup wizard or in Settings is recorded in the append-only security audit log.
 
 ### Other optional outbound connections
 

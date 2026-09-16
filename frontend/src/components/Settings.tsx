@@ -15,10 +15,11 @@ import { MasterDataSection } from './settings/MasterDataSection';
 import { TrackingSettings } from './settings/TrackingSettings';
 import { FeatureFlagsSettings } from './settings/FeatureFlagsSettings';
 import { RelayAccessSettings } from './settings/RelayAccessSettings';
+import { TelemetrySettings } from './settings/TelemetrySettings';
 import { EntityLabelSettings } from './settings/EntityLabelSettings';
 import { LicenseLimitsSection } from './LicenseLimitsSection';
 import { useTabPersistence } from '../hooks/useTabPersistence';
-import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link, Book, Terminal } from 'lucide-react';
+import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Key, Search as SearchIcon, RefreshCw, BarChart3, Info, MoreVertical, Power, Database, Bot, ToggleLeft, Link, Book, Terminal, Activity } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -1099,6 +1100,12 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                     <TrackingSettings />
                   </div>
                 )}
+
+                {/* Telemetry: what this install sends to ObiLabs */}
+                <div className="advanced-card" style={{ marginTop: '24px' }}>
+                  <h3><Activity size={16} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Telemetry</h3>
+                  <TelemetrySettings />
+                </div>
 
                 {/* Features: what this installation has switched on */}
                 <div className="advanced-card" style={{ marginTop: '24px' }}>
