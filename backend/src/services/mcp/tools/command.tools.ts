@@ -1052,7 +1052,7 @@ headers = {
 response = requests.${method.toLowerCase()}(
     "${endpoint}",
     headers=headers,
-    json=${JSON.stringify(body, null, 4).replace(/"/g, '"')}
+    json=${JSON.stringify(body, null, 4)}
 )
 
 print(response.json())`;

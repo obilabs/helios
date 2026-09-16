@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { isEmailFormat, MAX_EMAIL_LENGTH } from '../utils/email-format.js';
 import { trimTrailing } from '../utils/strings.js';
-import { logSafe, MAX_LOG_VALUE_LENGTH } from '../utils/log-safe.js';
+import { logSafe, errorKind, MAX_LOG_VALUE_LENGTH } from '../utils/log-safe.js';
 
 // The pattern isEmailFormat replaces; results must match it for sane lengths.
 const LEGACY = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,5 +49,19 @@ describe('logSafe', () => {
     expect(logSafe(new Error('bad\nthing'))).toBe('badthing');
     const out = logSafe('x'.repeat(MAX_LOG_VALUE_LENGTH + 10));
     expect(out.length).toBe(MAX_LOG_VALUE_LENGTH + 3);
+  });
+});
+
+describe('errorKind', () => {
+  it('returns only the error type, never the message', () => {
+    let err: unknown;
+    try {
+      JSON.parse('{"private_key": "abc');
+    } catch (e) {
+      err = e;
+    }
+    expect(errorKind(err)).toBe('SyntaxError');
+    expect(errorKind(new Error('secret'))).toBe('Error');
+    expect(errorKind('x')).toBe('string');
   });
 });

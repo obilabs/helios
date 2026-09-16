@@ -23,6 +23,7 @@ import { encryptionService } from '../services/encryption.service.js';
 // useGraphReplay(); setting HELIOS_GRAPH_RECORD=1 captures sanitized fixtures.
 // See testing/graph-replay.ts.
 import { graphHttp } from '../testing/graph-replay.js';
+import { errorKind } from '../utils/log-safe.js';
 
 export const microsoftTransparentProxyRouter = Router();
 
@@ -366,7 +367,7 @@ async function getMicrosoftCredentials(organizationId?: string): Promise<Microso
       clientSecret
     };
   } catch (error) {
-    logger.error('Failed to get Microsoft credentials', { organizationId, error });
+    logger.error('Failed to get Microsoft credentials', { organizationId, error: errorKind(error) });
     return null;
   }
 }
