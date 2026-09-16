@@ -143,7 +143,8 @@ jobs:
             SELECT string_agg(t, ', ') INTO missing
               FROM unnest(ARRAY[
                 'two_factor','organization_domains','contacts','public_assets',
-                'onboarding_requests','relay_config','relay_rules'
+                'onboarding_requests','relay_config','relay_rules',
+                'group_scenarios','group_scenario_builtin_state'
               ]) AS t
              WHERE NOT EXISTS (
                SELECT 1 FROM information_schema.tables WHERE table_name = t);

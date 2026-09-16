@@ -55,6 +55,7 @@ export const FEATURE_REGISTRY: readonly FeatureDefinition[] = [
 
   // ── Directory ──────────────────────────────────────────────────────────────
   { key: 'directory.groups', name: 'Groups', description: 'Google Groups management', category: 'directory', maturity: 'stable' },
+  { key: 'directory.group_scenarios', name: 'Group scenarios', description: 'Create Google Groups from a use-case scenario that applies and verifies the group settings (needs the optional Groups Settings scope)', category: 'directory', maturity: 'preview' },
   { key: 'directory.org_units', name: 'Org Units', description: 'Organizational unit management', category: 'directory', maturity: 'stable' },
   { key: 'directory.org_chart', name: 'Org Chart', description: 'Manager hierarchy chart', category: 'directory', maturity: 'preview' },
   { key: 'directory.bulk_operations', name: 'Bulk Operations', description: 'Mass user and group changes from CSV', category: 'directory', maturity: 'preview' },

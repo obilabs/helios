@@ -82,6 +82,7 @@ import trackingRoutes from './routes/tracking.routes.js';
 import trackingAnalyticsRoutes from './routes/tracking-analytics.routes.js';
 import mcpRoutes from './routes/mcp.routes.js';
 import featureFlagsRoutes from './routes/feature-flags.routes.js';
+import groupScenariosRoutes from './routes/group-scenarios.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import helpRoutes from './routes/help.routes.js';
 import externalSharingRoutes from './routes/external-sharing.routes.js';
@@ -676,6 +677,8 @@ apiRouter.use('/bulk', bulkOperationsRoutes);
 
 // Integrations
 apiRouter.use('/google-workspace', GoogleWorkspaceRoutes);
+// Group scenarios (D-048): create groups from a use case, apply and verify settings.
+apiRouter.use('/group-scenarios', groupScenariosRoutes);
 apiRouter.use('/microsoft', microsoftRoutes);
 apiRouter.use('/modules', modulesRoutes);
 
