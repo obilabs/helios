@@ -63,8 +63,27 @@ services:
       retries: 5
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO withdrew its public images: as of 2026-10 BOTH quay.io/minio/minio
+    # and docker.io/minio/minio answer every tag — including the immutable
+    # RELEASE.* pins — with HTTP 401 "access to the requested resource is not
+    # authorized" for an anonymous pull, so the previous quay.io pin breaks
+    # every fresh install. (Not a Docker Hub rate limit; that says
+    # `toomanyrequests`. A control pull of an unrelated image from the same two
+    # registries succeeds.)
+    #
+    # bitnamilegacy/minio repackages the same upstream MinIO server (2025.7.23)
+    # and is still anonymously pullable, so the storage layer is unchanged.
+    # Archived upstream, hence the digest pin: the tag cannot move and the pull
+    # fails loudly if the digest ever disappears.
+    #
+    # The image defaults to UID 1001 behind its own Bitnami entrypoint; we run
+    # the minio binary directly as root so the minio_data volume keeps the
+    # ownership and layout existing installs already have. `mc` is on the
+    # image's PATH, so the healthcheck below is unchanged.
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
     container_name: helios_minio
+    user: "0:0"
+    entrypoint: ["minio"]
     command: server /data --console-address ":9001"
     environment:
       # MinIO credentials must match backend S3_ACCESS_KEY/S3_SECRET_KEY
