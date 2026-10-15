@@ -27,6 +27,7 @@
  */
 import { encryptionService } from './encryption.service.js';
 import { logger } from '../utils/logger.js';
+import { errorKind } from '../utils/log-safe.js';
 
 /** Encrypt credentials for storage in `gw_credentials.service_account_key`. */
 export function encodeServiceAccountKey(credentials: unknown): string {
@@ -65,7 +66,7 @@ export function decodeServiceAccountKey<T = any>(stored: unknown): T {
     return JSON.parse(encryptionService.decrypt(raw)) as T;
   } catch (err) {
     logger.error('Failed to decode service_account_key', {
-      error: err instanceof Error ? err.message : String(err),
+      error: errorKind(err),
     });
     throw new Error('Unable to decode stored service account credentials');
   }

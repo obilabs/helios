@@ -57,7 +57,8 @@ class DatabaseConnection {
       logger.debug('Executed query', { text, duration, rows: result.rowCount });
       return result;
     } catch (error) {
-      logger.error('Database query error', { text, params, error });
+      // Parameter values can hold credentials or personal data: log only how many there were.
+      logger.error('Database query error', { text, paramCount: params?.length ?? 0, error });
       throw error;
     }
   }

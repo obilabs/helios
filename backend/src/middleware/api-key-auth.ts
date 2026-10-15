@@ -92,8 +92,9 @@ export const authenticateApiKey = async (
     );
 
     if (result.rows.length === 0) {
+      // Never log any part of a presented key.
       logger.warn('API key authentication failed: key not found', {
-        keyPrefix: `${apiKeyHeader.substring(0, 20)}...`
+        keyLength: apiKeyHeader.length
       });
       res.status(401).json({
         success: false,
