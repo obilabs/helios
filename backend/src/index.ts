@@ -909,12 +909,10 @@ async function startServer(): Promise<void> {
       logger.info('🗑️ Tracking retention job disabled');
     }
 
-    // Initialize telemetry service (opt-in anonymous usage tracking)
+    // Telemetry: anonymous liveness ping (default on), usage data (opt-in).
+    // HELIOS_TELEMETRY_ENABLED=false turns off both. See lib/telemetry-policy.ts.
     try {
       await telemetryService.init();
-      if (telemetryService.isEnabled()) {
-        logger.info('📊 Telemetry service enabled');
-      }
     } catch (err) {
       logger.warn('Telemetry initialization failed (non-critical)', err);
     }
