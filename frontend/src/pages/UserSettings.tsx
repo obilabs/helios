@@ -148,7 +148,7 @@ export function UserSettings({ organizationId: _organizationId }: UserSettingsPr
 
   // Apply theme to document
   const applyTheme = (theme: ThemePreference) => {
-    let effectiveTheme: 'light' | 'dark' = 'light';
+    let effectiveTheme: 'light' | 'dark';
 
     if (theme === 'system') {
       // Check system preference
