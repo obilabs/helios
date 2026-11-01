@@ -29,7 +29,7 @@
     "@types/socket.io-client": "^1.4.36",
     "@xyflow/react": "^12.10.0",
     "axios": "^1.13.1",
-    "better-auth": "~1.6.22",
+    "better-auth": "~1.7.15",
     "blueimp-md5": "^2.19.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
