@@ -121,7 +121,7 @@ export const authenticateMtpPairing = async (
 
     if (result.rows.length === 0) {
       logger.warn('MTP auth failed: pairing key not found', {
-        keyPrefix: `${rawKey.substring(0, 20)}...`,
+        keyLength: rawKey.length,
         path: req.path,
       });
       res.status(401).json({

@@ -30,6 +30,7 @@ import {
   enforceRelayAuthorization,
   type RelayAuditRecord,
 } from '../services/relay/enforce.js';
+import { errorKind } from '../utils/log-safe.js';
 
 // Extend Express Request type for API keys
 // Note: The base user type is declared in auth.ts with isAdmin/isEmployee flags
@@ -510,7 +511,7 @@ async function getGoogleCredentials(organizationId?: string): Promise<GoogleCred
       domain: result.rows[0].domain
     };
   } catch (error) {
-    logger.error('Failed to get Google credentials', { organizationId, error });
+    logger.error('Failed to get Google credentials', { organizationId, error: errorKind(error) });
     return null;
   }
 }
