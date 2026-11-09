@@ -80,6 +80,11 @@ export const OPTIONAL_SCOPE_DETAILS: ScopeDetail[] = [
   { scope: 'https://www.googleapis.com/auth/admin.directory.group.readonly', reason: 'API relay: read-only tokens for group reads.' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.orgunit.readonly', reason: 'API relay: read-only tokens for org unit reads.' },
   { scope: 'https://www.googleapis.com/auth/admin.directory.domain.readonly', reason: 'API relay: read-only tokens for domain reads.' },
+  // Group scenarios (D-048): apply a scenario's group settings (who can post,
+  // moderation, spam handling, replies, Collaborative Inbox) and read them back
+  // to verify. Optional, per call only: a workspace without it still creates
+  // plain groups through the contract `admin.directory.group` scope.
+  { scope: 'https://www.googleapis.com/auth/apps.groups.settings', reason: 'Apply and verify group settings when a group is created from a scenario (who can post, moderation, replies, Collaborative Inbox).' },
 ]
 
 /**
@@ -151,6 +156,9 @@ const PATH_SCOPES: PathScopeRule[] = [
   // scopes, per-call only. Both variants are advertised, so unlike the contract
   // families above a read can use the readonly one.
   { test: /^admin\/directory\/customer\/[^/]+\/resources/, read: [`${G}admin.directory.resource.calendar.readonly`], write: [`${G}admin.directory.resource.calendar`] },
+  // Groups Settings API (www.googleapis.com/groups/v1/groups/{email}). Optional
+  // scope, per call only; there is no read-only variant.
+  { test: /^groups\/groups(\/|$)/, read: [`${G}apps.groups.settings`], write: [`${G}apps.groups.settings`] },
   // Reports (readonly scopes are the contract scopes here).
   { test: /^admin\/reports\/activity/, read: [`${G}admin.reports.audit.readonly`], write: [`${G}admin.reports.audit.readonly`] },
   { test: /^admin\/reports\/usage/, read: [`${G}admin.reports.usage.readonly`], write: [`${G}admin.reports.usage.readonly`] },

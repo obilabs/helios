@@ -38,29 +38,12 @@ export async function createHiddenForwardingGroup(
 
     const groupData: any = await createGroupResponse.json();
 
-    // 2. Configure group settings (Groups Settings API)
-    await fetch(`http://localhost:3001/api/google/groupssettings/v1/groups/${user.email}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': authToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        includeInGlobalAddressList: 'false',
-        showInGroupDirectory: 'false',
-        whoCanPostMessage: 'NONE_CAN_POST',
-        whoCanJoin: 'INVITED_CAN_JOIN',
-        whoCanViewMembership: 'ALL_MANAGERS_CAN_VIEW',
-        whoCanViewGroup: 'ALL_MANAGERS_CAN_VIEW',
-        messageModerationLevel: 'MODERATE_NONE',
-        isArchived: 'false',
-        allowExternalMembers: 'false',
-        allowGoogleCommunication: 'false',
-        membersCanPostAsTheGroup: 'false'
-      })
-    });
+    // Group settings are not changed here. The earlier Groups Settings call
+    // went to a path the proxy cannot serve (wrong host, no settings scope) and
+    // its response was never checked, so it never applied anything. Settings
+    // are applied and verified by group scenarios (services/group-scenarios).
 
-    // 3. Add forwarding recipients as members
+    // 2. Add forwarding recipients as members
     for (const recipientEmail of config.forwardTo) {
       await fetch(`http://localhost:3001/api/google/admin/directory/v1/groups/${user.email}/members`, {
         method: 'POST',
@@ -76,7 +59,7 @@ export async function createHiddenForwardingGroup(
       });
     }
 
-    // 4. Tag in Helios as system group
+    // 3. Tag in Helios as system group
     await db.query(`
       INSERT INTO access_groups (
         organization_id,
