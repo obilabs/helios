@@ -12,6 +12,8 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>('helios-purple');
+  // Anonymous liveness ping: on by default, disclosed on the last step.
+  const [livenessPing, setLivenessPing] = useState(true);
 
   const [formData, setFormData] = useState({
     setupToken: '',
@@ -63,7 +65,8 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
           adminEmail: formData.adminEmail,
           adminPassword: formData.adminPassword,
           adminFirstName: formData.adminFirstName,
-          adminLastName: formData.adminLastName
+          adminLastName: formData.adminLastName,
+          telemetryLiveness: livenessPing
         })
       });
 
@@ -311,6 +314,24 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
                 <p>
                   The theme is applied live as you select. Choose the one that best fits your organization's style.
                 </p>
+              </div>
+
+              <div className="info-box" data-testid="setup-liveness-ping">
+                <strong>Anonymous liveness ping</strong>
+                <p>
+                  Helios sends a small ping to ObiLabs once after setup and then daily, so running installs can be
+                  counted. It contains only a random install ID and the Helios version
+                  (<code>{'{ "instance_id", "version" }'}</code>): no organization name, domain, emails, IP address
+                  or usage data. Usage telemetry is separate and stays off unless you turn it on in Settings.
+                </p>
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={livenessPing}
+                    onChange={e => setLivenessPing(e.target.checked)}
+                  />
+                  <span>Send the anonymous liveness ping (change any time in Settings &gt; Advanced)</span>
+                </label>
               </div>
             </div>
           )}

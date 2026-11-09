@@ -28,6 +28,8 @@ import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '.
 import { fieldDriftService } from '../services/field-drift.service.js';
 import { ACCOUNT_PURPOSE_LABELS, isAccountPurpose } from '../lib/account-purpose.js';
 import { isEmailFormat } from '../utils/email-format.js';
+import { getEffectiveTelemetryState, saveTelemetryConsent } from '../services/telemetry-consent.js';
+import { telemetryService } from '../services/telemetry.service.js';
 
 const router = Router();
 
@@ -205,7 +207,8 @@ router.post('/setup', async (req: Request, res: Response) => {
       adminEmail,
       adminPassword,
       adminFirstName,
-      adminLastName
+      adminLastName,
+      telemetryLiveness
     } = req.body;
 
     // Closed for good once an organization exists (checked before the token so
@@ -358,6 +361,26 @@ router.post('/setup', async (req: Request, res: Response) => {
           adminName: `${admin.first_name} ${admin.last_name}`
         }
       });
+
+      // The wizard discloses the anonymous liveness ping and lets the admin turn it
+      // off before anything is sent. Record the choice either way; an API client
+      // that omits the field gets the default (on).
+      try {
+        await saveTelemetryConsent(
+          { liveness: telemetryLiveness !== false },
+          {
+            organizationId: organization.id,
+            actorId: admin.id,
+            actorEmail: admin.email,
+            actorType: 'user',
+            source: 'setup_wizard',
+            requestId: req.requestId,
+          },
+        );
+        void telemetryService.tick();
+      } catch (err: any) {
+        logger.warn('Could not record telemetry choice at setup', { error: err?.message });
+      }
 
       successResponse(res, {
         message: 'Organization setup completed successfully',
@@ -521,6 +544,68 @@ router.post('/field-drift/:id/resolve', authenticateToken, requireAdmin, async (
   } catch (error: any) {
     logger.warn('Could not resolve a field difference', { error: error.message });
     return res.status(409).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/organization/telemetry
+ * What this install sends to the control plane: the anonymous liveness ping and
+ * opt-in usage telemetry, plus whether HELIOS_TELEMETRY_ENABLED overrides them.
+ */
+router.get('/telemetry', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    return res.json({ success: true, data: await getEffectiveTelemetryState() });
+  } catch (error: any) {
+    logger.error('Failed to load telemetry settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to load telemetry settings' });
+  }
+});
+
+/**
+ * PUT /api/organization/telemetry
+ * Admin only. Body: { liveness?: boolean, usage?: boolean }. Each change is
+ * recorded in the append-only security audit log.
+ */
+router.put('/telemetry', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) return res.status(401).json({ success: false, error: 'Organization ID not found' });
+
+    const { liveness, usage } = req.body ?? {};
+    const patch: { liveness?: boolean; usage?: boolean } = {};
+    if (liveness !== undefined) {
+      if (typeof liveness !== 'boolean') return res.status(400).json({ success: false, error: 'liveness must be a boolean' });
+      patch.liveness = liveness;
+    }
+    if (usage !== undefined) {
+      if (typeof usage !== 'boolean') return res.status(400).json({ success: false, error: 'usage must be a boolean' });
+      patch.usage = usage;
+    }
+    if (patch.liveness === undefined && patch.usage === undefined) {
+      return res.status(400).json({ success: false, error: 'Nothing to update' });
+    }
+
+    const current = await getEffectiveTelemetryState();
+    if (current.envOverride) {
+      return res.status(409).json({
+        success: false,
+        error: 'Telemetry is set by HELIOS_TELEMETRY_ENABLED on the server and cannot be changed here',
+      });
+    }
+
+    const saved = await saveTelemetryConsent(patch, {
+      organizationId,
+      actorId: req.user?.userId,
+      actorEmail: req.user?.email,
+      actorType: 'user',
+      source: 'settings',
+      requestId: req.requestId,
+    });
+    await telemetryService.refreshConsent();
+    return res.json({ success: true, data: saved, message: 'Telemetry settings saved' });
+  } catch (error: any) {
+    logger.error('Failed to save telemetry settings', { error: error.message });
+    return res.status(500).json({ success: false, error: 'Failed to save telemetry settings' });
   }
 });
 
