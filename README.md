@@ -5,6 +5,10 @@ Microsoft 365 alongside: users, groups and licences.
 
 A [ObiLabs](https://obilabs.dev) project. Free and open source (AGPL-3.0) — self-host it for as long as you like.
 
+[![Licence](https://img.shields.io/github/license/obilabs/helios?label=licence)](LICENSE)
+[![CI](https://github.com/obilabs/helios/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/obilabs/helios/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/obilabs/helios/badge)](https://scorecard.dev/viewer/?uri=github.com/obilabs/helios)
+
 🚧 Developer Preview (Alpha) 🚧
 
 This project is currently in active development. Features, database schemas, and APIs are subject to change. It is currently intended for developers and testing environments.
