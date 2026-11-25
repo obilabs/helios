@@ -83,7 +83,6 @@ table microsoft_config <- knowledge/tools/query-data.tool.ts
 table microsoft_groups <- knowledge/tools/query-data.tool.ts
 table microsoft_users <- knowledge/tools/query-data.tool.ts
 table organization_tracking_summary <- services/user-tracking.service.ts
-table passkeys <- services/oauth-token-sync.service.ts
 table signature_permission_audit <- services/signature-permissions.service.ts
 table sync_logs <- services/telemetry.service.ts
 table template_campaigns <- routes/signatures.routes.ts
