@@ -154,9 +154,24 @@ export function redactSensitiveData(obj: any, depth = 0): any {
 }
 
 
+/**
+ * The full request path, without the query string.
+ *
+ * `req.path` is relative to where the middleware is mounted, so under
+ * `app.use('/api', ...)` a request for `/api/v1/users` reads as `/v1/users` and
+ * the route lists above, which are written as full paths, never match.
+ */
+export function requestPath(req: Pick<Request, 'originalUrl' | 'path'>): string {
+  return (req.originalUrl || req.path || '').split('?')[0];
+}
+
+const RECORDED = Symbol('auditRecorded');
+
 export async function auditMiddleware(req: Request, res: Response, next: NextFunction) {
+  const path = requestPath(req);
+
   // Skip excluded routes
-  if (EXCLUDED_ROUTES.some(route => req.path.startsWith(route))) {
+  if (EXCLUDED_ROUTES.some(route => path.startsWith(route))) {
     return next();
   }
 
@@ -170,11 +185,17 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
     return next();
   }
 
+  // One record per request, however many prefixes this is mounted under.
+  if ((req as any)[RECORDED]) {
+    return next();
+  }
+  (req as any)[RECORDED] = true;
+
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
 
   // Capture request details
-  const action = getActionName(req.method, req.path);
+  const action = getActionName(req.method, path);
   const actionCategory = getActionCategory(action);
 
   // NOTE: actor and organization are deliberately NOT read here.
@@ -192,12 +213,12 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
   // derivation belongs there. See resolveActor() below.
 
   // Prepare request metadata
-  const isSensitiveRoute = SENSITIVE_BODY_ROUTES.some(route => req.path.includes(route));
+  const isSensitiveRoute = SENSITIVE_BODY_ROUTES.some(route => path.includes(route));
   const requestBody = isSensitiveRoute ? '[SENSITIVE]' : redactSensitiveData(req.body);
 
   // Extract target from URL params or body
   const targetId = req.params.id || req.params.userId || req.body?.id || null;
-  const targetType = req.path.split('/').filter(Boolean)[2] || null; // e.g., /api/v1/users -> users
+  const targetType = path.split('/').filter(Boolean)[2] || null; // e.g., /api/v1/users -> users
 
 
   // Store original end function
@@ -222,7 +243,7 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
     // route's auth middleware, which runs after this middleware is entered.
     const user = (req as any).user;
     const actorId = user?.id || user?.userId || null;
-    const actorType = actorId ? 'user' : (req.path.includes('/setup') ? 'system' : 'anonymous');
+    const actorType = actorId ? 'user' : (path.includes('/setup') ? 'system' : 'anonymous');
     const actorIdentifier = user?.email || req.ip || 'unknown';
     const organizationId =
       user?.organizationId || user?.organization_id || req.body?.organizationId || null;
@@ -265,7 +286,7 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
         requestId,
         JSON.stringify({
           http_method: req.method,
-          endpoint: req.path,
+          endpoint: path,
           request_body: requestBody,
           response_status: res.statusCode,
           duration_ms: duration,
