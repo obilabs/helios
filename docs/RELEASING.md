@@ -106,6 +106,12 @@ A version is tagged only when every row below passes **on the commit being
 tagged**. A red row means no tag. Merging to `main` does not release anything:
 it publishes the `edge` image, which is for testing.
 
+Rows 1 and 2 are also **required checks on `main`**: a pull request cannot merge
+while the backend tests, the frontend build and tests, or the schema checks are
+red or still running. This applies to admins too. Row 3 runs only when code or
+stack files change, so it is not a required check; do not merge a code change
+while it is red.
+
 | # | Check | How it runs today |
 |---|-------|-------------------|
 | 1 | Unit and integration tests, backend and frontend | CI, every PR and `main` |
