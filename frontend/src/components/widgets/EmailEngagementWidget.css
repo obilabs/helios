@@ -1,7 +1,7 @@
 .email-engagement-widget {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
   flex: 1;
 }
@@ -53,11 +53,11 @@
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .widget-icon {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .refresh-btn {
@@ -65,7 +65,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -73,8 +73,8 @@
 }
 
 .refresh-btn:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
 }
 
 .widget-stats {
@@ -92,13 +92,13 @@
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-gray-900);
   line-height: 1;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .stat-trend {
@@ -121,11 +121,11 @@
 }
 
 .trend-stable {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .trend-text {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .trend-text.trend-up {
@@ -162,19 +162,19 @@
 .chart-bar {
   width: 100%;
   max-width: 24px;
-  background: linear-gradient(180deg, #8b5cf6 0%, #a78bfa 100%);
+  background: linear-gradient(180deg, var(--theme-primary) 0%, #a78bfa 100%);
   border-radius: 2px 2px 0 0;
   transition: height 0.2s ease;
   min-height: 4px;
 }
 
 .chart-bar:hover {
-  background: linear-gradient(180deg, #7c3aed 0%, #8b5cf6 100%);
+  background: linear-gradient(180deg, var(--theme-primary-hover) 0%, var(--theme-primary) 100%);
 }
 
 .chart-label {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-top: 4px;
 }
 
@@ -182,7 +182,7 @@
   width: 100%;
   text-align: center;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   padding: 12px 0;
 }
 
@@ -191,8 +191,8 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: #9ca3af;
-  border-top: 1px solid #f3f4f6;
+  color: var(--color-gray-400);
+  border-top: 1px solid var(--color-gray-100);
   padding-top: 8px;
   margin-top: auto;
 }

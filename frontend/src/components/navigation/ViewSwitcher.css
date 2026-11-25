@@ -10,10 +10,10 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  color: #374151;
+  color: var(--color-gray-700);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -21,8 +21,8 @@
 }
 
 .view-switcher-trigger:hover {
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  background: var(--color-gray-200);
+  border-color: var(--color-gray-300);
 }
 
 .view-switcher-icon {
@@ -58,8 +58,8 @@
   top: calc(100% + 4px);
   right: 0;
   min-width: 180px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -75,14 +75,14 @@
   background: none;
   border: none;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: background 0.15s ease;
   text-align: left;
 }
 
 .view-switcher-option:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .view-switcher-option.selected {
@@ -93,7 +93,7 @@
 .view-option-icon {
   display: flex;
   align-items: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .view-switcher-option.selected .view-option-icon {

@@ -13,7 +13,7 @@
   align-items: flex-start;
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .header-content {
@@ -26,7 +26,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, #6d28d9 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,13 +37,13 @@
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .header-text p {
   margin: 4px 0 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .header-actions {
@@ -71,22 +71,22 @@
 }
 
 .btn-primary {
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .btn-danger {
@@ -106,12 +106,12 @@
 .btn-icon {
   padding: 6px;
   background: transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   border-radius: 6px;
 }
 
 .btn-icon:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   color: #ef4444;
 }
 
@@ -173,8 +173,8 @@
 }
 
 .summary-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -188,7 +188,7 @@
 }
 
 .summary-card.clickable:hover {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
 }
 
@@ -203,7 +203,7 @@
 
 .card-icon.total {
   background: #ede9fe;
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 .card-icon.high {
@@ -224,12 +224,12 @@
 .card-value {
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .card-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 2px;
 }
 
@@ -240,14 +240,14 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  background: #f9fafb;
-  border: 2px dashed #d1d5db;
+  background: var(--color-gray-50);
+  border: 2px dashed var(--color-gray-300);
   border-radius: 12px;
   text-align: center;
 }
 
 .empty-state svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-bottom: 16px;
 }
 
@@ -255,19 +255,19 @@
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .empty-state p {
   margin: 0 0 20px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
 /* Results Section */
 .results-section {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -278,8 +278,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .toolbar-left {
@@ -292,8 +292,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-300);
   border-radius: 8px;
   width: 280px;
 }
@@ -306,7 +306,7 @@
 }
 
 .search-input svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .filter-dropdown {
@@ -314,8 +314,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-300);
   border-radius: 8px;
 }
 
@@ -328,7 +328,7 @@
 }
 
 .filter-dropdown svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 /* Results Table */
@@ -345,14 +345,14 @@
 .results-table td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .results-table th {
-  background: #f9fafb;
+  background: var(--color-gray-50);
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -363,7 +363,7 @@
 }
 
 .results-table th.sortable:hover {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .results-table th svg {
@@ -372,7 +372,7 @@
 }
 
 .results-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .checkbox-col {
@@ -388,11 +388,11 @@
   align-items: center;
   gap: 6px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .file-name .external-link {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -402,12 +402,12 @@
 }
 
 .external-link:hover {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .file-type {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-top: 2px;
 }
 
@@ -416,7 +416,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .personal-badge {
@@ -434,7 +434,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: capitalize;
 }
 
@@ -465,7 +465,7 @@
 
 .owner-cell {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -480,9 +480,9 @@
 .results-footer {
   padding: 12px 20px;
   font-size: 13px;
-  color: #6b7280;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  color: var(--color-gray-500);
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 /* Loading Overlay */
@@ -501,11 +501,11 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .loading-spinner p {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 

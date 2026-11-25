@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   height: 400px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .ticket-list-empty .empty-icon {
@@ -27,13 +27,13 @@
 
 .ticket-item {
   padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .ticket-item:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .ticket-item.selected {
@@ -100,19 +100,19 @@
 }
 
 .priority-low {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .ticket-time {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .ticket-subject {
   font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-gray-900);
   margin-bottom: 8px;
   line-height: 1.4;
 }
@@ -123,7 +123,7 @@
   align-items: center;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .ticket-sender,
@@ -136,7 +136,7 @@
 .meta-icon {
   width: 14px;
   height: 14px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .meta-icon.assigned {
@@ -153,8 +153,8 @@
 .ticket-tags .tag {
   font-size: 11px;
   padding: 2px 6px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   border-radius: 4px;
 }
 
@@ -163,7 +163,7 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .ticket-group {
@@ -176,7 +176,7 @@
 .ticket-notes-count,
 .ticket-viewers {
   padding: 2px 6px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 4px;
   white-space: nowrap;
 }

@@ -47,7 +47,7 @@
 }
 
 .role-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -207,7 +207,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   width: 90%;
   max-width: 600px;
@@ -366,7 +366,7 @@ textarea.form-input {
 }
 
 .btn-secondary {
-  background: white;
+  background: var(--card-bg);
   color: #666;
   border: 1px solid #ddd;
 }

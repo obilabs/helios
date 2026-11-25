@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -20,7 +20,7 @@
 .audio-title {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 4px;
 }
 
@@ -37,7 +37,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -46,12 +46,12 @@
 }
 
 .play-btn:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
   transform: scale(1.05);
 }
 
 .play-btn:disabled {
-  background: #d1d5db;
+  background: var(--color-gray-300);
   cursor: not-allowed;
 }
 
@@ -79,12 +79,12 @@
   gap: 4px;
   font-family: 'SF Mono', 'Consolas', monospace;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
 }
 
 .time-display .separator {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .secondary-controls {
@@ -101,15 +101,15 @@
   height: 28px;
   border-radius: 4px;
   background: transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .control-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .control-btn:disabled {
@@ -143,14 +143,14 @@
 .audio-player.compact .progress-bar {
   flex: 1;
   height: 4px;
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .audio-player.compact .progress-fill {
   height: 100%;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   border-radius: 2px;
   transition: width 0.1s linear;
 }

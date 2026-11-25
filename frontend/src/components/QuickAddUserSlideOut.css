@@ -23,7 +23,7 @@
   width: 600px;
   max-width: 100%;
   height: 100%;
-  background: white;
+  background: var(--card-bg);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
@@ -41,7 +41,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-end) 100%);
   color: white;
 }
@@ -115,7 +115,7 @@
 .form-section h3 {
   margin: 0 0 1.5rem 0;
   font-size: 1.125rem;
-  color: #1f2937;
+  color: var(--color-gray-800);
   font-weight: 600;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid var(--theme-primary);
@@ -142,7 +142,7 @@
 .quick-add-panel .form-group label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -154,11 +154,11 @@
 .quick-add-panel .form-group input,
 .quick-add-panel .form-group select {
   padding: 0.625rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 0.9375rem;
-  color: #1f2937;
-  background: white;
+  color: var(--color-gray-800);
+  background: var(--card-bg);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -193,7 +193,7 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .input-wrapper input {
@@ -214,7 +214,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -269,7 +269,7 @@
   gap: 0.75rem;
   cursor: pointer;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .radio-option input {
@@ -299,7 +299,7 @@
 .advanced-fields {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Footer */
@@ -308,25 +308,25 @@
   justify-content: flex-end;
   gap: 1rem;
   padding: 1rem 2rem;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .quick-add-footer .btn-secondary {
   padding: 0.625rem 1.25rem;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 0.9375rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .quick-add-footer .btn-secondary:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  border-color: var(--color-gray-400);
+  background: var(--color-gray-50);
 }
 
 .quick-add-footer .btn-primary {
@@ -376,13 +376,13 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .linked-account-option:hover {

@@ -1,7 +1,7 @@
 /* Users Page - JumpCloud Inspired */
 .users-page {
   padding: 0;
-  background: white;
+  background: var(--card-bg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -10,7 +10,7 @@
 /* Page Title */
 .page-title {
   padding: 20px 24px 12px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .page-title h1 {
@@ -27,8 +27,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .stat-item {
@@ -46,7 +46,7 @@
 .stat-item .stat-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Status-specific colors for stat values */
@@ -63,7 +63,7 @@
 }
 
 .stat-item .stat-value.stat-deleted {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .stat-divider {
@@ -78,14 +78,14 @@
   align-items: center;
   gap: 2px;
   padding: 0 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .type-tab {
   padding: 14px 20px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -95,7 +95,7 @@
 }
 
 .type-tab:hover {
-  color: #374151;
+  color: var(--color-gray-700);
   background: rgba(139, 92, 246, 0.05);
 }
 
@@ -110,7 +110,7 @@
   padding: 8px;
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   cursor: pointer;
   margin-left: auto;
   border-radius: 4px;
@@ -118,8 +118,8 @@
 }
 
 .btn-settings:hover {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 /* Status Tabs (All / Active / Pending / Suspended) */
@@ -127,15 +127,15 @@
   display: flex;
   gap: 8px;
   padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .status-tab {
   padding: 6px 14px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #6b7280;
+  border: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
+  color: var(--color-gray-500);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -145,9 +145,9 @@
 }
 
 .status-tab:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
-  color: #374151;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
 }
 
 .status-tab.active {
@@ -162,8 +162,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
 }
 
 /* Add User Dropdown */
@@ -205,8 +205,8 @@
   top: calc(100% + 4px);
   left: 0;
   min-width: 260px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.05);
   z-index: 100;
@@ -222,7 +222,7 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #374151;
+  color: var(--color-gray-700);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -235,11 +235,11 @@
   position: absolute;
   right: 16px;
   top: 14px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .add-dropdown-menu .dropdown-item:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .add-dropdown-menu .dropdown-item.highlight {
@@ -253,7 +253,7 @@
 .add-dropdown-menu .dropdown-item-desc {
   font-size: 12px;
   font-weight: 400;
-  color: #6b7280;
+  color: var(--color-gray-500);
   max-width: 200px;
 }
 
@@ -274,7 +274,7 @@
 .search-icon {
   position: absolute;
   left: 10px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   pointer-events: none;
   width: 16px;
   height: 16px;
@@ -284,22 +284,22 @@
   height: 32px;
   width: 200px;
   padding: 0 10px 0 32px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
   outline: none;
   transition: all 0.15s;
   background: #fafbfc;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .search-input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .search-input:focus {
   border-color: var(--theme-primary);
-  background: white;
+  background: var(--card-bg);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
@@ -308,9 +308,9 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #6b7280;
+  border: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
+  color: var(--color-gray-500);
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -320,9 +320,9 @@
 }
 
 .btn-icon:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
-  color: #374151;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
 }
 
 .btn-icon.active {
@@ -334,9 +334,9 @@
 /* Secondary Buttons */
 .btn-secondary {
   padding: 7px 12px;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
+  border: 1px solid var(--color-gray-300);
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   font-size: 13px;
   font-weight: 500;
   border-radius: 5px;
@@ -349,8 +349,8 @@
 }
 
 .btn-secondary:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  border-color: var(--color-gray-400);
+  background: var(--color-gray-50);
 }
 
 .btn-secondary svg {
@@ -362,9 +362,9 @@
 .btn-filter-pill {
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #6b7280;
+  border: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
+  color: var(--color-gray-500);
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
@@ -377,9 +377,9 @@
 }
 
 .btn-filter-pill:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
-  color: #374151;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
 }
 
 .btn-filter-pill svg {
@@ -409,8 +409,8 @@
   top: calc(100% + 4px);
   right: 0;
   min-width: 180px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.05);
   z-index: 100;
@@ -426,7 +426,7 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #374151;
+  color: var(--color-gray-700);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -436,7 +436,7 @@
 }
 
 .filter-dropdown-item:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .filter-dropdown-item.selected {
@@ -445,7 +445,7 @@
 }
 
 .filter-dropdown-item svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
 }
 
@@ -469,7 +469,7 @@
 
 .filter-dropdown-divider {
   height: 1px;
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   margin: 6px 0;
 }
 
@@ -491,7 +491,7 @@
 /* Content Card */
 .users-content-card {
   flex: 1;
-  background: white;
+  background: var(--card-bg);
   overflow: hidden;
   display: flex;
   flex-direction: column;

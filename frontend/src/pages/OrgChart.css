@@ -6,8 +6,8 @@
 }
 
 .org-chart-header {
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--color-gray-200);
   padding: 16px 24px;
   display: flex;
   justify-content: space-between;
@@ -26,7 +26,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .org-chart-title svg {
@@ -38,12 +38,12 @@
   gap: 16px;
   margin-left: 24px;
   padding-left: 24px;
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--color-gray-200);
 }
 
 .org-stats span {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
 }
 
@@ -56,8 +56,8 @@
 .search-box {
   display: flex;
   align-items: center;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   padding: 6px 12px;
   gap: 8px;
@@ -65,7 +65,7 @@
 }
 
 .search-box svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
 }
 
@@ -75,17 +75,17 @@
   outline: none;
   flex: 1;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .search-box input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .view-modes {
   display: flex;
   gap: 4px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 6px;
   padding: 4px;
 }
@@ -96,7 +96,7 @@
   padding: 6px 8px;
   border-radius: 4px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -104,12 +104,12 @@
 }
 
 .view-mode-btn:hover {
-  background: white;
-  color: #4b5563;
+  background: var(--card-bg);
+  color: var(--color-gray-600);
 }
 
 .view-mode-btn.active {
-  background: white;
+  background: var(--card-bg);
   color: var(--theme-primary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -124,20 +124,20 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: var(--color-gray-600);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .export-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #1f2937;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-300);
+  color: var(--color-gray-800);
 }
 
 .export-btn svg {
@@ -148,7 +148,7 @@
 .tree-controls {
   display: flex;
   gap: 4px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   padding: 4px;
   border-radius: 8px;
 }
@@ -162,13 +162,13 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .tree-control-btn:hover {
-  background: white;
+  background: var(--card-bg);
   color: var(--theme-primary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -192,7 +192,7 @@
   justify-content: center;
   height: 100%;
   gap: 16px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .org-chart-loading .spinner {
@@ -212,12 +212,12 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .org-chart-error p {
   margin: 0;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .retry-button {
@@ -256,19 +256,19 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .org-chart-empty .empty-message {
   margin: 0;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   max-width: 400px;
 }
 
 .org-chart-empty .empty-hints {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 16px 24px;
   text-align: left;
@@ -279,13 +279,13 @@
   margin: 0 0 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .org-chart-empty .empty-hints ul {
   margin: 0;
   padding-left: 20px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }
 
@@ -327,19 +327,19 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 6px;
   font-size: 13px;
 }
 
 .orphan-item svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
 }
 
 .orphan-email {
   margin-left: auto;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 12px;
 }
 

@@ -25,7 +25,7 @@
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
-  background: white;
+  background: var(--card-bg);
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -79,7 +79,7 @@
 
 /* Coming Soon Sections */
 .coming-soon {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 80px 40px;
   text-align: center;

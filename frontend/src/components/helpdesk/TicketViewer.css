@@ -2,8 +2,8 @@
   flex: 2;
   display: flex;
   flex-direction: column;
-  background: white;
-  border-left: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border-left: 1px solid var(--color-gray-200);
 }
 
 .viewer-header {
@@ -11,7 +11,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .viewer-title {
@@ -21,7 +21,7 @@
 .viewer-title h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 8px 0;
   line-height: 1.4;
 }
@@ -36,13 +36,13 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: all 0.2s;
 }
 
 .close-button:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
 }
 
 .close-button svg {
@@ -75,7 +75,7 @@
 
 .ticket-details {
   padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .detail-row {
@@ -91,7 +91,7 @@
 .detail-label {
   width: 120px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
 }
 
@@ -101,14 +101,14 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #111827;
+  color: var(--color-gray-900);
   position: relative;
 }
 
 .detail-value .icon {
   width: 16px;
   height: 16px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .status-badge,
@@ -132,8 +132,8 @@
 }
 
 .status-pending {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .status-resolved {
@@ -162,8 +162,8 @@
 }
 
 .priority-low {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .status-menu-trigger {
@@ -176,12 +176,12 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: all 0.2s;
 }
 
 .status-menu-trigger:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .status-menu-trigger svg {
@@ -194,8 +194,8 @@
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 10;
@@ -215,7 +215,7 @@
 }
 
 .status-menu button:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .btn-small {
@@ -226,15 +226,15 @@
   font-size: 13px;
   font-weight: 500;
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #374151;
+  border: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-small:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .btn-small.btn-primary {
@@ -264,8 +264,8 @@
   gap: 4px;
   padding: 4px 8px;
   font-size: 12px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   border-radius: 4px;
 }
 
@@ -291,19 +291,19 @@
 .conversation-header h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0;
 }
 
 .note-count {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .note-composer {
   margin-bottom: 24px;
   padding: 16px;
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-radius: 8px;
 }
 
@@ -312,9 +312,9 @@
   padding: 12px;
   font-size: 14px;
   font-family: inherit;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background: white;
+  background: var(--card-bg);
   resize: vertical;
   transition: border-color 0.2s;
 }
@@ -337,8 +337,8 @@
 
 .note-item {
   padding: 16px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   margin-bottom: 12px;
 }
@@ -356,23 +356,23 @@
   gap: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .note-author .icon {
   width: 16px;
   height: 16px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .note-time {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .note-content {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   line-height: 1.5;
   white-space: pre-wrap;
 }
@@ -383,7 +383,7 @@
   gap: 4px;
   margin-top: 8px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-style: italic;
 }
 

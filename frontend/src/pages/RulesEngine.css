@@ -15,7 +15,7 @@
   justify-content: center;
   min-height: 400px;
   gap: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .rules-engine-page.loading .spin {
@@ -38,13 +38,13 @@
 .rules-engine-page .header-content h1 {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px 0;
 }
 
 .rules-engine-page .header-content p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -53,7 +53,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -64,7 +64,7 @@
 }
 
 .rules-engine-page .btn-primary:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .rules-engine-page .btn-secondary {
@@ -72,9 +72,9 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -83,8 +83,8 @@
 }
 
 .rules-engine-page .btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }
 
 .rules-engine-page .btn-icon {
@@ -97,14 +97,14 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .rules-engine-page .btn-icon:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: var(--color-gray-100);
+  color: var(--color-gray-800);
 }
 
 .rules-engine-page .btn-icon.danger:hover {
@@ -125,7 +125,7 @@
 .rules-engine-page .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .rules-engine-page .tab {
@@ -136,7 +136,7 @@
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -145,25 +145,25 @@
 }
 
 .rules-engine-page .tab:hover {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .rules-engine-page .tab.active {
-  color: #8b5cf6;
-  border-bottom-color: #8b5cf6;
+  color: var(--theme-primary);
+  border-bottom-color: var(--theme-primary);
 }
 
 .rules-engine-page .tab .count {
   padding: 2px 8px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 10px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .rules-engine-page .tab.active .count {
   background: #ede9fe;
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 /* Filters */
@@ -180,18 +180,18 @@
   flex: 1;
   max-width: 400px;
   padding: 8px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
 }
 
 .rules-engine-page .search-box:focus-within {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .rules-engine-page .search-box svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .rules-engine-page .search-box input {
@@ -206,20 +206,20 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
 }
 
 .rules-engine-page .filter-group svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .rules-engine-page .filter-group select {
   border: none;
   outline: none;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   background: transparent;
   cursor: pointer;
 }
@@ -231,27 +231,27 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px dashed var(--color-gray-200);
   border-radius: 8px;
   text-align: center;
 }
 
 .rules-engine-page .empty-state svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-bottom: 16px;
 }
 
 .rules-engine-page .empty-state h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin: 0 0 8px 0;
 }
 
 .rules-engine-page .empty-state p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 20px 0;
   max-width: 400px;
 }
@@ -264,8 +264,8 @@
 }
 
 .rules-engine-page .condition-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 16px;
   transition: box-shadow 0.15s;
@@ -285,13 +285,13 @@
 .rules-engine-page .card-title h3 {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px 0;
 }
 
 .rules-engine-page .name-slug {
   font-size: 12px;
-  color: #8b5cf6;
+  color: var(--theme-primary);
   background: #f5f3ff;
   padding: 2px 6px;
   border-radius: 4px;
@@ -305,13 +305,13 @@
 
 .rules-engine-page .card-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 12px 0;
   line-height: 1.5;
 }
 
 .rules-engine-page .condition-preview-wrapper {
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-radius: 6px;
   padding: 10px 12px;
   margin-bottom: 12px;
@@ -329,31 +329,31 @@
 .rules-engine-page .logic-badge {
   font-size: 10px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   padding: 2px 6px;
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   border-radius: 4px;
   text-transform: uppercase;
 }
 
 .rules-engine-page .named-ref {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   font-weight: 500;
   font-family: monospace;
 }
 
 .rules-engine-page .leaf-condition {
-  color: #374151;
-  background: white;
+  color: var(--color-gray-700);
+  background: var(--card-bg);
   padding: 2px 8px;
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   white-space: nowrap;
 }
 
 .rules-engine-page .more-badge {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-style: italic;
 }
 
@@ -361,7 +361,7 @@
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .rules-engine-page .card-footer .meta {
@@ -372,8 +372,8 @@
 
 /* Rules Table */
 .rules-engine-page .rules-table {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -383,11 +383,11 @@
   grid-template-columns: 60px 1fr 140px 140px 160px 100px;
   gap: 12px;
   padding: 12px 16px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -397,7 +397,7 @@
   grid-template-columns: 60px 1fr 140px 140px 160px 100px;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
   align-items: center;
   transition: background 0.15s;
 }
@@ -407,7 +407,7 @@
 }
 
 .rules-engine-page .table-row:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .rules-engine-page .table-row.disabled {
@@ -429,7 +429,7 @@
 }
 
 .rules-engine-page .toggle-btn.off {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .rules-engine-page .col-name {
@@ -444,7 +444,7 @@
 
 .rules-engine-page .rule-name {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -452,7 +452,7 @@
 
 .rules-engine-page .rule-desc {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -488,7 +488,7 @@
 
 .rules-engine-page .type-badge.type-workflow {
   background: #ede9fe;
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 .rules-engine-page .col-conditions {
@@ -499,12 +499,12 @@
 }
 
 .rules-engine-page .condition-count {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .rules-engine-page .nesting-depth {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .rules-engine-page .col-stats {
@@ -515,7 +515,7 @@
 }
 
 .rules-engine-page .last-run {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .rules-engine-page .match-count {
@@ -523,7 +523,7 @@
 }
 
 .rules-engine-page .never-run {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-style: italic;
 }
 
@@ -546,7 +546,7 @@
 }
 
 .rules-engine-page .modal {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   width: 100%;
   max-width: 600px;
@@ -565,13 +565,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .rules-engine-page .modal-header h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0;
 }
 
@@ -586,7 +586,7 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Form */
@@ -598,14 +598,14 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 6px;
 }
 
 .rules-engine-page .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
   font-family: monospace;
@@ -614,13 +614,13 @@
 
 .rules-engine-page .form-group textarea:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .rules-engine-page .form-group .hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 6px;
 }
 
@@ -661,32 +661,32 @@
 }
 
 .rules-engine-page .editor-placeholder svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-bottom: 16px;
 }
 
 .rules-engine-page .editor-placeholder h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin: 0 0 8px 0;
 }
 
 .rules-engine-page .editor-placeholder p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 16px 0;
 }
 
 .rules-engine-page .editor-placeholder .api-hint {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   padding: 8px 16px;
   border-radius: 6px;
 }
 
 .rules-engine-page .editor-placeholder code {
   font-size: 13px;
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 /* Responsive */

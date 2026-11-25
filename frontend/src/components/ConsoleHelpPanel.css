@@ -57,7 +57,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -79,7 +79,7 @@
   left: 20px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6b7280;
+  color: var(--color-gray-500);
   pointer-events: none;
 }
 
@@ -95,11 +95,11 @@
 }
 
 .help-panel-search .search-input:focus {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
 }
 
 .help-panel-search .search-input::placeholder {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .clear-search {
@@ -116,7 +116,7 @@
   background: #3c3c3c;
   border: none;
   border-radius: 50%;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   cursor: pointer;
 }
 
@@ -153,7 +153,7 @@
 .no-results {
   padding: 24px 16px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }
 
@@ -182,14 +182,14 @@
   flex: 1;
   font-size: 11px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .section-count {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   background: #3c3c3c;
   padding: 2px 6px;
   border-radius: 8px;
@@ -198,7 +198,7 @@
 
 .section-arrow {
   display: flex;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: transform 0.2s ease;
 }
 
@@ -247,7 +247,7 @@
 .command-description {
   margin: 0;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   line-height: 1.4;
 }
 
@@ -274,13 +274,13 @@
   background: #3c3c3c;
   border: none;
   border-radius: 4px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .insert-btn:hover {
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
 }
 
@@ -303,7 +303,7 @@
 
 .help-panel-footer .tip {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-style: italic;
 }
 

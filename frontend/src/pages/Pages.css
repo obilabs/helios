@@ -32,7 +32,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding: 16px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -56,7 +56,7 @@
   width: 100%;
   height: 32px;
   padding: 0 12px 0 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
 }
@@ -70,16 +70,16 @@
 .filter-select {
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background: white;
+  background: var(--card-bg);
   font-size: 13px;
   cursor: pointer;
 }
 
 /* Data Grid */
 .data-grid {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   /* This 6-column table is too wide to fit narrow (~800px) viewports. Rather
@@ -98,10 +98,10 @@
   padding: 0 16px;
   height: 40px;
   background: #fafbfc;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   align-items: center;
@@ -132,7 +132,7 @@
 }
 
 .grid-row:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 /* Column Sizes */
@@ -162,7 +162,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, #a78bfa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -286,7 +286,7 @@
   justify-content: center;
   margin-bottom: 16px;
   opacity: 0.5;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .empty-state h3 {
@@ -303,7 +303,7 @@
 
 /* Org Units Tree Specific */
 .org-units-tree {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }

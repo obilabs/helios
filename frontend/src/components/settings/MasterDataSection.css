@@ -4,7 +4,7 @@
   display: flex;
   gap: 4px;
   margin-bottom: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   padding-bottom: 0;
 }
 
@@ -16,7 +16,7 @@
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -24,13 +24,13 @@
 }
 
 .masterdata-tab:hover {
-  color: #374151;
-  background: #f9fafb;
+  color: var(--color-gray-700);
+  background: var(--color-gray-50);
 }
 
 .masterdata-tab.active {
-  color: #8b5cf6;
-  border-bottom-color: #8b5cf6;
+  color: var(--theme-primary);
+  border-bottom-color: var(--theme-primary);
 }
 
 .masterdata-tab .badge {
@@ -47,9 +47,9 @@
 }
 
 .masterdata-panel {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
 }
 
 .panel-header {
@@ -57,14 +57,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 /* Tree View */
@@ -83,7 +83,7 @@
 }
 
 .tree-node:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .expand-btn {
@@ -91,20 +91,20 @@
   border: none;
   padding: 2px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .expand-btn:hover {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .node-name {
   flex: 1;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .node-count {
@@ -112,9 +112,9 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   padding: 2px 8px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 12px;
 }
 
@@ -134,7 +134,7 @@
   border: none;
   padding: 6px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -142,8 +142,8 @@
 }
 
 .action-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
 }
 
 .action-btn.danger:hover {
@@ -152,7 +152,7 @@
 }
 
 .tree-children {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--color-gray-200);
   margin-left: 20px;
 }
 
@@ -171,18 +171,18 @@
   padding: 12px 16px;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .data-table td {
   padding: 12px 16px;
   font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--color-gray-700);
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .data-table tr:last-child td {
@@ -190,20 +190,20 @@
 }
 
 .data-table tr:hover td {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .code-cell {
   font-family: monospace;
   font-weight: 500;
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .count-cell {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .status-badge {
@@ -220,8 +220,8 @@
 }
 
 .status-badge.inactive {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .table-actions {
@@ -237,7 +237,7 @@
 .issues-summary {
   margin: 0 0 16px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .issues-list {
@@ -270,7 +270,7 @@
 
 .issue-value {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   font-weight: 500;
 }
 
@@ -283,7 +283,7 @@
 }
 
 .user-count {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .suggested-match {
@@ -308,7 +308,7 @@
   justify-content: center;
   padding: 48px 24px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .empty-state svg {
@@ -320,7 +320,7 @@
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .empty-state p {
@@ -340,11 +340,11 @@
   align-items: center;
   justify-content: center;
   padding: 64px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .loading-state svg {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   margin-bottom: 12px;
 }
 
@@ -369,7 +369,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 24px;
   min-width: 400px;
@@ -406,7 +406,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -414,8 +414,8 @@
 }
 
 .modal-close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .modal-error {
@@ -434,7 +434,7 @@
   gap: 12px;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Form styles */
@@ -446,29 +446,29 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 6px;
 }
 
 .form-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
-  background: white;
+  color: var(--color-gray-700);
+  background: var(--card-bg);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .form-input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 textarea.form-input {
@@ -486,7 +486,7 @@ select.form-input {
 
 .form-hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 4px;
 }
 
@@ -512,13 +512,13 @@ select.form-input {
 .checkbox-group input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #8b5cf6;
+  accent-color: var(--theme-primary);
   cursor: pointer;
 }
 
 .checkbox-group span {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 /* Buttons */
@@ -527,7 +527,7 @@ select.form-input {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -538,7 +538,7 @@ select.form-input {
 }
 
 .btn-primary:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .btn-secondary {
@@ -546,9 +546,9 @@ select.form-input {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -557,6 +557,6 @@ select.form-input {
 }
 
 .btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }

@@ -8,7 +8,7 @@
 }
 
 .account-setup-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 600px;
@@ -39,8 +39,8 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .progress-step {
@@ -54,8 +54,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e5e7eb;
-  color: #6b7280;
+  background: var(--color-gray-200);
+  color: var(--color-gray-500);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,7 +71,7 @@
 
 .step-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
 }
 
@@ -82,7 +82,7 @@
 .progress-line {
   width: 60px;
   height: 2px;
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   transition: all 0.3s;
 }
 
@@ -96,13 +96,13 @@
 
 .setup-step h2 {
   font-size: 1.5rem;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin-bottom: 0.5rem;
   font-weight: 600;
 }
 
 .step-description {
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-bottom: 2rem;
   line-height: 1.6;
 }
@@ -121,14 +121,14 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 0.5rem;
 }
 
 .form-group input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 1rem;
   transition: all 0.2s;
@@ -142,7 +142,7 @@
 
 .form-hint {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 0.5rem;
 }
 
@@ -189,8 +189,8 @@
   display: flex;
   justify-content: space-between;
   padding: 1.5rem 2rem;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-top: 1px solid var(--color-gray-200);
 }
 
 .btn-primary,
@@ -220,13 +220,13 @@
 }
 
 .btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 /* ============================================
@@ -240,8 +240,8 @@
 }
 
 .theme-card {
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 2px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 0;
   cursor: pointer;
@@ -251,7 +251,7 @@
 }
 
 .theme-card:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -362,7 +362,7 @@
 .theme-card-name {
   font-weight: 600;
   font-size: 0.875rem;
-  color: #1f2937;
+  color: var(--color-gray-800);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -382,7 +382,7 @@
 
 .theme-card-description {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 0.25rem;
   line-height: 1.4;
 }

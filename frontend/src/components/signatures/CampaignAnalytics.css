@@ -19,13 +19,13 @@
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .analytics-loading .spinner {
   width: 48px;
   height: 48px;
-  border: 3px solid #e5e7eb;
+  border: 3px solid var(--color-gray-200);
   border-top-color: var(--theme-primary, #8b5cf6);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -44,7 +44,7 @@
 .analytics-error h3 {
   margin: 0 0 0.5rem;
   font-size: 1.25rem;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .analytics-error p {
@@ -74,7 +74,7 @@
   padding: 0.5rem;
   border: none;
   background: none;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   font-size: 0.875rem;
   border-radius: 4px;
@@ -82,15 +82,15 @@
 }
 
 .btn-back:hover {
-  color: #1f2937;
-  background-color: #f3f4f6;
+  color: var(--color-gray-800);
+  background-color: var(--color-gray-100);
 }
 
 .campaign-info h1 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .campaign-meta {
@@ -126,8 +126,8 @@
 }
 
 .badge-draft {
-  background-color: #f3f4f6;
-  color: #6b7280;
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .badge-cancelled {
@@ -139,7 +139,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 0.875rem;
 }
 
@@ -151,11 +151,11 @@
 
 .date-range-select {
   padding: 0.5rem 2rem 0.5rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 0.875rem;
-  color: #374151;
-  background-color: white;
+  color: var(--color-gray-700);
+  background-color: var(--card-bg);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -174,10 +174,10 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 0.875rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background-color: white;
-  color: #374151;
+  background-color: var(--card-bg);
+  color: var(--color-gray-700);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -185,8 +185,8 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: var(--color-gray-50);
+  border-color: var(--color-gray-300);
 }
 
 .btn-secondary:disabled {
@@ -230,8 +230,8 @@
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  background-color: white;
-  border: 1px solid #e5e7eb;
+  background-color: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   transition: box-shadow 0.15s;
 }
@@ -258,13 +258,13 @@
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-gray-800);
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 0.25rem;
 }
 
@@ -284,8 +284,8 @@
 
 /* Chart Cards */
 .chart-card {
-  background-color: white;
-  border: 1px solid #e5e7eb;
+  background-color: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -295,7 +295,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .chart-header h3 {
@@ -305,11 +305,11 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .chart-header h3 svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .chart-content {
@@ -323,7 +323,7 @@
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .empty-chart svg {
@@ -388,7 +388,7 @@
   position: absolute;
   bottom: 0;
   font-size: 0.6875rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   white-space: nowrap;
 }
 
@@ -397,7 +397,7 @@
   justify-content: center;
   gap: 1.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .legend-item {
@@ -405,7 +405,7 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .legend-color {
@@ -450,13 +450,13 @@
 
 .device-label {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .device-bar-container {
   flex: 1;
   height: 8px;
-  background-color: #f3f4f6;
+  background-color: var(--color-gray-100);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -479,12 +479,12 @@
 .device-value {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .device-percent {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Geographic Table */
@@ -501,24 +501,24 @@
 .geo-table td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .geo-table th {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .geo-table td {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .geo-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--color-gray-50);
 }
 
 .country-cell {
@@ -535,7 +535,7 @@
 .geo-bar {
   width: 100px;
   height: 6px;
-  background-color: #f3f4f6;
+  background-color: var(--color-gray-100);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -553,7 +553,7 @@
   justify-content: flex-end;
   padding: 1rem 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 /* Responsive */

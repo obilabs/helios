@@ -10,13 +10,13 @@
   align-items: center;
   justify-content: center;
   padding: 48px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #f3f4f6;
+  border: 3px solid var(--color-gray-100);
   border-top-color: var(--theme-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -33,7 +33,7 @@
   align-items: flex-start;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .header-left h3 {
@@ -42,13 +42,13 @@
   gap: 8px;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin-bottom: 4px;
 }
 
 .header-left p {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -58,7 +58,7 @@
   gap: 16px;
   margin-bottom: 24px;
   padding: 12px 16px;
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-radius: 6px;
 }
 
@@ -70,16 +70,16 @@
 
 .filter-group label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
 }
 
 .filter-select {
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 5px;
-  background: white;
-  color: #374151;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
@@ -98,7 +98,7 @@
 .filter-stats {
   margin-left: auto;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .empty-state {
@@ -108,19 +108,19 @@
   justify-content: center;
   padding: 64px 32px;
   text-align: center;
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-radius: 8px;
-  border: 2px dashed #e5e7eb;
+  border: 2px dashed var(--color-gray-200);
 }
 
 .empty-state h4 {
   font-size: 16px;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 16px 0 8px;
 }
 
 .empty-state p {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   margin-bottom: 24px;
 }
@@ -132,8 +132,8 @@
 }
 
 .api-key-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 20px;
   transition: all 0.15s;
@@ -154,7 +154,7 @@
 .key-title h4 {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 8px;
 }
 
@@ -204,9 +204,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
+  border: 1px solid var(--color-gray-300);
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   font-size: 12px;
   font-weight: 500;
   border-radius: 5px;
@@ -225,7 +225,7 @@
   align-items: center;
   padding: 6px 8px;
   border: 1px solid #fee2e2;
-  background: white;
+  background: var(--card-bg);
   color: #dc2626;
   font-size: 12px;
   border-radius: 5px;
@@ -240,7 +240,7 @@
 
 .key-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 16px;
   line-height: 1.5;
 }
@@ -250,7 +250,7 @@
   flex-direction: column;
   gap: 10px;
   padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .key-detail-row {
@@ -262,23 +262,23 @@
 }
 
 .detail-label {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
   flex-shrink: 0;
 }
 
 .detail-value {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .key-prefix {
   padding: 3px 8px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: 12px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .permissions-list {
@@ -290,11 +290,11 @@
 
 .permission-tag {
   padding: 2px 6px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 3px;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
 }
 

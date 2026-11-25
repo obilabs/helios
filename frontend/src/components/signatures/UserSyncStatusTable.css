@@ -1,8 +1,8 @@
 /* UserSyncStatusTable Component Styles */
 
 .user-sync-table {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -13,8 +13,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -33,13 +33,13 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .user-count {
   font-size: 12px;
-  color: #6b7280;
-  background: #e5e7eb;
+  color: var(--color-gray-500);
+  background: var(--color-gray-200);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -55,14 +55,14 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   width: 200px;
 }
 
 .search-box svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
@@ -71,11 +71,11 @@
   outline: none;
   font-size: 13px;
   width: 100%;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .search-box input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .filter-select {
@@ -83,13 +83,13 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
 }
 
 .filter-select svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
@@ -97,7 +97,7 @@
   border: none;
   outline: none;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--color-gray-800);
   background: transparent;
   cursor: pointer;
 }
@@ -109,16 +109,16 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
+  color: var(--color-gray-500);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-icon:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 /* Error message */
@@ -139,7 +139,7 @@
   justify-content: center;
   gap: 8px;
   padding: 48px 20px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
@@ -159,7 +159,7 @@
   align-items: center;
   justify-content: center;
   padding: 48px 20px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-align: center;
 }
 
@@ -198,8 +198,8 @@
 }
 
 .table-content thead tr {
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .table-content th {
@@ -207,7 +207,7 @@
   text-align: left;
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -215,14 +215,14 @@
 .table-content td {
   padding: 12px 16px;
   font-size: 13px;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--color-gray-700);
+  border-bottom: 1px solid var(--color-gray-100);
   height: 48px;
   vertical-align: middle;
 }
 
 .table-content tbody tr:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 /* User cell */
@@ -238,12 +238,12 @@
 
 .user-name {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .user-email {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Template cell */
@@ -252,7 +252,7 @@
 }
 
 .no-template {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-style: italic;
 }
 
@@ -303,7 +303,7 @@
 /* Date cell */
 .date-cell {
   min-width: 140px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 12px;
 }
 
@@ -322,15 +322,15 @@
   border-radius: 4px;
   background: transparent;
   border: 1px solid transparent;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-icon-small:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-  color: #374151;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-200);
+  color: var(--color-gray-700);
 }
 
 .btn-icon-small:disabled {
@@ -344,13 +344,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .pagination-info {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .pagination-buttons {
@@ -365,17 +365,17 @@
   gap: 4px;
   padding: 6px 12px;
   border-radius: 6px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
+  color: var(--color-gray-700);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-pagination:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-300);
 }
 
 .btn-pagination:disabled {

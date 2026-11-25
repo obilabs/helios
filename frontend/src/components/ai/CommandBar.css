@@ -22,7 +22,7 @@
 .command-bar {
   width: 100%;
   max-width: 640px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
@@ -131,13 +131,13 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #8b5cf6;
+  color: var(--theme-primary);
   margin-bottom: 8px;
 }
 
 .response-content {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -198,13 +198,13 @@
 
 .command-bar-item:hover .item-icon {
   background: #e2e8f0;
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .item-text {
   flex: 1;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .item-arrow {
@@ -213,7 +213,7 @@
 }
 
 .command-bar-item:hover .item-arrow {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   transform: translateX(2px);
 }
 
@@ -246,7 +246,7 @@
 }
 
 .command-bar-hint.ai-disabled a {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   text-decoration: underline;
 }
 
@@ -265,7 +265,7 @@
   align-items: center;
   justify-content: center;
   padding: 2px 6px;
-  background: white;
+  background: var(--card-bg);
   border: 1px solid #e2e8f0;
   border-radius: 4px;
   font-family: inherit;

@@ -11,7 +11,7 @@
 }
 
 .view-onboarding-modal {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   width: 100%;
@@ -30,13 +30,13 @@
   cursor: pointer;
   padding: 8px;
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: background-color 0.15s, color 0.15s;
 }
 
 .view-onboarding-close:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .view-onboarding-header {
@@ -47,13 +47,13 @@
 .view-onboarding-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 8px;
 }
 
 .view-onboarding-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -73,9 +73,9 @@
   align-items: flex-start;
   gap: 16px;
   padding: 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-gray-200);
   border-radius: 10px;
-  background: white;
+  background: var(--card-bg);
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, background-color 0.15s;
@@ -83,12 +83,12 @@
 }
 
 .view-option-card:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
   background: #fafbfc;
 }
 
 .view-option-card.selected {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   background: #faf5ff;
 }
 
@@ -103,7 +103,7 @@
 }
 
 .view-option-card-icon.admin {
-  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  background: linear-gradient(135deg, var(--theme-primary), #a855f7);
   color: white;
 }
 
@@ -119,13 +119,13 @@
 .view-option-card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px;
 }
 
 .view-option-card-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
   line-height: 1.5;
 }
@@ -137,7 +137,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -146,7 +146,7 @@
 
 .view-onboarding-hint {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   text-align: center;
   margin: 0;
 }
@@ -171,12 +171,12 @@
 }
 
 .view-onboarding-button.primary {
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
 }
 
 .view-onboarding-button.primary:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .view-onboarding-button.primary:active {

@@ -1,6 +1,6 @@
 .relay-settings {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 20px;
 }
@@ -11,7 +11,7 @@
   justify-content: center;
   gap: 12px;
   padding: 48px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .relay-loading .spin,
@@ -31,37 +31,37 @@
   justify-content: space-between;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .relay-header-info h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 4px 0;
 }
 
 .relay-header-info p {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
   max-width: 620px;
 }
 
 .relay-header .btn-icon {
   padding: 8px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: all 0.15s;
   flex-shrink: 0;
 }
 
 .relay-header .btn-icon:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
 }
 
 .relay-error {
@@ -82,7 +82,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border: 1px solid #f3f4f6;
+  border: 1px solid var(--color-gray-100);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -93,7 +93,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .relay-toggle-row:last-child {
@@ -110,12 +110,12 @@
 .relay-toggle-name {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .relay-toggle-desc {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .relay-toggle-desc code,
@@ -123,10 +123,10 @@
 .relay-rules-table code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   padding: 1px 5px;
   border-radius: 4px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .relay-status {
@@ -144,9 +144,9 @@
 }
 
 .relay-status.inactive {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  color: var(--color-gray-500);
 }
 
 /* Rules table */
@@ -158,16 +158,16 @@
 .relay-add h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 12px 0;
 }
 
 .relay-empty {
   padding: 16px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px dashed var(--color-gray-200);
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }
 
@@ -182,16 +182,16 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-weight: 600;
   padding: 8px 10px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .relay-rules-table td {
   padding: 10px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
+  border-bottom: 1px solid var(--color-gray-100);
+  color: var(--color-gray-700);
   vertical-align: middle;
 }
 
@@ -230,7 +230,7 @@
 }
 
 .relay-muted {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .relay-delete {
@@ -239,7 +239,7 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   transition: all 0.15s;
 }
 
@@ -257,7 +257,7 @@
 .relay-add {
   margin-top: 28px;
   padding-top: 20px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .relay-add-form {
@@ -272,7 +272,7 @@
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .relay-add-form label span {
@@ -283,18 +283,18 @@
 .relay-add-form input[type='text'],
 .relay-add-form input[type='datetime-local'] {
   padding: 7px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 13px;
-  color: #111827;
-  background: white;
+  color: var(--color-gray-900);
+  background: var(--card-bg);
   min-width: 160px;
 }
 
 .relay-add-form select:focus,
 .relay-add-form input:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
 }
 
@@ -302,7 +302,7 @@
   flex-direction: row !important;
   align-items: center;
   gap: 6px !important;
-  color: #374151 !important;
+  color: var(--color-gray-700) !important;
   padding-bottom: 8px;
 }
 
@@ -319,6 +319,6 @@
 .relay-hint {
   margin: 14px 0 0 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   max-width: 640px;
 }

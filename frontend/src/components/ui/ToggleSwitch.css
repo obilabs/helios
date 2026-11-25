@@ -44,7 +44,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #d1d5db;
+  background-color: var(--color-gray-300);
   transition: background-color 0.2s ease;
   border-radius: 9999px;
   border: none !important;
@@ -55,7 +55,7 @@
 .toggle-slider::before {
   position: absolute;
   content: "";
-  background-color: white;
+  background-color: var(--card-bg);
   transition: transform 0.2s ease;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

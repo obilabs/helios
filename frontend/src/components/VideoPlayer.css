@@ -18,12 +18,12 @@
 
 .video-player .error-content {
   text-align: center;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .video-player .error-content svg {
   margin-bottom: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .video-player .error-content p {
@@ -159,7 +159,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   border-radius: 2px;
   transition: width 0.1s linear;
 }
@@ -169,7 +169,7 @@
   top: 50%;
   width: 12px;
   height: 12px;
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   opacity: 0;
@@ -244,7 +244,7 @@
   appearance: none;
   width: 12px;
   height: 12px;
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 50%;
   cursor: pointer;
 }
@@ -252,7 +252,7 @@
 .volume-slider::-moz-range-thumb {
   width: 12px;
   height: 12px;
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 50%;
   cursor: pointer;
   border: none;
