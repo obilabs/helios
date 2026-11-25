@@ -149,7 +149,9 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   upgrade no longer leaves the proxy answering 502 until it is restarted. If
   you keep your own copy of the proxy configuration, copy the `resolver` line
   and the two `upstream` blocks. Needs nginx 1.27.3 or later (the compose file
-  uses 1.30).
+  uses 1.30). The proxy reads this file when it
+  starts, so restart it once after the upgrade that brings the change in:
+  `docker compose restart nginx`.
 - **Audit log hash, version 3.** Migration `105_security_audit_hash_v3.sql`
   changes how new audit rows are hashed so that any text can be recorded.
   Existing rows are kept as they are and still verify. It runs on start-up.
