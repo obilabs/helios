@@ -641,7 +641,7 @@ class ScheduledActionService {
     // Use Google Workspace service to suspend
     // For now, just update local status
     await db.query(
-      `UPDATE organization_users SET user_status = 'suspended', is_active = false WHERE id = $1`,
+      `UPDATE organization_users SET status = 'suspended', is_active = false WHERE id = $1`,
       [action.userId]
     );
 
@@ -667,7 +667,7 @@ class ScheduledActionService {
     }
 
     await db.query(
-      `UPDATE organization_users SET user_status = 'active', is_active = true WHERE id = $1`,
+      `UPDATE organization_users SET status = 'active', is_active = true WHERE id = $1`,
       [action.userId]
     );
 
@@ -693,7 +693,7 @@ class ScheduledActionService {
 
     // Soft delete - mark as deleted instead of removing
     await db.query(
-      `UPDATE organization_users SET user_status = 'deleted', is_active = false, deleted_at = NOW() WHERE id = $1`,
+      `UPDATE organization_users SET status = 'deleted', is_active = false, deleted_at = NOW() WHERE id = $1`,
       [action.userId]
     );
 
@@ -718,7 +718,7 @@ class ScheduledActionService {
     }
 
     await db.query(
-      `UPDATE organization_users SET user_status = 'active', is_active = true, deleted_at = NULL WHERE id = $1`,
+      `UPDATE organization_users SET status = 'active', is_active = true, deleted_at = NULL WHERE id = $1`,
       [action.userId]
     );
 

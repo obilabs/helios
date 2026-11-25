@@ -640,7 +640,7 @@ export class SyncSchedulerService {
     // Get stats from organization_users for Google Workspace users
     const result = await db.query(
       `SELECT COUNT(*) as total_users,
-              COUNT(CASE WHEN user_status = 'suspended' AND deleted_at IS NULL THEN 1 END) as suspended_users
+              COUNT(CASE WHEN status = 'suspended' AND deleted_at IS NULL THEN 1 END) as suspended_users
        FROM organization_users
        WHERE organization_id = $1
          AND google_workspace_id IS NOT NULL

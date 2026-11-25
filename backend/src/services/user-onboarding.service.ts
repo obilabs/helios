@@ -725,7 +725,7 @@ class UserOnboardingService {
         role,
         is_active,
         email_verified,
-        user_status,
+        status,
         user_type
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'user', true, false, 'active', 'staff')
       RETURNING id
