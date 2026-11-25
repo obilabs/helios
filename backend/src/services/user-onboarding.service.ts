@@ -802,7 +802,7 @@ class UserOnboardingService {
       )
       SELECT organization_id, $1, $2, first_name, last_name, false, false, NOW()
       FROM organization_users WHERE id = $3
-      ON CONFLICT (google_id) DO UPDATE SET last_sync_at = NOW()
+      ON CONFLICT (organization_id, google_id) DO UPDATE SET last_sync_at = NOW()
     `, [googleId, email, userId]);
   }
 
