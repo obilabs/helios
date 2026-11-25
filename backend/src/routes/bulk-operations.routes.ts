@@ -68,6 +68,20 @@ const upload = multer({
   },
 });
 
+const BULK_OPERATION_TYPES = [
+  'user_update',
+  'user_create',
+  'user_suspend',
+  'group_membership_add',
+  'group_membership_remove',
+];
+
+function unknownOperationType(operationType: unknown): string | null {
+  return typeof operationType === 'string' && BULK_OPERATION_TYPES.includes(operationType)
+    ? null
+    : `Unknown operation type. Supported: ${BULK_OPERATION_TYPES.join(', ')}`;
+}
+
 /**
  * @openapi
  * /api/v1/bulk/upload:
@@ -244,6 +258,11 @@ router.post('/preview', authenticateToken, requireAdmin, async (req: Request, re
       });
     }
 
+    const previewTypeError = unknownOperationType(operationType);
+    if (previewTypeError) {
+      return res.status(400).json({ success: false, error: previewTypeError });
+    }
+
     // Generate preview summary
     const preview = {
       operationType,
@@ -335,6 +354,11 @@ router.post('/execute', authenticateToken, requireAdmin, async (req: Request, re
         success: false,
         error: 'Invalid request body',
       });
+    }
+
+    const typeError = unknownOperationType(operationType);
+    if (typeError) {
+      return res.status(400).json({ success: false, error: typeError });
     }
 
     // Create bulk operation
