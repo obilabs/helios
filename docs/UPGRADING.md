@@ -136,6 +136,11 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   `103_auth_library_schema.sql` adds the tables and columns it needs and
   re-keys existing password records. It runs on start-up. An `edge` install
   from before this change keeps its users.
+- **Audit log hash, version 3.** Migration `105_security_audit_hash_v3.sql`
+  changes how new audit rows are hashed so that any text can be recorded.
+  Existing rows are kept as they are and still verify. It runs on start-up.
+  `GET /health` gains `auditWriteFailures`, which should read 0. See
+  `docs/features/AUDIT-LOG-INTEGRITY.md`.
 - **Google client libraries updated** to their current majors.
 - **Upload handling, mail sending and routing libraries updated** to their
   current majors. No configuration change.

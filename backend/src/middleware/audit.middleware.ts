@@ -17,6 +17,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../database/connection.js';
 import crypto from 'crypto';
+import { recordAuditWriteFailure } from '../lib/audit-write-failures.js';
 
 // Routes that should NOT be logged (health checks, static assets, etc.)
 const EXCLUDED_ROUTES = [
@@ -271,8 +272,14 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
         }),
       ]);
     } catch (err) {
-      // Never let audit logging break the application
-      console.error('[Audit] Failed to log request:', err);
+      // Best-effort: the request has already been answered. The failure is
+      // logged with the action and the actor, and counted for /health.
+      recordAuditWriteFailure({
+        action,
+        actor: actorIdentifier,
+        source: 'audit.middleware',
+        error: err,
+      });
     }
   });
 

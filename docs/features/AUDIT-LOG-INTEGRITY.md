@@ -16,7 +16,7 @@ reasoning are in 101's header.
 
 | Operation | What happens |
 |---|---|
-| `INSERT` | Allowed. A `BEFORE INSERT` trigger assigns `chain_seq`, sets `hash_version = 2`, links `previous_hash` to the preceding row and computes `record_hash`. Callers cannot set any of these — anything they send is overwritten. |
+| `INSERT` | Allowed. A `BEFORE INSERT` trigger assigns `chain_seq`, sets `hash_version = 3`, links `previous_hash` to the preceding row and computes `record_hash`. Callers cannot set any of these — anything they send is overwritten. |
 | `UPDATE` | **Rejected** by `trg_security_audit_no_update` with SQLSTATE 23000 and a message naming the row. Also revoked at the table ACL. |
 | `DELETE` | **Rejected** by `trg_security_audit_no_delete`, same. There is no sanctioned exception: `security_audit_logs` has no foreign keys, so no cascade reaches it and nothing needs one. |
 | `TRUNCATE` | **Rejected** by `trg_security_audit_no_truncate`. No rule ever covered this. |
@@ -99,7 +99,7 @@ The result reports the **first** break with its row id:
 | Field | Meaning |
 |---|---|
 | `ok` | Every row covered by the chain verified. |
-| `checked_v2_rows` | Rows covered by the chain and inspected. |
+| `checked_v2_rows` | Rows covered by the chain and inspected: every row with `hash_version` 2 or 3. The column names predate version 3. |
 | `v2_start_seq` / `v2_end_seq` | Range inspected. |
 | `first_break_id` / `first_break_seq` / `first_break_at` | The row where verification stopped. |
 | `first_break_reason` | `record_hash_mismatch` (the row was edited) or `chain_link_mismatch` (a row before it was removed or altered). |
@@ -163,10 +163,39 @@ COVERS". Three properties worth knowing:
 therefore only be set at insert; marking a row reviewed later is a new audit
 event, not an edit. `SecurityAuditService.flagEntry()` already works that way.
 
-A future column needs a **v3** payload function and a v3 branch in the
-verifier, and must add itself to the `hash_version` CHECK constraint. Never
-edit v2 in place — that would silently change the meaning of every hash already
-written under it.
+A future column needs a **v4** payload function and a v4 branch in
+`security_audit_record_hash()`, and must add itself to the `hash_version` CHECK
+constraint. Never edit a version in place — that would silently change the
+meaning of every hash already written under it.
+
+### Hash versions
+
+| `hash_version` | Written by | Hash |
+|---|---|---|
+| 1 | migration 066, until 101 | seven fields joined with a separator. Kept, reported in `legacy_v1_*`. |
+| 2 | migration 101, until 105 | the 26-field payload, converted to bytes with a text-to-bytea cast. Kept, still verified as v2, counted in `ok`. |
+| 3 | migration 105 onwards | the same 26 fields under their own version tag, hashed over the payload's UTF-8 bytes (`convert_to`). All new rows. |
+
+Version 3 exists because the version 2 cast parses a backslash as the start of
+an escape sequence instead of encoding the text, so a payload containing one
+(jsonb text writes a double quote inside a string as `\"`) could not be hashed.
+Rows are never rewritten from one version to another. The first v3 row links
+to the last v2 row, so the table is one chain, and on upgrade 105 appends one
+`audit.chain.v3.initialised` row to mark the boundary.
+
+## When an audit write fails
+
+Routine audit writes are best-effort: the request they describe is not failed
+because its audit row could not be written. A failed write is never silent,
+though:
+
+- it is logged at `error` as `Audit write failed: this action was not recorded
+  in the audit log`, with the action, the actor and the database error;
+- it is counted, and `GET /health` reports the count as `auditWriteFailures`.
+
+The count is since the backend process started and a restart clears it; the
+log line is the durable record. Anything above zero means the audit log is
+missing entries and is worth investigating.
 
 ## One implementation
 
@@ -235,6 +264,8 @@ and every migration). Thirteen cases:
 | T11 | each of the 26 payload fields is mutated in turn and must change the hash, so "covers every column" is checked rather than asserted |
 | T12 | a v1 row is still recomputable as v1 and is reported apart from `ok` |
 | T13 | a 50-row batch still chains in order |
+| T14 | text with quotes, backslashes and non-ASCII characters appends and verifies, and two backslash spellings do not hash alike |
+| T15 | a version 2 row still verifies as version 2, and version 2 and 3 rows verify as one chain |
 
 The guarantee is not something `tsc` or Jest can check — triggers, ACLs and a
 hash chain only exist inside a real Postgres, which is why it went untested

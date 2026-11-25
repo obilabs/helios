@@ -20,6 +20,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { logger } from './utils/logger.js';
+import { getAuditWriteFailures } from './lib/audit-write-failures.js';
 import { setupTokenStore } from './services/setup-token.service.js';
 import { db } from './database/connection.js';
 import { dbInitializer } from './database/init.js';
@@ -241,6 +242,9 @@ app.get('/health', async (req, res) => {
       status: 'healthy',
       database: dbHealth ? 'connected' : 'disconnected',
       platformSetup: platformSetupComplete ? 'complete' : 'pending',
+      // Audit writes that failed since this process started. Anything above
+      // zero means the audit log is missing entries; the error log names them.
+      auditWriteFailures: getAuditWriteFailures().sinceStart,
       timestamp: new Date().toISOString(),
       version: process.env['npm_package_version'] || '1.0.0',
       requestId: req.requestId,
