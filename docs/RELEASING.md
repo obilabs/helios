@@ -85,12 +85,50 @@ only when the feature meets **all** of these:
 Demoting works the same way in reverse, and needs no checklist: if a stable
 surface turns out to be broken or placeholder, demote it and say why in the PR.
 
+## Version numbers
+
+| Release | Contains | Schema |
+|---------|----------|--------|
+| Patch (1.2.x) | Fixes and dependency security updates | Additive only |
+| Minor (1.x.0) | New features | Additive only |
+| Major (x.0.0) | May remove or rename things | Flattened baseline plus one upgrade migration |
+
+Installs upgrade in place through minors and patches, and one major at a time.
+What that means for someone running Helios is in [UPGRADING.md](UPGRADING.md).
+
+Before a major, every migration since the previous major is flattened into one
+baseline schema for fresh installs, plus one upgrade migration from the last
+minor of the previous major. Nothing before v1.0.0 has an upgrade route.
+
+## The release gate
+
+A version is tagged only when every row below passes **on the commit being
+tagged**. A red row means no tag. Merging to `main` does not release anything:
+it publishes the `edge` image, which is for testing.
+
+| # | Check | How it runs today |
+|---|-------|-------------------|
+| 1 | Unit and integration tests, backend and frontend | CI, every PR and `main` |
+| 2 | Fresh-install schema builds; backend SQL matches it | CI, every PR and `main` |
+| 3 | Setup wizard and sign-in in a real browser, on a disposable stack | CI, every PR and `main` |
+| 4 | No `experimental` feature on in the `release` profile; no placeholder text behind a stable flag | CI, every PR and `main` |
+| 5 | No open dependency alert rated high or critical (`npm audit` in each package root) | By hand. Not yet a CI check. |
+| 6 | **Upgrade test.** Start the previous release with seed data and an admin account, switch to the candidate image, then: migrations apply, the schema equals a fresh install's, the data is intact, the old admin signs in. Repeat from x.0.0 of the current major. | **Not built.** There is no previous release until v1.0.0. Until it exists, a PR that changes sign-in or rewrites rows must show this test done by hand in its description. |
+| 7 | **Contract test** with other ObiLabs products: the calls between them, against each neighbour's current stable release | **Not built.** |
+| 8 | Full pass against a real Google Workspace test tenant, following `docs/guides/GOOGLE-WORKSPACE-E2E-RUNBOOK.md`, with no open blocker | By hand, on the candidate image |
+| 9 | Smoke test of the tagged image (step 4 below) | By hand |
+
+Rows 6 and 7 must be automated before v1.1.0, because that is the first release
+anyone upgrades to.
+
 ## Cutting a release
 
 1. Review the registry: every `stable` entry meets the promotion bar above.
-2. Confirm CI is green on `main` (the checks above run on every PR).
+2. Work through [the release gate](#the-release-gate) on the commit you intend
+   to tag. Every row passes, or there is no tag.
 3. Tag `vX.Y.Z` on `main` (via the normal PR flow; never push `main` directly).
-   The published images default to the `release` profile.
+   The published images default to the `release` profile. Add the version's
+   section to the upgrade notes in [UPGRADING.md](UPGRADING.md) in the same PR.
 4. Smoke-test the tagged image with `docker compose up` and no
    `HELIOS_FEATURE_PROFILE` set: only stable features should be visible, and
    Settings > Advanced > Features should list preview features as off.
