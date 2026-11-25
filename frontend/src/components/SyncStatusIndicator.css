@@ -26,13 +26,13 @@
 .sync-status.is-stale {
   color: #b45309;
   border-color: #fcd34d;
-  background: #fffbeb;
+  background: var(--color-gray-50);
 }
 
 .sync-status.has-error {
   color: #b91c1c;
   border-color: #fecaca;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .sync-status .spin {

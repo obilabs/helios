@@ -1,7 +1,7 @@
 /* Shared Page Styles */
 .page-container {
   padding: 20px;
-  background: #f8f9fa;
+  background: var(--color-gray-50);
   min-height: 100vh;
 }
 
@@ -15,13 +15,13 @@
 .page-header h1 {
   font-size: 32px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
   margin: 0 0 8px 0;
 }
 
 .page-header p {
   font-size: 16px;
-  color: #666;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -32,7 +32,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding: 16px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -56,7 +56,7 @@
   width: 100%;
   height: 32px;
   padding: 0 12px 0 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
 }
@@ -70,16 +70,16 @@
 .filter-select {
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background: white;
+  background: var(--card-bg);
   font-size: 13px;
   cursor: pointer;
 }
 
 /* Data Grid */
 .data-grid {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   /* This 6-column table is too wide to fit narrow (~800px) viewports. Rather
@@ -97,11 +97,11 @@
   min-width: 820px;
   padding: 0 16px;
   height: 40px;
-  background: #fafbfc;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   align-items: center;
@@ -125,14 +125,14 @@
   height: 48px;
   min-height: 48px;
   max-height: 48px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-gray-100);
   align-items: center;
   gap: 16px;
   transition: background 0.1s ease;
 }
 
 .grid-row:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 /* Column Sizes */
@@ -162,7 +162,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, #a78bfa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -171,7 +171,7 @@
 
 .item-name {
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -180,7 +180,7 @@
 
 .item-description {
   font-size: 13px;
-  color: #666;
+  color: var(--color-gray-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -189,7 +189,7 @@
 .member-count,
 .email-text {
   font-size: 14px;
-  color: #666;
+  color: var(--color-gray-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -210,10 +210,10 @@
 .type-badge {
   display: inline-block;
   padding: 4px 10px;
-  background: #f0f0f0;
+  background: var(--color-gray-100);
   border-radius: 12px;
   font-size: 12px;
-  color: #666;
+  color: var(--color-gray-500);
 }
 
 .action-buttons {
@@ -244,19 +244,19 @@
 }
 
 .btn-secondary {
-  background: #f5f5f5;
-  color: #333;
+  background: var(--color-gray-100);
+  color: var(--color-gray-800);
 }
 
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: var(--color-gray-200);
 }
 
 .btn-icon {
   width: 32px;
   height: 32px;
   border: none;
-  background: #f5f5f5;
+  background: var(--color-gray-100);
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -267,11 +267,11 @@
 }
 
 .btn-icon:hover {
-  background: #e0e0e0;
+  background: var(--color-gray-200);
 }
 
 .btn-icon.danger:hover {
-  background: #ffebee;
+  background: var(--color-gray-100);
 }
 
 /* Empty State */
@@ -286,31 +286,31 @@
   justify-content: center;
   margin-bottom: 16px;
   opacity: 0.5;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .empty-state h3 {
   margin: 0 0 8px 0;
   font-size: 20px;
-  color: #333;
+  color: var(--color-gray-800);
 }
 
 .empty-state p {
   margin: 0;
-  color: #666;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
 /* Org Units Tree Specific */
 .org-units-tree {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .tree-header {
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .tree-controls {
@@ -335,7 +335,7 @@
 }
 
 .org-unit-row:hover {
-  background: #f8f9fa;
+  background: var(--color-gray-50);
 }
 
 .org-unit-info {
@@ -355,12 +355,12 @@
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  color: #666;
+  color: var(--color-gray-500);
   transition: transform 0.2s;
 }
 
 .expand-button:hover {
-  color: #333;
+  color: var(--color-gray-800);
 }
 
 .no-expand {
@@ -372,7 +372,7 @@
 .unit-icon {
   width: 32px;
   height: 32px;
-  background: #e3f2fd;
+  background: var(--color-gray-100);
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -382,13 +382,13 @@
 
 .unit-name {
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
   margin-bottom: 2px;
 }
 
 .unit-path {
   font-size: 12px;
-  color: #999;
+  color: var(--color-gray-400);
   font-family: 'Monaco', 'Courier New', monospace;
 }
 
@@ -403,7 +403,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #666;
+  color: var(--color-gray-500);
 }
 
 .stat-icon {

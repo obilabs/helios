@@ -15,7 +15,7 @@
   gap: 12px;
   padding: 16px 20px;
   border-radius: 8px;
-  background: white;
+  background: var(--card-bg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 300px;
   max-width: 500px;
@@ -44,7 +44,7 @@
   flex: 1;
   font-size: 14px;
   line-height: 1.4;
-  color: #333;
+  color: var(--color-gray-800);
 }
 
 .toast-close {
@@ -52,7 +52,7 @@
   border: none;
   font-size: 24px;
   line-height: 1;
-  color: #666;
+  color: var(--color-gray-500);
   cursor: pointer;
   padding: 0;
   margin: 0;

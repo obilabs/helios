@@ -12,13 +12,13 @@
 .my-team-page .page-header h1 {
   font-size: 22px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px;
 }
 
 .my-team-page .page-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -31,10 +31,10 @@
   justify-content: center;
   gap: 12px;
   padding: 48px;
-  color: #6b7280;
-  background: white;
+  color: var(--color-gray-500);
+  background: var(--card-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
 }
 
 .error-state {
@@ -46,7 +46,7 @@
   font-size: 13px;
   font-weight: 500;
   color: white;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -54,7 +54,7 @@
 }
 
 .retry-btn:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 /* Empty State */
@@ -65,23 +65,23 @@
   justify-content: center;
   gap: 16px;
   padding: 64px 24px;
-  color: #6b7280;
-  background: white;
+  color: var(--color-gray-500);
+  background: var(--card-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   text-align: center;
 }
 
 .empty-team-state h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin: 0;
 }
 
 .empty-team-state p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
   max-width: 400px;
 }
@@ -94,9 +94,9 @@
 }
 
 .team-section {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   overflow: hidden;
 }
 
@@ -105,8 +105,8 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  background: #fafbfc;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .section-icon {
@@ -116,13 +116,13 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .section-icon.manager {
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--theme-primary-light);
+  color: var(--theme-primary-hover);
 }
 
 .section-icon.peers {
@@ -131,14 +131,14 @@
 }
 
 .section-icon.reports {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #059669;
 }
 
 .section-header h2 {
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin: 0;
   flex: 1;
 }
@@ -146,8 +146,8 @@
 .section-count {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--color-gray-500);
+  background: var(--color-gray-100);
   padding: 3px 10px;
   border-radius: 12px;
 }
@@ -159,7 +159,7 @@
 .empty-section {
   text-align: center;
   padding: 24px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-size: 14px;
 }
 
@@ -180,16 +180,16 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: #fafbfc;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .team-member-card:hover {
-  background: white;
-  border-color: #8b5cf6;
+  background: var(--card-bg);
+  border-color: var(--theme-primary);
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
 }
 
@@ -209,7 +209,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, #6366f1 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,7 +227,7 @@
   padding: 2px 6px;
   border-radius: 8px;
   text-transform: uppercase;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: 2px solid white;
 }
@@ -240,7 +240,7 @@
 .member-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -249,7 +249,7 @@
 
 .member-title {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 6px;
   white-space: nowrap;
   overflow: hidden;
@@ -260,8 +260,8 @@
   display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--theme-primary-light);
+  color: var(--theme-primary-hover);
   border-radius: 4px;
 }
 
@@ -278,14 +278,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .member-action-btn:hover {
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
 }
 

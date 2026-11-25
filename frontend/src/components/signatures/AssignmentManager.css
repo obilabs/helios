@@ -1,9 +1,9 @@
 /* AssignmentManager Component Styles */
 
 .assignment-manager {
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   overflow: hidden;
 }
 
@@ -12,21 +12,21 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .assignment-manager-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .assignment-manager-header .template-name {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .assignment-manager-header .header-actions {
@@ -42,7 +42,7 @@
   gap: 8px;
   padding: 12px 16px;
   margin: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #dc2626;
@@ -61,15 +61,15 @@
 /* New Assignment Form */
 .new-assignment-form {
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fafafa;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .new-assignment-form h4 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .form-section {
@@ -81,7 +81,7 @@
   margin-bottom: 10px;
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: var(--color-gray-600);
 }
 
 /* Type Selector */
@@ -96,8 +96,8 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -105,13 +105,13 @@
 }
 
 .type-option:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
 }
 
 .type-option.selected {
-  border-color: #8b5cf6;
-  background: #f5f3ff;
+  border-color: var(--theme-primary);
+  background: var(--theme-primary-lighter);
 }
 
 .type-option .type-info {
@@ -123,35 +123,35 @@
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .type-option .type-desc {
   display: block;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 2px;
 }
 
 .type-option .check-icon {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   flex-shrink: 0;
 }
 
 .type-option svg:first-child {
-  color: #6b7280;
+  color: var(--color-gray-500);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .type-option.selected svg:first-child {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 /* Target Selector */
 .target-selector {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -161,11 +161,11 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .target-selector .search-box svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
@@ -181,7 +181,7 @@
 .target-selector .empty-state {
   padding: 24px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }
 
@@ -211,35 +211,35 @@
 }
 
 .target-option:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .target-option.selected {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .target-option svg:first-child {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
 .target-option.selected svg:first-child {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .target-option .target-name {
   flex: 1;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .target-option .target-count {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .target-option .check-icon {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 /* Organization Default Note */
@@ -248,13 +248,13 @@
   align-items: flex-start;
   gap: 12px;
   padding: 16px;
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border: 1px solid #ddd6fe;
   border-radius: 8px;
 }
 
 .org-default-note svg {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -262,7 +262,7 @@
 .org-default-note p {
   margin: 0;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--color-gray-600);
   line-height: 1.5;
 }
 
@@ -272,8 +272,8 @@
 }
 
 .preview-panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   margin-bottom: 16px;
   overflow: hidden;
@@ -281,21 +281,21 @@
 
 .preview-panel .preview-header {
   padding: 10px 14px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .preview-panel .preview-header h5 {
   margin: 0;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .preview-panel .empty-state {
   padding: 24px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }
 
@@ -309,7 +309,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .preview-user:last-child {
@@ -319,26 +319,26 @@
 .preview-user .user-name {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .preview-user .user-email {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .preview-user .user-dept {
   margin-left: auto;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .preview-more {
   padding: 10px 14px;
   text-align: center;
   font-size: 13px;
-  color: #6b7280;
-  background: #f9fafb;
+  color: var(--color-gray-500);
+  background: var(--color-gray-50);
 }
 
 /* Form Actions */
@@ -347,7 +347,7 @@
   justify-content: flex-end;
   gap: 10px;
   padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Assignments List */
@@ -359,7 +359,7 @@
   margin: 0 0 12px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .assignments-list .loading-state,
@@ -370,7 +370,7 @@
   justify-content: center;
   gap: 8px;
   padding: 32px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-align: center;
 }
 
@@ -382,12 +382,12 @@
   margin: 0;
   font-size: 14px;
   font-weight: 500;
-  color: #4b5563;
+  color: var(--color-gray-600);
 }
 
 .assignments-list .empty-state span {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 /* Assignment Items */
@@ -402,19 +402,19 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   transition: all 0.15s ease;
 }
 
 .assignment-item:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
 }
 
 .assignment-item.inactive {
   opacity: 0.6;
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .assignment-item .assignment-icon {
@@ -423,9 +423,9 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .assignment-item .assignment-info {
@@ -436,12 +436,12 @@
 .assignment-item .assignment-type {
   font-size: 13px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .assignment-item .assignment-target {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 2px;
 }
 
@@ -450,15 +450,15 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-top: 4px;
 }
 
 .assignment-item .assignment-priority {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   padding: 4px 8px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 4px;
 }
 
@@ -473,16 +473,16 @@
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 500;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 4px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-toggle:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
 }
 
 .btn-toggle.active {
@@ -514,7 +514,7 @@
   font-size: 13px;
   font-weight: 500;
   color: #ffffff;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -522,7 +522,7 @@
 }
 
 .assignment-manager .btn-primary:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .assignment-manager .btn-primary:disabled {
@@ -537,17 +537,17 @@
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  color: var(--color-gray-700);
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .assignment-manager .btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-300);
 }
 
 .assignment-manager .btn-icon {
@@ -557,7 +557,7 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  color: #6b7280;
+  color: var(--color-gray-500);
   background: none;
   border: none;
   border-radius: 4px;
@@ -566,11 +566,11 @@
 }
 
 .assignment-manager .btn-icon:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .assignment-manager .btn-icon.danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }

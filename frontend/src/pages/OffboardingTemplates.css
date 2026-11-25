@@ -22,13 +22,13 @@
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .header-subtitle {
   margin: 4px 0 0 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Buttons */
@@ -37,7 +37,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -48,7 +48,7 @@
 }
 
 .btn-primary:hover {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .btn-secondary {
@@ -56,9 +56,9 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -67,8 +67,8 @@
 }
 
 .btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }
 
 .btn-danger {
@@ -102,7 +102,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;
@@ -141,7 +141,7 @@
 .search-box svg {
   position: absolute;
   left: 10px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
   pointer-events: none;
 }
@@ -150,20 +150,20 @@
   width: 100%;
   height: 32px;
   padding: 0 12px 0 36px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   outline: none;
 }
 
 .search-box input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .search-box input:focus {
   border-color: var(--theme-primary, #8b5cf6);
-  background: white;
+  background: var(--card-bg);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
@@ -180,17 +180,17 @@
 }
 
 .filter-group svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .filter-group select {
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
-  background: white;
+  color: var(--color-gray-700);
+  background: var(--card-bg);
   cursor: pointer;
 }
 
@@ -201,7 +201,7 @@
   justify-content: center;
   gap: 12px;
   padding: 48px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
@@ -221,8 +221,8 @@
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   text-align: center;
 }
@@ -233,7 +233,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-radius: 50%;
   color: #f87171;
   margin-bottom: 16px;
@@ -243,13 +243,13 @@
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .empty-state p {
   margin: 0 0 24px 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Templates Grid */
@@ -261,8 +261,8 @@
 
 /* Template Card */
 .template-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 20px;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -270,7 +270,7 @@
 
 .template-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
 }
 
 .template-card.is-default {
@@ -300,7 +300,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .default-badge {
@@ -331,14 +331,14 @@
 }
 
 .status-badge.inactive {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .card-description {
   margin: 0 0 16px 0;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -358,11 +358,11 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .detail-item svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .card-actions {
@@ -370,7 +370,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .action-btn {
@@ -378,18 +378,18 @@
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 4px;
   font-size: 12px;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .action-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-300);
 }
 
 .action-btn.danger {
@@ -397,12 +397,12 @@
 }
 
 .action-btn.danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-color: #fecaca;
 }
 
 .action-btn.toggle {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .card-footer {
@@ -411,12 +411,12 @@
   align-items: center;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .timestamp {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .chevron {
@@ -435,7 +435,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 24px;
   max-width: 420px;
@@ -447,13 +447,13 @@
   margin: 0 0 12px 0;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .modal-content p {
   margin: 0 0 24px 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   line-height: 1.5;
 }
 

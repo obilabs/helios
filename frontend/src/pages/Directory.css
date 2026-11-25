@@ -1,6 +1,6 @@
 .directory-container {
   padding: 20px;
-  background: #f8f9fa;
+  background: var(--color-gray-50);
   min-height: 100vh;
 }
 
@@ -11,13 +11,13 @@
 .directory-header h1 {
   font-size: 32px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
   margin: 0 0 8px 0;
 }
 
 .directory-header p {
   font-size: 16px;
-  color: #666;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -25,7 +25,7 @@
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
-  background: white;
+  background: var(--card-bg);
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -38,7 +38,7 @@
   padding: 10px 20px;
   border: none;
   background: transparent;
-  color: #666;
+  color: var(--color-gray-500);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -48,12 +48,12 @@
 }
 
 .tab-button:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--color-gray-100);
+  color: var(--color-gray-800);
 }
 
 .tab-button.active {
-  background: #e3f2fd;
+  background: var(--color-gray-100);
   color: #1976d2;
 }
 
@@ -79,7 +79,7 @@
 
 /* Coming Soon Sections */
 .coming-soon {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 80px 40px;
   text-align: center;
@@ -95,13 +95,13 @@
 .coming-soon h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: var(--color-gray-800);
   margin: 0 0 12px 0;
 }
 
 .coming-soon p {
   font-size: 16px;
-  color: #666;
+  color: var(--color-gray-500);
   margin: 0 0 20px 0;
   max-width: 500px;
   margin-left: auto;
@@ -111,8 +111,8 @@
 .coming-soon-label {
   display: inline-block;
   padding: 6px 16px;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;

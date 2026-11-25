@@ -19,20 +19,20 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, #6366f1 100%);
   color: white;
 }
 
 .user-settings-page .header-text h1 {
   font-size: 22px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px;
 }
 
 .user-settings-page .page-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -57,7 +57,7 @@
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -65,13 +65,13 @@
 }
 
 .user-settings-page .settings-nav-item:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .user-settings-page .settings-nav-item.active {
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--theme-primary-light);
+  color: var(--theme-primary-hover);
 }
 
 .user-settings-page .settings-nav-item span {
@@ -93,9 +93,9 @@
 .user-settings-page .settings-content {
   flex: 1;
   min-width: 0;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   padding: 24px;
 }
 
@@ -103,13 +103,13 @@
 .settings-section h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px;
 }
 
 .section-description {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 24px;
 }
 
@@ -117,7 +117,7 @@
 .setting-group {
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .setting-group:last-child {
@@ -130,13 +130,13 @@
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 8px;
 }
 
 .setting-hint {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin: 8px 0 0;
 }
 
@@ -151,10 +151,10 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #f9fafb;
-  border: 2px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 2px solid var(--color-gray-200);
   border-radius: 10px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -162,17 +162,17 @@
 
 .theme-option:hover {
   border-color: #c4b5fd;
-  background: white;
+  background: var(--card-bg);
 }
 
 .theme-option.selected {
-  border-color: #8b5cf6;
-  background: #ede9fe;
-  color: #7c3aed;
+  border-color: var(--theme-primary);
+  background: var(--theme-primary-light);
+  color: var(--theme-primary-hover);
 }
 
 .theme-option .check-icon {
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 /* Toggle Settings */
@@ -214,7 +214,7 @@
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: #e5e7eb;
+  background-color: var(--color-gray-200);
   transition: 0.2s;
   border-radius: 26px;
 }
@@ -226,14 +226,14 @@
   width: 20px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--card-bg);
   transition: 0.2s;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background-color: #8b5cf6;
+  background-color: var(--theme-primary);
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
@@ -246,17 +246,17 @@
   max-width: 300px;
   padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
-  background: white;
-  color: #374151;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s ease;
 }
 
 .setting-select:focus {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
@@ -289,7 +289,7 @@
   font-size: 14px;
   font-weight: 500;
   color: white;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -297,7 +297,7 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -312,16 +312,16 @@
   padding: 10px 18px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  color: var(--color-gray-700);
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e5e7eb;
+  background: var(--color-gray-200);
 }
 
 .btn-secondary:disabled {
@@ -333,7 +333,7 @@
 .settings-footer {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
   display: flex;
   justify-content: flex-end;
 }
@@ -350,7 +350,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   width: 100%;
   max-width: 420px;
@@ -362,13 +362,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .modal-header h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0;
 }
 
@@ -381,15 +381,15 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 24px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .modal-close:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .modal-content form {
@@ -404,7 +404,7 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 6px;
 }
 
@@ -412,14 +412,14 @@
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   outline: none;
   transition: border-color 0.15s ease;
 }
 
 .form-group input:focus {
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
@@ -428,7 +428,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-radius: 8px;
   color: #dc2626;
   font-size: 13px;
@@ -440,7 +440,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border-radius: 8px;
   color: #15803d;
   font-size: 13px;
@@ -516,7 +516,7 @@
 /* Passkey Styles */
 .passkey-list {
   margin-top: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -526,8 +526,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .passkey-item:last-child {
@@ -541,18 +541,18 @@
 }
 
 .passkey-icon {
-  color: #8b5cf6;
+  color: var(--theme-primary);
 }
 
 .passkey-name {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--color-gray-800);
   font-size: 14px;
 }
 
 .passkey-meta {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 2px;
 }
 
@@ -562,20 +562,20 @@
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-gray-500);
   transition: all 0.15s;
 }
 
 .btn-icon:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .btn-icon.btn-danger-text {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .btn-icon.btn-danger-text:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 
@@ -599,18 +599,18 @@
 }
 
 .passkey-hero-icon {
-  color: #8b5cf6;
+  color: var(--theme-primary);
   margin-bottom: 12px;
 }
 
 .passkey-intro p {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
 }
 
 .badge-neutral {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }

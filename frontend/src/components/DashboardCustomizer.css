@@ -5,7 +5,7 @@
 }
 
 .customizer-description {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 0.875rem;
   margin-bottom: 1.5rem;
   line-height: 1.5;
@@ -19,12 +19,12 @@
 .category-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 0.75rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 /* Widget List */
@@ -38,16 +38,16 @@
   display: flex;
   align-items: center;
   padding: 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: white;
+  background: var(--card-bg);
 }
 
 .widget-checkbox-item:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-300);
 }
 
 .widget-checkbox-item input[type="checkbox"] {
@@ -69,12 +69,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .widget-checkbox-label {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-gray-700);
   font-weight: 500;
 }
 
@@ -108,7 +108,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-height: 90vh;
@@ -133,20 +133,20 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .modal-close-btn {
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
   padding: 0.25rem;
   display: flex;
@@ -157,8 +157,8 @@
 }
 
 .modal-close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .modal-body {
@@ -173,8 +173,8 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 /* Responsive */

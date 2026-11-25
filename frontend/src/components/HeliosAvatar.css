@@ -191,7 +191,7 @@
 
 .helios-avatar__state-label--thinking {
   background: rgba(167, 139, 250, 0.15);
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 .helios-avatar__state-label--searching {
@@ -201,7 +201,7 @@
 
 .helios-avatar__state-label--speaking {
   background: rgba(139, 92, 246, 0.15);
-  color: #7c3aed;
+  color: var(--theme-primary-hover);
 }
 
 .helios-avatar__state-label--happy {
