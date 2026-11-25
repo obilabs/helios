@@ -22,7 +22,7 @@
     "@aws-sdk/client-s3": "^3.515.0",
     "@aws-sdk/s3-request-presigner": "^3.515.0",
     "@azure/identity": "^4.13.0",
-    "@better-auth/passkey": "~1.6.30",
+    "@better-auth/passkey": "~1.7.28",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "@obilabs/licensing": "^0.1.2",
@@ -32,7 +32,7 @@
     "@types/uuid": "^10.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
-    "better-auth": "~1.6.22",
+    "better-auth": "~1.7.28",
     "bull": "^4.16.5",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -43,15 +43,15 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.0",
     "express-validator": "^7.0.1",
-    "google-auth-library": "^10.3.0",
-    "googleapis": "^160.0.0",
+    "google-auth-library": "^11.3.4",
+    "googleapis": "^190.0.0",
     "handlebars": "^4.7.9",
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
     "json-rules-engine": "^7.3.1",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "nodemailer": "^9.0.5",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.6.1",
     "papaparse": "^5.5.3",
     "pg": "^8.11.3",
     "redis": "^4.7.1",
@@ -59,7 +59,7 @@
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "winston": "^3.11.0",
     "zod": "^4.1.13"
   },
@@ -85,7 +85,7 @@
     "eslint": "^9.0.0",
     "jest": "^29.7.0",
     "node-fetch": "^2.7.0",
-    "nodemon": "^3.0.1",
+    "nodemon": "3.1.11",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
@@ -93,9 +93,15 @@
     "typescript": "^5.7.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "overrides": {
-    "fast-xml-parser": "^5.3.5"
+    "fast-xml-parser": "^5.3.5",
+    "bull": {
+      "uuid": "^11.1.1"
+    },
+    "swagger-jsdoc": {
+      "glob": "^14.0.6"
+    }
   }
 }

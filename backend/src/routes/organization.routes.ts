@@ -279,11 +279,13 @@ router.post('/setup', async (req: Request, res: Response) => {
       );
       const admin = userResult.rows[0];
 
-      // Create auth_accounts entry for better-auth login
+      // Create auth_accounts entry for better-auth login.
+      // account_id is the user's id. The sign-in library matches a credential
+      // account on it and will not sign in a user whose account_id is anything else.
       await db.query(
         `INSERT INTO auth_accounts (id, user_id, account_id, provider_id, password, created_at, updated_at)
          VALUES (gen_random_uuid()::text, $1, $2, 'credential', $3, NOW(), NOW())`,
-        [admin.id, adminEmail, passwordHash]
+        [admin.id, String(admin.id), passwordHash]
       );
 
       // Create default organization settings
