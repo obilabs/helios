@@ -398,7 +398,7 @@ jobs:
       # guarantee went untested from migration 066 until now. This runs the
       # same file scripts/test-db.sh runs locally, on the seed + every
       # migration already built above.
-      - name: Audit-log immutability + hash chain (migration 101)
+      - name: Audit-log immutability + hash chain (migrations 101, 105)
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -f backend/database/tests/audit-immutability.integration.test.sql

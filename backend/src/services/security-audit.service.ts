@@ -16,6 +16,7 @@
 
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
+import { recordAuditWriteFailure } from '../lib/audit-write-failures.js';
 
 // Action categories for filtering
 export type ActionCategory = 'auth' | 'admin' | 'data' | 'security' | 'api' | 'sync';
@@ -191,10 +192,13 @@ class SecurityAuditService {
 
       return result.rows[0]?.id || null;
     } catch (error: any) {
-      // Don't let audit logging failures break the application
-      logger.error('Security audit log failed', {
+      // Best-effort: the caller carries on. The failure is logged with the
+      // action and the actor, and counted for /health.
+      recordAuditWriteFailure({
         action: entry.action,
-        error: error.message,
+        actor: entry.actorEmail || entry.actorId || actorType,
+        source: 'security-audit.service',
+        error,
       });
       return null;
     }
