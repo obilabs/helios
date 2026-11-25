@@ -213,7 +213,10 @@ class SignatureSyncService {
       // Success - update status
       await this.updateUserSyncStatus(userId, organizationId, {
         currentTemplateId: effectiveSignature.templateId,
-        assignmentId: effectiveSignature.assignmentId,
+        // assignment_id references signature_assignments. A campaign's
+        // assignment lives in campaign_assignments, so its id cannot be stored
+        // here; the source column says it came from a campaign.
+        assignmentId: effectiveSignature.source === 'campaign' ? null : effectiveSignature.assignmentId,
         assignmentSource: effectiveSignature.source,
         renderedHtml,
         lastSyncedAt: new Date(),
