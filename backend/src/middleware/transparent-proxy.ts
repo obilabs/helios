@@ -982,8 +982,14 @@ async function syncUserResource(params: {
           google_workspace_id = EXCLUDED.google_workspace_id,
           first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), organization_users.first_name),
           last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), organization_users.last_name),
-          is_active = EXCLUDED.is_active,
-          status = EXCLUDED.status,
+          -- A row deleted in Helios keeps its deleted state. Google goes on
+          -- listing a deleted account for a short while, and taking status
+          -- from that listing brought the row back as active with deleted_at
+          -- still set, after which it could be neither used nor restored.
+          is_active = CASE WHEN organization_users.deleted_at IS NOT NULL
+                           THEN organization_users.is_active ELSE EXCLUDED.is_active END,
+          status = CASE WHEN organization_users.deleted_at IS NOT NULL
+                        THEN organization_users.status ELSE EXCLUDED.status END,
           organizational_unit = EXCLUDED.organizational_unit,
           updated_at = NOW()
       `, [

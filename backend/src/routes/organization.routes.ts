@@ -2952,7 +2952,10 @@ router.patch('/users/:userId/restore', authenticateToken, requireAdmin, async (r
       ? Math.floor((Date.now() - new Date(user.deleted_at).getTime()) / 86400000)
       : 0;
 
-    if (user.status !== 'deleted') {
+    // deleted_at is the record of a deletion. status alone is not enough: a row
+    // whose status was overwritten while deleted_at stayed set must still be
+    // restorable.
+    if (user.status !== 'deleted' && !user.deleted_at) {
       return res.status(400).json({
         success: false,
         error: 'User is not deleted'
