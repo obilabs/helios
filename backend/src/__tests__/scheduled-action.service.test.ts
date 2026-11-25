@@ -367,12 +367,20 @@ describe('ScheduledActionService', () => {
           updated_at: new Date(),
         };
 
+        // An action given only a user id first looks up who that user is.
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ email: 'person@corp.test', first_name: 'Pat', last_name: 'Lee' }],
+        });
         mockQuery.mockResolvedValueOnce({ rows: [createdAction] });
 
         const action = await scheduledActionService.scheduleAction(testOrgId, dto);
 
         expect(action.isRecurring).toBe(true);
         expect(action.recurrenceInterval).toBe('weekly');
+
+        // ...and stores the name and address, so the list never shows a blank row.
+        const insertParams = mockQuery.mock.calls[mockQuery.mock.calls.length - 1][1] as any[];
+        expect(insertParams.slice(1, 5)).toEqual([testUserId, 'person@corp.test', 'Pat', 'Lee']);
       });
     });
 

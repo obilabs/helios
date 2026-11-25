@@ -403,11 +403,30 @@ export const ExternalSharingManager: React.FC = () => {
       {!loading && shares.length === 0 && !scanning && (
         <div className="empty-state">
           <Shield size={48} />
-          <h2>No scan results yet</h2>
-          <p>Run a full scan to discover files shared outside your organization.</p>
+          {/* The cards above come from the summary; the list of files only
+              comes from a scan run on this page. Say which of the two is
+              missing, so counts are never shown above "no results". */}
+          {summary && summary.totalSharedExternally > 0 ? (
+            <>
+              <h2>
+                {summary.totalSharedExternally} external {summary.totalSharedExternally === 1 ? 'share' : 'shares'} found
+              </h2>
+              <p>Run a scan to list the files and who they are shared with.</p>
+            </>
+          ) : summary ? (
+            <>
+              <h2>No external shares found</h2>
+              <p>The last check found no files shared outside your organization. Run a scan to check again.</p>
+            </>
+          ) : (
+            <>
+              <h2>No scan results yet</h2>
+              <p>Run a full scan to discover files shared outside your organization.</p>
+            </>
+          )}
           <button className="btn btn-primary" onClick={runFullScan}>
             <RefreshCw size={16} />
-            Start Scan
+            {summary && summary.totalSharedExternally > 0 ? 'List the files' : 'Start Scan'}
           </button>
         </div>
       )}
