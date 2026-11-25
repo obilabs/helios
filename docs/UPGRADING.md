@@ -155,6 +155,9 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   Existing rows are kept as they are and still verify. It runs on start-up.
   `GET /health` gains `auditWriteFailures`, which should read 0. See
   `docs/features/AUDIT-LOG-INTEGRITY.md`.
+- **One audit entry per request.** A change made through `/api/v1` was
+  recorded twice in the audit log. It is now recorded once. Existing entries are
+  left as they are.
 - **Google client libraries updated** to their current majors.
 - **Upload handling, mail sending and routing libraries updated** to their
   current majors. No configuration change.
