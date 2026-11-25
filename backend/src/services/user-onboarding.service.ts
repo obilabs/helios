@@ -343,7 +343,12 @@ class UserOnboardingService {
         );
         result.stepsCompleted.push('create_helios_user');
       } catch (error: any) {
-        result.errors.push(`Failed to create Helios user: ${error.message}`);
+        const duplicate = error?.code === '23505' || /duplicate key/i.test(error?.message ?? '');
+        result.errors.push(
+          duplicate
+            ? `A user with the email ${config.email} already exists.`
+            : `Failed to create Helios user: ${error.message}`
+        );
         result.success = false;
         await lifecycleLogService.logFailure(
           organizationId,
@@ -379,8 +384,22 @@ class UserOnboardingService {
         );
         result.stepsCompleted.push('create_google_account');
 
-        // Update Helios user with Google ID
-        await this.linkGoogleUser(result.userId!, gwUser.id, config.email);
+        // Record the link. Kept apart from the creation step: if this fails the
+        // account still exists in Google, and the result must say so rather
+        // than report that the account was not created.
+        try {
+          await this.linkGoogleUser(result.userId!, gwUser.id, config.email);
+        } catch (linkError: any) {
+          result.errors.push(
+            `The Google account was created, but Helios could not record the link to it: ${linkError.message}. Run a sync to repair it.`
+          );
+          await lifecycleLogService.logFailure(organizationId, 'onboard', 'link_google_account', linkError, {
+            ...logOptions,
+            userId: result.userId,
+            stepOrder,
+          });
+          result.stepsFailed.push('link_google_account');
+        }
       } catch (error: any) {
         result.errors.push(`Failed to create Google account: ${error.message}`);
         await lifecycleLogService.logFailure(
@@ -437,7 +456,10 @@ class UserOnboardingService {
         stepOrder++;
         const ouStart = Date.now();
         try {
-          await this.setOrgUnit(organizationId, config.email, config.googleOrgUnitPath);
+          // The account is created directly in this org unit (createGoogleUser
+          // passes orgUnitPath). A second call here ran before Google had
+          // finished creating the account and was refused, so the step is
+          // recorded as done at creation and nothing more is sent.
           await lifecycleLogService.logSuccess(
             organizationId,
             'onboard',
@@ -447,7 +469,7 @@ class UserOnboardingService {
               userId: result.userId,
               stepOrder,
               durationMs: Date.now() - ouStart,
-              details: { orgUnitPath: config.googleOrgUnitPath },
+              details: { orgUnitPath: config.googleOrgUnitPath, setAtCreation: true },
             }
           );
           result.stepsCompleted.push('set_org_unit');
@@ -615,9 +637,10 @@ class UserOnboardingService {
       );
       result.stepsCompleted.push('finalize');
 
-      // Set overall success based on critical steps
-      result.success = result.stepsFailed.length === 0 ||
-        !result.stepsFailed.includes('create_helios_user');
+      // Success means every step that ran succeeded. A run with failed steps
+      // is reported as partial (the route answers 207 with the reasons), so a
+      // caller never reads "success" next to a list of errors.
+      result.success = result.stepsFailed.length === 0;
 
     } catch (error: any) {
       logger.error('Onboarding failed', { organizationId, email: config.email, error: error.message });
@@ -696,7 +719,7 @@ class UserOnboardingService {
     const errors: string[] = [];
 
     if (!config.email) errors.push('Email is required');
-    else if (!config.email.includes('@')) errors.push('Invalid email format');
+    else if ((config.email.length > 254 || !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(config.email))) errors.push('Invalid email format');
 
     if (!config.firstName) errors.push('First name is required');
     if (!config.lastName) errors.push('Last name is required');
@@ -802,7 +825,7 @@ class UserOnboardingService {
       )
       SELECT organization_id, $1, $2, first_name, last_name, false, false, NOW()
       FROM organization_users WHERE id = $3
-      ON CONFLICT (google_id) DO UPDATE SET last_sync_at = NOW()
+      ON CONFLICT (organization_id, google_id) DO UPDATE SET last_sync_at = NOW()
     `, [googleId, email, userId]);
   }
 
@@ -885,23 +908,6 @@ class UserOnboardingService {
          upn = EXCLUDED.upn, display_name = EXCLUDED.display_name, email = EXCLUDED.email, last_sync_at = NOW()`,
       [organizationId, microsoftId, upn, `${config.firstName} ${config.lastName}`.trim(), config.email.toLowerCase()]
     );
-  }
-
-  private async setOrgUnit(organizationId: string, email: string, orgUnitPath: string): Promise<void> {
-    const credentials = await this.getCredentials(organizationId);
-    if (!credentials) throw new Error('Google Workspace not configured');
-
-    const adminEmail = await this.getAdminEmail(organizationId);
-    if (!adminEmail) throw new Error('Admin email not configured');
-
-    const adminClient = this.createAdminClient(credentials, adminEmail);
-
-    await adminClient.users.update({
-      userKey: email,
-      requestBody: {
-        orgUnitPath,
-      },
-    });
   }
 
   private async addToGroups(

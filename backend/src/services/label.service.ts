@@ -1,5 +1,6 @@
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
+import { getAvailableEntitiesDetailed } from './entity-availability.service.js';
 
 /**
  * Label Service
@@ -306,31 +307,11 @@ export async function getLabelsWithAvailability(organizationId: string): Promise
     // Get custom labels
     const labels = await getLabels(organizationId);
 
-    // Get available entities
-    const availabilityResult = await db.query(
-      'SELECT * FROM get_available_entities($1)',
-      [organizationId]
-    );
-
-    const availability: { [key: string]: { available: boolean; providedBy: string[] } } = {};
-
-    // All canonical entities
-    const allEntities = [
-      'entity.user',
-      'entity.workspace',
-      'entity.access_group',
-      'entity.policy_container',
-      'entity.device'
-    ];
-
-    // Mark available/unavailable
-    allEntities.forEach(entity => {
-      const found = availabilityResult.rows.find((r: any) => r.canonical_name === entity);
-      availability[entity] = {
-        available: !!found,
-        providedBy: found?.provided_by || []
-      };
-    });
+    // One definition of availability: the enabled modules and
+    // MODULE_ENTITY_MAP. The database function get_available_entities() reads a
+    // table nothing populates on a fresh install, so it reported every
+    // module-provided entity as unavailable and the sidebar hid Groups.
+    const availability = await getAvailableEntitiesDetailed(organizationId);
 
     return { labels, availability };
   } catch (error: any) {

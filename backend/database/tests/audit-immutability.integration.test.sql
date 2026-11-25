@@ -53,7 +53,7 @@ BEGIN
 
   ASSERT v_id1 IS NOT NULL,     'T01: insert returned no id';
   ASSERT v_seq1 IS NOT NULL,    'T01: chain_seq was not assigned';
-  ASSERT v_hv = 2,              format('T01: expected hash_version 2, got %s', v_hv);
+  ASSERT v_hv = 3,              format('T01: expected hash_version 3, got %s', v_hv);
   ASSERT v_hash1 IS NOT NULL,   'T01: record_hash was not computed';
   ASSERT length(v_hash1) = 64,  format('T01: record_hash is not 64 hex chars: %s', v_hash1);
 
@@ -226,7 +226,7 @@ BEGIN
     INSERT INTO security_audit_logs (actor_type, action, action_category, outcome,
                                      chain_seq, hash_version, record_hash)
       VALUES ('system', 'test.unknown.version', 'security', 'success',
-              nextval('security_audit_logs_chain_seq'), 3, repeat('a', 64));
+              nextval('security_audit_logs_chain_seq'), 4, repeat('a', 64));
     v_caught := 'INSERT SUCCEEDED (BAD)';
   EXCEPTION WHEN check_violation THEN
     v_caught := 'check_violation';
@@ -234,14 +234,14 @@ BEGIN
   EXECUTE 'ALTER TABLE security_audit_logs ENABLE TRIGGER trg_security_audit_chain';
 
   ASSERT v_caught = 'check_violation',
-    format('T10: expected check_violation for hash_version 3, got: %s', v_caught);
+    format('T10: expected check_violation for hash_version 4, got: %s', v_caught);
 
   RAISE NOTICE 'T10 passed (unknown hash_version refused)';
 END $$;
 
 -- ===========================================================================
 -- T11: the hash really does cover every column it claims to. For each of the
---      26 fields in canonical payload v2, change ONLY that field and check the
+--      26 fields in the canonical payload, change ONLY that field and check the
 --      recomputed hash changes. "All columns" is a claim; this is the check.
 --
 --      Done by round-tripping the row through jsonb rather than by UPDATEing
@@ -309,7 +309,7 @@ BEGIN
   );
 
   FOR v_field, v_value IN SELECT * FROM jsonb_each(v_mutations) LOOP
-    SELECT security_audit_record_hash_v2(
+    SELECT security_audit_record_hash_v3(
              jsonb_populate_record(s, to_jsonb(s) || jsonb_build_object(v_field, v_value)))
       INTO v_new
       FROM security_audit_logs s
@@ -324,9 +324,9 @@ BEGIN
     format('T11: these columns are NOT covered by the hash:%s', v_uncovered);
 
   ASSERT (SELECT COUNT(*) FROM jsonb_object_keys(v_mutations)) = 26,
-    'T11: the mutation set must cover all 26 fields of canonical payload v2';
+    'T11: the mutation set must cover all 26 fields of the canonical payload';
 
-  RAISE NOTICE 'T11 passed (all 26 payload v2 fields change the hash)';
+  RAISE NOTICE 'T11 passed (all 26 payload fields change the hash)';
 END $$;
 
 -- ===========================================================================
@@ -414,6 +414,96 @@ BEGIN
   ASSERT v_n = 50, format('T13: expected 50 rows checked, got %s', v_n);
 
   RAISE NOTICE 'T13 passed (multi-row INSERT chains in order)';
+END $$;
+
+-- ===========================================================================
+-- T14: any text can be audited. The payload is hashed over its UTF-8 bytes
+--      (migration 105), so backslashes, quotes inside jsonb strings and
+--      non-ASCII text all append and verify.
+-- ===========================================================================
+DO $$
+DECLARE
+  v_from bigint;
+  v_ok   boolean;
+  v_n    bigint;
+  v_why  text;
+  v_a    varchar(64);
+  v_b    varchar(64);
+BEGIN
+  -- Plain string literals below: with standard_conforming_strings (the
+  -- default) a backslash in '...' is an ordinary character.
+  v_from := COALESCE((SELECT MAX(chain_seq) FROM security_audit_logs), 0) + 1;
+
+  INSERT INTO security_audit_logs (actor_type, action, action_category, outcome,
+                                   actor_user_agent, error_message, changes_after)
+  VALUES
+    ('user', 'test.text.quote',     'data', 'success', 'ua', NULL,
+       jsonb_build_object('request_body', jsonb_build_object('command', 'create user --name="Ada L"'))),
+    ('user', 'test.text.backslash', 'data', 'failure', 'agent\x', 'path C:\temp\new',
+       jsonb_build_object('note', 'a\b \q \777')),
+    ('user', 'test.text.unicode',   'data', 'success', 'ua', 'Zoë — 日本語 ✓',
+       jsonb_build_object('name', 'Zoë', 'newline', 'line1' || chr(10) || 'line2'));
+
+  SELECT ok, checked_v2_rows, first_break_reason INTO v_ok, v_n, v_why
+    FROM verify_security_audit_chain(v_from);
+  ASSERT v_ok,    format('T14: rows with quotes, backslashes or non-ASCII text did not verify: %s', v_why);
+  ASSERT v_n = 3, format('T14: expected 3 rows checked, got %s', v_n);
+
+  -- Two payloads that differ only in how a backslash is written must not
+  -- hash alike.
+  SELECT security_audit_record_hash_v3(jsonb_populate_record(s, to_jsonb(s) || jsonb_build_object('error_message', 'a\\b'))),
+         security_audit_record_hash_v3(jsonb_populate_record(s, to_jsonb(s) || jsonb_build_object('error_message', 'a\134b')))
+    INTO v_a, v_b
+    FROM security_audit_logs s WHERE s.chain_seq = v_from;
+  ASSERT v_a <> v_b, 'T14: two different backslash spellings produced the same hash';
+
+  RAISE NOTICE 'T14 passed (quotes, backslashes and non-ASCII text append and verify)';
+END $$;
+
+-- ===========================================================================
+-- T15: a row written under hash_version 2 stays verifiable as v2, and v2 and
+--      v3 rows verify as one chain. Written the way migration 101 wrote it,
+--      with the insert trigger out of the way (elevated role).
+-- ===========================================================================
+DO $$
+DECLARE
+  v_from bigint;
+  v_prev varchar(64);
+  v_id   uuid := gen_random_uuid();
+  v_ok   boolean;
+  v_n    bigint;
+  v_why  text;
+  r      security_audit_logs;
+BEGIN
+  v_from := COALESCE((SELECT MAX(chain_seq) FROM security_audit_logs), 0) + 1;
+  SELECT record_hash INTO v_prev FROM security_audit_logs ORDER BY chain_seq DESC LIMIT 1;
+
+  EXECUTE 'ALTER TABLE security_audit_logs DISABLE TRIGGER trg_security_audit_chain';
+  INSERT INTO security_audit_logs (id, actor_type, action, action_category, outcome,
+                                   chain_seq, hash_version, previous_hash, record_hash)
+    VALUES (v_id, 'system', 'test.v2.row', 'security', 'success',
+            nextval('security_audit_logs_chain_seq'), 2, v_prev, repeat('0', 64));
+  EXECUTE 'ALTER TABLE security_audit_logs ENABLE TRIGGER trg_security_audit_chain';
+
+  -- Give it its real v2 hash (the placeholder above only satisfied NOT NULL).
+  SELECT * INTO r FROM security_audit_logs WHERE id = v_id;
+  EXECUTE 'ALTER TABLE security_audit_logs DISABLE TRIGGER trg_security_audit_no_update';
+  UPDATE security_audit_logs SET record_hash = security_audit_record_hash_v2(r) WHERE id = v_id;
+  EXECUTE 'ALTER TABLE security_audit_logs ENABLE TRIGGER trg_security_audit_no_update';
+
+  -- A normal append after it: v3, linked to the v2 row.
+  INSERT INTO security_audit_logs (actor_type, action, action_category, outcome)
+    VALUES ('system', 'test.v3.after.v2', 'security', 'success');
+
+  ASSERT (SELECT hash_version FROM security_audit_logs ORDER BY chain_seq DESC LIMIT 1) = 3,
+    'T15: the append after a v2 row was not written as v3';
+
+  SELECT ok, checked_v2_rows, first_break_reason INTO v_ok, v_n, v_why
+    FROM verify_security_audit_chain(v_from);
+  ASSERT v_ok,    format('T15: a v2 row followed by a v3 row did not verify as one chain: %s', v_why);
+  ASSERT v_n = 2, format('T15: expected 2 rows checked, got %s', v_n);
+
+  RAISE NOTICE 'T15 passed (v2 rows still verify; v2 and v3 are one chain)';
 END $$;
 
 ROLLBACK;

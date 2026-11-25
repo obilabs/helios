@@ -215,6 +215,7 @@ Product clients (Helios, Aegis) are free and open source. MTP and services fund 
 |----------|-------------|
 | [GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md) | Google Workspace integration |
 | [MICROSOFT-365-SETUP-GUIDE.md](docs/guides/MICROSOFT-365-SETUP-GUIDE.md) | Microsoft 365 integration |
+| [ADMIN-PASSWORD-RESET.md](docs/guides/ADMIN-PASSWORD-RESET.md) | Getting back in when an admin has lost their password |
 | [UPGRADING.md](docs/UPGRADING.md) | Supported upgrade paths, how to upgrade, upgrade notes |
 | [RELEASING.md](docs/RELEASING.md) | Version numbers and the checks a release must pass |
 | [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | System architecture |

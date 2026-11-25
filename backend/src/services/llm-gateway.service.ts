@@ -1044,7 +1044,10 @@ class LLMGatewayService {
           messages,
           tools: [testTool],
           tool_choice: 'auto',
-          max_tokens: 100
+          // Room for a reasoning model to finish thinking before it calls the
+          // tool. At 100 tokens such a model was cut off mid-thought and
+          // reported as not supporting tools.
+          max_tokens: 1024
         })
       });
 
@@ -1093,6 +1096,16 @@ class LLMGatewayService {
         };
       }
 
+      // Cut off before it answered: that says nothing about tool support.
+      if (choice?.finish_reason === 'length' && !content) {
+        return {
+          supportsTools: false,
+          testResult: 'inconclusive',
+          details: 'The model ran out of room before it answered, so the test could not tell whether it supports tools. Reasoning models can need more than this test allows; try it in a conversation.',
+          rawResponse: data
+        };
+      }
+
       return {
         supportsTools: false,
         testResult: 'no_tool_call',
@@ -1136,7 +1149,7 @@ export interface OllamaModel {
  */
 export interface ToolTestResult {
   supportsTools: boolean;
-  testResult: 'success' | 'no_tool_call' | 'parse_error' | 'error';
+  testResult: 'success' | 'no_tool_call' | 'parse_error' | 'error' | 'inconclusive';
   details: string;
   rawResponse?: any;
 }

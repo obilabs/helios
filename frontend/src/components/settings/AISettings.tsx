@@ -98,7 +98,7 @@ interface OllamaModel {
 
 interface ToolTestResult {
   supportsTools: boolean;
-  testResult: 'success' | 'no_tool_call' | 'parse_error' | 'error';
+  testResult: 'success' | 'no_tool_call' | 'parse_error' | 'error' | 'inconclusive';
   details: string;
 }
 

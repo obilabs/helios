@@ -252,12 +252,33 @@ class ScheduledActionService {
         : dto.recurrenceUntil
       : null;
 
+    // An action on an existing user (an offboard, say) arrives with only the
+    // user id. Store who it is for as well, so the list can show a name instead
+    // of a blank row, and still can after the account is gone.
+    const target = {
+      email: dto.targetEmail || null,
+      firstName: dto.targetFirstName || null,
+      lastName: dto.targetLastName || null,
+    };
+    if (dto.userId && (!target.email || !target.firstName || !target.lastName)) {
+      const found = await db.query(
+        'SELECT email, first_name, last_name FROM organization_users WHERE id = $1 AND organization_id = $2',
+        [dto.userId, organizationId]
+      );
+      const user = found.rows[0];
+      if (user) {
+        target.email = target.email || user.email || null;
+        target.firstName = target.firstName || user.first_name || null;
+        target.lastName = target.lastName || user.last_name || null;
+      }
+    }
+
     const values = [
       organizationId,
       dto.userId || null,
-      dto.targetEmail || null,
-      dto.targetFirstName || null,
-      dto.targetLastName || null,
+      target.email,
+      target.firstName,
+      target.lastName,
       dto.targetPersonalEmail || null,
       dto.actionType,
       dto.onboardingTemplateId || null,
