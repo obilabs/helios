@@ -41,6 +41,12 @@ export interface AuditSummary {
   mediumRiskFiles: number;
   lowRiskFiles: number;
   lastScanAt?: Date;
+  /** Accounts whose own files were listed. */
+  accountsScanned?: number;
+  /** Accounts that could not be listed, with the reason. Their files are NOT in the result. */
+  accountsNotScanned?: Array<{ email: string; reason: string }>;
+  /** True when the scan stopped at the file limit before covering everything. */
+  truncated?: boolean;
 }
 
 /**
@@ -167,6 +173,38 @@ export class DriveSharingAuditService {
   }
 
   /**
+   * The accounts whose own files a scan must list.
+   *
+   * Drive has no organization-wide file listing: files.list returns what the
+   * impersonated account can see. Listing as the admin alone therefore misses
+   * every file another user owns and has not shared with the admin. Suspended
+   * accounts cannot be impersonated, so they are returned separately and
+   * reported as not scanned.
+   */
+  private async getScanAccounts(
+    organizationId: string,
+    adminEmail: string,
+    orgDomain: string
+  ): Promise<{ active: string[]; suspended: string[] }> {
+    const result = await db.query(
+      `SELECT email, is_suspended FROM gw_synced_users WHERE organization_id = $1 ORDER BY email`,
+      [organizationId]
+    );
+
+    const suffix = `@${orgDomain.toLowerCase()}`;
+    const active = new Set<string>([adminEmail.toLowerCase()]);
+    const suspended = new Set<string>();
+    for (const row of result.rows) {
+      const email = String(row.email || '').toLowerCase();
+      // Only this organization's own accounts are ever impersonated.
+      if (!email.endsWith(suffix)) continue;
+      if (row.is_suspended) suspended.add(email);
+      else active.add(email);
+    }
+    return { active: [...active], suspended: [...suspended].filter(e => !active.has(e)) };
+  }
+
+  /**
    * Check if an email is a personal account
    */
   private isPersonalEmail(email: string): boolean {
@@ -213,8 +251,9 @@ export class DriveSharingAuditService {
     error?: string;
   }> {
     try {
-      const drive = await this.getDriveClient(organizationId);
-      if (!drive) {
+      const credentials = await this.getCredentials(organizationId);
+      const adminEmail = await this.getAdminEmail(organizationId);
+      if (!credentials || !adminEmail) {
         return { success: false, error: 'No Google Workspace credentials configured' };
       }
 
@@ -224,15 +263,12 @@ export class DriveSharingAuditService {
       }
 
       const externalShares: ExternalShare[] = [];
-      let nextPageToken: string | undefined;
-      let totalFilesScanned = 0;
+      const seenShares = new Set<string>();
+      const seenFiles = new Set<string>();
+      const accountsNotScanned: Array<{ email: string; reason: string }> = [];
+      let accountsScanned = 0;
+      let truncated = false;
       const maxFiles = options.maxFiles || 1000;
-
-      // Build query - look for files with sharing
-      let query = 'trashed = false';
-      if (options.folderId) {
-        query += ` and '${options.folderId}' in parents`;
-      }
 
       logger.info('Starting external sharing scan', {
         organizationId,
@@ -240,41 +276,42 @@ export class DriveSharingAuditService {
         options,
       });
 
-      do {
-        const response = await drive.files.list({
-          q: query,
-          supportsAllDrives: true,
-          includeItemsFromAllDrives: true,
-          corpora: options.sharedDriveId ? 'drive' : 'allDrives',
-          driveId: options.sharedDriveId,
-          fields: 'nextPageToken, files(id, name, mimeType, webViewLink, owners, permissions(id, type, role, emailAddress, domain, expirationTime))',
-          pageSize: 100,
-          pageToken: nextPageToken,
-        });
+      // One listing pass: page through files.list for one account and collect
+      // every external permission. Returns false when the file limit was hit.
+      const scanListing = async (
+        drive: drive_v3.Drive,
+        params: drive_v3.Params$Resource$Files$List
+      ): Promise<boolean> => {
+        let nextPageToken: string | undefined;
+        do {
+          const response = await drive.files.list({
+            ...params,
+            fields: 'nextPageToken, files(id, name, mimeType, webViewLink, owners, permissions(id, type, role, emailAddress, domain, expirationTime))',
+            pageSize: 100,
+            pageToken: nextPageToken,
+          });
 
-        const files = response.data.files || [];
+          for (const file of response.data.files || []) {
+            if (!file.id || seenFiles.has(file.id)) continue;
+            if (seenFiles.size >= maxFiles) return false;
+            seenFiles.add(file.id);
 
-        for (const file of files) {
-          if (totalFilesScanned >= maxFiles) break;
-          totalFilesScanned++;
+            for (const perm of file.permissions || []) {
+              // Skip owner permissions and internal domain permissions
+              if (perm.role === 'owner') continue;
+              if (!this.isExternalPermission(perm, orgDomain)) continue;
 
-          // Check each permission for external sharing
-          const permissions = file.permissions || [];
+              const key = `${file.id}:${perm.id}`;
+              if (seenShares.has(key)) continue;
+              seenShares.add(key);
 
-          for (const perm of permissions) {
-            // Skip owner permissions and internal domain permissions
-            if (perm.role === 'owner') continue;
-
-            const isExternal = this.isExternalPermission(perm, orgDomain);
-
-            if (isExternal) {
               const shareType = this.getShareType(perm);
               const isPersonal = perm.emailAddress
                 ? this.isPersonalEmail(perm.emailAddress)
                 : false;
 
-              const share: ExternalShare = {
-                fileId: file.id!,
+              externalShares.push({
+                fileId: file.id,
                 fileName: file.name!,
                 fileType: file.mimeType || 'unknown',
                 sharedWith: perm.emailAddress || perm.domain || 'Anyone with link',
@@ -285,15 +322,74 @@ export class DriveSharingAuditService {
                 sharedByEmail: file.owners?.[0]?.emailAddress,
                 riskLevel: this.determineRiskLevel(shareType, isPersonal, file.mimeType || ''),
                 webViewLink: file.webViewLink || undefined,
-              };
-
-              externalShares.push(share);
+              });
             }
+          }
+
+          nextPageToken = response.data.nextPageToken || undefined;
+        } while (nextPageToken);
+        return true;
+      };
+
+      const adminDrive = this.createDriveClient(credentials, adminEmail);
+
+      if (options.folderId || options.sharedDriveId) {
+        // A scoped scan of one folder or one shared drive, as the admin.
+        let query = 'trashed = false';
+        if (options.folderId) {
+          query += ` and '${options.folderId}' in parents`;
+        }
+        truncated = !(await scanListing(adminDrive, {
+          q: query,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: options.sharedDriveId ? 'drive' : 'allDrives',
+          driveId: options.sharedDriveId,
+        }));
+        accountsScanned = 1;
+      } else {
+        // Whole-organization scan: each account's own files, then the shared
+        // drives the admin can see.
+        const accounts = await this.getScanAccounts(organizationId, adminEmail, orgDomain);
+        for (const email of accounts.suspended) {
+          accountsNotScanned.push({ email, reason: 'Account is suspended' });
+        }
+
+        for (const email of accounts.active) {
+          if (truncated) {
+            accountsNotScanned.push({ email, reason: 'File limit reached before this account' });
+            continue;
+          }
+          try {
+            const drive = this.createDriveClient(credentials, email);
+            const complete = await scanListing(drive, {
+              q: "'me' in owners and trashed = false",
+              corpora: 'user',
+            });
+            accountsScanned++;
+            if (!complete) truncated = true;
+          } catch (error: any) {
+            if (email === adminEmail.toLowerCase()) throw error;
+            accountsNotScanned.push({ email, reason: this.formatError(error) });
+            logger.warn('External sharing scan could not list an account', {
+              organizationId,
+              email,
+              error: error.message,
+            });
           }
         }
 
-        nextPageToken = response.data.nextPageToken || undefined;
-      } while (nextPageToken && totalFilesScanned < maxFiles);
+        if (!truncated) {
+          truncated = !(await scanListing(adminDrive, {
+            q: 'trashed = false',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
+            corpora: 'allDrives',
+          }));
+        }
+      }
+
+      const totalFilesScanned = seenFiles.size;
 
       // Calculate summary
       const summary: AuditSummary = {
@@ -306,6 +402,9 @@ export class DriveSharingAuditService {
         mediumRiskFiles: externalShares.filter(s => s.riskLevel === 'medium').length,
         lowRiskFiles: externalShares.filter(s => s.riskLevel === 'low').length,
         lastScanAt: new Date(),
+        accountsScanned,
+        accountsNotScanned,
+        truncated,
       };
 
       logger.info('External sharing scan complete', {
@@ -374,10 +473,28 @@ export class DriveSharingAuditService {
   async revokeAccess(
     organizationId: string,
     fileId: string,
-    permissionId: string
+    permissionId: string,
+    ownerEmail?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const drive = await this.getDriveClient(organizationId);
+      // A permission can only be removed by an account that can edit the file.
+      // For a file another user owns, that is the owner, not the admin. The
+      // owner must be one of this organization's accounts.
+      let drive: drive_v3.Drive | null;
+      const owner = ownerEmail?.trim().toLowerCase();
+      if (owner) {
+        const credentials = await this.getCredentials(organizationId);
+        const orgDomain = await this.getOrganizationDomain(organizationId);
+        if (!credentials || !orgDomain) {
+          return { success: false, error: 'No Google Workspace credentials configured' };
+        }
+        if (!owner.endsWith(`@${orgDomain.toLowerCase()}`)) {
+          return { success: false, error: 'The file owner is not an account in this organization' };
+        }
+        drive = this.createDriveClient(credentials, owner);
+      } else {
+        drive = await this.getDriveClient(organizationId);
+      }
       if (!drive) {
         return { success: false, error: 'No Google Workspace credentials configured' };
       }
@@ -412,7 +529,7 @@ export class DriveSharingAuditService {
    */
   async bulkRevokeAccess(
     organizationId: string,
-    shares: Array<{ fileId: string; permissionId: string }>
+    shares: Array<{ fileId: string; permissionId: string; ownerEmail?: string }>
   ): Promise<{
     success: boolean;
     results: Array<{ fileId: string; permissionId: string; success: boolean; error?: string }>;
@@ -424,7 +541,7 @@ export class DriveSharingAuditService {
     let failureCount = 0;
 
     for (const share of shares) {
-      const result = await this.revokeAccess(organizationId, share.fileId, share.permissionId);
+      const result = await this.revokeAccess(organizationId, share.fileId, share.permissionId, share.ownerEmail);
 
       results.push({
         fileId: share.fileId,

@@ -45,6 +45,9 @@ interface AuditSummary {
   mediumRiskFiles: number;
   lowRiskFiles: number;
   lastScanAt?: string;
+  accountsScanned?: number;
+  accountsNotScanned?: Array<{ email: string; reason: string }>;
+  truncated?: boolean;
 }
 
 type RiskFilter = 'all' | 'high' | 'medium' | 'low';
@@ -127,7 +130,7 @@ export const ExternalSharingManager: React.FC = () => {
 
     const sharesToRevoke = shares
       .filter(s => selectedShares.has(`${s.fileId}-${s.permissionId}`))
-      .map(s => ({ fileId: s.fileId, permissionId: s.permissionId }));
+      .map(s => ({ fileId: s.fileId, permissionId: s.permissionId, ownerEmail: s.sharedByEmail }));
 
     try {
       const response = await authFetch('/api/v1/external-sharing/bulk-revoke', {
@@ -170,7 +173,8 @@ export const ExternalSharingManager: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileId: shareToRevoke.fileId,
-          permissionId: shareToRevoke.permissionId
+          permissionId: shareToRevoke.permissionId,
+          ownerEmail: shareToRevoke.sharedByEmail
         })
       });
       const data = await response.json();
@@ -335,6 +339,21 @@ export const ExternalSharingManager: React.FC = () => {
           <AlertCircle size={16} />
           <span>{error}</span>
           <button onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {/* A scan that skipped accounts or stopped early is not a clean result. */}
+      {summary && ((summary.accountsNotScanned?.length ?? 0) > 0 || summary.truncated) && (
+        <div className="error-banner" role="alert" data-testid="scan-incomplete">
+          <AlertTriangle size={16} />
+          <span>
+            This scan is incomplete.
+            {summary.truncated && ' It stopped at the file limit.'}
+            {(summary.accountsNotScanned?.length ?? 0) > 0 &&
+              ` Not scanned: ${summary.accountsNotScanned!
+                .map(a => `${a.email} (${a.reason})`)
+                .join(', ')}.`}
+          </span>
         </div>
       )}
 

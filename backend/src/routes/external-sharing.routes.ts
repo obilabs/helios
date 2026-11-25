@@ -332,7 +332,7 @@ router.get('/file/:fileId', async (req, res) => {
 router.post('/revoke', async (req, res) => {
   try {
     const organizationId = req.user?.organizationId;
-    const { fileId, permissionId } = req.body;
+    const { fileId, permissionId, ownerEmail } = req.body;
 
     if (!fileId || !permissionId) {
       return res.status(400).json({
@@ -348,7 +348,12 @@ router.post('/revoke', async (req, res) => {
       requestId: req.headers['x-request-id'],
     });
 
-    const result = await driveSharingAuditService.revokeAccess(organizationId, fileId, permissionId);
+    const result = await driveSharingAuditService.revokeAccess(
+      organizationId,
+      fileId,
+      permissionId,
+      typeof ownerEmail === 'string' ? ownerEmail : undefined
+    );
 
     if (!result.success) {
       return res.status(400).json({
