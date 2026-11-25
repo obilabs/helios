@@ -48,3 +48,45 @@ export function validateLlmEndpoint(raw: unknown): string {
   }
   return trimTrailing(`${url.origin}${url.pathname}`, '/');
 }
+
+/**
+ * The base address chat requests are sent to.
+ *
+ * OpenAI-compatible servers serve chat under `/v1` (Ollama, LM Studio, vLLM and
+ * OpenAI itself). An address with no path, such as `http://host:11434`, is what
+ * an administrator copies from the model server; model discovery accepts it, so
+ * the chat address must too. Anything with a path is left as given.
+ */
+export function chatBaseUrl(validatedEndpoint: string): string {
+  const url = new URL(validatedEndpoint);
+  return url.pathname === '' || url.pathname === '/' ? `${url.origin}/v1` : validatedEndpoint;
+}
+
+/**
+ * True for the errors fetch() raises when nothing answered at the address:
+ * refused, timed out, name not found, unreachable network.
+ */
+export function isUnreachable(error: unknown): boolean {
+  const e = error as { message?: string; cause?: { code?: string } } | undefined;
+  const code = e?.cause?.code || '';
+  return (
+    /fetch failed|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|EAI_AGAIN|UND_ERR/i.test(
+      `${e?.message || ''} ${code}`
+    )
+  );
+}
+
+/** What to tell an administrator when the model server did not answer. */
+export function unreachableMessage(endpoint: string): string {
+  let origin = endpoint;
+  try {
+    origin = new URL(endpoint).origin;
+  } catch {
+    /* keep the text as given */
+  }
+  return (
+    `Helios could not reach ${origin}. The address has to be reachable from the server Helios runs on, ` +
+    `not only from your browser. Check the address and port, and that the model server accepts connections from that machine.`
+  );
+}
+

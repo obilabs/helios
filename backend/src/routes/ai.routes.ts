@@ -1,6 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { validateLlmEndpoint, LlmEndpointError } from '../lib/llm-endpoint.js';
+import {
+  validateLlmEndpoint,
+  LlmEndpointError,
+  chatBaseUrl,
+  isUnreachable,
+  unreachableMessage,
+} from '../lib/llm-endpoint.js';
 import { llmGatewayService, ChatMessage, Tool, ToolCall, AIRole } from '../services/llm-gateway.service.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -217,8 +223,8 @@ router.put('/config', requireAdmin, async (req: Request, res: Response): Promise
     let checkedPrimaryUrl: string | undefined;
     let checkedFallbackUrl: string | undefined;
     try {
-      checkedPrimaryUrl = primaryEndpointUrl ? validateLlmEndpoint(primaryEndpointUrl) : primaryEndpointUrl;
-      checkedFallbackUrl = fallbackEndpointUrl ? validateLlmEndpoint(fallbackEndpointUrl) : undefined;
+      checkedPrimaryUrl = primaryEndpointUrl ? chatBaseUrl(validateLlmEndpoint(primaryEndpointUrl)) : primaryEndpointUrl;
+      checkedFallbackUrl = fallbackEndpointUrl ? chatBaseUrl(validateLlmEndpoint(fallbackEndpointUrl)) : undefined;
     } catch (error) {
       if (error instanceof LlmEndpointError) {
         validationErrorResponse(res, [{ field: 'endpointUrl', message: error.message }]);
@@ -327,7 +333,7 @@ router.post('/test-connection', requireAdmin, async (req: Request, res: Response
 
     let checkedEndpoint: string;
     try {
-      checkedEndpoint = validateLlmEndpoint(endpoint);
+      checkedEndpoint = chatBaseUrl(validateLlmEndpoint(endpoint));
     } catch (error) {
       if (error instanceof LlmEndpointError) {
         validationErrorResponse(res, [{ field: 'endpoint', message: error.message }]);
@@ -412,11 +418,21 @@ router.get('/models', requireAdmin, async (req: Request, res: Response): Promise
     // Clean up the endpoint to get the base Ollama URL (remove /v1/chat/completions)
     endpoint = endpoint.replace(/\/v1(\/chat\/completions)?\/?$/, '');
 
-    const models = await llmGatewayService.listModels(endpoint);
+    let models;
+    try {
+      models = await llmGatewayService.listModels(endpoint);
+    } catch (error: any) {
+      if (isUnreachable(error) || isUnreachable({ message: error?.message })) {
+        logger.warn('Model server did not answer', { endpoint });
+        errorResponse(res, ErrorCode.EXTERNAL_SERVICE_ERROR, unreachableMessage(endpoint));
+        return;
+      }
+      throw error;
+    }
     successResponse(res, { models, endpoint });
   } catch (error: any) {
     logger.error('Failed to list models', { error: error.message });
-    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to list models: ' + error.message);
+    errorResponse(res, ErrorCode.EXTERNAL_SERVICE_ERROR, 'The model server answered, but not with a model list: ' + error.message);
   }
 });
 
@@ -483,7 +499,7 @@ router.post('/test-tools', requireAdmin, async (req: Request, res: Response): Pr
 
     let checkedEndpoint: string;
     try {
-      checkedEndpoint = validateLlmEndpoint(endpoint);
+      checkedEndpoint = chatBaseUrl(validateLlmEndpoint(endpoint));
     } catch (error) {
       if (error instanceof LlmEndpointError) {
         validationErrorResponse(res, [{ field: 'endpoint', message: error.message }]);
