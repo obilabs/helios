@@ -17,6 +17,7 @@
  */
 
 import { betterAuth } from 'better-auth';
+import { createAuthMiddleware, isAPIError } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { passkey } from '@better-auth/passkey';
 import { Pool } from 'pg';
@@ -64,6 +65,33 @@ export const auth = betterAuth({
         return bcrypt.compare(data.password, data.hash);
       },
     },
+  },
+
+  // Record every email sign-in attempt in the security audit log. These
+  // endpoints are served by the library, so no Express route or middleware
+  // sees them. Best-effort: a failure to record never changes the answer.
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/sign-in/email') return;
+      const returned = (ctx.context as { returned?: unknown }).returned as any;
+      const failed = isAPIError(returned);
+      // A first step that still needs a second factor is neither a completed
+      // sign-in nor a refusal; the two-factor step records its own outcome.
+      if (!failed && returned?.twoFactorRedirect) return;
+      try {
+        const { recordSignInAttempt } = await import('./sign-in-audit.js');
+        const headers = ctx.request?.headers ?? ctx.headers;
+        await recordSignInAttempt({
+          email: (ctx.body as { email?: string } | undefined)?.email,
+          failed,
+          errorCode: failed ? returned?.body?.code : undefined,
+          ip: headers?.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+          userAgent: headers?.get('user-agent') || undefined,
+        });
+      } catch (error: any) {
+        console.error('[auth] could not record the sign-in attempt:', error?.message);
+      }
+    }),
   },
 
   // Session configuration
