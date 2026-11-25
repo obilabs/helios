@@ -104,10 +104,10 @@ export async function getDashboardStats(organizationId: string): Promise<Dashboa
     // User counts
     const userCountsQuery = `
       SELECT
-        COUNT(*) FILTER (WHERE user_status != 'deleted') as total,
-        COUNT(*) FILTER (WHERE user_status = 'active') as active,
-        COUNT(*) FILTER (WHERE user_status = 'suspended') as suspended,
-        COUNT(*) FILTER (WHERE user_status = 'deleted') as deleted,
+        COUNT(*) FILTER (WHERE status != 'deleted') as total,
+        COUNT(*) FILTER (WHERE status = 'active') as active,
+        COUNT(*) FILTER (WHERE status = 'suspended') as suspended,
+        COUNT(*) FILTER (WHERE status = 'deleted') as deleted,
         COUNT(*) FILTER (WHERE employee_type = 'guest') as guests,
         COUNT(*) FILTER (WHERE role = 'admin') as admins
       FROM organization_users
@@ -155,7 +155,7 @@ export async function getDashboardStats(organizationId: string): Promise<Dashboa
         COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') as logins_7d,
         COUNT(*) FILTER (WHERE last_login_at IS NULL) as never_logged_in
       FROM organization_users
-      WHERE organization_id = $1 AND user_status = 'active'
+      WHERE organization_id = $1 AND status = 'active'
     `;
     const activity = await db.query(activityQuery, [organizationId]);
 
@@ -289,7 +289,7 @@ async function generateInactiveUsersReport(
       created_at as "createdAt"
     FROM organization_users
     WHERE organization_id = $1
-      AND user_status = 'active'
+      AND status = 'active'
       AND (last_login_at IS NULL OR last_login_at < NOW() - INTERVAL '${days} days')
     ORDER BY last_login_at NULLS FIRST
     LIMIT $2

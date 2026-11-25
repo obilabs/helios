@@ -443,7 +443,7 @@ export class BulkOperationsService {
         organizational_unit,
         role,
         is_active,
-        user_status,
+        status,
         user_type
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING id, email
@@ -498,7 +498,7 @@ export class BulkOperationsService {
 
     const result = await db.query(`
       UPDATE organization_users
-      SET is_active = false, user_status = 'suspended', updated_at = NOW()
+      SET is_active = false, status = 'suspended', updated_at = NOW()
       WHERE organization_id = $1 AND email = $2
       RETURNING id, email
     `, [organizationId, item.email]);

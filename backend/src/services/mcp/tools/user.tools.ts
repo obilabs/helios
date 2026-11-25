@@ -183,7 +183,7 @@ export async function listUsers(
         ou.department,
         ou.job_title as "jobTitle",
         ou.location,
-        ou.user_status as status,
+        ou.status as status,
         ou.role,
         ou.last_login_at as "lastLogin",
         ou.created_at as "createdAt",
@@ -203,7 +203,7 @@ export async function listUsers(
     }
 
     if (status && status !== 'all') {
-      query += ` AND ou.user_status = $${paramIndex}`;
+      query += ` AND ou.status = $${paramIndex}`;
       queryParams.push(status);
       paramIndex++;
     }
@@ -292,7 +292,7 @@ export async function getUser(
         ou.department,
         ou.job_title as "jobTitle",
         ou.location,
-        ou.user_status as status,
+        ou.status as status,
         ou.role,
         ou.last_login_at as "lastLogin",
         ou.created_at as "createdAt",

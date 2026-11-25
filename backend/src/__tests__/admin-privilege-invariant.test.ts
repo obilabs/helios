@@ -515,7 +515,7 @@ describe('last-admin guard', () => {
     await expect(
       service.suspendUser({ email: 'admin-2@corp.test' }, ORG_ID)
     ).rejects.toThrow(/last administrator/i);
-    expect(queriesMatching("user_status = 'suspended'")).toHaveLength(0);
+    expect(queriesMatching("status = 'suspended'")).toHaveLength(0);
   });
 });
 

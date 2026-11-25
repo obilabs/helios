@@ -403,6 +403,21 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -f backend/database/tests/audit-immutability.integration.test.sql
 
+      # The contract above only knows the objects someone listed. This reads the
+      # SQL in backend/src and compares the tables it names, and the columns it
+      # writes, with the seed + migrations schema built above. Known gaps are in
+      # schema-gap-baseline.txt; a new one fails here, and so does a baseline
+      # entry that is no longer a gap, so the list can only shrink.
+      - name: Backend SQL matches the fresh-install schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -At \
+            -c "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1" \
+            > "$RUNNER_TEMP/schema-columns.txt"
+          node backend/database/tests/check-sql-against-schema.mjs "$RUNNER_TEMP/schema-columns.txt"
+
 
   frontend:
     runs-on: ubuntu-latest
