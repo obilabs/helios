@@ -2536,7 +2536,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           const wanted = userId.toLowerCase();
           const matches = (deleted?.users || []).filter((u: any) => String(u.primaryEmail || '').toLowerCase() === wanted);
           if (matches.length === 0) {
-            addOutput('error', `No deleted user with the address ${userId}. It may be past Google's recovery window, or still listed as active.`);
+            addOutput('error', `No deleted user with the address ${userId}. If it was deleted in the last few minutes, wait a minute and try again: Google takes a little while to list a deletion. Otherwise it may be past Google's recovery window, or still listed as active.`);
             return;
           }
           if (matches.length > 1) {

@@ -155,6 +155,10 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   Existing rows are kept as they are and still verify. It runs on start-up.
   `GET /health` gains `auditWriteFailures`, which should read 0. See
   `docs/features/AUDIT-LOG-INTEGRITY.md`.
+- **Signatures follow profile changes.** Migration
+  `107_signature_requeue_on_profile_change.sql` queues a user's deployed
+  signature again when their name, job title, department or contact details
+  change. It runs on start-up; the regular signature sync does the rest.
 - **Google client libraries updated** to their current majors.
 - **Upload handling, mail sending and routing libraries updated** to their
   current majors. No configuration change.
