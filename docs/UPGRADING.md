@@ -70,6 +70,14 @@ Pin the version you run. Do not run production on `edge` or `latest`.
    ```
    Then sign in and open Users and Settings.
 
+   If the browser shows **502 Bad Gateway** for more than a minute after the
+   restart, the proxy is still pointing at the old containers. Restart it:
+   ```bash
+   docker compose restart nginx
+   ```
+   Installs that use the proxy configuration shipped from this release on
+   follow the new containers by themselves, within about half a minute.
+
 If the upgrade fails: set `HELIOS_VERSION` back, `docker compose up -d`, and if
 the database was changed by a major upgrade, restore the backup.
 
@@ -136,6 +144,12 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   `103_auth_library_schema.sql` adds the tables and columns it needs and
   re-keys existing password records. It runs on start-up. An `edge` install
   from before this change keeps its users.
+- **Proxy follows recreated containers.** `nginx/nginx.conf` and
+  `nginx/nginx.prod.conf` now re-resolve the backend and frontend, so an image
+  upgrade no longer leaves the proxy answering 502 until it is restarted. If
+  you keep your own copy of the proxy configuration, copy the `resolver` line
+  and the two `upstream` blocks. Needs nginx 1.27.3 or later (the compose file
+  uses 1.30).
 - **Audit log hash, version 3.** Migration `105_security_audit_hash_v3.sql`
   changes how new audit rows are hashed so that any text can be recorded.
   Existing rows are kept as they are and still verify. It runs on start-up.
