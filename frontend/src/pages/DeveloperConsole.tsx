@@ -7,6 +7,7 @@ import { buildOffboardConfigPayload } from '../lib/offboardConfig';
 import './DeveloperConsole.css';
 import { stripHtmlTags } from '../lib/html-text';
 import { generateStrongPassword, generatePin } from '../lib/password-generator';
+import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord } from '../lib/consoleCommand';
 
 interface ConsoleOutput {
   type: 'command' | 'success' | 'error' | 'info';
@@ -324,27 +325,26 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
     try {
       // Handle built-in commands (don't audit these)
-      if (trimmedCommand === 'help') {
+      const builtin = trimmedCommand.toLowerCase();
+      if (builtin === 'help') {
         showHelp();
         return; // Skip audit for help
-      } else if (trimmedCommand === 'examples') {
+      } else if (builtin === 'examples') {
         showExamples();
         return; // Skip audit for examples
-      } else if (trimmedCommand === 'clear') {
+      } else if (builtin === 'clear') {
         setOutput([]);
         return; // Skip audit for clear
       } else {
         // Auto-prepend "helios" if command starts with a known module or verb
-        const knownModules = ['api', 'gw', 'google-workspace', 'users', 'groups', 'ms', 'microsoft'];
-        const knownVerbs = ['create', 'list', 'get', 'update', 'delete', 'generate', 'set', 'show', 'sync', 'export'];
-        const firstWord = trimmedCommand.split(' ')[0];
+        const firstWord = (trimmedCommand.split(/\s+/)[0] || '').toLowerCase();
 
         let commandToExecute = trimmedCommand;
-        if (!trimmedCommand.startsWith('helios ') && (knownModules.includes(firstWord) || knownVerbs.includes(firstWord))) {
+        if (firstWord !== 'helios' && isKnownCommandWord(firstWord)) {
           commandToExecute = `helios ${trimmedCommand}`;
         }
 
-        if (commandToExecute.startsWith('helios ')) {
+        if (/^helios\s+\S/i.test(commandToExecute)) {
           await executeHeliosCommand(commandToExecute);
         } else {
           resultStatus = 'error';
@@ -371,7 +371,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const executeHeliosCommand = async (command: string) => {
     try {
       // Parse command: helios <verb> <resource> [args] OR helios <module> <resource> <action> [args]
-      const parts = command.split(' ').filter(p => p);
+      const parts = normalizeCommandWords(tokenizeCommand(command));
       parts.shift(); // Remove 'helios'
 
       if (parts.length === 0) {
@@ -397,7 +397,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               await handleCreateUser(args);
               break;
             case 'group':
-              await handleCreateGroup(args);
+              await handleGWGroups('create', args);
               break;
             default:
               addOutput('error', `Unknown resource: ${resource}. Use: create user, create group`);
@@ -414,7 +414,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               await handleListUsers(args);
               break;
             case 'groups':
-              await handleListGroups(args);
+              await handleGWGroups('list', args);
               break;
             case '2fa':
               await handleList2FA(args);
@@ -455,7 +455,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               await handleGetUser(args);
               break;
             case 'group':
-              await handleGetGroup(args);
+              await handleGWGroups('get', args);
               break;
             case '2fa':
               await handleGet2FA(args);
@@ -489,7 +489,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               await handleUpdateUser(args);
               break;
             case 'group':
-              await handleUpdateGroup(args);
+              await handleGWGroups('update', args);
               break;
             default:
               addOutput('error', `Unknown resource: ${resource}. Use: update user, update group`);
@@ -506,7 +506,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               await handleDeleteUser(args);
               break;
             case 'group':
-              await handleDeleteGroup(args);
+              if (!args[0]) {
+                addOutput('error', 'Usage: delete group <email> --confirm');
+              } else if (parseArgs(args.slice(1)).confirm === undefined) {
+                addOutput('error', `This will delete the group ${args[0]} in Google Workspace. Add --confirm to proceed.`);
+              } else {
+                await handleGWGroups('delete', args.filter(a => !a.startsWith('--confirm')));
+              }
               break;
             default:
               addOutput('error', `Unknown resource: ${resource}. Use: delete user, delete group`);
@@ -658,7 +664,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     // Handle password
     let password = params.password;
     let isAutoGenerated = false;
-    if (password === 'auto' || password === '') {
+    if (password === undefined || password === 'auto' || password === '') {
       password = generateStrongPassword();
       isAutoGenerated = true;
     }
@@ -816,9 +822,8 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
     const email = args[0];
     try {
-      const data = await apiRequest('GET', `/api/v1/organization/users?email=${encodeURIComponent(email)}`);
-      if (data.success && data.data && data.data.length > 0) {
-        const user = data.data[0];
+      const user = await findUserByEmail(email);
+      if (user) {
         addOutput('info', '');
         addOutput('info', `User: ${user.email}`);
         addOutput('info', '='.repeat(60));
@@ -867,7 +872,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
 
     try {
-      await apiRequest('PATCH', `/api/v1/organization/users/by-email/${encodeURIComponent(email)}`, body);
+      const existing = await findUserByEmail(email);
+      if (!existing) {
+        addOutput('error', `User not found: ${email}`);
+        return;
+      }
+      await apiRequest('PUT', `/api/v1/organization/users/${existing.id}`, body);
       addOutput('success', `User updated: ${email}`);
     } catch (error: any) {
       addOutput('error', `Failed to update user: ${error.message}`);
@@ -879,7 +889,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     if (args.length === 0) {
       addOutput('error', 'Usage: delete user <email> [--gw] [--confirm]');
       addOutput('info', '  --gw       Also delete from Google Workspace');
-      addOutput('info', '  --confirm  Skip confirmation prompt');
+      addOutput('info', '  --confirm  Required. Without it nothing is deleted.');
       return;
     }
     const email = args[0];
@@ -894,7 +904,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
     try {
       // Delete from Helios
-      await apiRequest('DELETE', `/api/v1/organization/users/by-email/${encodeURIComponent(email)}`);
+      const existing = await findUserByEmail(email);
+      if (!existing) {
+        addOutput('error', `User not found: ${email}`);
+        return;
+      }
+      await apiRequest('DELETE', `/api/v1/organization/users/${existing.id}`);
       addOutput('success', `  ✓ Deleted from Helios: ${email}`);
 
       // Delete from Google Workspace if requested
@@ -914,173 +929,14 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
   };
 
-  // ===== CREATE GROUP =====
-  const handleCreateGroup = async (args: string[]) => {
-    if (args.length < 1) {
-      addOutput('error', 'Usage: create group <email> --name="Group Name" [options]');
-      addOutput('info', '');
-      addOutput('info', 'Options:');
-      addOutput('info', '  --name=X            Group name (required)');
-      addOutput('info', '  --description=X     Group description');
-      addOutput('info', '  --gw                Also create in Google Workspace');
-      return;
-    }
-    const email = args[0];
-    const params = parseArgs(args.slice(1));
-
-    if (!params.name) {
-      addOutput('error', 'Required: --name="Group Name"');
-      return;
-    }
-
-    const createInGoogle = params.gw !== undefined;
-
-    // Create in Helios
-    addOutput('info', `Creating group in Helios: ${email}`);
-    try {
-      await apiRequest('POST', '/api/v1/organization/groups', {
-        email,
-        name: params.name,
-        description: params.description || ''
-      });
-      addOutput('success', `  ✓ Created in Helios`);
-
-      if (createInGoogle) {
-        addOutput('info', `Creating group in Google Workspace...`);
-        try {
-          await apiRequest('POST', '/api/google/admin/directory/v1/groups', {
-            email,
-            name: params.name,
-            description: params.description || ''
-          });
-          addOutput('success', `  ✓ Created in Google Workspace`);
-        } catch (gwError: any) {
-          addOutput('error', `  ✗ Google Workspace: ${gwError.message}`);
-        }
-      }
-
-      addOutput('info', '');
-      addOutput('success', `Group created: ${email}`);
-    } catch (error: any) {
-      addOutput('error', `Failed to create group: ${error.message}`);
-    }
-  };
-
-  // ===== LIST GROUPS =====
-  const handleListGroups = async (_args: string[]) => {
-    // Future: support --source=all|helios|gw filtering with parseArgs(_args)
-
-    try {
-      // Get Helios groups
-      const data = await apiRequest('GET', '/api/v1/organization/groups');
-      if (data.success && data.data) {
-        const groups = data.data.map((g: any) => {
-          const email = (g.email || '').padEnd(35);
-          const name = (g.name || '').substring(0, 30).padEnd(31);
-          const memberCount = String(g.memberCount || 0).padEnd(8);
-          return `${email} ${name} ${memberCount}`;
-        }).join('\n');
-        addOutput('success', `\nEMAIL${' '.repeat(30)}NAME${' '.repeat(27)}MEMBERS\n${'='.repeat(80)}\n${groups}`);
-        addOutput('info', `\nTotal: ${data.data.length} group(s)`);
-      } else {
-        addOutput('info', 'No groups found');
-      }
-    } catch (error: any) {
-      addOutput('error', `Failed to list groups: ${error.message}`);
-    }
-  };
-
-  // ===== GET GROUP =====
-  const handleGetGroup = async (args: string[]) => {
-    if (args.length === 0) {
-      addOutput('error', 'Usage: get group <email>');
-      return;
-    }
-    const email = args[0];
-    try {
-      const data = await apiRequest('GET', `/api/v1/organization/groups/${encodeURIComponent(email)}`);
-      if (data.success && data.data) {
-        const group = data.data;
-        addOutput('info', '');
-        addOutput('info', `Group: ${group.email}`);
-        addOutput('info', '='.repeat(60));
-        addOutput('info', `  Name: ${group.name || '-'}`);
-        addOutput('info', `  Description: ${group.description || '-'}`);
-        addOutput('info', `  Members: ${group.memberCount || 0}`);
-        addOutput('info', '='.repeat(60));
-      } else {
-        addOutput('error', `Group not found: ${email}`);
-      }
-    } catch (error: any) {
-      addOutput('error', `Failed to get group: ${error.message}`);
-    }
-  };
-
-  // ===== UPDATE GROUP =====
-  const handleUpdateGroup = async (args: string[]) => {
-    if (args.length === 0) {
-      addOutput('error', 'Usage: update group <email> --name="New Name" [--description="..."]');
-      return;
-    }
-    const email = args[0];
-    const params = parseArgs(args.slice(1));
-
-    const body: any = {};
-    if (params.name) body.name = params.name;
-    if (params.description) body.description = params.description;
-
-    if (Object.keys(body).length === 0) {
-      addOutput('error', 'No fields to update. Use --name or --description');
-      return;
-    }
-
-    try {
-      await apiRequest('PATCH', `/api/v1/organization/groups/${encodeURIComponent(email)}`, body);
-      addOutput('success', `Group updated: ${email}`);
-    } catch (error: any) {
-      addOutput('error', `Failed to update group: ${error.message}`);
-    }
-  };
-
-  // ===== DELETE GROUP =====
-  const handleDeleteGroup = async (args: string[]) => {
-    if (args.length === 0) {
-      addOutput('error', 'Usage: delete group <email> [--gw] [--confirm]');
-      return;
-    }
-    const email = args[0];
-    const params = parseArgs(args.slice(1));
-    const deleteFromGW = params.gw !== undefined;
-    const confirmed = params.confirm !== undefined;
-
-    if (!confirmed) {
-      addOutput('error', `This will delete group ${email}. Add --confirm to proceed.`);
-      return;
-    }
-
-    try {
-      await apiRequest('DELETE', `/api/v1/organization/groups/${encodeURIComponent(email)}`);
-      addOutput('success', `  ✓ Deleted from Helios: ${email}`);
-
-      if (deleteFromGW) {
-        try {
-          await apiRequest('DELETE', `/api/google/admin/directory/v1/groups/${email}`);
-          addOutput('success', `  ✓ Deleted from Google Workspace`);
-        } catch (gwError: any) {
-          addOutput('error', `  ✗ Google Workspace: ${gwError.message}`);
-        }
-      }
-
-      addOutput('success', `Group deleted: ${email}`);
-    } catch (error: any) {
-      addOutput('error', `Failed to delete group: ${error.message}`);
-    }
-  };
-
   // ===== EXPORT USERS =====
   const handleExportUsers = async (args: string[]) => {
     const params = parseArgs(args);
     const format = params.format || 'csv';
+    if (format !== 'csv' && format !== 'json') {
+      addOutput('error', `Unknown format: ${format}. Use --format=csv or --format=json`);
+      return;
+    }
 
     addOutput('info', 'Exporting users...');
 
@@ -1130,13 +986,17 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const handleExportGroups = async (args: string[]) => {
     const params = parseArgs(args);
     const format = params.format || 'csv';
+    if (format !== 'csv' && format !== 'json') {
+      addOutput('error', `Unknown format: ${format}. Use --format=csv or --format=json`);
+      return;
+    }
 
     addOutput('info', 'Exporting groups...');
 
     try {
-      const data = await apiRequest('GET', '/api/v1/organization/groups');
-      if (data.success && data.data) {
-        const groups = data.data;
+      const data = await apiRequest('GET', `/api/google-workspace/groups/${getOrganizationId()}`);
+      const groups: any[] | null = Array.isArray(data?.data?.groups) ? data.data.groups : Array.isArray(data?.data) ? data.data : null;
+      if (data.success && groups) {
 
         if (format === 'csv') {
           const headers = ['Email', 'Name', 'Description', 'Member Count'];
@@ -1174,7 +1034,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const handleSyncGoogleWorkspace = async (_args: string[]) => {
     addOutput('info', 'Starting Google Workspace sync...');
     try {
-      const result = await apiRequest('POST', '/api/v1/google-workspace/sync');
+      const result = await apiRequest('POST', '/api/v1/modules/google-workspace/sync');
       if (result.success) {
         addOutput('success', 'Sync completed successfully');
         addOutput('info', `  Users synced: ${result.data?.usersCreated || 0} created, ${result.data?.usersUpdated || 0} updated`);
@@ -1240,7 +1100,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     try {
       addOutput('info', 'Fetching 2FA status for all users...');
 
-      const response = await authFetch('/api/v1/security/2fa-status');
+      const response = await authFetch('/api/v1/organization/security/2fa-status');
       if (!response.ok) {
         throw new Error('Failed to fetch 2FA status');
       }
@@ -1250,8 +1110,19 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         throw new Error(data.error || 'Failed to fetch 2FA status');
       }
 
-      const summary = data.data.summary;
-      const users = data.data.users || [];
+      const rawSummary = data.data?.summary || {};
+      const summary = {
+        total_users: rawSummary.total ?? rawSummary.total_users ?? 0,
+        enrolled_count: rawSummary.enrolled ?? rawSummary.enrolled_count ?? 0,
+        not_enrolled_count: rawSummary.notEnrolled ?? rawSummary.not_enrolled_count ?? 0,
+        enrollment_rate: rawSummary.percentage ?? rawSummary.enrollment_rate ?? 0,
+      };
+      const users = (data.data?.users || []).map((u: any) => ({
+        primary_email: String(u.email ?? u.primary_email ?? ''),
+        is_enrolled_in_2sv: Boolean(u.isEnrolled2Sv ?? u.is_enrolled_in_2sv),
+        is_enforced_in_2sv: Boolean(u.isEnforced2Sv ?? u.is_enforced_in_2sv),
+      }));
+      const enforcedCount = rawSummary.enforced ?? rawSummary.enforced_count ?? users.filter((u: any) => u.is_enforced_in_2sv).length;
 
       // Parse filter args
       const enrolledOnly = args.includes('--enrolled');
@@ -1263,9 +1134,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       addOutput('info', '═'.repeat(60));
       addOutput('info', `  Total Users:        ${summary.total_users}`);
       addOutput('success', `  2FA Enrolled:       ${summary.enrolled_count} (${summary.enrollment_rate}%)`);
-      addOutput('info', `  2FA Enforced:       ${summary.enforced_count}`);
+      addOutput('info', `  2FA Enforced:       ${enforcedCount}`);
       addOutput('error', `  Not Enrolled:       ${summary.not_enrolled_count}`);
       addOutput('info', '═'.repeat(60));
+      if (summary.total_users === 0) {
+        addOutput('info', '  No directory data yet. This list is filled by the Google Workspace sync.');
+      }
       addOutput('info', '');
 
       // Filter users based on args
@@ -1318,7 +1192,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         // List tokens for specific user
         addOutput('info', `Fetching OAuth tokens for ${userEmail}...`);
 
-        const response = await authFetch(`/api/v1/security/users/${encodeURIComponent(userEmail)}/oauth-tokens`);
+        const response = await authFetch(`/api/v1/organization/security/users/${encodeURIComponent(userEmail)}/oauth-tokens`);
         if (!response.ok) {
           throw new Error('Failed to fetch user tokens');
         }
@@ -1328,7 +1202,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           throw new Error(data.error || 'Failed to fetch user tokens');
         }
 
-        const tokens = data.data || [];
+        const tokens = (Array.isArray(data.data) ? data.data : data.data?.tokens || []).map((t: any) => ({
+          client_id: t.clientId ?? t.client_id,
+          display_text: t.displayName ?? t.display_text,
+          risk_level: t.riskLevel ?? t.risk_level,
+          scopes: t.scopes || [],
+        }));
 
         addOutput('info', '');
         addOutput('info', `OAuth Tokens for ${userEmail}`);
@@ -1352,7 +1231,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         // List all OAuth apps across organization
         addOutput('info', 'Fetching OAuth apps across organization...');
 
-        const response = await authFetch('/api/v1/security/oauth-apps');
+        const response = await authFetch('/api/v1/organization/security/oauth-apps');
         if (!response.ok) {
           throw new Error('Failed to fetch OAuth apps');
         }
@@ -1362,7 +1241,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           throw new Error(data.error || 'Failed to fetch OAuth apps');
         }
 
-        const apps = data.data || [];
+        const apps = (Array.isArray(data.data) ? data.data : data.data?.apps || []).map((a: any) => ({
+          client_id: String(a.clientId ?? a.client_id ?? ''),
+          display_text: a.displayName ?? a.display_text,
+          risk_level: a.riskLevel ?? a.risk_level,
+          user_count: a.userCount ?? a.user_count ?? 0,
+        }));
 
         // Parse filter args
         const highRiskOnly = args.includes('--high-risk');
@@ -1417,12 +1301,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
       let endpoint = `/api/v1/organization/audit-logs?limit=${limit}`;
       if (action) endpoint += `&action=${encodeURIComponent(action)}`;
-      if (user) endpoint += `&actor=${encodeURIComponent(user)}`;
+      if (user) endpoint += `&search=${encodeURIComponent(user)}`;
 
       const data = await apiRequest('GET', endpoint);
 
-      if (data.success && data.data?.logs) {
-        const logs = data.data.logs;
+      const logs: any[] | null = Array.isArray(data?.data) ? data.data : Array.isArray(data?.data?.logs) ? data.data.logs : null;
+      if (data.success && logs) {
 
         addOutput('info', '');
         addOutput('info', 'Audit Logs');
@@ -1434,17 +1318,17 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           addOutput('info', '  No audit logs found');
         } else {
           for (const log of logs) {
-            const timestamp = new Date(log.timestamp).toLocaleString().padEnd(22);
+            const timestamp = new Date(log.timestamp || log.created_at).toLocaleString().padEnd(22);
             const action = (log.action || 'unknown').substring(0, 25).padEnd(26);
             const actor = (log.actor_email || log.actor_identifier || 'system').substring(0, 28).padEnd(30);
-            const outcome = log.outcome || 'unknown';
+            const outcome = log.outcome || log.result || 'unknown';
             const outcomeType = outcome === 'success' ? 'success' : 'error';
             addOutput(outcomeType, `${timestamp}${action}${actor}${outcome}`);
           }
         }
 
         addOutput('info', '');
-        addOutput('info', `Showing ${logs.length} of ${data.data.total || logs.length} logs`);
+        addOutput('info', `Showing ${logs.length} log(s)`);
         addOutput('info', 'Filters: --limit=N, --action=<action>, --user=<email>');
         addOutput('info', 'Export: Use Audit Logs page for CSV export');
       } else {
@@ -1664,7 +1548,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     try {
       addOutput('info', `Fetching 2FA status for ${email}...`);
 
-      const response = await authFetch(`/api/v1/security/2fa-status/${encodeURIComponent(email)}`);
+      const response = await authFetch(`/api/v1/organization/security/2fa-status/${encodeURIComponent(email)}`);
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error(`User not found: ${email}`);
@@ -1719,7 +1603,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     try {
       addOutput('info', `Revoking token ${clientId} from ${email}...`);
 
-      const response = await authFetch(`/api/v1/security/users/${encodeURIComponent(email)}/oauth-tokens/${encodeURIComponent(clientId)}`, {
+      const response = await authFetch(`/api/v1/organization/security/users/${encodeURIComponent(email)}/oauth-tokens/${encodeURIComponent(clientId)}`, {
         method: 'DELETE'
       });
 
@@ -1756,8 +1640,21 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
 
     const method = args[0].toUpperCase();
+    if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      addOutput('error', `Unknown method: ${args[0]}. Use GET, POST, PUT, PATCH or DELETE`);
+      return;
+    }
     const path = args[1];
-    const body = args[2] ? JSON.parse(args[2]) : undefined;
+    let body: any;
+    if (args[2]) {
+      try {
+        body = JSON.parse(args.slice(2).join(' '));
+      } catch {
+        addOutput('error', 'The body is not valid JSON. Wrap it in single quotes if it contains spaces:');
+        addOutput('info', `  api POST /api/v1/organization/departments '{"name":"Customer Success"}'`);
+        return;
+      }
+    }
 
     const data = await apiRequest(method, path, body);
     addOutput('success', JSON.stringify(data, null, 2));
@@ -1773,6 +1670,20 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       case 'gen': {
         const count = parseInt(params.count || '1', 10);
         const style = params.style || 'random';
+        const wantedLength = params.length === undefined ? undefined : parseInt(params.length, 10);
+        if (style !== 'random' && style !== 'pin') {
+          addOutput('error', `Unknown style: ${style}. Use --style=random or --style=pin`);
+          return;
+        }
+        if (!Number.isInteger(count) || count < 1 || count > 20) {
+          addOutput('error', '--count must be a number from 1 to 20');
+          return;
+        }
+        const minLength = style === 'pin' ? 4 : 8;
+        if (wantedLength !== undefined && (!Number.isInteger(wantedLength) || wantedLength < minLength || wantedLength > 128)) {
+          addOutput('error', `--length must be a number from ${minLength} to 128`);
+          return;
+        }
 
         addOutput('info', `\nGenerated Password${count > 1 ? 's' : ''} (${style}):`);
         addOutput('info', '='.repeat(40));
@@ -5768,9 +5679,8 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const email = restArgs[0];
         try {
-          const data = await apiRequest('GET', `/api/v1/organization/users?email=${encodeURIComponent(email)}`);
-          if (data.success && data.data && data.data.length > 0) {
-            const user = data.data[0];
+          const user = await findUserByEmail(email);
+          if (user) {
             addOutput('info', '');
             addOutput('info', `User: ${user.email}`);
             addOutput('info', '='.repeat(60));
@@ -5864,6 +5774,16 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   // ===== HELIOS GROUPS COMMAND HANDLER =====
   const handleGroupsCommand = async (_args: string[]) => {
     addOutput('error', 'Helios groups commands are not available. Use: helios gw groups');
+  };
+
+  // ----- Helper: find one Helios user by exact email -----
+  // GET /organization/users has no `email` filter; it has `search`, which is a
+  // substring match. Asking for the wrong parameter returned the whole list, and
+  // the commands below then acted on whichever user came first.
+  const findUserByEmail = async (email: string): Promise<any | null> => {
+    const data = await apiRequest('GET', `/api/v1/organization/users?search=${encodeURIComponent(email)}`);
+    const list: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.data?.users) ? data.data.users : [];
+    return list.find((u: any) => String(u.email || '').toLowerCase() === email.toLowerCase()) || null;
   };
 
   // ----- Helper: Parse --key=value arguments -----
