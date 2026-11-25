@@ -174,3 +174,15 @@ export function splitOrgUnitPath(path: string | undefined): { parent: string; na
   if (!name) return null;
   return { parent: cut === 0 ? '/' : trimmed.slice(0, cut), name };
 }
+
+/**
+ * Last sign-in time for display. Google reports "never signed in" as the Unix
+ * epoch (1970-01-01T00:00:00Z), which would otherwise print as a date in 1969
+ * or 1970 depending on the viewer's time zone.
+ */
+export function formatLastLogin(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return 'Never';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.getTime() <= 0) return 'Never';
+  return date.toLocaleString();
+}

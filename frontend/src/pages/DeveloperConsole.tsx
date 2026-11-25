@@ -14,6 +14,7 @@ import {
   isConfirmed,
   buildUserUpdate,
   splitOrgUnitPath,
+  formatLastLogin,
 } from '../lib/consoleCommand';
 
 interface ConsoleOutput {
@@ -1582,7 +1583,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       addOutput('info', `  2FA Enforced:       ${enforcedStatus}`);
 
       if (status.last_login_time) {
-        addOutput('info', `  Last Login:         ${new Date(status.last_login_time).toLocaleString()}`);
+        addOutput('info', `  Last Login:         ${formatLastLogin(status.last_login_time)}`);
       }
 
       addOutput('info', '═'.repeat(50));
@@ -1921,7 +1922,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             formatField('Status', data.suspended ? 'Suspended' : 'Active'),
             formatField('Admin', data.isAdmin ? 'Yes' : 'No'),
             formatField('Created', data.creationTime ? new Date(data.creationTime).toLocaleString() : ''),
-            formatField('Last Login', data.lastLoginTime ? new Date(data.lastLoginTime).toLocaleString() : ''),
+            formatField('Last Login', formatLastLogin(data.lastLoginTime)),
             formatField('Recovery Email', data.recoveryEmail),
             formatField('Recovery Phone', data.recoveryPhone),
             formatField('2SV Enrolled', data.isEnrolledIn2Sv ? 'Yes' : 'No'),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord, isConfirmed, buildUserUpdate, splitOrgUnitPath } from './consoleCommand';
+import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord, isConfirmed, buildUserUpdate, splitOrgUnitPath, formatLastLogin } from './consoleCommand';
 
 describe('tokenizeCommand', () => {
   it('splits on whitespace and ignores repeated spaces', () => {
@@ -131,3 +131,17 @@ describe('splitOrgUnitPath', () => {
   });
 });
 
+describe('formatLastLogin', () => {
+  it('shows Never for a user who has not signed in', () => {
+    expect(formatLastLogin('1970-01-01T00:00:00.000Z')).toBe('Never');
+    expect(formatLastLogin(0)).toBe('Never');
+    expect(formatLastLogin(null)).toBe('Never');
+    expect(formatLastLogin('')).toBe('Never');
+    expect(formatLastLogin('not a date')).toBe('Never');
+  });
+
+  it('formats a real sign-in time', () => {
+    const value = '2026-11-25T17:34:00.000Z';
+    expect(formatLastLogin(value)).toBe(new Date(value).toLocaleString());
+  });
+});
