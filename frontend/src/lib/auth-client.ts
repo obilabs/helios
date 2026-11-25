@@ -240,10 +240,20 @@ export async function enable2FA(password?: string): Promise<{
       };
     }
 
+    // The result is a union by method. Helios enrols an authenticator app,
+    // so anything other than TOTP is a configuration this screen cannot show.
+    const data = result.data;
+    if (!data || data.method !== 'totp') {
+      return {
+        success: false,
+        error: 'Two-factor setup did not return an authenticator app code',
+      };
+    }
+
     return {
       success: true,
-      totpUri: result.data?.totpURI,
-      backupCodes: result.data?.backupCodes,
+      totpUri: data.totpURI,
+      backupCodes: data.backupCodes,
     };
   } catch (error: any) {
     console.error('Enable 2FA error:', error);
