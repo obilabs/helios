@@ -43,6 +43,21 @@ working in Helios looks.
   engineering wording. Never narrate a security finding in public; the reasoning
   lives in the private north-star repo.
 
+## Upgrades and releases
+
+Read `docs/UPGRADING.md` ("Rules for changes to Helios") before changing the
+schema, a dependency, or anything another ObiLabs product calls. In short:
+
+- Schema changes are new, additive, re-runnable migration files. No renames or
+  drops inside a major. Never edit a merged migration.
+- A dependency major that touches sign-in, sessions or stored data is a
+  migration: test it against a database from the previous build with an existing
+  account, not only against a fresh one.
+- Anything an admin would notice after upgrading gets a line in the upgrade
+  notes in `docs/UPGRADING.md`, in the same PR.
+- Merging to `main` publishes `edge`, not a release. A version is tagged only
+  through the gate in `docs/RELEASING.md`.
+
 ## 🎯 CRITICAL: This is NOT Multi-Tenant
 
 **IMPORTANT:** This is the CLIENT PORTAL for single organizations.
