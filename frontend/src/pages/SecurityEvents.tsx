@@ -203,7 +203,8 @@ const SecurityEvents: React.FC = () => {
 
               <div className="event-footer">
                 <div className="event-source">
-                  Source: {event.source}
+                  {/* Events recorded before the source was stored have none. */}
+                  Source: {event.source || 'not recorded'}
                 </div>
                 {event.acknowledged ? (
                   <div className="acknowledged-info">
