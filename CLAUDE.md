@@ -397,14 +397,14 @@ Helios is the basis for Aegis. When creating derived projects, follow these rule
 
 ### Pin Versions Properly
 - **Docker builds without lockfiles** resolve `^` ranges to latest — which may include breaking majors
-- `better-auth`: Now `~1.6.x` (upgraded 2026-08-25 to clear a **critical** + a high account-takeover advisory; fix ≥1.6.22, resolved to 1.6.30). The 1.5+ removal of the `apiKey` plugin does **NOT** affect Helios — it only uses `twoFactor`/passkey, never better-auth's `apiKey` (Helios has its own typed apiKey infra in `utils/apiKey.ts`). Keep `@better-auth/passkey` version-matched to `better-auth`. Auth verified (sign-in + session) after the bump.
+- `better-auth`: Now `~1.7.x` (moved from `~1.6.x` on 2026-11-25; upstream fixes now ship only on the 1.7 line). Three things 1.7 enforces that 1.6 did not, each handled in migration 103 and `backend/src/lib/auth.ts`: (1) it validates its tables at start-up and refuses to run on a mismatch; (2) a password account must have `account_id` equal to the user's id, not the email, or sign-in returns "user not found"; (3) it needs Node 22. Keep `@better-auth/passkey` version-matched to `better-auth`. Helios still uses only `twoFactor` and passkey, never better-auth's `apiKey`. Before any future bump, run the setup-and-login browser tests against a database from the previous release, not only a fresh one.
 - `zod`: Use `^4.1.0` (Zod 4). better-auth 1.4.x requires Zod 4 features (`z.ipv4()`, `z.record()` with 2 args)
 - When starting a new project from Helios patterns, copy the **exact** dependency versions, not older baselines
 
 ### Helios Baseline Versions (Current)
 ```json
 {
-  "better-auth": "~1.6.30",
+  "better-auth": "~1.7.28",
   "zod": "^4.1.13"
 }
 ```
