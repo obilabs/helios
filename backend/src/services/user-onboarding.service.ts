@@ -701,7 +701,7 @@ class UserOnboardingService {
     const errors: string[] = [];
 
     if (!config.email) errors.push('Email is required');
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.email)) errors.push('Invalid email format');
+    else if ((config.email.length > 254 || !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(config.email))) errors.push('Invalid email format');
 
     if (!config.firstName) errors.push('First name is required');
     if (!config.lastName) errors.push('Last name is required');

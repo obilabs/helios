@@ -422,7 +422,7 @@ export class BulkOperationsService {
    */
   private async createUser(item: any, organizationId: string): Promise<any> {
     const email = typeof item.email === 'string' ? item.email.trim() : '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if ((email.length > 254 || !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email))) {
       throw new Error(`Invalid email address: '${item.email ?? ''}'`);
     }
     if (!String(item.firstName ?? '').trim() || !String(item.lastName ?? '').trim()) {
