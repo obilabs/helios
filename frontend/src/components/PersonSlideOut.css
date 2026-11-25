@@ -389,7 +389,7 @@
 .interest-tag {
   display: inline-block;
   padding: 6px 12px;
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
   border-radius: 16px;
   font-size: 13px;

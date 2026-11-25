@@ -115,7 +115,7 @@
 .upload-zone:hover {
   border-color: var(--theme-primary);
   color: var(--theme-primary);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .upload-zone .spin {
@@ -205,7 +205,7 @@
 
 .asset-item.selected {
   border-color: var(--theme-primary);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .asset-thumbnail {

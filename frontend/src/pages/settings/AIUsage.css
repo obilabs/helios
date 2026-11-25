@@ -234,7 +234,7 @@
 }
 
 .card-icon.tokens {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary);
 }
 
@@ -514,7 +514,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--theme-primary);
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   padding: 2px 8px;
   border-radius: 10px;
 }

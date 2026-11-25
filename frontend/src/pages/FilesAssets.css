@@ -305,7 +305,7 @@
 }
 
 .folder-item.active {
-  background: #f3e8ff;
+  background: var(--color-gray-100);
   color: var(--theme-primary);
 }
 
@@ -624,7 +624,7 @@
 
 .storage-option.selected {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .storage-option.disabled {
@@ -674,8 +674,8 @@
 }
 
 .danger-zone {
-  border-color: #fee2e2;
-  background: #fef2f2;
+  border-color: var(--color-gray-200);
+  background: var(--color-gray-100);
 }
 
 .danger-zone h3 {
@@ -758,7 +758,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #dc2626;
@@ -788,7 +788,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3e8ff;
+  background: var(--color-gray-100);
   border-radius: 16px;
   color: var(--theme-primary);
   margin-bottom: 20px;
@@ -865,13 +865,13 @@
 .drop-zone:hover,
 .drop-zone.dragging {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .drop-zone.has-file {
   border-style: solid;
   border-color: #22c55e;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
 }
 
 .drop-zone svg {

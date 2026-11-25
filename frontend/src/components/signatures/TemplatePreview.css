@@ -55,7 +55,7 @@
 
 .user-selector-button:hover {
   border-color: var(--color-gray-300);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .user-dropdown {
@@ -178,7 +178,7 @@
   gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--color-gray-200);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .preview-tab {
@@ -220,7 +220,7 @@
   font-family: Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #333;
+  color: var(--color-gray-800);
 }
 
 .signature-render img {
@@ -309,8 +309,8 @@
   gap: 8px;
   padding: 12px 16px;
   margin: 12px;
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   color: #dc2626;
   font-size: 13px;

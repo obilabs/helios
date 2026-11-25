@@ -83,7 +83,7 @@
   justify-content: space-between;
   padding: 12px 20px;
   border-bottom: 1px solid var(--color-gray-200);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .user-selector {
@@ -107,7 +107,7 @@
 
 .user-selector-button:hover {
   border-color: var(--color-gray-300);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .user-selector-label {
@@ -271,7 +271,7 @@
 
 .refresh-preview-button:hover:not(:disabled) {
   border-color: var(--color-gray-300);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .refresh-preview-button:disabled {
@@ -454,7 +454,7 @@
   font-family: Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #333;
+  color: var(--color-gray-800);
 }
 
 .preview-signature-render img {

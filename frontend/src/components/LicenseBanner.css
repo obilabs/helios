@@ -19,9 +19,9 @@
 .license-banner svg { flex-shrink: 0; }
 .license-banner-msg { flex: 1; }
 
-.license-banner.near { background: #fffbeb; border-color: #fde68a; color: #92400e; }
-.license-banner.at   { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
-.license-banner.over { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.license-banner.near { background: var(--color-gray-50); border-color: #fde68a; color: #92400e; }
+.license-banner.at   { background: var(--color-gray-100); border-color: #fed7aa; color: #9a3412; }
+.license-banner.over { background: var(--color-gray-100); border-color: #fecaca; color: #b91c1c; }
 
 .license-banner-dismiss {
   background: none;

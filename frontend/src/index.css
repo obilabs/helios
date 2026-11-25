@@ -49,30 +49,36 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* The component library's own dark palette. It used to hang off a .dark
+     class that nothing sets, so its surfaces (and the page background) stayed
+     white in the dark themes. It now follows the selected theme, with the
+     same slate values the dark theme defines in styles/themes.css. */
+  .dark,
+  :root[data-theme="helios-dark"],
+  :root[data-theme="dark"] {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 217 33% 17%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 217 33% 17%;
     --popover-foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217 33% 17%;
     --card-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 215 25% 27%;
+    --input: 215 19% 35%;
 
     /* Helios Purple stays the same for brand consistency */
     --primary: 262 90% 66%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 215 25% 27%;
     --secondary-foreground: 210 40% 98%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 215 25% 27%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -178,7 +184,7 @@ button:focus-visible {
   border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   color: var(--color-gray-700);
   transition: all 0.15s;
 }

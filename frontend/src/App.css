@@ -156,7 +156,7 @@
 }
 
 .info-banner {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   border: 1px solid #bfdbfe;
   border-radius: 8px;
   padding: 1.25rem;
@@ -250,7 +250,7 @@
 }
 
 .info-box {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   border: 1px solid #bfdbfe;
   border-radius: 8px;
   padding: 1.25rem;
@@ -887,8 +887,9 @@
 }
 
 .client-footer {
-  background: var(--color-gray-800);
-  color: var(--color-gray-400);
+  /* A dark bar in every theme, so these two stay literal. */
+  background: #1f2937;
+  color: #9ca3af;
   padding: 1.5rem 2rem;
   text-align: center;
 }
@@ -1050,7 +1051,7 @@
 }
 
 .setup-error {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   border: 1px solid #fecaca;
   color: var(--color-error-hover);
   padding: 1rem;
@@ -1071,7 +1072,7 @@
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .file-upload-area:hover {
@@ -1304,7 +1305,7 @@
 
 .module-btn:hover:not(.disabled) {
   border-color: var(--theme-primary);
-  background: #f8faff;
+  background: var(--color-gray-50);
 }
 
 .module-btn.disabled {
@@ -1453,7 +1454,7 @@
 }
 
 .user-status-badge.status-deleted {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 
@@ -2171,12 +2172,12 @@
 }
 
 .alert-item.warning {
-  background: #fff7ed;
+  background: var(--color-gray-100);
   border-left-color: #ea580c;
 }
 
 .alert-item.info {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   border-left-color: var(--color-info);
 }
 

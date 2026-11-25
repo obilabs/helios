@@ -22,7 +22,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fafbfc;
+  background: var(--color-gray-50);
 }
 
 .data-table-th {
@@ -96,7 +96,7 @@
 }
 
 .data-table-row {
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-gray-100);
   transition: background 0.1s ease;
 }
 
@@ -109,11 +109,11 @@
 }
 
 .data-table-row.selected {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .data-table-row.selected:hover {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
 }
 
 .data-table-td {
@@ -264,7 +264,7 @@
 }
 
 .status-badge.deleted {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 

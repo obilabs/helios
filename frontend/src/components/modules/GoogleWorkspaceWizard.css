@@ -147,7 +147,7 @@
 
 .gw-wizard-upload-label:hover {
   border-color: #3b82f6;
-  background: #f0f9ff;
+  background: var(--color-gray-50);
 }
 
 .gw-wizard-upload-label p {
@@ -167,7 +167,7 @@
 }
 
 .gw-wizard-info {
-  background: #f0f9ff;
+  background: var(--color-gray-50);
   border: 1px solid #bfdbfe;
   border-radius: 8px;
   padding: 16px;
@@ -274,7 +274,7 @@
 .gw-wizard-test-success {
   margin-top: 24px;
   padding: 16px;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border: 1px solid #86efac;
   border-radius: 8px;
   text-align: left;
@@ -372,7 +372,7 @@
 .gw-wizard-error {
   margin: 0 24px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;

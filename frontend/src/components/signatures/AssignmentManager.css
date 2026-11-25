@@ -42,7 +42,7 @@
   gap: 8px;
   padding: 12px 16px;
   margin: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #dc2626;
@@ -62,7 +62,7 @@
 .new-assignment-form {
   padding: 20px;
   border-bottom: 1px solid var(--color-gray-200);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .new-assignment-form h4 {
@@ -111,7 +111,7 @@
 
 .type-option.selected {
   border-color: var(--theme-primary);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .type-option .type-info {
@@ -215,7 +215,7 @@
 }
 
 .target-option.selected {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .target-option svg:first-child {
@@ -248,7 +248,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 16px;
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border: 1px solid #ddd6fe;
   border-radius: 8px;
 }
@@ -571,6 +571,6 @@
 }
 
 .assignment-manager .btn-icon.danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }

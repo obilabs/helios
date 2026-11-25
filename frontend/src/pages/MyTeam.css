@@ -105,7 +105,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   border-bottom: 1px solid var(--color-gray-200);
 }
 
@@ -121,7 +121,7 @@
 }
 
 .section-icon.manager {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 
@@ -131,7 +131,7 @@
 }
 
 .section-icon.reports {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #059669;
 }
 
@@ -180,7 +180,7 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   border: 1px solid var(--color-gray-200);
   border-radius: 10px;
   cursor: pointer;
@@ -260,7 +260,7 @@
   display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
   border-radius: 4px;
 }

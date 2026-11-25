@@ -72,7 +72,7 @@
 }
 
 .wb-error-badge {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 
@@ -407,7 +407,7 @@
 .canvas-start-badge {
   color: #10b981;
   border-color: #10b981;
-  background: #ecfdf5;
+  background: var(--color-gray-100);
 }
 
 .canvas-blocks {
@@ -521,7 +521,7 @@
 
 .block-item-error {
   border-color: #fca5a5;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #991b1b;
 }
 
@@ -618,7 +618,7 @@
 }
 
 .block-action-btn.block-action-delete:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #dc2626;
 }
 

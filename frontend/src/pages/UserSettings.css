@@ -70,7 +70,7 @@
 }
 
 .user-settings-page .settings-nav-item.active {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 
@@ -167,7 +167,7 @@
 
 .theme-option.selected {
   border-color: var(--theme-primary);
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 
@@ -428,7 +428,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-radius: 8px;
   color: #dc2626;
   font-size: 13px;
@@ -440,7 +440,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border-radius: 8px;
   color: #15803d;
   font-size: 13px;
@@ -575,7 +575,7 @@
 }
 
 .btn-icon.btn-danger-text:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 

@@ -37,18 +37,18 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
 }
 
 .close-button {
   width: 32px;
   height: 32px;
   border: none;
-  background: #f5f5f5;
+  background: var(--color-gray-100);
   border-radius: 6px;
   cursor: pointer;
   font-size: 16px;
-  color: #666;
+  color: var(--color-gray-500);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,8 +56,8 @@
 }
 
 .close-button:hover:not(:disabled) {
-  background: #e0e0e0;
-  color: #333;
+  background: var(--color-gray-200);
+  color: var(--color-gray-800);
 }
 
 .close-button:disabled {
@@ -83,7 +83,7 @@
 
 .upload-area:hover {
   border-color: #1976d2;
-  background: #f0f4ff;
+  background: var(--color-gray-100);
 }
 
 .file-input {
@@ -128,7 +128,7 @@
 
 .crop-instructions {
   padding: 16px;
-  background: #e3f2fd;
+  background: var(--color-gray-100);
   border: 1px solid #90caf9;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -156,7 +156,7 @@
 /* Error Message */
 .error-message {
   padding: 12px 16px;
-  background: #fee2e2;
+  background: var(--color-gray-200);
   border: 1px solid #fecaca;
   border-radius: 8px;
   color: #dc2626;
@@ -191,12 +191,12 @@
 }
 
 .btn-secondary {
-  background: #f5f5f5;
+  background: var(--color-gray-100);
   color: var(--color-gray-700);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e0e0e0;
+  background: var(--color-gray-200);
 }
 
 .btn-secondary:disabled {

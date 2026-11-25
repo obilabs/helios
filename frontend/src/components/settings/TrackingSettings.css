@@ -47,13 +47,13 @@
 }
 
 .settings-alert.error {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
   border: 1px solid #fecaca;
 }
 
 .settings-alert.success {
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   color: #16a34a;
   border: 1px solid #bbf7d0;
 }

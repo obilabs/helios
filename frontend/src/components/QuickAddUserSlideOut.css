@@ -102,7 +102,7 @@
 }
 
 .result-message.error {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
   border: 1px solid #fca5a5;
 }
@@ -387,7 +387,7 @@
 
 .linked-account-option:hover {
   border-color: var(--theme-primary);
-  background: #f3f0ff;
+  background: var(--color-gray-100);
 }
 
 .linked-account-option input[type="checkbox"] {

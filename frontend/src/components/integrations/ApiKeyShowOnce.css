@@ -93,7 +93,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   border-radius: 8px;
   margin-bottom: 24px;
 }
@@ -240,12 +240,12 @@
 }
 
 .integration-info.vendor {
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border: 1px solid #86efac;
 }
 
 .integration-info.service {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   border: 1px solid #93c5fd;
 }
 
@@ -303,7 +303,7 @@
 
 .confirmation-checkbox:hover {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .confirmation-checkbox input[type="checkbox"] {

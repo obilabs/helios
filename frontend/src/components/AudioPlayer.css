@@ -9,7 +9,7 @@
 }
 
 .audio-player.error {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-color: #fecaca;
   color: #dc2626;
   font-size: 13px;

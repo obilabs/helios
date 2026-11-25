@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
   border-radius: 8px;
   margin: 16px;
@@ -185,7 +185,7 @@
 }
 
 .menu-item-danger:hover {
-  background: #fef2f2 !important;
+  background: var(--color-gray-100) !important;
 }
 
 .menu-item-warning {
@@ -193,7 +193,7 @@
 }
 
 .menu-item-warning:hover {
-  background: #fffbeb !important;
+  background: var(--color-gray-50) !important;
 }
 
 .menu-divider {
@@ -260,7 +260,7 @@
 
 .delete-option.selected {
   border-color: var(--theme-primary, #8b5cf6);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .delete-option input[type="radio"] {
@@ -339,7 +339,7 @@
   font-weight: 500;
   line-height: 16px;
   color: #6d28d9;
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border: 1px solid #ddd6fe;
   white-space: nowrap;
   vertical-align: middle;

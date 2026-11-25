@@ -126,7 +126,7 @@
 }
 
 .org-list-row.selected {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
 }
 
 .org-list-row.highlighted {

@@ -30,7 +30,7 @@
   margin-top: 8px;
   padding: 4px 12px;
   font-size: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 4px;
   color: #dc2626;
@@ -38,7 +38,7 @@
 }
 
 .widget-error .retry-btn:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
 }
 
 .widget-header {

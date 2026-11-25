@@ -78,7 +78,7 @@
 
 .summary-card.active {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .card-icon {
@@ -96,17 +96,17 @@
 }
 
 .card-icon.in-progress {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   color: var(--theme-primary);
 }
 
 .card-icon.overdue {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #ef4444;
 }
 
 .card-icon.completed {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #10b981;
 }
 

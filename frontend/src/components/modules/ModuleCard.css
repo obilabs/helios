@@ -20,7 +20,7 @@
 
 .module-card.error {
   border-color: #fca5a5;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .module-card-header {
@@ -92,7 +92,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #cbd5e1;
+  background-color: var(--color-gray-300);
   transition: 0.3s;
   border-radius: 24px;
 }
@@ -147,7 +147,7 @@
 }
 
 .module-status-indicator.error {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 
@@ -167,7 +167,7 @@
 .module-error-message {
   margin-top: 8px;
   padding: 8px 12px;
-  background: #fee2e2;
+  background: var(--color-gray-200);
   border-left: 3px solid #ef4444;
   border-radius: 4px;
   color: #991b1b;

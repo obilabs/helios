@@ -17,7 +17,7 @@
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
   letter-spacing: -0.01em;
 }
 
@@ -40,7 +40,7 @@
 .stat-item .stat-value {
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-gray-900);
 }
 
 .stat-item .stat-label {
@@ -151,7 +151,7 @@
 }
 
 .status-tab.active {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border-color: var(--theme-primary);
   color: var(--theme-primary);
 }
@@ -243,11 +243,11 @@
 }
 
 .add-dropdown-menu .dropdown-item.highlight {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .add-dropdown-menu .dropdown-item.highlight:hover {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
 }
 
 .add-dropdown-menu .dropdown-item-desc {
@@ -289,7 +289,7 @@
   font-size: 13px;
   outline: none;
   transition: all 0.15s;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   color: var(--color-gray-700);
 }
 
@@ -460,7 +460,7 @@
 }
 
 .filter-dropdown-item-danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .filter-dropdown-item-danger svg {

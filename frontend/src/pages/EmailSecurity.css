@@ -54,11 +54,11 @@
 
 .security-card.success-card {
   border-color: #10b981;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
 }
 
 .security-card.info-card {
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .card-header {
@@ -67,7 +67,7 @@
   gap: 8px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-gray-200);
-  background: #fafafa;
+  background: var(--color-gray-50);
 }
 
 .card-header h2 {
@@ -226,7 +226,7 @@
 }
 
 .results-table thead {
-  background: #fafafa;
+  background: var(--color-gray-50);
   border-bottom: 1px solid var(--color-gray-200);
 }
 
@@ -269,7 +269,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: #eff6ff;
+  background: var(--color-gray-100);
   color: #1e40af;
   border-radius: 4px;
   font-size: 13px;
@@ -298,12 +298,12 @@
 
 .stat-item.success {
   border-color: #10b981;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
 }
 
 .stat-item.error {
   border-color: #ef4444;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .stat-value {
@@ -350,7 +350,7 @@
 }
 
 .user-email.more {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   color: #1e40af;
   font-weight: 500;
 }

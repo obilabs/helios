@@ -63,7 +63,7 @@
 }
 
 .settings-nav-item.active {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   color: var(--theme-primary);
   border-left-color: var(--theme-primary);
 }
@@ -193,7 +193,7 @@
 }
 
 .status-badge.disabled {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #dc2626;
 }
 
@@ -268,7 +268,7 @@
 
 .feature-tag {
   padding: 0.25rem 0.75rem;
-  background: #eff6ff;
+  background: var(--color-gray-100);
   color: #1e40af;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -692,7 +692,7 @@
 }
 
 .info-box {
-  background: #f0f9ff;
+  background: var(--color-gray-50);
   border: 1px solid #bae6fd;
   border-radius: 8px;
   padding: 1rem;
@@ -911,7 +911,7 @@
 }
 
 .module-more-dropdown button.danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 /* Mobile responsive module buttons */

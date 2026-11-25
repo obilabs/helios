@@ -84,12 +84,12 @@
 
 .view-option-card:hover {
   border-color: var(--color-gray-300);
-  background: #fafbfc;
+  background: var(--color-gray-50);
 }
 
 .view-option-card.selected {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .view-option-card-icon {

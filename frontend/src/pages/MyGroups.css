@@ -269,12 +269,12 @@
   font-weight: 500;
   padding: 3px 8px;
   border-radius: 6px;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   color: #15803d;
 }
 
 .group-type.dynamic {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 

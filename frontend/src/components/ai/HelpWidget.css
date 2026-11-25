@@ -83,8 +83,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px !important;
-  background: #fafbfc !important;
-  background-color: #fafbfc !important;
+  background: var(--color-gray-50) !important;
+  background-color: var(--color-gray-50) !important;
   border-bottom: 1px solid var(--color-gray-200) !important;
   flex-shrink: 0;
 }
@@ -261,7 +261,7 @@
 /* Quick Answer */
 .quick-answer {
   padding: 20px;
-  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+  background: linear-gradient(135deg, var(--theme-primary-lighter) 0%, var(--theme-primary-lighter) 100%);
   border-bottom: 1px solid var(--color-gray-200);
 }
 
@@ -329,8 +329,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px !important;
-  background: #fafbfc !important;
-  background-color: #fafbfc !important;
+  background: var(--color-gray-50) !important;
+  background-color: var(--color-gray-50) !important;
   border-top: 1px solid var(--color-gray-200) !important;
   flex-shrink: 0;
 }

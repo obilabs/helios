@@ -138,7 +138,7 @@
 }
 
 .menu-item.danger:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
 }
 
 .menu-icon {
@@ -170,7 +170,7 @@
 .user-role {
   font-size: 0.75rem;
   color: var(--theme-primary);
-  background: #eff6ff;
+  background: var(--color-gray-100);
   padding: 0.125rem 0.5rem;
   border-radius: 10px;
   margin-top: 0.25rem;

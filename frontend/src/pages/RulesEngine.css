@@ -108,7 +108,7 @@
 }
 
 .rules-engine-page .btn-icon.danger:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 
@@ -162,7 +162,7 @@
 }
 
 .rules-engine-page .tab.active .count {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 
@@ -292,7 +292,7 @@
 .rules-engine-page .name-slug {
   font-size: 12px;
   color: var(--theme-primary);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
@@ -482,12 +482,12 @@
 }
 
 .rules-engine-page .type-badge.type-notification {
-  background: #fce7f3;
+  background: var(--color-gray-100);
   color: #be185d;
 }
 
 .rules-engine-page .type-badge.type-workflow {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
 }
 
@@ -640,7 +640,7 @@
 }
 
 .rules-engine-page .test-result.not-matched {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 

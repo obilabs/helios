@@ -93,7 +93,7 @@
   justify-content: space-between;
   margin-top: 12px;
   padding: 12px 16px;
-  background: #fffbeb;
+  background: var(--color-gray-50);
   border: 1px solid #fcd34d;
   border-radius: 8px;
 }
@@ -342,7 +342,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   color: var(--theme-primary-hover);
   border-radius: 16px;
   font-size: 13px;
@@ -555,7 +555,7 @@
 }
 
 .btn-icon:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #dc2626;
 }
 

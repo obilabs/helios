@@ -69,7 +69,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #b91c1c;
@@ -138,7 +138,7 @@
 }
 
 .relay-status.active {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   border: 1px solid #a7f3d0;
   color: #047857;
 }
@@ -205,12 +205,12 @@
 }
 
 .relay-effect-allow {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #047857;
 }
 
 .relay-effect-deny {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #b91c1c;
 }
 
@@ -224,7 +224,7 @@
   display: inline-block;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #eef2ff;
+  background: var(--color-gray-100);
   color: #4f46e5;
   font-size: 11px;
 }
@@ -244,7 +244,7 @@
 }
 
 .relay-delete:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #b91c1c;
 }
 

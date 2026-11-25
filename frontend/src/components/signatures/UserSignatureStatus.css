@@ -60,7 +60,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-bottom: 1px solid #fecaca;
   color: #dc2626;
   font-size: 13px;
@@ -259,7 +259,7 @@
 }
 
 .user-signature-status .btn-resync:hover {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border-color: #ddd6fe;
 }
 

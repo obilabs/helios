@@ -180,7 +180,7 @@
 }
 
 .btn-icon.btn-remove:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #dc2626;
 }
 

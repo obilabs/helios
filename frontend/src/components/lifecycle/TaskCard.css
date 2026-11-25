@@ -193,7 +193,7 @@
 }
 
 .btn-start:hover {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border-color: var(--theme-primary);
 }
 
@@ -202,7 +202,7 @@
 }
 
 .btn-complete:hover {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   border-color: #10b981;
 }
 

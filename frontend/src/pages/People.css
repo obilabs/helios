@@ -1,7 +1,7 @@
 /* People Directory Page */
 .people-container {
   padding: 24px;
-  background: #f8f9fa;
+  background: var(--color-gray-50);
   min-height: 100vh;
 }
 
@@ -156,7 +156,7 @@
 }
 
 .filter-toggle.active {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
   border-color: var(--theme-primary);
   color: var(--theme-primary-hover);
 }
@@ -262,7 +262,7 @@
   align-items: center;
   gap: 4px;
   padding: 8px 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   font-size: 13px;
@@ -272,7 +272,7 @@
 }
 
 .clear-filters:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
 }
 
 /* Results */

@@ -37,7 +37,7 @@
 }
 
 .ticket-item.selected {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
   border-left: 3px solid var(--theme-primary);
   padding-left: 21px;
 }
@@ -85,17 +85,17 @@
 }
 
 .priority-urgent {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 
 .priority-high {
-  background: #fff7ed;
+  background: var(--color-gray-100);
   color: #ea580c;
 }
 
 .priority-normal {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #059669;
 }
 

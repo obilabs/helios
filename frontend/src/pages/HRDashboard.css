@@ -206,7 +206,7 @@
 }
 
 .dashboard-card .card-header .badge.critical {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 
@@ -363,13 +363,13 @@
 }
 
 .btn-icon.approve:hover {
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border-color: #10b981;
   color: #10b981;
 }
 
 .btn-icon.reject:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-color: #dc2626;
   color: #dc2626;
 }
@@ -392,7 +392,7 @@
 }
 
 .attention-item.warning {
-  background: #fffbeb;
+  background: var(--color-gray-50);
 }
 
 .attention-item.warning:hover {
@@ -400,11 +400,11 @@
 }
 
 .attention-item.critical {
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .attention-item.critical:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
 }
 
 .attention-icon {
@@ -447,7 +447,7 @@
   font-size: 11px;
   font-weight: 600;
   padding: 4px 8px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
   border-radius: 10px;
   white-space: nowrap;
@@ -563,17 +563,17 @@
 }
 
 .status-badge.status-success {
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   color: #166534;
 }
 
 .status-badge.status-warning {
-  background: #fffbeb;
+  background: var(--color-gray-50);
   color: #92400e;
 }
 
 .status-badge.status-danger {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
 }
 

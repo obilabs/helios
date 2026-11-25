@@ -315,7 +315,7 @@
 }
 
 .role-admin {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 
@@ -580,9 +580,9 @@
 
 .danger-item {
   padding: 1.5rem;
-  border: 2px solid #fee2e2;
+  border: 2px solid var(--color-gray-200);
   border-radius: 8px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -953,7 +953,7 @@
 
 .delete-option.selected {
   border-color: var(--theme-primary);
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .delete-option input[type="radio"] {
@@ -994,7 +994,7 @@
 
 .warning-box {
   padding: 1rem;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 8px;
   margin-top: 1rem;

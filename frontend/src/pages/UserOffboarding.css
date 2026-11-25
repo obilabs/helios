@@ -161,7 +161,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;
@@ -185,7 +185,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 8px;
   color: #991b1b;
@@ -301,7 +301,7 @@
 
 .user-option.selected {
   border-color: #ef4444;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .user-radio {
@@ -392,7 +392,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -441,7 +441,7 @@
 
 .template-option.selected {
   border-color: #ef4444;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .template-radio {
@@ -600,7 +600,7 @@
 }
 
 .radio-label:has(input:checked) {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-color: #ef4444;
 }
 
@@ -672,7 +672,7 @@
 }
 
 .summary-header.danger {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-bottom-color: #fecaca;
 }
 
@@ -914,7 +914,7 @@
 }
 
 .manager-option.selected {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-color: #ef4444;
 }
 
@@ -1061,7 +1061,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 8px;
   color: #991b1b;
@@ -1073,7 +1073,7 @@
 }
 
 .summary-row.highlight {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border-radius: 4px;
   padding: 8px;
   margin: -4px;

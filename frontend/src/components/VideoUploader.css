@@ -23,7 +23,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #dc2626;
@@ -47,7 +47,7 @@
 
 .video-dropzone:hover {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .dropzone-icon {
@@ -212,7 +212,7 @@
 }
 
 .btn-delete:hover {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #dc2626;
   border-color: #fecaca;
 }

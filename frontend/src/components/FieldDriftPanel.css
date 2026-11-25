@@ -7,7 +7,7 @@
   padding: 10px 14px;
   border: 1px solid #fcd34d;
   border-radius: 8px;
-  background: #fffbeb;
+  background: var(--color-gray-50);
   color: #92400e;
   font-size: 13px;
   text-align: left;

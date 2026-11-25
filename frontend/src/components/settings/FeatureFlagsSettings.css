@@ -65,7 +65,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #dc2626;
@@ -179,7 +179,7 @@
   gap: 8px;
   margin-top: 20px;
   padding: 12px;
-  background: #f0f9ff;
+  background: var(--color-gray-50);
   border: 1px solid #bae6fd;
   border-radius: 6px;
   font-size: 12px;
@@ -221,7 +221,7 @@
 .ff-child-item {
   margin-left: 24px !important;
   padding-left: 16px !important;
-  background: #fafafa !important;
+  background: var(--color-gray-50) !important;
   border-left: 2px solid var(--color-gray-200) !important;
   border-radius: 0 8px 8px 0 !important;
 }

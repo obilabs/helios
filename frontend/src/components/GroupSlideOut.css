@@ -337,7 +337,7 @@
 
 .member-item:hover {
   border-color: var(--theme-primary, #8b5cf6);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .member-avatar {
@@ -529,7 +529,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .danger-info h4 {
@@ -625,7 +625,7 @@
 }
 
 .btn-icon.danger:hover {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #dc2626;
 }
 
@@ -709,7 +709,7 @@
 
 /* Danger Modal */
 .danger-modal .modal-header {
-  background: #fef2f2;
+  background: var(--color-gray-100);
 }
 
 .danger-modal .modal-header h3 {
@@ -786,7 +786,7 @@
 
 .user-result-item:hover {
   border-color: var(--theme-primary, #8b5cf6);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .user-result-avatar {
@@ -920,7 +920,7 @@
 
 .rule-item:hover {
   border-color: var(--theme-primary, #8b5cf6);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .rule-number {
@@ -1032,7 +1032,7 @@
 /* Preview Results */
 .preview-results {
   padding: 1rem;
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border: 1px solid #86efac;
   border-radius: 8px;
 }

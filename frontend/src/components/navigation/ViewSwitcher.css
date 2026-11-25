@@ -86,7 +86,7 @@
 }
 
 .view-switcher-option.selected {
-  background: #f0f5ff;
+  background: var(--color-gray-100);
   color: #4f46e5;
 }
 
