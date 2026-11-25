@@ -60,6 +60,7 @@ import bulkOperationsRoutes from './routes/bulk-operations.routes.js';
 import { authenticateApiKey } from './middleware/api-key-auth.js';
 import { SignatureSchedulerService } from './services/signature-scheduler.service.js';
 import { initializeBulkOperationsGateway } from './websocket/bulk-operations.gateway.js';
+import { bulkOperationWorker } from './workers/bulk-operation.worker.js';
 import { startScheduledActionProcessor, stopScheduledActionProcessor } from './jobs/scheduled-action-processor.js';
 import { startSignatureSyncJob, stopSignatureSyncJob } from './jobs/signature-sync.job.js';
 import { startCampaignSchedulerJob, stopCampaignSchedulerJob } from './jobs/campaign-scheduler.job.js';
@@ -881,6 +882,11 @@ async function startServer(): Promise<void> {
     // Initialize WebSocket gateway for bulk operations
     initializeBulkOperationsGateway(httpServer);
     logger.info('🔌 WebSocket gateway initialized for bulk operations');
+
+    // Run queued bulk operations in this process. The worker was written to be
+    // started as its own process, but nothing ever started one, so every bulk
+    // operation was queued and stayed pending.
+    bulkOperationWorker.start();
 
     // Start scheduled action processor for user lifecycle
     const scheduledActionsEnabled = process.env['SCHEDULED_ACTIONS_ENABLED'] !== 'false';

@@ -79,21 +79,3 @@ export class BulkOperationWorker {
 }
 
 export const bulkOperationWorker = new BulkOperationWorker();
-
-// Auto-start the worker if this file is run directly
-if (require.main === module) {
-  bulkOperationWorker.start();
-
-  // Handle graceful shutdown
-  process.on('SIGTERM', async () => {
-    logger.info('SIGTERM received, stopping worker...');
-    await bulkOperationWorker.stop();
-    process.exit(0);
-  });
-
-  process.on('SIGINT', async () => {
-    logger.info('SIGINT received, stopping worker...');
-    await bulkOperationWorker.stop();
-    process.exit(0);
-  });
-}
