@@ -97,7 +97,8 @@ export const auth = betterAuth({
       // Map snake_case columns to camelCase expected by better-auth
       email: 'email',
       name: 'first_name', // better-auth uses 'name', we use first_name
-      image: 'photo_url',
+      // The profile picture column is avatar_url; photo_url never existed.
+      image: 'avatar_url',
       emailVerified: 'email_verified',
       createdAt: 'created_at',
       updatedAt: 'updated_at',
@@ -158,6 +159,7 @@ export const auth = betterAuth({
       accessToken: 'access_token',
       refreshToken: 'refresh_token',
       accessTokenExpiresAt: 'access_token_expires_at',
+      refreshTokenExpiresAt: 'refresh_token_expires_at',
       idToken: 'id_token',
       password: 'password', // Added for credential auth
       createdAt: 'created_at',
@@ -191,6 +193,19 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: 'Helios',
+      // Map the plugin's names onto the snake_case tables (migrations 067, 103).
+      schema: {
+        user: { fields: { twoFactorEnabled: 'two_factor_enabled' } },
+        twoFactor: {
+          modelName: 'two_factor',
+          fields: {
+            backupCodes: 'backup_codes',
+            userId: 'user_id',
+            failedVerificationCount: 'failed_verification_count',
+            lockedUntil: 'locked_until',
+          },
+        },
+      },
       totpOptions: {
         period: 30,
         digits: 6,
@@ -198,6 +213,19 @@ export const auth = betterAuth({
     }),
     passkey({
       rpName: 'Helios',
+      schema: {
+        passkey: {
+          modelName: 'passkeys',
+          fields: {
+            publicKey: 'public_key',
+            userId: 'user_id',
+            credentialID: 'credential_id',
+            deviceType: 'device_type',
+            backedUp: 'backed_up',
+            createdAt: 'created_at',
+          },
+        },
+      },
       rpID: process.env['PASSKEY_RP_ID'] || 'localhost',
       origin: process.env['PASSKEY_ORIGIN'] || process.env['FRONTEND_URL'] || 'http://localhost:3000',
     }),
