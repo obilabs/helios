@@ -624,7 +624,7 @@ app.all('/api/auth/*', (req, res) => authHandler(req, res));
 // - Triggers: WHAT data changed in the database (with before/after values)
 const auditEnabled = process.env['AUDIT_LOGGING_ENABLED'] !== 'false';
 if (auditEnabled) {
-  app.use('/api/v1', auditMiddleware);
+  // Mounted once: '/api' also covers '/api/v1'.
   app.use('/api', auditMiddleware);
   logger.info('🔍 Audit middleware enabled');
 }
