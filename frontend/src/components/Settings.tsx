@@ -72,6 +72,14 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
   const requestedTab: SettingsTabId = storedTab === 'integrations' || storedTab === 'features' ? 'advanced' : storedTab;
   const activeTab: SettingsTabId = visibleTabs.some(t => t.id === requestedTab) ? requestedTab : 'modules';
   const [showModuleConfig, setShowModuleConfig] = useState(false);
+  // The outcome of the last connection test or manual sync. It stays on the
+  // card until the next run: these are details an admin reads, not a
+  // confirmation that can disappear with a toast.
+  const [googleActionResult, setGoogleActionResult] = useState<{
+    ok: boolean;
+    title: string;
+    lines: string[];
+  } | null>(null);
   const [configuringModule, setConfiguringModule] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -421,10 +429,19 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      showSuccess(`Sync complete! Total users: ${data.stats?.total_users || 0}, Active: ${data.stats?.active_users || 0}, Suspended: ${data.stats?.suspended_users || 0}, Admins: ${data.stats?.admin_users || 0}`);
+                                      setGoogleActionResult({
+                                        ok: true,
+                                        title: 'Sync complete',
+                                        lines: [
+                                          `Total users: ${data.stats?.total_users || 0}`,
+                                          `Active: ${data.stats?.active_users || 0}`,
+                                          `Suspended: ${data.stats?.suspended_users || 0}`,
+                                          `Admins: ${data.stats?.admin_users || 0}`,
+                                        ],
+                                      });
                                       await fetchModuleStatus();
                                     } else {
-                                      showError(`Sync failed: ${data.message}`);
+                                      setGoogleActionResult({ ok: false, title: 'Sync failed', lines: [String(data.message)] });
                                     }
                                   } catch (error: any) {
                                     showError(`Sync failed: ${error.message}`);
@@ -447,12 +464,20 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      showSuccess(`Connection successful! Project: ${data.details?.projectId}, Domain: ${data.details?.domain}, Users accessible: ${data.details?.userCount || 0}`);
+                                      setGoogleActionResult({
+                                        ok: true,
+                                        title: 'Connection successful',
+                                        lines: [
+                                          `Project: ${data.details?.projectId}`,
+                                          `Domain: ${data.details?.domain}`,
+                                          `Users accessible: ${data.details?.userCount || 0}`,
+                                        ],
+                                      });
                                     } else {
-                                      showError(`Connection failed: ${data.message || data.error}`);
+                                      setGoogleActionResult({ ok: false, title: 'Connection failed', lines: [String(data.message || data.error)] });
                                     }
                                   } catch (error: any) {
-                                    showError(`Test failed: ${error.message}`);
+                                    setGoogleActionResult({ ok: false, title: 'Connection test failed', lines: [String(error.message)] });
                                   }
                                 }}
                               >
@@ -502,6 +527,26 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                       <span className="feature-tag">Domain-Wide Delegation</span>
                       <span className="feature-tag">Automation</span>
                     </div>
+                    {googleActionResult && (
+                      <div
+                        role="status"
+                        data-testid="google-action-result"
+                        style={{
+                          marginTop: '12px',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          fontSize: '0.8125rem',
+                          color: 'var(--color-gray-800)',
+                          background: googleActionResult.ok ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
+                          border: `1px solid ${googleActionResult.ok ? 'var(--color-success-border)' : 'var(--color-error-border)'}`,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: '4px' }}>{googleActionResult.title}</div>
+                        {googleActionResult.lines.map((line) => (
+                          <div key={line}>{line}</div>
+                        ))}
+                      </div>
+                    )}
                     {googleWorkspaceStatus.isEnabled && (
                       <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px' }}>
                         <div style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: '600', marginBottom: '6px' }}>
