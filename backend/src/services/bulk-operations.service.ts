@@ -421,6 +421,13 @@ export class BulkOperationsService {
    * (POST /organization/admins/promote/:userId).
    */
   private async createUser(item: any, organizationId: string): Promise<any> {
+    const email = typeof item.email === 'string' ? item.email.trim() : '';
+    if ((email.length > 254 || !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email))) {
+      throw new Error(`Invalid email address: '${item.email ?? ''}'`);
+    }
+    if (!String(item.firstName ?? '').trim() || !String(item.lastName ?? '').trim()) {
+      throw new Error(`First name and last name are required for '${email}'`);
+    }
     const requestedRole = item.role || 'user';
     if (['admin', 'super_admin', 'platform_owner'].includes(requestedRole)) {
       throw new Error(

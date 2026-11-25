@@ -356,7 +356,9 @@ class UserOffboardingService {
 
     const logOptions = {
       actionId: options.actionId,
-      userId: config.userId,
+      // A directory-only account has no Helios record; its "id" is then the
+      // email, which the log's uuid column cannot hold.
+      userId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(config.userId ?? '') ? config.userId : undefined,
       userEmail: config.userEmail,
       triggeredBy: options.triggeredBy as any || 'system',
       triggeredByUserId: options.triggeredByUserId,

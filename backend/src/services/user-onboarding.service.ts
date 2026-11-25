@@ -343,7 +343,12 @@ class UserOnboardingService {
         );
         result.stepsCompleted.push('create_helios_user');
       } catch (error: any) {
-        result.errors.push(`Failed to create Helios user: ${error.message}`);
+        const duplicate = error?.code === '23505' || /duplicate key/i.test(error?.message ?? '');
+        result.errors.push(
+          duplicate
+            ? `A user with the email ${config.email} already exists.`
+            : `Failed to create Helios user: ${error.message}`
+        );
         result.success = false;
         await lifecycleLogService.logFailure(
           organizationId,
@@ -696,7 +701,7 @@ class UserOnboardingService {
     const errors: string[] = [];
 
     if (!config.email) errors.push('Email is required');
-    else if (!config.email.includes('@')) errors.push('Invalid email format');
+    else if ((config.email.length > 254 || !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(config.email))) errors.push('Invalid email format');
 
     if (!config.firstName) errors.push('First name is required');
     if (!config.lastName) errors.push('Last name is required');
