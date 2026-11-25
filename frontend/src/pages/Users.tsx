@@ -14,6 +14,7 @@ import { useEntityLabels } from '../contexts/LabelsContext';
 import { ENTITIES } from '../config/entities';
 import { authFetch } from '../config/api';
 import './Users.css';
+import { useToast } from '../contexts/ToastContext';
 
 interface UsersProps {
   organizationId: string;
@@ -27,6 +28,7 @@ type StatusFilter = 'all' | 'active' | 'pending' | 'suspended' | 'expired' | 'de
 type PlatformFilter = 'all' | 'local' | 'google_workspace' | 'microsoft_365';
 
 export function Users({ organizationId, onNavigate }: UsersProps) {
+  const { showError, showWarning } = useToast();
   const queryClient = useQueryClient();
   // Get dynamic labels from context (allows customization like "People" instead of "Users")
   const userLabels = useEntityLabels(ENTITIES.USER);
@@ -192,7 +194,7 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export error:', error);
-      alert('Failed to export users. Please try again.');
+      showError('Failed to export users. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -210,7 +212,7 @@ export function Users({ organizationId, onNavigate }: UsersProps) {
 
     // For bulk user actions, we'd need to get selected users from UserTable
     // For now, show a message that selection is required
-    alert(`Please select users in the table to ${action} them.`);
+    showWarning(`Please select users in the table to ${action} them.`);
   };
 
   const getStatusTabs = () => {

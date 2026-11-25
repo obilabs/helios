@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, UserPlus, X, Mail, AlertTriangle } from 'lucide-react';
 import { authFetch, apiPath } from '../config/api';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import './Delegations.css';
 
 /**
@@ -20,6 +21,7 @@ export default function Delegations() {
   const [mailbox, setMailbox] = useState('');
   const [delegateEmail, setDelegateEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<{ mailbox: string; delegate: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -61,8 +63,14 @@ export default function Delegations() {
     }
   };
 
-  const remove = async (mb: string, del: string) => {
-    if (!window.confirm(`Remove ${del} as a delegate on ${mb}?`)) return;
+  const remove = (mb: string, del: string) => {
+    setPendingRemove({ mailbox: mb, delegate: del });
+  };
+
+  const confirmRemove = async () => {
+    if (!pendingRemove) return;
+    const { mailbox: mb, delegate: del } = pendingRemove;
+    setPendingRemove(null);
     setBusy(true);
     setError(null);
     try {
@@ -126,6 +134,17 @@ export default function Delegations() {
           ))}
         </div>
       )}
+
+      {/* Remove Delegate Confirmation */}
+      <ConfirmDialog
+        isOpen={pendingRemove !== null}
+        title="Remove Delegate"
+        message={pendingRemove ? `Remove ${pendingRemove.delegate} as a delegate on ${pendingRemove.mailbox}?` : ''}
+        variant="danger"
+        confirmText="Remove"
+        onConfirm={() => { void confirmRemove(); }}
+        onCancel={() => setPendingRemove(null)}
+      />
     </div>
   );
 }

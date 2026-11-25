@@ -27,6 +27,7 @@ import './Signatures.css';
 import { TemplateEditor, TemplatePreview, CampaignEditor, CampaignAnalytics, SignaturePermissions, DeploymentStatus, AssignmentManager } from '../components/signatures';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 
 interface SignatureTemplate {
   id: string;
@@ -79,6 +80,7 @@ interface TemplateFormData {
 }
 
 const Signatures: React.FC = () => {
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'templates' | 'campaigns' | 'analytics' | 'permissions'>('overview');
   const [templates, setTemplates] = useState<SignatureTemplate[]>([]);
   const [campaigns, setCampaigns] = useState<SignatureCampaign[]>([]);
@@ -322,14 +324,14 @@ const Signatures: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         const r = data.data || {};
-        alert(`Signature sync finished: ${r.successCount ?? 0} deployed, ${r.failureCount ?? 0} failed, ${r.skippedCount ?? 0} skipped`);
+        showSuccess(`Signature sync finished: ${r.successCount ?? 0} deployed, ${r.failureCount ?? 0} failed, ${r.skippedCount ?? 0} skipped`);
         fetchTemplates();
       } else {
-        alert(data.error || 'Sync not available');
+        showError(data.error || 'Sync not available');
       }
     } catch (err) {
       console.error('Error initiating sync:', err);
-      alert('Failed to initiate sync');
+      showError('Failed to initiate sync');
     }
   };
 

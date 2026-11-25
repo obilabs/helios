@@ -3,6 +3,7 @@ import { Info } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import './Administrators.css';
+import { useToast } from '../contexts/ToastContext';
 
 interface Admin {
   id: string;
@@ -25,6 +26,7 @@ interface User {
 }
 
 export function Administrators() {
+  const { showError } = useToast();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,11 +91,11 @@ export function Administrators() {
         setSelectedUserId('');
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to promote user');
+        showError(data.error || 'Failed to promote user');
       }
     } catch (err) {
       console.error('Failed to promote user:', err);
-      alert('Failed to promote user');
+      showError('Failed to promote user');
     }
   };
 
@@ -115,11 +117,11 @@ export function Administrators() {
         await fetchUsers();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to demote administrator');
+        showError(data.error || 'Failed to demote administrator');
       }
     } catch (err) {
       console.error('Failed to demote admin:', err);
-      alert('Failed to demote administrator');
+      showError('Failed to demote administrator');
     }
     setAdminToDemote(null);
   };

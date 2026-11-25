@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Key, Copy, Check, AlertTriangle, Download } from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import './ApiKeyShowOnce.css';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ApiKeyShowOnceProps {
   keyData: {
@@ -15,6 +16,7 @@ interface ApiKeyShowOnceProps {
 }
 
 export function ApiKeyShowOnce({ keyData, onClose }: ApiKeyShowOnceProps) {
+  const { showError } = useToast();
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -25,7 +27,7 @@ export function ApiKeyShowOnce({ keyData, onClose }: ApiKeyShowOnceProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      alert('Failed to copy to clipboard');
+      showError('Failed to copy to clipboard');
     }
   };
 

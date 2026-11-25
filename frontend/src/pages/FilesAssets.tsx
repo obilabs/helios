@@ -23,6 +23,7 @@ import {
 import './FilesAssets.css';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 
 interface FilesAssetsProps {
   organizationId: string;
@@ -81,6 +82,7 @@ interface FolderTreeNode {
 type ViewTab = 'overview' | 'assets' | 'settings';
 
 export function FilesAssets({ organizationId: _organizationId }: FilesAssetsProps) {
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<ViewTab>('overview');
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -268,7 +270,7 @@ export function FilesAssets({ organizationId: _organizationId }: FilesAssetsProp
       setShowNewFolderModal(false);
       await fetchFolders();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setCreatingFolder(false);
     }
@@ -294,7 +296,7 @@ export function FilesAssets({ organizationId: _organizationId }: FilesAssetsProp
       await fetchAssets(selectedFolder);
       setSelectedAsset(null);
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setAssetToDelete(null);
     }
@@ -652,7 +654,7 @@ export function FilesAssets({ organizationId: _organizationId }: FilesAssetsProp
                       title="Copy URL"
                       onClick={() => {
                         copyToClipboard(selectedAsset.publicUrl);
-                        alert('URL copied!');
+                        showSuccess('URL copied!');
                       }}
                     >
                       <Copy size={14} />
