@@ -22,6 +22,7 @@ import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Ke
 import type { LucideIcon } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 
 interface SettingsProps {
   organizationName: string;
@@ -61,6 +62,7 @@ const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; icon: LucideIcon;
 ];
 
 export function Settings({ organizationName, domain, organizationId, showPasswordModal: externalShowPasswordModal, onPasswordModalChange, currentUser, onAIConfigChange }: SettingsProps) {
+  const { showSuccess, showError, showWarning } = useToast();
   const [storedTab, setActiveTab] = useTabPersistence<SettingsTabId | 'integrations' | 'features'>('helios_settings_tab', 'modules');
   const { isEnabled } = useFeatureFlags();
   const navigate = useNavigate();
@@ -213,10 +215,10 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
         setConfiguringModule('google-workspace');
         setShowModuleConfig(true);
       } else {
-        alert(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
+        showError(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Failed to enable Google Workspace: ${error.message}`);
+      showError(`Failed to enable Google Workspace: ${error.message}`);
     } finally {
       setEnablingGoogle(false);
     }
@@ -281,13 +283,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
       if (response.ok && data.success) {
         setOriginalSyncSettings({ ...syncSettings });
-        alert('Sync settings saved. The new schedule is already in effect.');
+        showSuccess('Sync settings saved. The new schedule is already in effect.');
       } else {
-        alert(`Failed to save sync settings: ${data.error || response.status}`);
+        showError(`Failed to save sync settings: ${data.error || response.status}`);
       }
     } catch (error) {
       console.error('Failed to save sync settings:', error);
-      alert('Failed to save sync settings');
+      showError('Failed to save sync settings');
     } finally {
       setSavingSyncSettings(false);
     }
@@ -419,13 +421,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert(`Sync complete!\n\nTotal users: ${data.stats?.total_users || 0}\nActive: ${data.stats?.active_users || 0}\nSuspended: ${data.stats?.suspended_users || 0}\nAdmins: ${data.stats?.admin_users || 0}`);
+                                      showSuccess(`Sync complete! Total users: ${data.stats?.total_users || 0}, Active: ${data.stats?.active_users || 0}, Suspended: ${data.stats?.suspended_users || 0}, Admins: ${data.stats?.admin_users || 0}`);
                                       await fetchModuleStatus();
                                     } else {
-                                      alert(`Sync failed: ${data.message}`);
+                                      showError(`Sync failed: ${data.message}`);
                                     }
                                   } catch (error: any) {
-                                    alert(`Sync failed: ${error.message}`);
+                                    showError(`Sync failed: ${error.message}`);
                                   }
                                 }}
                               >
@@ -445,12 +447,12 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert(`Connection successful!\n\nProject: ${data.details?.projectId}\nDomain: ${data.details?.domain}\nUsers accessible: ${data.details?.userCount || 0}`);
+                                      showSuccess(`Connection successful! Project: ${data.details?.projectId}, Domain: ${data.details?.domain}, Users accessible: ${data.details?.userCount || 0}`);
                                     } else {
-                                      alert(`Connection failed: ${data.message || data.error}`);
+                                      showError(`Connection failed: ${data.message || data.error}`);
                                     }
                                   } catch (error: any) {
-                                    alert(`Test failed: ${error.message}`);
+                                    showError(`Test failed: ${error.message}`);
                                   }
                                 }}
                               >
@@ -585,13 +587,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert('Sync started! Check back in a few moments.');
+                                      showSuccess('Sync started! Check back in a few moments.');
                                       setTimeout(() => fetchModuleStatus(), 3000);
                                     } else {
-                                      alert(`Sync failed: ${data.message || data.error?.message}`);
+                                      showError(`Sync failed: ${data.message || data.error?.message}`);
                                     }
                                   } catch (error: any) {
-                                    alert(`Sync failed: ${error.message}`);
+                                    showError(`Sync failed: ${error.message}`);
                                   }
                                 }}
                               >
@@ -1214,11 +1216,11 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 className="btn-primary"
                 onClick={async () => {
                   if (passwordData.newPassword !== passwordData.confirmPassword) {
-                    alert('Passwords do not match');
+                    showWarning('Passwords do not match');
                     return;
                   }
                   if (passwordData.newPassword.length < 8) {
-                    alert('Password must be at least 8 characters');
+                    showWarning('Password must be at least 8 characters');
                     return;
                   }
 
@@ -1240,15 +1242,15 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                     const data = await response.json();
                     if (data.success) {
-                      alert('Password changed successfully');
+                      showSuccess('Password changed successfully');
                       setShowPasswordModal(false);
                       onPasswordModalChange?.(false);
                       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                     } else {
-                      alert(`${data.error || 'Failed to change password'}`);
+                      showError(`${data.error || 'Failed to change password'}`);
                     }
                   } catch (err: any) {
-                    alert(`Error: ${err.message}`);
+                    showError(`Error: ${err.message}`);
                   }
                 }}
               >
@@ -1291,13 +1293,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
             const data = await response.json();
             if (data.success) {
-              alert('Google Workspace has been disabled');
+              showSuccess('Google Workspace has been disabled');
               fetchModuleStatus();
             } else {
-              alert(`Failed to disable: ${data.message}`);
+              showError(`Failed to disable: ${data.message}`);
             }
           } catch (error) {
-            alert('Error disabling Google Workspace');
+            showError('Error disabling Google Workspace');
             console.error(error);
           }
           setShowDisableGoogleConfirm(false);

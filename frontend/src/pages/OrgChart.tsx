@@ -6,6 +6,7 @@ import OrgChartList from '../components/OrgChartList';
 import OrgChartCard from '../components/OrgChartCard';
 import { authFetch } from '../config/api';
 import './OrgChart.css';
+import { useToast } from '../contexts/ToastContext';
 
 interface OrgNode {
   userId: string;
@@ -36,6 +37,7 @@ type ViewMode = 'tree' | 'list' | 'card';
 type TreeOrientation = 'horizontal' | 'vertical';
 
 const OrgChart: React.FC = () => {
+  const { showError } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState<OrgChartData | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
@@ -148,7 +150,7 @@ const OrgChart: React.FC = () => {
       }
     } catch (err) {
       console.error('Error exporting to PDF:', err);
-      alert('Failed to export chart. Please try again.');
+      showError('Failed to export chart. Please try again.');
     }
   };
 
@@ -172,7 +174,7 @@ const OrgChart: React.FC = () => {
       link.click();
     } catch (err) {
       console.error('Error exporting to PNG:', err);
-      alert('Failed to export chart. Please try again.');
+      showError('Failed to export chart. Please try again.');
     }
   };
 

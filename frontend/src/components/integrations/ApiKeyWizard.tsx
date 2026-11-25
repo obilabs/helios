@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Key, Server, Users, ArrowRight, ArrowLeft, X, CheckCircle } from 'lucide-react';
 import { authFetch } from '../../config/api';
 import './ApiKeyWizard.css';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ApiKeyWizardProps {
   organizationId: string;
@@ -43,6 +44,7 @@ const AVAILABLE_PERMISSIONS = [
 ];
 
 export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSuccess }: ApiKeyWizardProps) {
+  const { showError, showWarning } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [config, setConfig] = useState<KeyConfig>({
@@ -128,7 +130,7 @@ export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSucce
 
   const handleSubmit = async () => {
     if (config.permissions.length === 0) {
-      alert('Please select at least one permission');
+      showWarning('Please select at least one permission');
       return;
     }
 
@@ -157,11 +159,11 @@ export function ApiKeyWizard({ organizationId: _organizationId, onClose, onSucce
       if (data.success) {
         onSuccess(data.data);
       } else {
-        alert(`Failed to create API key: ${data.error || data.message}`);
+        showError(`Failed to create API key: ${data.error || data.message}`);
         setIsSubmitting(false);
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      showError(`Error: ${error.message}`);
       setIsSubmitting(false);
     }
   };
