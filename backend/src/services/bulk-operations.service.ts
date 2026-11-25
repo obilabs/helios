@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { queueService, BulkOperationJobData } from './queue.service.js';
 import { bulkOperationEvents } from '../websocket/bulk-operations.gateway.js';
 import { googleWorkspaceBatchService, BulkUserUpdate, BulkGroupMemberOperation } from './google-workspace-batch.service.js';
+import { googleWorkspaceService } from './google-workspace.service.js';
 
 export interface BulkOperation {
   id: string;
@@ -367,7 +368,7 @@ export class BulkOperationsService {
   /**
    * Update a user
    */
-  private async updateUser(item: any, organizationId: string): Promise<any> {
+  private async updateUser(item: any, organizationId: string, pushToGoogle = true): Promise<any> {
     const updates: string[] = [];
     const values: any[] = [organizationId, item.email];
     let paramIndex = 3;
@@ -397,6 +398,24 @@ export class BulkOperationsService {
       throw new Error('No fields to update');
     }
 
+    // A linked account is changed in Google Workspace first. If Google refuses,
+    // nothing is changed in Helios either, so the two never disagree silently.
+    const googleWorkspaceId = pushToGoogle ? await this.linkedGoogleId(organizationId, item.email) : null;
+    if (googleWorkspaceId) {
+      const pushed = await googleWorkspaceService.updateUser(organizationId, googleWorkspaceId, {
+        firstName: item.firstName || undefined,
+        lastName: item.lastName || undefined,
+        jobTitle: item.jobTitle || undefined,
+        department: item.department || undefined,
+        organizationalUnit: item.organizationalUnit || undefined,
+      });
+      if (!pushed.success) {
+        throw new Error(
+          `Google Workspace refused the change for ${item.email}: ${pushed.error || 'unknown error'}. Nothing was changed.`
+        );
+      }
+    }
+
     updates.push(`updated_at = NOW()`);
 
     const result = await db.query(`
@@ -410,7 +429,25 @@ export class BulkOperationsService {
       throw new Error(`User not found: ${item.email}`);
     }
 
-    return result.rows[0];
+    return pushToGoogle
+      ? { ...result.rows[0], googleWorkspace: googleWorkspaceId ? 'updated' : 'not linked' }
+      : result.rows[0];
+  }
+
+  /**
+   * The Google Workspace id of a user, or null when the user is unknown or is
+   * not linked to a Google account. Throws when the user does not exist, so a
+   * bulk row for an unknown address fails before anything is sent to Google.
+   */
+  private async linkedGoogleId(organizationId: string, email: string): Promise<string | null> {
+    const found = await db.query(
+      'SELECT google_workspace_id FROM organization_users WHERE organization_id = $1 AND email = $2',
+      [organizationId, email]
+    );
+    if (found.rows.length === 0) {
+      throw new Error(`User not found: ${email}`);
+    }
+    return found.rows[0].google_workspace_id || null;
   }
 
   /**
@@ -467,7 +504,7 @@ export class BulkOperationsService {
   /**
    * Suspend a user
    */
-  private async suspendUser(item: any, organizationId: string): Promise<any> {
+  private async suspendUser(item: any, organizationId: string, pushToGoogle = true): Promise<any> {
     // LAST-ADMIN GUARD: refuse to suspend the final remaining active admin —
     // the system must never lock out administration.
     const targetResult = await db.query(
@@ -496,6 +533,18 @@ export class BulkOperationsService {
       }
     }
 
+    // Google Workspace first for a linked account: a user shown as suspended in
+    // Helios must not still be able to sign in to Google.
+    const googleWorkspaceId = pushToGoogle ? await this.linkedGoogleId(organizationId, item.email) : null;
+    if (googleWorkspaceId) {
+      const pushed = await googleWorkspaceService.suspendUser(organizationId, googleWorkspaceId);
+      if (!pushed.success) {
+        throw new Error(
+          `Google Workspace refused to suspend ${item.email}: ${pushed.error || 'unknown error'}. Nothing was changed.`
+        );
+      }
+    }
+
     const result = await db.query(`
       UPDATE organization_users
       SET is_active = false, status = 'suspended', updated_at = NOW()
@@ -507,7 +556,9 @@ export class BulkOperationsService {
       throw new Error(`User not found: ${item.email}`);
     }
 
-    return result.rows[0];
+    return pushToGoogle
+      ? { ...result.rows[0], googleWorkspace: googleWorkspaceId ? 'suspended' : 'not linked' }
+      : result.rows[0];
   }
 
   /**
@@ -930,7 +981,7 @@ export class BulkOperationsService {
 
     for (let i = 0; i < items.length; i++) {
       try {
-        const result = await this.updateUser(items[i], organizationId);
+        const result = await this.updateUser(items[i], organizationId, false);
         localResults.push({ item: items[i], success: true, result });
         successCount++;
       } catch (error: any) {
@@ -1010,7 +1061,7 @@ export class BulkOperationsService {
 
     for (let i = 0; i < userEmails.length; i++) {
       try {
-        const result = await this.suspendUser({ email: userEmails[i] }, organizationId);
+        const result = await this.suspendUser({ email: userEmails[i] }, organizationId, false);
         localResults.push({ email: userEmails[i], success: true, result });
         successCount++;
       } catch (error: any) {
