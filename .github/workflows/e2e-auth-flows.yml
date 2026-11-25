@@ -41,7 +41,10 @@ permissions:
 jobs:
   auth-flows:
     name: Setup wizard + login (browser)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which the installed Playwright has
+    # no browser build for, so the browser install step failed on every PR.
+    # Move this forward together with a Playwright upgrade.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
