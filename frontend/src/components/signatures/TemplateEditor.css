@@ -1,6 +1,6 @@
 .template-editor {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
   display: flex;
@@ -13,8 +13,8 @@
   align-items: center;
   gap: 4px;
   padding: 8px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .toolbar-group {
@@ -26,7 +26,7 @@
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   margin: 0 4px;
 }
 
@@ -45,14 +45,14 @@
   background: none;
   border: 1px solid transparent;
   border-radius: 4px;
-  color: #4b5563;
+  color: var(--color-gray-600);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .toolbar-button:hover {
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  background: var(--color-gray-200);
+  border-color: var(--color-gray-300);
 }
 
 .toolbar-button.active {
@@ -110,8 +110,8 @@
   left: 0;
   margin-top: 4px;
   min-width: 140px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
@@ -126,13 +126,13 @@
   border: none;
   text-align: left;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .dropdown-item:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .font-family-menu {
@@ -191,13 +191,13 @@
   font-family: Arial, sans-serif;
   font-size: 14px;
   line-height: 1.6;
-  color: #1f2937;
+  color: var(--color-gray-800);
   outline: none;
 }
 
 .editor-content:empty::before {
   content: attr(data-placeholder);
-  color: #9ca3af;
+  color: var(--color-gray-400);
   pointer-events: none;
 }
 
@@ -221,7 +221,7 @@
 
 .editor-content td,
 .editor-content th {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   padding: 8px;
 }
 
@@ -249,13 +249,13 @@
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 13px;
   line-height: 1.5;
-  color: #1f2937;
-  background: #f9fafb;
+  color: var(--color-gray-800);
+  background: var(--color-gray-50);
   outline: none;
 }
 
 .editor-source:focus {
-  background: white;
+  background: var(--card-bg);
 }
 
 /* Dialogs */
@@ -273,7 +273,7 @@
 }
 
 .editor-dialog {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 400px;
@@ -285,14 +285,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .dialog-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .dialog-close {
@@ -304,13 +304,13 @@
   background: none;
   border: none;
   border-radius: 4px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   cursor: pointer;
 }
 
 .dialog-close:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .dialog-body {
@@ -330,16 +330,16 @@
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .dialog-field input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--color-gray-800);
   transition: border-color 0.15s;
 }
 
@@ -354,8 +354,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .dialog-footer .btn-primary,
@@ -373,7 +373,7 @@
 }
 
 .dialog-footer .btn-primary:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .dialog-footer .btn-primary:disabled {
@@ -382,15 +382,15 @@
 }
 
 .dialog-footer .btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   cursor: pointer;
 }
 
 .dialog-footer .btn-secondary:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 /* Responsive */

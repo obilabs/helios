@@ -263,12 +263,12 @@
 }
 
 .provider-badge.google {
-  background: #e8f0fe;
+  background: var(--color-gray-100);
   color: #1a73e8;
 }
 
 .provider-badge.microsoft {
-  background: #e6f4ff;
+  background: var(--color-gray-100);
   color: #0078d4;
 }
 

@@ -31,6 +31,9 @@
   --theme-primary: var(--helios-purple);
   --theme-primary-hover: var(--helios-purple-hover);
   --theme-primary-light: var(--helios-purple-light);
+  /* A fainter tint of whatever the selected theme's primary colour is. Derived,
+     so a theme does not have to define it. */
+  --theme-primary-lighter: color-mix(in srgb, var(--theme-primary) 6%, transparent);
   --theme-primary-shadow: var(--helios-purple-shadow);
   --theme-gradient: var(--helios-gradient);
   --theme-text-on-gradient: white;

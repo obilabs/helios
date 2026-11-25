@@ -1,26 +1,26 @@
 .merge-field-picker {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .picker-header {
   padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
 }
 
 .picker-header h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 4px 0;
 }
 
 .picker-header p {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -29,12 +29,12 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
 }
 
 .picker-search svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
@@ -43,11 +43,11 @@
   border: none;
   outline: none;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .picker-search input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .picker-categories {
@@ -56,7 +56,7 @@
 }
 
 .category-group {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .category-group:last-child {
@@ -77,7 +77,7 @@
 }
 
 .category-header:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .category-icon {
@@ -86,28 +86,28 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   border-radius: 4px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .category-name {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .category-count {
   font-size: 11px;
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: var(--color-gray-400);
+  background: var(--color-gray-100);
   padding: 2px 6px;
   border-radius: 10px;
 }
 
 .category-chevron {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   display: flex;
   align-items: center;
 }
@@ -134,12 +134,12 @@
 }
 
 .field-item:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-200);
 }
 
 .field-item:active {
-  background: #e5e7eb;
+  background: var(--color-gray-200);
 }
 
 .field-main {
@@ -152,7 +152,7 @@
 .field-name {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .field-key {
@@ -166,7 +166,7 @@
 
 .field-example {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-style: italic;
 }
 
@@ -177,13 +177,13 @@
 
 .picker-empty p {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
 .picker-loading {
   padding: 24px 16px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 13px;
 }

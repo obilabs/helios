@@ -222,7 +222,7 @@
 
 .helios-modal-content {
   position: relative;
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: var(--shadow-xl);
   max-height: 90vh;
@@ -376,7 +376,7 @@
 }
 
 .helios-btn-secondary {
-  background: white;
+  background: var(--card-bg);
   color: var(--gray-700);
   border: 1px solid var(--gray-400);
 }
@@ -491,7 +491,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: white;
+  background: var(--card-bg);
   border: 1px solid var(--gray-300);
   border-radius: 6px;
   box-shadow: var(--shadow-lg);
@@ -626,7 +626,7 @@
   padding: var(--space-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
-  background: white;
+  background: var(--card-bg);
 }
 
 .helios-selectable-block:hover {
@@ -815,7 +815,7 @@
   padding: 8px 12px;
   border: 1px solid var(--gray-400);
   border-radius: 6px;
-  background: white;
+  background: var(--card-bg);
   cursor: pointer;
   transition: all var(--transition-fast);
   min-height: 38px;
@@ -884,7 +884,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: white;
+  background: var(--card-bg);
   border: 1px solid var(--gray-300);
   border-radius: 6px;
   box-shadow: var(--shadow-lg);
@@ -1149,7 +1149,7 @@
 
 .helios-toggle-thumb {
   position: absolute;
-  background: white;
+  background: var(--card-bg);
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   transition: transform var(--transition-fast);

@@ -421,3 +421,9 @@ jobs:
       # flag, one nav entry per page, no "coming soon" on release surfaces).
       - name: Test
         run: npm test
+
+      # A theme only reaches styles that read its tokens. This fails when a
+      # stylesheet gains a hardcoded colour, and when one drops below its
+      # recorded count without the baseline being lowered.
+      - name: Stylesheets use theme tokens
+        run: node scripts/check-theme-colours.mjs

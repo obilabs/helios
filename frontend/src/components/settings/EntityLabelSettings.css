@@ -16,12 +16,12 @@
   gap: 8px;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 4px 0;
 }
 
 .entity-label-settings .header-content p {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   margin: 0;
 }
@@ -46,13 +46,13 @@
 }
 
 .entity-label-settings .btn-primary {
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: none;
 }
 
 .entity-label-settings .btn-primary:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .entity-label-settings .btn-primary:disabled {
@@ -61,13 +61,13 @@
 }
 
 .entity-label-settings .btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
 }
 
 .entity-label-settings .btn-secondary:hover:not(:disabled) {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .entity-label-settings .btn-secondary:disabled {
@@ -86,13 +86,13 @@
 }
 
 .entity-label-settings .status-message.success {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #047857;
   border: 1px solid #a7f3d0;
 }
 
 .entity-label-settings .status-message.error {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #b91c1c;
   border: 1px solid #fecaca;
 }
@@ -102,7 +102,7 @@
   align-items: flex-start;
   gap: 8px;
   padding: 12px 16px;
-  background: #f0f9ff;
+  background: var(--color-gray-50);
   border: 1px solid #bae6fd;
   border-radius: 6px;
   color: #0369a1;
@@ -122,8 +122,8 @@
 }
 
 .entity-label-settings .entity-card {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 16px;
 }
@@ -142,32 +142,32 @@
 .entity-label-settings .entity-header h4 {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0;
 }
 
 .entity-label-settings .unavailable-badge {
   font-size: 11px;
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: var(--color-gray-400);
+  background: var(--color-gray-100);
   padding: 2px 8px;
   border-radius: 4px;
 }
 
 .entity-label-settings .entity-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 8px 0;
 }
 
 .entity-label-settings .entity-examples {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin: 0 0 16px 0;
 }
 
 .entity-label-settings .entity-examples strong {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .entity-label-settings .label-fields {
@@ -182,52 +182,52 @@
   justify-content: space-between;
   font-size: 12px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 4px;
 }
 
 .entity-label-settings .label-field .char-count {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-weight: 400;
 }
 
 .entity-label-settings .label-field input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
-  color: #111827;
-  background: white;
+  color: var(--color-gray-900);
+  background: var(--card-bg);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .entity-label-settings .label-field input:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .entity-label-settings .label-field input:disabled {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   cursor: not-allowed;
 }
 
 .entity-label-settings .label-preview {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
 }
 
 .entity-label-settings .preview-label {
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-right: 6px;
 }
 
 .entity-label-settings .preview-text {
-  color: #374151;
+  color: var(--color-gray-700);
   font-family: monospace;
 }
 
@@ -236,7 +236,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fffbeb;
+  background: var(--color-gray-50);
   border: 1px solid #fcd34d;
   border-radius: 6px;
   color: #92400e;

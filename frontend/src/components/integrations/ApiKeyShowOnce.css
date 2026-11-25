@@ -13,7 +13,7 @@
 }
 
 .api-key-show-once-modal {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   width: 100%;
   max-width: 700px;
@@ -25,7 +25,7 @@
 .show-once-header {
   text-align: center;
   padding: 32px 32px 24px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .header-icon {
@@ -43,13 +43,13 @@
 .show-once-header h2 {
   font-size: 22px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 8px;
 }
 
 .show-once-header p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -93,7 +93,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #fafbfc;
+  background: var(--color-gray-50);
   border-radius: 8px;
   margin-bottom: 24px;
 }
@@ -106,12 +106,12 @@
 }
 
 .info-label {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-weight: 500;
 }
 
 .info-value {
-  color: #1f2937;
+  color: var(--color-gray-800);
   font-weight: 500;
 }
 
@@ -142,7 +142,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 8px;
 }
 
@@ -152,7 +152,7 @@
   gap: 12px;
   padding: 14px 16px;
   background: #1f2937;
-  border: 2px solid #374151;
+  border: 2px solid var(--color-gray-700);
   border-radius: 8px;
 }
 
@@ -170,9 +170,9 @@
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--color-gray-600);
   background: #374151;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -183,7 +183,7 @@
 .copy-button:hover {
   background: #4b5563;
   color: #f3f4f6;
-  border-color: #6b7280;
+  border-color: var(--color-gray-500);
 }
 
 .copy-button:active {
@@ -211,13 +211,13 @@
 }
 
 .action-button.download {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-300);
+  color: var(--color-gray-700);
 }
 
 .action-button.download:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-color: var(--theme-primary);
   color: var(--theme-primary);
 }
@@ -240,32 +240,32 @@
 }
 
 .integration-info.vendor {
-  background: #f0fdf4;
+  background: var(--color-gray-100);
   border: 1px solid #86efac;
 }
 
 .integration-info.service {
-  background: #eff6ff;
+  background: var(--color-gray-100);
   border: 1px solid #93c5fd;
 }
 
 .integration-info h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
   margin: 0 0 8px;
 }
 
 .integration-info p {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0 0 12px;
 }
 
 .code-example {
   padding: 12px 14px;
   background: #1f2937;
-  border: 1px solid #374151;
+  border: 1px solid var(--color-gray-700);
   border-radius: 6px;
 }
 
@@ -278,7 +278,7 @@
 }
 
 .code-example .optional {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-size: 11px;
 }
 
@@ -287,7 +287,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 24px 32px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-gray-100);
 }
 
 .confirmation-checkbox {
@@ -296,14 +296,14 @@
   gap: 10px;
   cursor: pointer;
   padding: 12px;
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--color-gray-300);
   border-radius: 6px;
   transition: all 0.15s;
 }
 
 .confirmation-checkbox:hover {
   border-color: var(--theme-primary);
-  background: #faf5ff;
+  background: var(--theme-primary-lighter);
 }
 
 .confirmation-checkbox input[type="checkbox"] {
@@ -316,7 +316,7 @@
 .confirmation-checkbox span {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .btn-primary-large {
