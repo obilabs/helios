@@ -730,6 +730,15 @@ The user is currently on the ${pageContext} page.` : '');
       return;
     }
 
+    if (isUnreachable(error)) {
+      errorResponse(
+        res,
+        ErrorCode.EXTERNAL_SERVICE_ERROR,
+        'The assistant could not reach its model server. Try again in a moment; if it keeps happening, an administrator should check the server address in Settings.'
+      );
+      return;
+    }
+
     errorResponse(res, ErrorCode.INTERNAL_ERROR, error.message || 'AI chat failed');
   }
 });
