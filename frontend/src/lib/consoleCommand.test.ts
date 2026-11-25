@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord } from './consoleCommand';
+import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord, isConfirmed, buildUserUpdate, splitOrgUnitPath } from './consoleCommand';
 
 describe('tokenizeCommand', () => {
   it('splits on whitespace and ignores repeated spaces', () => {
@@ -75,3 +75,59 @@ describe('isKnownCommandWord', () => {
     expect(isKnownCommandWord('frobnicate')).toBe(false);
   });
 });
+
+
+describe('isConfirmed', () => {
+  it('is true for --confirm and --confirm=true only', () => {
+    expect(isConfirmed({ confirm: '' })).toBe(true);
+    expect(isConfirmed({ confirm: 'true' })).toBe(true);
+    expect(isConfirmed({})).toBe(false);
+    expect(isConfirmed({ confirm: 'false' })).toBe(false);
+  });
+});
+
+describe('buildUserUpdate', () => {
+  it('reports no fields when nothing recognised was given', () => {
+    expect(buildUserUpdate({ colour: 'blue' }).fields).toEqual([]);
+  });
+
+  it('builds the name and org unit', () => {
+    expect(buildUserUpdate({ firstName: 'Ada', ou: '/Staff' })).toEqual({
+      body: { name: { givenName: 'Ada' }, orgUnitPath: '/Staff' },
+      fields: ['first name', 'org unit'],
+    });
+  });
+
+  it('edits the primary organization entry and keeps its other fields', () => {
+    const existing = [
+      { title: 'Old', department: 'Eng', costCenter: 'C1', primary: true },
+      { title: 'Side', primary: false },
+    ];
+    const out = buildUserUpdate({ jobTitle: 'New' }, existing);
+    expect(out.fields).toEqual(['job title']);
+    expect(out.body.organizations).toEqual([
+      { title: 'New', department: 'Eng', costCenter: 'C1', primary: true },
+      { title: 'Side', primary: false },
+    ]);
+    expect(existing[0].title).toBe('Old');
+  });
+
+  it('creates a primary entry when the user has none', () => {
+    expect(buildUserUpdate({ department: 'Ops' }).body.organizations).toEqual([{ primary: true, department: 'Ops' }]);
+  });
+});
+
+describe('splitOrgUnitPath', () => {
+  it('splits a path into parent and name', () => {
+    expect(splitOrgUnitPath('/Staff/Sales')).toEqual({ parent: '/Staff', name: 'Sales' });
+    expect(splitOrgUnitPath('/Sales')).toEqual({ parent: '/', name: 'Sales' });
+    expect(splitOrgUnitPath('/Sales/')).toEqual({ parent: '/', name: 'Sales' });
+  });
+
+  it('rejects a path that is not absolute or has no name', () => {
+    expect(splitOrgUnitPath('Sales')).toBeNull();
+    expect(splitOrgUnitPath('/')).toBeNull();
+    expect(splitOrgUnitPath(undefined)).toBeNull();
+  });
+});
+

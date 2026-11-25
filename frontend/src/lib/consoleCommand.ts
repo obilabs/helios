@@ -104,3 +104,73 @@ export function normalizeCommandWords(tokens: string[]): string[] {
 export function isKnownCommandWord(word: string): boolean {
   return CONSOLE_MODULES.includes(word) || CONSOLE_VERBS.includes(word);
 }
+
+/** `--confirm` given, with or without a value. */
+export function isConfirmed(params: Record<string, string | undefined>): boolean {
+  return params.confirm === '' || params.confirm === 'true';
+}
+
+/**
+ * Body for a Google user PATCH from console flags, and the names of the fields
+ * it changes. An empty `fields` means the command named nothing to change.
+ *
+ * Job title and department sit in the user's `organizations` list. The primary
+ * entry (or the first one) is edited in place so its other fields survive.
+ */
+export function buildUserUpdate(
+  params: Record<string, string | undefined>,
+  existingOrganizations?: Array<Record<string, unknown>>
+): { body: Record<string, unknown>; fields: string[] } {
+  const body: Record<string, unknown> = {};
+  const fields: string[] = [];
+
+  const name: Record<string, string> = {};
+  if (params.firstName) {
+    name.givenName = params.firstName;
+    fields.push('first name');
+  }
+  if (params.lastName) {
+    name.familyName = params.lastName;
+    fields.push('last name');
+  }
+  if (Object.keys(name).length) body.name = name;
+
+  const ou = params.ou ?? params.orgunit ?? params.orgUnit;
+  if (ou) {
+    body.orgUnitPath = ou;
+    fields.push('org unit');
+  }
+
+  const title = params.jobTitle ?? params.title;
+  const department = params.department;
+  if (title !== undefined || department !== undefined) {
+    const list = (existingOrganizations ?? []).map((o) => ({ ...o }));
+    let index = list.findIndex((o) => o.primary === true);
+    if (index < 0) index = list.length ? 0 : -1;
+    if (index < 0) {
+      list.push({ primary: true });
+      index = 0;
+    }
+    if (title !== undefined) {
+      list[index].title = title;
+      fields.push('job title');
+    }
+    if (department !== undefined) {
+      list[index].department = department;
+      fields.push('department');
+    }
+    body.organizations = list;
+  }
+
+  return { body, fields };
+}
+
+/** `/Staff/Sales` -> { parent: '/Staff', name: 'Sales' }; `/Sales` -> { parent: '/', name: 'Sales' }. */
+export function splitOrgUnitPath(path: string | undefined): { parent: string; name: string } | null {
+  if (!path || !path.startsWith('/')) return null;
+  const trimmed = path.replace(/\/+$/, '');
+  const cut = trimmed.lastIndexOf('/');
+  const name = trimmed.slice(cut + 1);
+  if (!name) return null;
+  return { parent: cut === 0 ? '/' : trimmed.slice(0, cut), name };
+}

@@ -7,7 +7,14 @@ import { buildOffboardConfigPayload } from '../lib/offboardConfig';
 import './DeveloperConsole.css';
 import { stripHtmlTags } from '../lib/html-text';
 import { generateStrongPassword, generatePin } from '../lib/password-generator';
-import { tokenizeCommand, normalizeCommandWords, isKnownCommandWord } from '../lib/consoleCommand';
+import {
+  tokenizeCommand,
+  normalizeCommandWords,
+  isKnownCommandWord,
+  isConfirmed,
+  buildUserUpdate,
+  splitOrgUnitPath,
+} from '../lib/consoleCommand';
 
 interface ConsoleOutput {
   type: 'command' | 'success' | 'error' | 'info';
@@ -1811,7 +1818,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     switch (action) {
       case 'list': {
         const params = parseArgs(args);
-        const filter = params.filter || '';
+        // --status=suspended and --ou=/Staff are shorthands for --filter=status:... / --filter=ou:...
+        const filter =
+          params.filter ||
+          (params.status ? `status:${params.status}` : '') ||
+          (params.ou || params.orgunit ? `ou:${params.ou || params.orgunit}` : '');
+        if (params.status && !['active', 'suspended'].includes(String(params.status).toLowerCase())) {
+          addOutput('error', `Unknown status: ${params.status}. Use --status=active or --status=suspended`);
+          return;
+        }
 
         const data = await apiRequest('GET', `/api/google-workspace/cached-users/${orgId}`);
         if (data.success && data.data?.users) {
@@ -2029,17 +2044,21 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const params = parseArgs(args.slice(1));
 
-        const body: any = {};
-        if (params.firstName || params.lastName) {
-          body.name = {
-            givenName: params.firstName,
-            familyName: params.lastName
-          };
+        let existingOrganizations: any[] | undefined;
+        if (params.jobTitle !== undefined || params.title !== undefined || params.department !== undefined) {
+          // Job title and department live in one list on the Google user; read
+          // it first so the other entries and fields are kept.
+          const current = await apiRequest('GET', `/api/google/admin/directory/v1/users/${encodeURIComponent(email)}`);
+          existingOrganizations = current?.organizations;
         }
-        if (params.ou) body.orgUnitPath = params.ou;
+        const update = buildUserUpdate(params, existingOrganizations);
+        if (update.fields.length === 0) {
+          addOutput('error', 'Nothing to update. Use one or more of: --firstName, --lastName, --jobTitle, --department, --ou');
+          return;
+        }
 
-        await apiRequest('PATCH', `/api/google/admin/directory/v1/users/${email}`, body);
-        addOutput('success', `User updated: ${email}`);
+        await apiRequest('PATCH', `/api/google/admin/directory/v1/users/${encodeURIComponent(email)}`, update.body);
+        addOutput('success', `User updated: ${email} (${update.fields.join(', ')})`);
         break;
       }
 
@@ -2166,7 +2185,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           return;
         }
         const email = args[0];
-        await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${email}`);
+        if (!confirmed) {
+          addOutput('error', `This will delete ${email} in Google Workspace. Add --confirm to proceed.`);
+          addOutput('info', 'A deleted user can be restored for about 20 days with: gw users undelete <email>');
+          return;
+        }
+        await apiRequest('DELETE', `/api/google/admin/directory/v1/users/${encodeURIComponent(email)}`);
         addOutput('success', `User deleted: ${email}`);
         break;
       }
@@ -2178,8 +2202,13 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const email = args[0];
         const params = parseArgs(args.slice(1));
-        await apiRequest('PATCH', `/api/google/admin/directory/v1/users/${email}`, { orgUnitPath: params.ou });
-        addOutput('success', `User moved to ${params.ou}: ${email}`);
+        const targetOu = params.ou || params.orgunit || params.orgUnit;
+        if (!targetOu || !String(targetOu).startsWith('/')) {
+          addOutput('error', 'Say where to move the user: --ou=/Staff/Sales (the path starts with /)');
+          return;
+        }
+        await apiRequest('PATCH', `/api/google/admin/directory/v1/users/${encodeURIComponent(email)}`, { orgUnitPath: targetOu });
+        addOutput('success', `User moved to ${targetOu}: ${email}`);
         break;
       }
 
@@ -2339,7 +2368,16 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         const email = args[0];
         const alias = args[1];
 
-        await runGoogle(google.userAliasesDelete(email, alias));
+        try {
+          await runGoogle(google.userAliasesDelete(email, alias));
+        } catch (err: any) {
+          if (/resource_id/i.test(String(err?.message))) {
+            addOutput('error', `Google does not recognise ${alias} as an alias of ${email} yet.`);
+            addOutput('info', 'An alias added in the last minute or two cannot be removed until Google has finished creating it. Check with: gw users list-aliases ' + email);
+            return;
+          }
+          throw err;
+        }
 
         addOutput('success', `[OK]Removed alias ${alias} from ${email}`);
         break;
@@ -2484,15 +2522,31 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         // NOTE: undelete needs the immutable user ID, not the primary email
         // (the email stops resolving once the account is deleted).
         if (args.length === 0 || args[0].startsWith('--')) {
-          addOutput('error', 'Usage: helios gw users undelete <userId> [--ou=</Path>]');
-          addOutput('info', 'Restores a recently-deleted user. Use the immutable 21-digit user ID (not the email).');
-          addOutput('info', 'Find deleted-user IDs with: helios api GET /api/google/admin/directory/v1/users?customer=my_customer&showDeleted=true');
+          addOutput('error', 'Usage: helios gw users undelete <email-or-userId> [--ou=</Path>]');
+          addOutput('info', 'Restores a user deleted in the last 20 days or so.');
           return;
         }
-        const userId = args[0];
+        let userId = args[0];
         const params = parseArgs(args.slice(1));
+        if (userId.includes('@')) {
+          // Google restores by its own user ID; the email stops resolving once
+          // the account is deleted, so look the ID up among deleted users.
+          const deleted = await apiRequest('GET', '/api/google/admin/directory/v1/users?customer=my_customer&showDeleted=true&maxResults=500');
+          const wanted = userId.toLowerCase();
+          const matches = (deleted?.users || []).filter((u: any) => String(u.primaryEmail || '').toLowerCase() === wanted);
+          if (matches.length === 0) {
+            addOutput('error', `No deleted user with the address ${userId}. It may be past Google's recovery window, or still listed as active.`);
+            return;
+          }
+          if (matches.length > 1) {
+            addOutput('error', `${matches.length} deleted users had the address ${userId}. Use the user ID of the one to restore:`);
+            matches.forEach((u: any) => addOutput('info', `  ${u.id}  deleted ${u.deletionTime || 'unknown'}`));
+            return;
+          }
+          userId = matches[0].id;
+        }
         await runGoogle(google.usersUndelete(userId, params.ou || '/'));
-        addOutput('success', `User undeleted into ${params.ou || '/'}: ${userId}`);
+        addOutput('success', `User undeleted into ${params.ou || '/'}: ${args[0]}`);
         break;
       }
 
@@ -2978,7 +3032,12 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           return;
         }
         const groupEmail = args[0];
-        await apiRequest('DELETE', `/api/google/admin/directory/v1/groups/${groupEmail}`);
+        if (!confirmed) {
+          addOutput('error', `This will delete the group ${groupEmail} in Google Workspace. Add --confirm to proceed.`);
+          addOutput('info', 'A deleted group cannot be restored.');
+          return;
+        }
+        await apiRequest('DELETE', `/api/google/admin/directory/v1/groups/${encodeURIComponent(groupEmail)}`);
         addOutput('success', `Group deleted: ${groupEmail}`);
         break;
       }
@@ -3259,7 +3318,16 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const groupEmail = args[0];
         const alias = args[1];
-        await runGoogle(google.groupAliasesDelete(groupEmail, alias));
+        try {
+          await runGoogle(google.groupAliasesDelete(groupEmail, alias));
+        } catch (err: any) {
+          if (/resource_id/i.test(String(err?.message))) {
+            addOutput('error', `Google does not recognise ${alias} as an alias of ${groupEmail} yet.`);
+            addOutput('info', 'An alias added in the last minute or two cannot be removed until Google has finished creating it. Check with: gw groups list-aliases ' + groupEmail);
+            return;
+          }
+          throw err;
+        }
         addOutput('success', `[OK]Removed alias ${alias} from group ${groupEmail}`);
         break;
       }
@@ -3325,21 +3393,29 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       }
 
       case 'create': {
-        if (args.length < 2) {
-          addOutput('error', 'Usage: helios gw orgunits create <parentPath> --name="Sales" [--description="..."]');
+        if (args.length < 1 || args[0].startsWith('--')) {
+          addOutput('error', 'Usage: helios gw orgunits create </Staff/Sales> [--description="..."]');
           return;
         }
-        const parentPath = args[0];
         const params = parseArgs(args.slice(1));
+        // Two forms: create <parentPath> --name="Sales", or create </Staff/Sales>.
+        const target = params.name
+          ? { parent: args[0], name: String(params.name) }
+          : splitOrgUnitPath(args[0]);
+        if (!target || !target.parent.startsWith('/')) {
+          addOutput('error', 'Usage: helios gw orgunits create </Staff/Sales> [--description="..."]');
+          addOutput('info', '   or: helios gw orgunits create </Staff> --name="Sales"');
+          return;
+        }
 
         const body = {
-          name: params.name,
-          parentOrgUnitPath: parentPath,
+          name: target.name,
+          parentOrgUnitPath: target.parent,
           description: params.description || ''
         };
 
         await apiRequest('POST', '/api/google/admin/directory/v1/customer/my_customer/orgunits', body);
-        addOutput('success', `OU created: ${parentPath}/${params.name}`);
+        addOutput('success', `OU created: ${target.parent === '/' ? '' : target.parent}/${target.name}`);
         break;
       }
 
@@ -3366,6 +3442,10 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
           return;
         }
         const ouPath = args[0];
+        if (!isConfirmed(parseArgs(args.slice(1)))) {
+          addOutput('error', `This will delete the organizational unit ${ouPath} in Google Workspace. Add --confirm to proceed.`);
+          return;
+        }
         await apiRequest('DELETE', `/api/google/admin/directory/v1/customer/my_customer/orgunits${ouPath}`);
         addOutput('success', `OU deleted: ${ouPath}`);
         break;
@@ -3518,7 +3598,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         }
         const userEmail = args[0];
         const data = await runGoogle(google.gmailListDelegates(userEmail));
-        if (data.delegates) {
+        if (data?.delegates?.length) {
           const delegates = data.delegates.map((d: any) => d.delegateEmail).join('\n');
           addOutput('success', `\nDelegates for ${userEmail}:\n${delegates}`);
         } else {
