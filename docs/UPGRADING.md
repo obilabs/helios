@@ -157,6 +157,9 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   Existing rows are kept as they are and still verify. It runs on start-up.
   `GET /health` gains `auditWriteFailures`, which should read 0. See
   `docs/features/AUDIT-LOG-INTEGRITY.md`.
+- **A command for each row of a CSV file.** The Developer Console has `csv load`,
+  `csv preview` and `csv run`. The file is read in the browser and is not
+  uploaded or stored. See `docs/guides/console-csv.md`.
 - **Signatures follow profile changes.** Migration
   `107_signature_requeue_on_profile_change.sql` queues a user's deployed
   signature again when their name, job title, department or contact details

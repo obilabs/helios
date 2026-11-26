@@ -16,6 +16,15 @@ import {
   splitOrgUnitPath,
   formatLastLogin,
 } from '../lib/consoleCommand';
+import {
+  parseCsv,
+  checkTemplate,
+  expandRow,
+  displayRow,
+  splitCsvRunArgs,
+  CSV_MAX_BYTES,
+  type CsvData,
+} from '../lib/consoleCsv';
 
 interface ConsoleOutput {
   type: 'command' | 'success' | 'error' | 'info';
@@ -64,6 +73,14 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // `csv` commands: the loaded file lives here, in memory, until the page closes.
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const csvDataRef = useRef<(CsvData & { name: string }) | null>(null);
+  const csvPreviewedRef = useRef<string | null>(null);
+  const csvStopRef = useRef(false);
+  const errorCountRef = useRef(0);
+  const [csvRunning, setCsvRunning] = useState(false);
+
   // Auto-scroll to bottom when new output is added
   useEffect(() => {
     if (outputRef.current) {
@@ -101,6 +118,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
   };
 
   const addOutput = (type: ConsoleOutput['type'], content: string) => {
+    if (type === 'error') errorCountRef.current += 1;
     setOutput(prev => [...prev, { type, content, timestamp: new Date() }]);
   };
 
@@ -376,6 +394,112 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
     }
   };
 
+  // ----- csv: one command per row of a file -----
+  const handleCsvFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // so choosing the same file again fires a change
+    if (!file) return;
+    if (file.size > CSV_MAX_BYTES) {
+      addOutput('error', `${file.name} is larger than ${Math.round(CSV_MAX_BYTES / (1024 * 1024))} MB.`);
+      return;
+    }
+    const parsed = parseCsv(await file.text());
+    if (!parsed.ok) {
+      addOutput('error', `${file.name}: ${parsed.error}`);
+      return;
+    }
+    csvDataRef.current = { ...parsed.data, name: file.name };
+    csvPreviewedRef.current = null;
+    addOutput('success', `Loaded ${file.name}: ${parsed.data.rows.length} row${parsed.data.rows.length === 1 ? '' : 's'}.`);
+    addOutput('info', `Columns: ${parsed.data.columns.join(', ')}`);
+    addOutput('info', 'Next: csv preview <command using ~column>, for example: csv preview gw users get ~email');
+    setTimeout(() => inputRef.current?.focus(), 10);
+  };
+
+  const handleCsv = async (action: string | undefined, rawCommand: string) => {
+    const rest = rawCommand.replace(/^\s*(helios\s+)?csv\s+\S+\s*/i, '');
+    const data = csvDataRef.current;
+
+    switch (action) {
+      case 'load':
+        addOutput('info', 'Choose a CSV file. It is read in this browser and is not uploaded or stored.');
+        csvFileInputRef.current?.click();
+        return;
+
+      case 'show': {
+        if (!data) return addOutput('error', 'No file loaded. Run: csv load');
+        addOutput('info', `${data.name}: ${data.rows.length} rows. Columns: ${data.columns.join(', ')}`);
+        return;
+      }
+
+      case 'clear':
+        csvDataRef.current = null;
+        csvPreviewedRef.current = null;
+        addOutput('success', 'The loaded file was forgotten.');
+        return;
+
+      case 'preview':
+      case 'run': {
+        if (!data) return addOutput('error', 'No file loaded. Run: csv load');
+        const { stopOnError, template } = splitCsvRunArgs(rest);
+        const problem = checkTemplate(template, data.columns);
+        if (problem) return addOutput('error', problem);
+        const firstWord = (tokenizeCommand(template)[0] || '').toLowerCase();
+        if (firstWord !== 'helios' && !isKnownCommandWord(firstWord)) {
+          return addOutput('error', `Unknown command: ${firstWord}. Type "help" for available commands.`);
+        }
+
+        if (action === 'preview') {
+          const shown = data.rows.slice(0, 5);
+          addOutput('info', `This would run ${data.rows.length} command${data.rows.length === 1 ? '' : 's'}. ${shown.length === data.rows.length ? 'All of them' : 'The first ' + shown.length}:`);
+          shown.forEach((row, i) => addOutput('info', `  [${i + 1}] ${displayRow(template, row, data.columns)}`));
+          addOutput('info', 'Nothing has run. To run them: csv run ' + template);
+          csvPreviewedRef.current = template;
+          return;
+        }
+
+        if (csvPreviewedRef.current !== template) {
+          return addOutput('error', 'Preview this exact command first: csv preview ' + template);
+        }
+
+        const failed: number[] = [];
+        let done = 0;
+        csvStopRef.current = false;
+        setCsvRunning(true);
+        try {
+          for (let i = 0; i < data.rows.length; i++) {
+            if (csvStopRef.current) break;
+            const row = data.rows[i];
+            addOutput('command', `[${i + 1}/${data.rows.length}] $ ${displayRow(template, row, data.columns)}`);
+            const errorsBefore = errorCountRef.current;
+            const line = expandRow(template, row, data.columns);
+            await executeHeliosCommand(firstWord === 'helios' ? line : `helios ${line}`);
+            done++;
+            if (errorCountRef.current > errorsBefore) {
+              failed.push(i + 1);
+              if (stopOnError) break;
+            }
+          }
+        } finally {
+          setCsvRunning(false);
+        }
+        csvPreviewedRef.current = null;
+
+        const notRun = data.rows.length - done;
+        const summary = `${done - failed.length} of ${data.rows.length} rows ran without an error` +
+          (failed.length ? `; ${failed.length} failed (row${failed.length === 1 ? '' : 's'} ${failed.slice(0, 50).join(', ')}${failed.length > 50 ? ', ...' : ''})` : '') +
+          (notRun ? `; ${notRun} not run` : '') + '.';
+        addOutput(failed.length || notRun ? 'error' : 'success', summary);
+        return;
+      }
+
+      default:
+        addOutput('error', 'Usage: csv load | csv show | csv preview <command> | csv run [--stop-on-error] <command> | csv clear');
+        addOutput('info', 'Write ~column in the command where a value from the file belongs. Example:');
+        addOutput('info', '  csv preview gw users update ~email --jobTitle=~title');
+    }
+  };
+
   const executeHeliosCommand = async (command: string) => {
     try {
       // Parse command: helios <verb> <resource> [args] OR helios <module> <resource> <action> [args]
@@ -396,6 +520,11 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
       // generate password, export users, sync gw
 
       switch (firstWord) {
+        // ----- CSV: one command per row -----
+        case 'csv':
+          await handleCsv(parts[1], command);
+          return;
+
         // ----- CREATE -----
         case 'create': {
           const resource = parts[1];
@@ -5984,6 +6113,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                 <span className={`status-dot ${isExecuting ? 'executing' : 'ready'}`}></span>
                 <span>{isExecuting ? 'Executing...' : 'Ready'}</span>
               </div>
+              {csvRunning && (
+                <button
+                  onClick={() => { csvStopRef.current = true; }}
+                  className="btn-console-action"
+                  title="Stop after the current row"
+                >
+                  <X size={16} /> Stop
+                </button>
+              )}
             </div>
             <div className="console-toolbar-right">
               <button
@@ -6072,6 +6210,15 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
               placeholder="Type a command..."
               className="input-field"
             />
+            <input
+              ref={csvFileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleCsvFileChosen}
+              style={{ display: 'none' }}
+              aria-label="CSV file for csv commands"
+              data-testid="console-csv-file"
+            />
           </div>
         </div>
 
@@ -6122,6 +6269,31 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
                     <tr>
                       <td className="command-name">password generate [--style=random|pin]</td>
                       <td className="command-desc">Generate secure passwords. Default: AdjectiveNoun#XXX format</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* One command per row of a file */}
+              <div className="help-section">
+                <h3>Run a command for each row of a CSV file</h3>
+                <table className="command-table">
+                  <tbody>
+                    <tr>
+                      <td className="command-name">csv load</td>
+                      <td className="command-desc">Choose a CSV file with a header line. It is read in this browser and is not uploaded or stored.</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">csv preview &lt;command&gt;</td>
+                      <td className="command-desc">Show the commands that would run. Write ~column where a value belongs, for example: csv preview gw users update ~email --jobTitle=~title</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">csv run [--stop-on-error] &lt;command&gt;</td>
+                      <td className="command-desc">Run the previewed command once per row and report which rows failed. A command that needs --confirm still needs it.</td>
+                    </tr>
+                    <tr>
+                      <td className="command-name">csv show | csv clear</td>
+                      <td className="command-desc">Show the columns of the loaded file, or forget the file.</td>
                     </tr>
                   </tbody>
                 </table>

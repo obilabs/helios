@@ -93,6 +93,14 @@ export const CONSOLE_COMMANDS: ConsoleCommandGroup[] = [
       { command: 'help', does: 'Show every command the console accepts' },
     ],
   },
+  {
+    title: 'One command per row of a CSV file (`csv`)',
+    commands: [
+      { command: 'csv load', does: 'Choose a CSV file with a header line; it stays in the browser' },
+      { command: 'csv preview <command>', does: 'Show what would run; write ~column where a value from the file belongs, e.g. `csv preview gw users update ~email --jobTitle=~title`' },
+      { command: 'csv run <command>', does: 'Run the previewed command once per row and report the rows that failed' },
+    ],
+  },
 ];
 
 /** The command list as it appears in the assistant's prompt. */
