@@ -487,7 +487,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         const notRun = data.rows.length - done;
         const summary = `${done - failed.length} of ${data.rows.length} rows ran without an error` +
-          (failed.length ? `; ${failed.length} failed (rows ${failed.slice(0, 50).join(', ')}${failed.length > 50 ? ', ...' : ''})` : '') +
+          (failed.length ? `; ${failed.length} failed (row${failed.length === 1 ? '' : 's'} ${failed.slice(0, 50).join(', ')}${failed.length > 50 ? ', ...' : ''})` : '') +
           (notRun ? `; ${notRun} not run` : '') + '.';
         addOutput(failed.length || notRun ? 'error' : 'success', summary);
         return;
