@@ -30,6 +30,7 @@ import {
   enforceRelayAuthorization,
   type RelayAuditRecord,
 } from '../services/relay/enforce.js';
+import { directResourceKey, isDeletedListing } from './proxy-paths.js';
 
 // Extend Express Request type for API keys
 // Note: The base user type is declared in auth.ts with isAdmin/isEmployee flags
@@ -815,6 +816,13 @@ async function intelligentSync(params: {
     return;
   }
 
+  // Only a call Google accepted changes anything. A refused delete must not be
+  // recorded as a deletion.
+  const status = Number(params.response?.status);
+  if (Number.isFinite(status) && (status < 200 || status >= 300)) {
+    return;
+  }
+
   // Identify resource type from path
   const resourceType = identifyResourceType(params.path);
 
@@ -918,10 +926,14 @@ async function syncUserResource(params: {
 
   // DELETE USER (DELETE)
   else if (method === 'DELETE') {
-    // Extract user key from path
-    const userKey = extractUserKeyFromPath(params.path);
+    // Only a DELETE of the user itself. Removing an alias or a photo is also a
+    // DELETE under users/{key} and must not mark the person deleted.
+    const userKey = directResourceKey(params.path, 'users');
+    if (!userKey) {
+      return;
+    }
 
-    await db.query(`
+    const marked = await db.query(`
       UPDATE organization_users
       SET
         deleted_at = NOW(),
@@ -929,10 +941,20 @@ async function syncUserResource(params: {
         is_active = false,
         updated_at = NOW()
       WHERE organization_id = $1
-        AND (email = $2 OR google_workspace_id = $2)
+        AND (LOWER(email) = LOWER($2) OR google_workspace_id = $2)
     `, [params.organizationId, userKey]);
 
-    logger.info('Synced user deletion', { userKey });
+    // The cached copy of Google's users would otherwise keep listing them
+    // until the next full sync.
+    await db.query(`
+      DELETE FROM gw_synced_users
+      WHERE organization_id = $1
+        AND (LOWER(email) = LOWER($2) OR google_id = $2)
+    `, [params.organizationId, userKey]);
+
+    // Say how many rows changed: "synced" with zero rows is the failure this
+    // used to hide.
+    logger.info('Synced user deletion', { userKey, rowsMarked: marked.rowCount ?? 0 });
   }
 
   // UPDATE USER (PATCH/PUT)
@@ -964,6 +986,19 @@ async function syncUserResource(params: {
   // LIST USERS (GET)
   else if (method === 'GET' && responseData.users && Array.isArray(responseData.users)) {
     for (const user of responseData.users) {
+      // A listing asked for with showDeleted=true is Google's bin. Copying it
+      // in would bring every deleted account back as an active person.
+      if (isDeletedListing(user)) {
+        continue;
+      }
+      // A caller may ask Google for only some fields (fields=users(primaryEmail)).
+      // Without the id and the address there is nothing safe to record, and
+      // writing the missing values over the stored ones unlinked every person
+      // from their Google account.
+      if (!user.id || !user.primaryEmail) {
+        continue;
+      }
+      const hasSuspended = typeof user.suspended === 'boolean';
       await db.query(`
         INSERT INTO organization_users (
           organization_id,
@@ -979,18 +1014,20 @@ async function syncUserResource(params: {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         ON CONFLICT (email)
         DO UPDATE SET
-          google_workspace_id = EXCLUDED.google_workspace_id,
+          google_workspace_id = COALESCE(EXCLUDED.google_workspace_id, organization_users.google_workspace_id),
           first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), organization_users.first_name),
           last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), organization_users.last_name),
           -- A row deleted in Helios keeps its deleted state. Google goes on
           -- listing a deleted account for a short while, and taking status
           -- from that listing brought the row back as active with deleted_at
           -- still set, after which it could be neither used nor restored.
-          is_active = CASE WHEN organization_users.deleted_at IS NOT NULL
+          -- Also kept when the listing did not include the suspended field
+          -- ($9 false): an absent field is not "active".
+          is_active = CASE WHEN organization_users.deleted_at IS NOT NULL OR NOT $9::boolean
                            THEN organization_users.is_active ELSE EXCLUDED.is_active END,
-          status = CASE WHEN organization_users.deleted_at IS NOT NULL
+          status = CASE WHEN organization_users.deleted_at IS NOT NULL OR NOT $9::boolean
                         THEN organization_users.status ELSE EXCLUDED.status END,
-          organizational_unit = EXCLUDED.organizational_unit,
+          organizational_unit = COALESCE($10::text, organization_users.organizational_unit),
           updated_at = NOW()
       `, [
         params.organizationId,
@@ -1000,7 +1037,9 @@ async function syncUserResource(params: {
         user.id,
         !user.suspended,
         user.suspended ? 'suspended' : 'active',
-        user.orgUnitPath || '/'
+        user.orgUnitPath || '/',
+        hasSuspended,
+        user.orgUnitPath || null
       ]);
     }
 
@@ -1055,13 +1094,18 @@ async function syncGroupResource(params: {
 
   // DELETE GROUP
   else if (method === 'DELETE') {
-    const groupKey = extractGroupKeyFromPath(params.path);
+    // Only a DELETE of the group itself. Removing a member is also a DELETE
+    // under groups/{key} and must not remove the group.
+    const groupKey = directResourceKey(params.path, 'groups');
+    if (!groupKey) {
+      return;
+    }
 
     await db.query(`
       DELETE FROM access_groups
       WHERE organization_id = $1
         AND platform = 'google_workspace'
-        AND (email = $2 OR external_id = $2)
+        AND (LOWER(email) = LOWER($2) OR external_id = $2)
     `, [params.organizationId, groupKey]);
 
     logger.info('Synced group deletion', { groupKey });

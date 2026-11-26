@@ -225,6 +225,16 @@ router.post('/setup', requireAdmin, [
         },
       });
 
+      // Start the periodic sync now. It used to be started only when the
+      // backend booted, so an install that connected Google after start-up
+      // (every new install) got one sync and then none until its next restart.
+      syncScheduler.scheduleFromSettings(organizationId).catch((err) => {
+        logger.error('Failed to schedule the periodic Google Workspace sync', { organizationId, error: err?.message });
+      });
+      syncScheduler.startTokenSync(organizationId).catch((err) => {
+        logger.error('Failed to start the OAuth token sync', { organizationId, error: err?.message });
+      });
+
       // Trigger initial sync after successful setup (do not wait for it)
       logger.info('Triggering initial sync after Google Workspace setup', { organizationId, domain });
       syncScheduler.manualSync(organizationId).then((syncResult) => {
