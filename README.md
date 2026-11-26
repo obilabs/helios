@@ -74,8 +74,9 @@ cd helios
 
 # Copy environment template and configure
 cp .env.example .env
-# Edit .env with your secrets (DB_PASSWORD, JWT_SECRET, etc.).
-# Generate each secret with: openssl rand -hex 32
+# Edit .env and set all six required secrets: DB_PASSWORD, JWT_SECRET,
+# ENCRYPTION_KEY, EMAIL_ENCRYPTION_KEY, S3_ACCESS_KEY, S3_SECRET_KEY.
+# Generate each one with: openssl rand -hex 32
 # The backend refuses to start if JWT_SECRET is missing, shorter than
 # 32 characters, or still a placeholder.
 
@@ -88,6 +89,9 @@ docker compose logs backend | grep 'setup token'
 # Access: http://localhost and paste the token into the setup wizard
 # On a domain, or reached by IP address from other machines? Set PUBLIC_URL
 # first: docs/guides/domain-and-https.md
+#
+# Every step with the screens, including a second administrator and
+# connecting Google Workspace: docs/guides/install.md
 # (to preset it instead, set HELIOS_SETUP_TOKEN in the backend environment)
 
 # Development (with hot-reload and default admin)
@@ -101,7 +105,7 @@ docker compose -f docker-compose.dev.yml up -d --build
 | `docker-compose.yml` | **Production** - Secure defaults, requires `.env` configuration |
 | `docker-compose.dev.yml` | **Development** - Hot reload, default admin credentials |
 
-See [docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md) for Google Workspace service account configuration.
+The full walk-through, screen by screen, is [docs/guides/install.md](docs/guides/install.md). Creating the Google service account is in [docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md](docs/guides/GOOGLE-WORKSPACE-SETUP-GUIDE.md).
 
 ### Option 2: Hosted by Us — coming soon
 
