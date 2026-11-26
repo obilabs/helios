@@ -9,6 +9,16 @@ import type {
   MediaAssetSettings,
 } from '../types/media-assets.js';
 
+/** File types an organization may upload when it has not chosen its own list. */
+export const DEFAULT_ALLOWED_MIME_TYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'image/x-icon',
+];
+
 /**
  * Media Asset Storage Service
  *
@@ -60,7 +70,11 @@ export class MediaAssetStorageService {
         driveRootFolderId: row.drive_root_folder_id,
         cacheTtlSeconds: row.cache_ttl_seconds,
         maxFileSizeMb: row.max_file_size_mb,
-        allowedMimeTypes: row.allowed_mime_types || [],
+        // A settings row saved without a list holds NULL here. An empty list
+        // would refuse every upload, so it means "use the defaults".
+        allowedMimeTypes: row.allowed_mime_types?.length
+          ? row.allowed_mime_types
+          : [...DEFAULT_ALLOWED_MIME_TYPES],
         isConfigured: row.is_configured,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -89,7 +103,16 @@ export class MediaAssetStorageService {
           max_file_size_mb,
           allowed_mime_types,
           is_configured
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES (
+          $1,
+          COALESCE($2, 'google_drive'),
+          $3,
+          $4,
+          COALESCE($5::integer, 3600),
+          COALESCE($6::integer, 10),
+          $7,
+          COALESCE($8::boolean, false)
+        )
         ON CONFLICT (organization_id) DO UPDATE SET
           storage_backend = COALESCE($2, media_asset_settings.storage_backend),
           drive_shared_drive_id = COALESCE($3, media_asset_settings.drive_shared_drive_id),
@@ -101,13 +124,15 @@ export class MediaAssetStorageService {
           updated_at = NOW()`,
         [
           organizationId,
-          settings.storageBackend || 'google_drive',
+          // A field the caller did not send is passed as NULL, so an update
+          // keeps the stored value and only a first save takes the default.
+          settings.storageBackend || null,
           settings.driveSharedDriveId || null,
           settings.driveRootFolderId || null,
-          settings.cacheTtlSeconds || 3600,
-          settings.maxFileSizeMb || 10,
-          settings.allowedMimeTypes || null,
-          settings.isConfigured ?? false,
+          settings.cacheTtlSeconds || null,
+          settings.maxFileSizeMb || null,
+          settings.allowedMimeTypes?.length ? settings.allowedMimeTypes : null,
+          settings.isConfigured ?? null,
         ]
       );
 
