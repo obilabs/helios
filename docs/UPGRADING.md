@@ -161,6 +161,10 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   `107_signature_requeue_on_profile_change.sql` queues a user's deployed
   signature again when their name, job title, department or contact details
   change. It runs on start-up; the regular signature sync does the rest.
+- **Assistant prompt.** Settings shows the built-in prompt as the starting point
+  for a custom one and has a "Reset to default" button. A custom prompt saved
+  before this change is used as written; add the line `{{commands}}` to it if
+  you want the current console command list filled in.
 - **One audit entry per request.** A change made through `/api/v1` was
   recorded twice in the audit log. It is now recorded once. Existing entries are
   left as they are.
