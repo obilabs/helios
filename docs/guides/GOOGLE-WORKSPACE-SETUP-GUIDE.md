@@ -156,45 +156,24 @@ Each organization MUST use their own service account for:
 
 ## Step 4: Configure in Helios
 
-### 4.1 Access Helios Settings
-1. Log into Helios with your admin account
-2. Navigate to **Settings** > **Modules**
+The four screens are described one by one in [install.md](install.md), step 9.
+In short:
 
-### 4.2 Enable Google Workspace
-1. Find **Google Workspace** module
-2. Click **"Enable"**
+1. Sign in to Helios as an administrator.
+2. Go to **Settings**. On the **Google Workspace** tab, click **Enable**.
+3. **Upload Service Account:** choose the JSON file downloaded in Step 2.4.
+4. **Configure Domain:** enter your Workspace domain and the address of a super
+   admin.
+5. **Test Connection:** press **Test Connection** and wait for **Connection
+   Verified!**
+6. **Complete Setup:** check the summary and press **Complete Setup**.
 
-### 4.3 Upload Configuration
-1. **Admin Email:** Enter your Google Workspace admin email (e.g., admin@yourdomain.com)
-2. **Service Account:** Upload the JSON file downloaded in Step 2.4
-3. Click **"Configure"**
-
-### 4.4 Test Connection
-1. Click **"Test Connection"**
-2. You should see:
-   - ✅ Connection successful
-   - Project name
-   - Number of accessible users
-3. If you see errors, check the troubleshooting section
-
-### 4.5 Initial Sync
-1. The system will automatically start syncing after configuration
-2. You can also manually trigger sync with the **"Sync Now"** button
-3. First sync may take a few minutes depending on organization size
+The first sync starts by itself.
 
 ## Step 5: Verify Setup
 
-### 5.1 Check Synced Data
-1. Go to **Directory** > **Users**
-2. Verify your Google Workspace users appear
-3. Check that user details are correct
-
-### 5.2 Review Sync Status
-1. Go to **Settings** > **Modules**
-2. Check Google Workspace module shows:
-   - Status: **Active**
-   - Last Sync: Recent timestamp
-   - User Count: Correct number
+1. Go to **Users**. Your Google Workspace users appear within a minute or two.
+2. To sync again at any time, run `gw sync all` in the Developer Console.
 
 ## Troubleshooting
 

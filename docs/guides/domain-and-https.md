@@ -39,9 +39,13 @@ thing that holds your certificate in front of it and send traffic to it.
 
    ```
    HTTP_PORT=127.0.0.1:8083
+   HTTPS_PORT=127.0.0.1:8444
    PUBLIC_URL=https://helios.example.com
    TRUST_PROXY=2
    ```
+
+   Set both ports. Left alone, `HTTPS_PORT` publishes port 443 on every
+   network interface, which is the port your own proxy needs.
 
 2. Point your proxy at `http://127.0.0.1:8083`.
 
