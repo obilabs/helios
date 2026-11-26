@@ -43,6 +43,12 @@ describe('assistant command list', () => {
     expect(consoleSource).toMatch(new RegExp(`['"\`.]${flag}['"\`\\]=\\s)]|params\\.${flag}\\b|--${flag}\\b`));
   });
 
+  it.each(all.filter((c) => c.startsWith('csv ')))('"%s" is a command the console handles', (command) => {
+    const [, action] = command.split(/\s+/);
+    expect(consoleSource).toContain("case 'csv'");
+    expect(consoleSource).toContain(`case '${action}'`);
+  });
+
   it('does not offer a command to count things', () => {
     expect(all.some((c) => /\bcount\b/.test(c))).toBe(false);
     expect(commandReference()).toContain('no command to count');

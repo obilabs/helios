@@ -57,6 +57,7 @@ export function tokenizeCommand(line: string): string[] {
 /** Words that may start a command without the leading `helios`. */
 export const CONSOLE_MODULES = [
   'api',
+  'csv',
   'gw',
   'google-workspace',
   'm365',
