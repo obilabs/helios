@@ -97,7 +97,7 @@ import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
 import { logSafe } from './utils/log-safe.js';
-import { trustProxySetting, servedOverPlainHttp } from './config/public-address.js';
+import { trustProxySetting, servedOverPlainHttp, CLIENT_IP_HEADER } from './config/public-address.js';
 
 const app = express();
 // The visitor's address comes from the proxy in front of the backend. Without
@@ -604,6 +604,15 @@ app.get('/api/v1/auth/two-factor/status', async (req, res) => {
 //
 // NOTE: Only handle better-auth specific paths, let JWT routes pass through
 const betterAuthPaths = ['/sign-in', '/sign-out', '/sign-up', '/get-session', '/session', '/error', '/callback', '/two-factor', '/passkey'];
+
+// The sign-in library limits attempts per visitor address, and reads that
+// address from a header. Give it the one Express worked out from TRUST_PROXY,
+// replacing anything the client sent under this name. Without it the library
+// has no address and counts every visitor's sign-ins in one shared bucket.
+function runAuthHandler(req: express.Request, res: express.Response) {
+  req.headers[CLIENT_IP_HEADER] = req.ip || req.socket.remoteAddress || '';
+  return authHandler(req, res);
+}
 app.all('/api/v1/auth/*', (req, res, next) => {
   // Check if this is a better-auth path
   const path = req.path.replace('/api/v1/auth', '');
@@ -612,13 +621,13 @@ app.all('/api/v1/auth/*', (req, res, next) => {
   if (isBetterAuthPath) {
     // Rewrite URL from /api/v1/auth/* to /api/auth/* for better-auth
     req.url = req.url.replace('/api/v1/auth/', '/api/auth/');
-    authHandler(req, res);
+    runAuthHandler(req, res);
   } else {
     // Let it pass through to JWT routes
     next();
   }
 });
-app.all('/api/auth/*', (req, res) => authHandler(req, res));
+app.all('/api/auth/*', (req, res) => runAuthHandler(req, res));
 
 // =============================================================================
 // Audit Middleware - Automatic API Request Logging

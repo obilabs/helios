@@ -160,6 +160,11 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **Accounts an admin creates can sign in.** An account created by an admin with
+  a password, or one whose owner set a password from an emailed link, was
+  refused by the sign-in form with "Invalid email or password". Migration 108
+  repairs the accounts already affected and keeps new ones right. No action
+  needed.
 - **One address setting, and the visitor's real address.** `PUBLIC_URL` is now
   the single setting for the address people use; `FRONTEND_URL`, `APP_URL` and
   the passkey settings follow it when empty. Several settings in `.env` were

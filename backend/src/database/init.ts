@@ -214,7 +214,9 @@ export class DatabaseInitializer {
         // account on it and will not sign in a user whose account_id is anything else.
         await db.query(
           `INSERT INTO auth_accounts (id, user_id, account_id, provider_id, password, created_at, updated_at)
-           VALUES (gen_random_uuid()::text, $1, $2, 'credential', $3, NOW(), NOW())`,
+           VALUES (gen_random_uuid()::text, $1, $2, 'credential', $3, NOW(), NOW())
+         ON CONFLICT (provider_id, account_id) DO UPDATE
+           SET password = EXCLUDED.password, updated_at = NOW()`,
           [adminId, String(adminId), passwordHash]
         );
 

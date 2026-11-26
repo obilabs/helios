@@ -78,6 +78,12 @@ export function trustProxySetting(env: Env = process.env): number | boolean | st
   return raw;
 }
 
+/**
+ * Header the backend sets for the sign-in library, holding the visitor address
+ * Express resolved. Always overwritten by the backend, never taken from a client.
+ */
+export const CLIENT_IP_HEADER = 'x-helios-client-ip';
+
 /** Passkey relying-party id: the host name people sign in at. */
 export function passkeyRpId(env: Env = process.env): string {
   const explicit = env['PASSKEY_RP_ID']?.trim();
