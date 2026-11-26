@@ -179,6 +179,32 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
   // System prompt configuration
   const [customSystemPrompt, setCustomSystemPrompt] = useState('');
   const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [defaultPrompt, setDefaultPrompt] = useState('');
+
+  // The built-in prompt, so an administrator can read it, start from it, and go back to it.
+  const loadDefaultPrompt = async (): Promise<string> => {
+    if (defaultPrompt) return defaultPrompt;
+    try {
+      const response = await authFetch('/api/v1/ai/default-prompt');
+      const data = await response.json();
+      const prompt = data?.data?.prompt || '';
+      setDefaultPrompt(prompt);
+      return prompt;
+    } catch {
+      return '';
+    }
+  };
+
+  const toggleCustomPrompt = async (checked: boolean) => {
+    setUseCustomPrompt(checked);
+    if (checked && !customSystemPrompt.trim()) {
+      setCustomSystemPrompt(await loadDefaultPrompt());
+    }
+  };
+
+  const resetPromptToDefault = async () => {
+    setCustomSystemPrompt(await loadDefaultPrompt());
+  };
 
   // AI Role
   const [aiRole, setAiRole] = useState<AIRole>('viewer');
@@ -1018,7 +1044,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
           <span className="optional-badge">Optional</span>
         </div>
         <p className="section-description">
-          Customize the system prompt that defines how the AI assistant behaves. Leave empty to use the default Helios prompt.
+          The instructions the assistant is given at the start of every conversation. Helios has a built-in prompt; switch this on to edit your own copy of it.
         </p>
 
         <div className="checkbox-group">
@@ -1026,7 +1052,7 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
             <input
               type="checkbox"
               checked={useCustomPrompt}
-              onChange={(e) => setUseCustomPrompt(e.target.checked)}
+              onChange={(e) => toggleCustomPrompt(e.target.checked)}
             />
             <span className="checkbox-text">Use custom system prompt</span>
           </label>
@@ -1039,12 +1065,15 @@ export function AISettings({ organizationId, onViewUsage, onConfigSaved }: AISet
               value={customSystemPrompt}
               onChange={(e) => setCustomSystemPrompt(e.target.value)}
               placeholder="You are a helpful AI assistant for Helios..."
-              rows={8}
+              rows={14}
               className="system-prompt-textarea"
             />
             <p className="form-hint">
-              This prompt is sent at the start of every conversation. Include instructions about tone, capabilities, and limitations.
+              Starts as a copy of the built-in prompt. Keep the line <code>{'{{commands}}'}</code>: Helios replaces it with the current list of console commands, so the assistant only suggests commands that exist. Save to apply.
             </p>
+            <button type="button" className="btn-secondary" onClick={resetPromptToDefault}>
+              Reset to default
+            </button>
           </div>
         )}
       </div>

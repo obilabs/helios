@@ -7,6 +7,7 @@ import {
   isUnreachable,
   unreachableMessage,
 } from '../lib/llm-endpoint.js';
+import { COMMANDS_PLACEHOLDER, fillPrompt } from '../knowledge/console-commands.js';
 import { llmGatewayService, ChatMessage, Tool, ToolCall, AIRole } from '../services/llm-gateway.service.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -261,6 +262,29 @@ router.put('/config', requireAdmin, async (req: Request, res: Response): Promise
   } catch (error: any) {
     logger.error('Failed to save AI config', { error: error.message });
     errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to save AI configuration');
+  }
+});
+
+/**
+ * The built-in assistant prompt, for an administrator to read, start from, or
+ * go back to. `{{commands}}` marks where the command list is filled in.
+ */
+router.get('/default-prompt', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      errorResponse(res, ErrorCode.UNAUTHORIZED, 'Organization ID required');
+      return;
+    }
+    const config = await llmGatewayService.getConfig(organizationId);
+    const role: AIRole = config?.aiRole || 'viewer';
+    successResponse(res, {
+      prompt: defaultPromptTemplate(!!config?.mcpEnabled, role),
+      placeholder: COMMANDS_PLACEHOLDER,
+    });
+  } catch (error: any) {
+    logger.error('Failed to load the default prompt', { error: error.message });
+    errorResponse(res, ErrorCode.INTERNAL_ERROR, 'Failed to load the default prompt');
   }
 });
 
@@ -609,11 +633,16 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
 
     // Add system prompt - use custom if configured, otherwise use default
     // When MCP is enabled, use the tool-aware prompt with role-based permissions
-    const systemPrompt = config?.useCustomPrompt && config?.customSystemPrompt
+    // The command list is filled in at this point, so an edited prompt that
+    // keeps the placeholder always carries the current list.
+    const promptTemplate = config?.useCustomPrompt && config?.customSystemPrompt
       ? config.customSystemPrompt
-      : config?.mcpEnabled
-        ? getRoleBasedSystemPrompt(aiRole, pageContext)
-        : getSystemPrompt(pageContext);
+      : defaultPromptTemplate(!!config?.mcpEnabled, aiRole);
+    const systemPrompt =
+      fillPrompt(promptTemplate) +
+      (pageContext ? `
+
+The user is currently on the ${pageContext} page.` : '');
 
     messages.push({
       role: 'system',
@@ -698,6 +727,15 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
 
     if (error.message.includes('Rate limit') || error.message.includes('token limit')) {
       errorResponse(res, ErrorCode.RATE_LIMIT_EXCEEDED, error.message);
+      return;
+    }
+
+    if (isUnreachable(error)) {
+      errorResponse(
+        res,
+        ErrorCode.EXTERNAL_SERVICE_ERROR,
+        'The assistant could not reach its model server. Try again in a moment; if it keeps happening, an administrator should check the server address in Settings.'
+      );
       return;
     }
 
@@ -912,18 +950,14 @@ router.get('/status', async (req: Request, res: Response): Promise<void> => {
 /**
  * Generate system prompt based on context
  */
-function getSystemPrompt(pageContext?: string): string {
-  let contextInfo = '';
-  if (pageContext) {
-    contextInfo = `\n\nThe user is currently on the ${pageContext} page.`;
-  }
-
+function getSystemPrompt(): string {
   return `You are Helios AI Assistant, a helpful assistant for the Helios Client Portal - a workspace management system that integrates with Google Workspace and Microsoft 365.
 
 ## CRITICAL: DO NOT MAKE THINGS UP
 - NEVER invent commands, API endpoints, or features that don't exist
 - If you are unsure about something, say "I'm not certain about that" instead of guessing
 - Only mention features and commands documented below
+- Before you give a command, check that it is in the command list below, word for word
 - This is a PRODUCTION system - incorrect information can cause serious problems
 
 ## Your capabilities:
@@ -934,63 +968,7 @@ function getSystemPrompt(pageContext?: string): string {
 - Help troubleshoot common issues
 - Provide Developer Console commands (see below)
 
-## Developer Console Commands (Available in Settings > Developer Console):
-
-**NOTE: The "helios" prefix is optional. Use \`gw users list\` or \`users list\` directly.**
-
-### Helios Users (\`users\`) - All organization users
-- \`users list\` - List ALL users in Helios (the central source of truth)
-- \`users debug\` - Show raw API response for debugging
-
-### Google Workspace Users (\`gw users\`) - Users synced from Google
-- \`gw users list\` - List users synced from Google Workspace
-- \`gw users get <email>\` - Get detailed user information
-- \`gw users create <email> --firstName=X --lastName=Y --password=Z\` - Create new user
-- \`gw users update <email> --firstName=X --lastName=Y\` - Update user properties
-- \`gw users suspend <email>\` - Suspend user account
-- \`gw users restore <email>\` - Restore suspended user
-- \`gw users delete <email>\` - Permanently delete user
-- \`gw users move <email> --ou=/Staff/Sales\` - Move user to different OU
-- \`gw users groups <email>\` - List all groups user belongs to
-
-### Google Workspace Groups (\`gw groups\`)
-- \`gw groups list\` - List all groups
-- \`gw groups get <group-email>\` - Get group details
-- \`gw groups create <email> --name="Name" --description="Desc"\` - Create new group
-- \`gw groups update <group-email> --name="New Name"\` - Update group
-- \`gw groups delete <group-email>\` - Delete group
-- \`gw groups members <group-email>\` - List group members
-- \`gw groups add-member <group> <user> --role=MEMBER\` - Add user to group
-- \`gw groups remove-member <group> <user>\` - Remove user from group
-
-### Organizational Units (\`gw orgunits\`)
-- \`gw orgunits list\` - List all OUs with user counts
-- \`gw orgunits get </Staff/Sales>\` - Get OU details
-- \`gw orgunits create <parent> --name="Name"\` - Create new OU
-- \`gw orgunits update </Staff/Sales> --name="New Name"\` - Update OU
-- \`gw orgunits delete </Staff/Sales>\` - Delete OU
-
-### Email Delegation (\`gw delegates\`)
-- \`gw delegates list <user-email>\` - List all delegates for user
-- \`gw delegates add <user> <delegate>\` - Grant email delegation access
-- \`gw delegates remove <user> <delegate>\` - Revoke delegation access
-
-### Sync Operations (\`gw sync\`)
-- \`gw sync users\` - Manual sync users from Google
-- \`gw sync groups\` - Manual sync groups
-- \`gw sync orgunits\` - Manual sync OUs
-- \`gw sync all\` - Sync everything at once
-
-### Direct API Access (\`api\`)
-- \`api GET <path>\` - Make GET requests
-- \`api POST <path> '{json}'\` - Make POST requests
-- \`api PATCH <path> '{json}'\` - Make PATCH requests
-- \`api DELETE <path>\` - Make DELETE requests
-
-### Console Help
-- \`help\` - Show all available commands
-- \`examples\` - Show practical usage examples
-- \`clear\` - Clear the console
+${COMMANDS_PLACEHOLDER}
 
 ## Your limitations (READ-ONLY AI):
 - You CANNOT execute commands - you can only TELL users what commands to run
@@ -1004,19 +982,14 @@ function getSystemPrompt(pageContext?: string): string {
 3. Explain what the command will do
 4. If there's no command for their request, direct them to the appropriate UI page
 
-Be concise, helpful, and professional. Use markdown formatting for clarity.${contextInfo}`;
+Be concise, helpful, and professional. Use markdown formatting for clarity.`;
 }
 
 /**
  * Generate role-based system prompt
  * The AI's capabilities are determined by its configured role
  */
-function getRoleBasedSystemPrompt(role: AIRole, pageContext?: string): string {
-  let contextInfo = '';
-  if (pageContext) {
-    contextInfo = `\n\nThe user is currently on the ${pageContext} page.`;
-  }
-
+function getRoleBasedSystemPrompt(role: AIRole): string {
   // Role-specific capabilities and limitations
   const roleConfig = {
     viewer: {
@@ -1109,10 +1082,14 @@ ${config.capabilities.map(c => `- ${c}`).join('\n')}
 ## YOUR LIMITATIONS
 ${config.limitations.map(l => `- ${l}`).join('\n')}
 
-## COMMAND FORMAT
-Commands do NOT require a "helios" prefix. Use: \`gw users list\` not \`helios gw users list\`
+${COMMANDS_PLACEHOLDER}
 
-Be concise, helpful, and professional. Use markdown formatting.${contextInfo}`;
+Be concise, helpful, and professional. Use markdown formatting.`;
+}
+
+/** The built-in prompt, with the command list left as a placeholder. */
+export function defaultPromptTemplate(mcpEnabled: boolean, role: AIRole): string {
+  return mcpEnabled ? getRoleBasedSystemPrompt(role) : getSystemPrompt();
 }
 
 export default router;
