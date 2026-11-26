@@ -46,7 +46,9 @@ jest.unstable_mockModule('../services/s3.service.js', () => ({
 }));
 
 // Import service after mocking
-const { MediaAssetStorageService } = await import('../services/media-asset-storage.service.js');
+const { MediaAssetStorageService, DEFAULT_ALLOWED_MIME_TYPES } = await import(
+  '../services/media-asset-storage.service.js'
+);
 
 describe('MediaAssetStorageService', () => {
   let service: InstanceType<typeof MediaAssetStorageService>;
@@ -63,7 +65,45 @@ describe('MediaAssetStorageService', () => {
     jest.clearAllMocks();
   });
 
+  describe('updateSettings', () => {
+    it('sends NULL for fields the caller left out, so a partial update keeps the stored values', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.updateSettings(testOrgId, { allowedMimeTypes: ['image/png'] });
+
+      expect(result.success).toBe(true);
+      const [sql, params] = mockQuery.mock.calls[0];
+      expect(params).toEqual([testOrgId, null, null, null, null, null, ['image/png'], null]);
+      expect(sql).toContain("COALESCE($2, 'google_drive')");
+      expect(sql).toContain('COALESCE($2, media_asset_settings.storage_backend)');
+    });
+  });
+
   describe('getSettings', () => {
+    it.each([
+      ['NULL', null],
+      ['an empty list', []],
+    ])('falls back to the default file types when the stored list is %s', async (_label, stored) => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ organization_id: testOrgId, storage_backend: 'minio', allowed_mime_types: stored, is_configured: true }],
+      });
+
+      const result = await service.getSettings(testOrgId);
+
+      expect(result?.allowedMimeTypes).toEqual(DEFAULT_ALLOWED_MIME_TYPES);
+      expect(result?.allowedMimeTypes).toContain('image/png');
+    });
+
+    it('keeps a list the organization chose', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ organization_id: testOrgId, storage_backend: 'minio', allowed_mime_types: ['image/png'], is_configured: true }],
+      });
+
+      const result = await service.getSettings(testOrgId);
+
+      expect(result?.allowedMimeTypes).toEqual(['image/png']);
+    });
+
     it('should return null when no settings exist', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
 

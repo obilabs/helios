@@ -471,6 +471,12 @@ router.post('/onboard', requireAdmin, async (req: Request, res: Response) => {
 
     // If scheduledFor is provided, schedule the action
     if (scheduledFor) {
+      if (Number.isNaN(new Date(scheduledFor).getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: 'scheduledFor is not a valid date. Use an ISO date such as 2026-12-01T09:00:00Z.',
+        });
+      }
       const action = await scheduledActionService.scheduleAction(
         organizationId,
         {
@@ -652,6 +658,12 @@ router.post('/offboard', requireAdmin, async (req: Request, res: Response) => {
 
     // If scheduledFor is provided, schedule the action
     if (scheduledFor) {
+      if (Number.isNaN(new Date(scheduledFor).getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: 'scheduledFor is not a valid date. Use an ISO date such as 2026-12-01T09:00:00Z.',
+        });
+      }
       const action = await scheduledActionService.scheduleAction(
         organizationId,
         {

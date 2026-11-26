@@ -49,30 +49,36 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* The component library's own dark palette. It used to hang off a .dark
+     class that nothing sets, so its surfaces (and the page background) stayed
+     white in the dark themes. It now follows the selected theme, with the
+     same slate values the dark theme defines in styles/themes.css. */
+  .dark,
+  :root[data-theme="helios-dark"],
+  :root[data-theme="dark"] {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 217 33% 17%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 217 33% 17%;
     --popover-foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217 33% 17%;
     --card-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 215 25% 27%;
+    --input: 215 19% 35%;
 
     /* Helios Purple stays the same for brand consistency */
     --primary: 262 90% 66%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 215 25% 27%;
     --secondary-foreground: 210 40% 98%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 215 25% 27%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -144,8 +150,8 @@ button:focus-visible {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--color-gray-200);
 }
 
 .page-actions-right {
@@ -165,7 +171,7 @@ button:focus-visible {
 .page-search-icon {
   position: absolute;
   left: 10px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   pointer-events: none;
   width: 16px;
   height: 16px;
@@ -175,22 +181,22 @@ button:focus-visible {
   height: 32px;
   width: 200px;
   padding: 0 10px 0 32px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
-  background: #fafbfc;
-  color: #374151;
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
   transition: all 0.15s;
 }
 
 .page-search-input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .page-search-input:focus {
   outline: none;
   border-color: var(--theme-primary, #8b5cf6);
-  background: white;
+  background: var(--card-bg);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
@@ -202,10 +208,10 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background: white;
-  color: #374151;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -213,8 +219,8 @@ button:focus-visible {
 }
 
 .btn-action:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
 }
 
 .btn-action:focus {
@@ -276,17 +282,17 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  background: white;
-  color: #6b7280;
+  background: var(--card-bg);
+  color: var(--color-gray-500);
   transition: all 0.15s;
 }
 
 .btn-action-icon:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
-  color: #374151;
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
 }
 
 .btn-action-icon.active {

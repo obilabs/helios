@@ -16,8 +16,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../database/connection.js';
-import { generateRecordHash, getLastHash } from '../lib/audit-hash.js';
 import crypto from 'crypto';
+import { recordAuditWriteFailure } from '../lib/audit-write-failures.js';
 
 // Routes that should NOT be logged (health checks, static assets, etc.)
 const EXCLUDED_ROUTES = [
@@ -154,9 +154,24 @@ export function redactSensitiveData(obj: any, depth = 0): any {
 }
 
 
+/**
+ * The full request path, without the query string.
+ *
+ * `req.path` is relative to where the middleware is mounted, so under
+ * `app.use('/api', ...)` a request for `/api/v1/users` reads as `/v1/users` and
+ * the route lists above, which are written as full paths, never match.
+ */
+export function requestPath(req: Pick<Request, 'originalUrl' | 'path'>): string {
+  return (req.originalUrl || req.path || '').split('?')[0];
+}
+
+const RECORDED = Symbol('auditRecorded');
+
 export async function auditMiddleware(req: Request, res: Response, next: NextFunction) {
+  const path = requestPath(req);
+
   // Skip excluded routes
-  if (EXCLUDED_ROUTES.some(route => req.path.startsWith(route))) {
+  if (EXCLUDED_ROUTES.some(route => path.startsWith(route))) {
     return next();
   }
 
@@ -170,11 +185,17 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
     return next();
   }
 
+  // One record per request, however many prefixes this is mounted under.
+  if ((req as any)[RECORDED]) {
+    return next();
+  }
+  (req as any)[RECORDED] = true;
+
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
 
   // Capture request details
-  const action = getActionName(req.method, req.path);
+  const action = getActionName(req.method, path);
   const actionCategory = getActionCategory(action);
 
   // NOTE: actor and organization are deliberately NOT read here.
@@ -192,12 +213,12 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
   // derivation belongs there. See resolveActor() below.
 
   // Prepare request metadata
-  const isSensitiveRoute = SENSITIVE_BODY_ROUTES.some(route => req.path.includes(route));
+  const isSensitiveRoute = SENSITIVE_BODY_ROUTES.some(route => path.includes(route));
   const requestBody = isSensitiveRoute ? '[SENSITIVE]' : redactSensitiveData(req.body);
 
   // Extract target from URL params or body
   const targetId = req.params.id || req.params.userId || req.body?.id || null;
-  const targetType = req.path.split('/').filter(Boolean)[2] || null; // e.g., /api/v1/users -> users
+  const targetType = path.split('/').filter(Boolean)[2] || null; // e.g., /api/v1/users -> users
 
 
   // Store original end function
@@ -222,7 +243,7 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
     // route's auth middleware, which runs after this middleware is entered.
     const user = (req as any).user;
     const actorId = user?.id || user?.userId || null;
-    const actorType = actorId ? 'user' : (req.path.includes('/setup') ? 'system' : 'anonymous');
+    const actorType = actorId ? 'user' : (path.includes('/setup') ? 'system' : 'anonymous');
     const actorIdentifier = user?.email || req.ip || 'unknown';
     const organizationId =
       user?.organizationId || user?.organization_id || req.body?.organizationId || null;
@@ -234,32 +255,10 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
       : null;
 
     try {
-      const previousHash = await getLastHash();
-
-      const logData = {
-        timestamp: new Date().toISOString(),
-        actor_id: actorId,
-        actor_type: actorType,
-        actor_identifier: actorIdentifier,
-        action,
-        action_category: actionCategory,
-        target_type: targetType,
-        target_id: targetId,
-        organization_id: organizationId,
-        outcome,
-        error_message: errorMessage,
-        ip_address: req.ip || req.socket.remoteAddress,
-        user_agent: req.get('User-Agent'),
-        request_id: requestId,
-        http_method: req.method,
-        endpoint: req.path,
-        request_body: requestBody,
-        response_status: res.statusCode,
-        duration_ms: duration,
-      };
-
-      const recordHash = generateRecordHash({ ...logData, previous_hash: previousHash });
-
+      // previous_hash and record_hash are NOT passed. The BEFORE INSERT
+      // trigger from migration 101 assigns chain_seq, hash_version,
+      // previous_hash and record_hash itself, under an advisory lock, from the
+      // row it is about to write. Anything sent from here was overwritten.
       await db.query(`
         INSERT INTO security_audit_logs (
           actor_id, actor_type, actor_email,
@@ -268,9 +267,8 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
           organization_id,
           outcome, error_message,
           actor_ip, actor_user_agent, request_id,
-          changes_after,
-          previous_hash, record_hash
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::inet, $13, $14, $15, $16, $17)
+          changes_after
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::inet, $13, $14, $15)
       `, [
         actorId,
         actorType,
@@ -288,17 +286,21 @@ export async function auditMiddleware(req: Request, res: Response, next: NextFun
         requestId,
         JSON.stringify({
           http_method: req.method,
-          endpoint: req.path,
+          endpoint: path,
           request_body: requestBody,
           response_status: res.statusCode,
           duration_ms: duration,
         }),
-        previousHash,
-        recordHash,
       ]);
     } catch (err) {
-      // Never let audit logging break the application
-      console.error('[Audit] Failed to log request:', err);
+      // Best-effort: the request has already been answered. The failure is
+      // logged with the action and the actor, and counted for /health.
+      recordAuditWriteFailure({
+        action,
+        actor: actorIdentifier,
+        source: 'audit.middleware',
+        error: err,
+      });
     }
   });
 

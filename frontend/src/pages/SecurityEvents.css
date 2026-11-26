@@ -18,13 +18,13 @@
 .header-title-section h1 {
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 4px 0;
 }
 
 .header-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -46,7 +46,7 @@
   gap: 12px;
   margin-bottom: 24px;
   padding: 16px;
-  background-color: #f9fafb;
+  background-color: var(--color-gray-50);
   border-radius: 8px;
 }
 
@@ -59,16 +59,16 @@
 .filter-group label {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .filter-select {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 13px;
-  color: #111827;
-  background-color: white;
+  color: var(--color-gray-900);
+  background-color: var(--card-bg);
   cursor: pointer;
   min-width: 160px;
 }
@@ -87,18 +87,18 @@
   margin-left: auto;
   align-self: flex-end;
   padding: 8px 16px;
-  background-color: white;
-  border: 1px solid #d1d5db;
+  background-color: var(--card-bg);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .refresh-button:hover:not(:disabled) {
-  background-color: #f9fafb;
+  background-color: var(--color-gray-50);
   border-color: var(--theme-primary);
   color: var(--theme-primary);
 }
@@ -113,7 +113,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background-color: #fef2f2;
+  background-color: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;
@@ -127,13 +127,13 @@
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e5e7eb;
+  border: 3px solid var(--color-gray-200);
   border-top-color: var(--theme-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -150,7 +150,7 @@
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-align: center;
 }
 
@@ -162,13 +162,13 @@
 .empty-state h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 4px 0;
 }
 
 .empty-state p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin: 0;
 }
 
@@ -179,8 +179,8 @@
 }
 
 .event-card {
-  background-color: white;
-  border: 1px solid #e5e7eb;
+  background-color: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   padding: 16px;
   transition: all 0.15s ease;
@@ -195,7 +195,7 @@
 }
 
 .event-card:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -238,7 +238,7 @@
 }
 
 .severity-badge.critical {
-  background-color: #fef2f2;
+  background-color: var(--color-gray-100);
   color: #991b1b;
 }
 
@@ -248,7 +248,7 @@
 }
 
 .severity-badge.info {
-  background-color: #eff6ff;
+  background-color: var(--color-gray-100);
   color: #1e40af;
 }
 
@@ -257,7 +257,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .event-content {
@@ -267,13 +267,13 @@
 .event-title {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   margin: 0 0 6px 0;
 }
 
 .event-description {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--color-gray-600);
   margin: 0 0 8px 0;
   line-height: 1.5;
 }
@@ -283,7 +283,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-bottom: 8px;
 }
 
@@ -305,12 +305,12 @@
 .event-details pre {
   margin-top: 8px;
   padding: 12px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 4px;
   font-size: 11px;
   overflow-x: auto;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .event-footer {
@@ -318,12 +318,12 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 .event-source {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .acknowledged-info {

@@ -1150,7 +1150,7 @@ class RulesEngineService {
         ou.location_id,
         ou.user_type,
         ou.employee_type,
-        ou.user_status,
+        ou.status AS user_status,
         ou.cost_center,
         ou.organizational_unit,
         ou.reporting_manager_id,

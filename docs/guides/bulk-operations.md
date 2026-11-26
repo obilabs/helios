@@ -12,6 +12,10 @@ Bulk Operations allows administrators to:
 - Track operation progress in real-time
 - Save operation templates for reuse
 
+> For anything the five operation types below do not cover (deletes, moves,
+> aliases, mail settings and so on), the Developer Console can run any of its
+> commands once per row of a CSV file. See [console-csv.md](console-csv.md).
+
 ## Getting Started
 
 ### Accessing Bulk Operations

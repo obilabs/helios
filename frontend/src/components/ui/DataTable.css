@@ -22,7 +22,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fafbfc;
+  background: var(--color-gray-50);
 }
 
 .data-table-th {
@@ -30,10 +30,10 @@
   text-align: left;
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   user-select: none;
   position: relative;
   white-space: nowrap;
@@ -46,7 +46,7 @@
 }
 
 .data-table-th.sortable:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .th-content {
@@ -58,7 +58,7 @@
 .sort-indicator {
   display: flex;
   align-items: center;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .sort-indicator svg {
@@ -92,11 +92,11 @@
 
 /* Body */
 .data-table-body {
-  background: white;
+  background: var(--card-bg);
 }
 
 .data-table-row {
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-gray-100);
   transition: background 0.1s ease;
 }
 
@@ -105,21 +105,21 @@
 }
 
 .data-table-row.clickable:hover {
-  background: #f9fafb;
+  background: var(--color-gray-50);
 }
 
 .data-table-row.selected {
-  background: #f5f3ff;
+  background: var(--theme-primary-lighter);
 }
 
 .data-table-row.selected:hover {
-  background: #ede9fe;
+  background: var(--theme-primary-light);
 }
 
 .data-table-td {
   padding: 8px 12px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-gray-700);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -141,14 +141,14 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   gap: 12px;
 }
 
 .loading-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-gray-200);
   border-top-color: var(--theme-primary, #8b5cf6);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -166,7 +166,7 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-size: 14px;
 }
 
@@ -176,8 +176,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-top: 1px solid #e5e7eb;
-  background: white;
+  border-top: 1px solid var(--color-gray-200);
+  background: var(--card-bg);
   font-size: 14px;
 }
 
@@ -185,15 +185,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .pagination-info select {
   padding: 4px 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 4px;
   font-size: 14px;
-  background: white;
+  background: var(--card-bg);
   cursor: pointer;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .pagination-status {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .pagination-controls {
@@ -216,10 +216,10 @@
   min-width: 32px;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 4px;
-  background: white;
-  color: #6b7280;
+  background: var(--card-bg);
+  color: var(--color-gray-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -227,9 +227,9 @@
 }
 
 .pagination-controls button:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  color: #374151;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+  color: var(--color-gray-700);
 }
 
 .pagination-controls button:disabled {
@@ -259,12 +259,12 @@
 }
 
 .status-badge.staged {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
 }
 
 .status-badge.deleted {
-  background: #fee2e2;
+  background: var(--color-gray-200);
   color: #991b1b;
 }
 
@@ -283,7 +283,7 @@
 }
 
 .status-dot.staged {
-  background: #6b7280;
+  background: var(--color-gray-500);
 }
 
 .status-dot.deleted {
@@ -305,8 +305,8 @@
 }
 
 .role-badge.user {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
 }
 
 /* Platform icons */
@@ -324,12 +324,12 @@
 
 .name-primary {
   font-weight: 500;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .name-secondary {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 /* Responsive adjustments */

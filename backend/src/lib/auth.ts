@@ -17,11 +17,20 @@
  */
 
 import { betterAuth } from 'better-auth';
+import { createAuthMiddleware, isAPIError } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { passkey } from '@better-auth/passkey';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { getAuthSecret } from '../config/secrets.js';
+import {
+  publicAddress,
+  appUrl,
+  useSecureCookies,
+  passkeyRpId,
+  passkeyOrigin,
+  CLIENT_IP_HEADER,
+} from '../config/public-address.js';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -44,7 +53,7 @@ export const auth = betterAuth({
   secret: getAuthSecret(),
 
   // Base URL for callbacks (backend URL)
-  baseURL: process.env['APP_URL'] || 'http://localhost:3001',
+  baseURL: appUrl() || 'http://localhost:3001',
 
   // Email + Password authentication with custom bcrypt hashing
   emailAndPassword: {
@@ -64,6 +73,33 @@ export const auth = betterAuth({
         return bcrypt.compare(data.password, data.hash);
       },
     },
+  },
+
+  // Record every email sign-in attempt in the security audit log. These
+  // endpoints are served by the library, so no Express route or middleware
+  // sees them. Best-effort: a failure to record never changes the answer.
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/sign-in/email') return;
+      const returned = (ctx.context as { returned?: unknown }).returned as any;
+      const failed = isAPIError(returned);
+      // A first step that still needs a second factor is neither a completed
+      // sign-in nor a refusal; the two-factor step records its own outcome.
+      if (!failed && returned?.twoFactorRedirect) return;
+      try {
+        const { recordSignInAttempt } = await import('./sign-in-audit.js');
+        const headers = ctx.request?.headers ?? ctx.headers;
+        await recordSignInAttempt({
+          email: (ctx.body as { email?: string } | undefined)?.email,
+          failed,
+          errorCode: failed ? returned?.body?.code : undefined,
+          ip: headers?.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+          userAgent: headers?.get('user-agent') || undefined,
+        });
+      } catch (error: any) {
+        console.error('[auth] could not record the sign-in attempt:', error?.message);
+      }
+    }),
   },
 
   // Session configuration
@@ -97,7 +133,8 @@ export const auth = betterAuth({
       // Map snake_case columns to camelCase expected by better-auth
       email: 'email',
       name: 'first_name', // better-auth uses 'name', we use first_name
-      image: 'photo_url',
+      // The profile picture column is avatar_url; photo_url never existed.
+      image: 'avatar_url',
       emailVerified: 'email_verified',
       createdAt: 'created_at',
       updatedAt: 'updated_at',
@@ -158,6 +195,7 @@ export const auth = betterAuth({
       accessToken: 'access_token',
       refreshToken: 'refresh_token',
       accessTokenExpiresAt: 'access_token_expires_at',
+      refreshTokenExpiresAt: 'refresh_token_expires_at',
       idToken: 'id_token',
       password: 'password', // Added for credential auth
       createdAt: 'created_at',
@@ -177,8 +215,14 @@ export const auth = betterAuth({
 
   // Advanced options
   advanced: {
-    // Use secure cookies in production
-    useSecureCookies: process.env['NODE_ENV'] === 'production',
+    // Secure cookies in production, unless the install is deliberately
+    // served over plain http from another machine (config/public-address.ts).
+    useSecureCookies: useSecureCookies(),
+    // Per-visitor sign-in limits: the address comes from the header index.ts
+    // sets from Express (see CLIENT_IP_HEADER), not from a client header.
+    ipAddress: {
+      ipAddressHeaders: [CLIENT_IP_HEADER],
+    },
     // Cookie prefix
     cookiePrefix: 'helios',
     // Allow cross-origin requests with credentials
@@ -191,6 +235,19 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: 'Helios',
+      // Map the plugin's names onto the snake_case tables (migrations 067, 103).
+      schema: {
+        user: { fields: { twoFactorEnabled: 'two_factor_enabled' } },
+        twoFactor: {
+          modelName: 'two_factor',
+          fields: {
+            backupCodes: 'backup_codes',
+            userId: 'user_id',
+            failedVerificationCount: 'failed_verification_count',
+            lockedUntil: 'locked_until',
+          },
+        },
+      },
       totpOptions: {
         period: 30,
         digits: 6,
@@ -198,8 +255,21 @@ export const auth = betterAuth({
     }),
     passkey({
       rpName: 'Helios',
-      rpID: process.env['PASSKEY_RP_ID'] || 'localhost',
-      origin: process.env['PASSKEY_ORIGIN'] || process.env['FRONTEND_URL'] || 'http://localhost:3000',
+      schema: {
+        passkey: {
+          modelName: 'passkeys',
+          fields: {
+            publicKey: 'public_key',
+            userId: 'user_id',
+            credentialID: 'credential_id',
+            deviceType: 'device_type',
+            backedUp: 'backed_up',
+            createdAt: 'created_at',
+          },
+        },
+      },
+      rpID: passkeyRpId(),
+      origin: passkeyOrigin(),
     }),
   ],
 
@@ -222,6 +292,10 @@ export const auth = betterAuth({
         origins.add(frontendUrl.replace(':80', ''));
       }
     }
+
+    // PUBLIC_URL is the address people type; it is always trusted.
+    const publicUrl = publicAddress();
+    if (publicUrl) origins.add(publicUrl);
 
     // Add APP_URL if set (backend URL)
     const appUrl = process.env['APP_URL'];

@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm ci
       - name: Typecheck
         run: node node_modules/typescript/bin/tsc --noEmit
@@ -185,6 +185,32 @@ jobs:
             IF NOT EXISTS (SELECT 1 FROM pg_trigger
                             WHERE tgname = 'trg_training_completions_immutable') THEN
               RAISE EXCEPTION 'training_completions is missing its immutability trigger';
+            END IF;
+
+            -- security_audit_logs is append-only, enforced (migration 101).
+            -- The guard triggers and the verifier are the evidence guarantee;
+            -- the SQL test file run after this job proves they bite, this just
+            -- makes a dropped object fail the PR rather than the test.
+            SELECT string_agg(t, ', ') INTO missing
+              FROM unnest(ARRAY[
+                'trg_security_audit_chain','trg_security_audit_no_update',
+                'trg_security_audit_no_delete','trg_security_audit_no_truncate'
+              ]) AS t
+             WHERE NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = t);
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'security_audit_logs is missing guard trigger(s): %', missing;
+            END IF;
+
+            -- 066's DO INSTEAD NOTHING rules must stay gone: a rule rewrites
+            -- the statement away, so a BEFORE UPDATE trigger behind one never
+            -- fires and the refusal goes back to being silent.
+            PERFORM 1 FROM pg_rules WHERE tablename = 'security_audit_logs';
+            IF FOUND THEN
+              RAISE EXCEPTION 'security_audit_logs still carries a DO INSTEAD rule; the immutability triggers would not fire';
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'verify_security_audit_chain') THEN
+              RAISE EXCEPTION 'post-migration schema is missing verify_security_audit_chain()';
             END IF;
 
             -- The Login Locations widget reads and the Google sync writes this table.
@@ -365,6 +391,34 @@ jobs:
           END $$;
           SQL
 
+      # The checks above assert that objects EXIST. The audit trail's
+      # append-only guarantee is different in kind: it is a set of triggers, a
+      # table ACL and a hash chain, and the only way to know they hold is to
+      # perform the forbidden operations and see what the database does. No
+      # typecheck and no Jest test can reach any of that — which is why the
+      # guarantee went untested from migration 066 until now. This runs the
+      # same file scripts/test-db.sh runs locally, on the seed + every
+      # migration already built above.
+      - name: Audit-log immutability + hash chain (migrations 101, 105)
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -f backend/database/tests/audit-immutability.integration.test.sql
+
+      # The contract above only knows the objects someone listed. This reads the
+      # SQL in backend/src and compares the tables it names, and the columns it
+      # writes, with the seed + migrations schema built above. Known gaps are in
+      # schema-gap-baseline.txt; a new one fails here, and so does a baseline
+      # entry that is no longer a gap, so the list can only shrink.
+      - name: Backend SQL matches the fresh-install schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d seedcheck -v ON_ERROR_STOP=1 -At \
+            -c "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1" \
+            > "$RUNNER_TEMP/schema-columns.txt"
+          node backend/database/tests/check-sql-against-schema.mjs "$RUNNER_TEMP/schema-columns.txt"
+
 
   frontend:
     runs-on: ubuntu-latest
@@ -375,7 +429,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm ci
       - name: Build
         run: npm run build
@@ -383,3 +437,9 @@ jobs:
       # flag, one nav entry per page, no "coming soon" on release surfaces).
       - name: Test
         run: npm test
+
+      # A theme only reaches styles that read its tokens. This fails when a
+      # stylesheet gains a hardcoded colour, and when one drops below its
+      # recorded count without the baseline being lowered.
+      - name: Stylesheets use theme tokens
+        run: node scripts/check-theme-colours.mjs

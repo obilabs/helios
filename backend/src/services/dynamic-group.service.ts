@@ -508,12 +508,12 @@ class DynamicGroupService {
                   SELECT ou.id, ou.reporting_manager_id, 1 as depth
                   FROM organization_users ou
                   JOIN manager m ON ou.reporting_manager_id = m.id
-                  WHERE ou.organization_id = $1 AND ou.user_status = 'active'
+                  WHERE ou.organization_id = $1 AND ou.status = 'active'
                   UNION ALL
                   SELECT ou.id, ou.reporting_manager_id, r.depth + 1
                   FROM organization_users ou
                   JOIN reports r ON ou.reporting_manager_id = r.id
-                  WHERE ou.organization_id = $1 AND ou.user_status = 'active'
+                  WHERE ou.organization_id = $1 AND ou.status = 'active'
                     AND r.depth < 20  -- Prevent infinite loops with max depth
                 )
               SELECT id FROM reports
@@ -576,7 +576,7 @@ class DynamicGroupService {
       SELECT id
       FROM organization_users
       WHERE organization_id = $1
-        AND user_status = 'active'
+        AND status = 'active'
         AND deleted_at IS NULL
         AND ${condition}
     `;
@@ -738,7 +738,7 @@ class DynamicGroupService {
         FROM organization_users ou
         WHERE ou.organization_id = $1
           AND ou.reporting_manager_id = $2
-          AND ou.user_status = 'active'
+          AND ou.status = 'active'
           AND ou.deleted_at IS NULL
 
         UNION ALL
@@ -754,7 +754,7 @@ class DynamicGroupService {
         FROM organization_users ou
         JOIN reports r ON ou.reporting_manager_id = r.id
         WHERE ou.organization_id = $1
-          AND ou.user_status = 'active'
+          AND ou.status = 'active'
           AND ou.deleted_at IS NULL
           AND r.depth < $3
       )

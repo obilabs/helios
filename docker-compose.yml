@@ -76,8 +76,27 @@ services:
     restart: unless-stopped
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO withdrew its public images: as of 2026-10 BOTH quay.io/minio/minio
+    # and docker.io/minio/minio answer every tag — including the immutable
+    # RELEASE.* pins — with HTTP 401 "access to the requested resource is not
+    # authorized" for an anonymous pull, so the previous quay.io pin breaks
+    # every fresh install. (Not a Docker Hub rate limit; that says
+    # `toomanyrequests`. A control pull of an unrelated image from the same two
+    # registries succeeds.)
+    #
+    # bitnamilegacy/minio repackages the same upstream MinIO server (2025.7.23)
+    # and is still anonymously pullable, so the storage layer is unchanged.
+    # Archived upstream, hence the digest pin: the tag cannot move and the pull
+    # fails loudly if the digest ever disappears.
+    #
+    # The image defaults to UID 1001 behind its own Bitnami entrypoint; we run
+    # the minio binary directly as root so the minio_data volume keeps the
+    # ownership and layout existing installs already have. `mc` is on the
+    # image's PATH, so the healthcheck below is unchanged.
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
     container_name: helios_minio
+    user: "0:0"
+    entrypoint: ["minio"]
     command: server /data --console-address ":9001"
     # NO ports exposed - internal only (backend proxies all requests)
     environment:
@@ -148,9 +167,27 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
       EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:?EMAIL_ENCRYPTION_KEY is required}
 
-      # URLs - use PUBLIC_URL for asset URLs, empty = relative URLs
+      # The address people type to reach Helios, e.g. https://helios.example.com
+      # or http://192.168.1.20. Everything below follows it unless set.
+      # See docs/guides/domain-and-https.md.
       PUBLIC_URL: ${PUBLIC_URL:-}
-      FRONTEND_URL: ${FRONTEND_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-${PUBLIC_URL:-}}
+      APP_URL: ${APP_URL:-${PUBLIC_URL:-}}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
+      PASSKEY_RP_ID: ${PASSKEY_RP_ID:-}
+      PASSKEY_ORIGIN: ${PASSKEY_ORIGIN:-}
+      # Number of proxies in front of the backend. 1 = the proxy shipped here.
+      # Add one for each proxy or tunnel you put in front of it.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+
+      # Outgoing mail (optional; can also be set in Settings)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
 
       # MinIO S3 (internal network)
       S3_ENDPOINT: http://minio:9000

@@ -230,28 +230,33 @@ const NewUserOnboarding: React.FC<NewUserOnboardingProps> = ({
         scheduledFor = new Date(customizations.customScheduleDate).toISOString();
       }
 
+      // Field names are the ones POST /lifecycle/onboard reads. Empty selects
+      // are sent as undefined so an unset department or manager is not passed
+      // to the server as an empty id.
       const payload = {
         // User details
-        targetEmail: userData.email,
-        targetFirstName: userData.firstName,
-        targetLastName: userData.lastName,
-        targetPersonalEmail: userData.personalEmail || undefined,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        personalEmail: userData.personalEmail || undefined,
+        jobTitle: userData.jobTitle || undefined,
+        departmentId: userData.departmentId || undefined,
+        managerId: userData.managerId || undefined,
 
         // Template
-        onboardingTemplateId: selectedTemplateId,
+        templateId: selectedTemplateId || undefined,
 
         // Customizations
         configOverrides: {
-          jobTitle: userData.jobTitle,
-          departmentId: userData.departmentId,
-          managerId: userData.managerId,
+          jobTitle: userData.jobTitle || undefined,
+          departmentId: userData.departmentId || undefined,
+          managerId: userData.managerId || undefined,
           groupIds: customizations.groupIds,
           sendWelcomeEmail: customizations.sendWelcomeEmail,
         },
 
         // Scheduling
         scheduledFor: scheduledFor || undefined,
-        actionType: 'onboard',
       };
 
       const response = await authFetch('/api/v1/lifecycle/onboard', {
@@ -262,9 +267,27 @@ const NewUserOnboarding: React.FC<NewUserOnboardingProps> = ({
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || 'Failed to create user');
+      }
+
+      // The server answers 207 with success: false when some steps failed.
+      // That is still a 2xx, so it must be checked here or a partly failed
+      // onboarding is shown as a success.
+      if (data.success === false) {
+        const reasons = Array.isArray(data.errors)
+          ? data.errors
+              .map((e: any) => (typeof e === 'string' ? e : e?.error || e?.message || e?.step))
+              .filter(Boolean)
+              .join('; ')
+          : '';
+        throw new Error(
+          reasons
+            ? `Onboarding did not complete: ${reasons}`
+            : 'Onboarding did not complete. Check the audit log for the steps that failed.'
+        );
       }
 
       setSuccess(true);

@@ -46,10 +46,41 @@ export const MODULE_ENTITY_MAP: { [moduleKey: string]: string[] } = {
 };
 
 /**
+ * Resolve which entities an organization has, and which modules provide each.
+ *
+ * Computed from MODULE_ENTITY_MAP and the organization's enabled modules. The
+ * database function get_available_entities() read the same mapping from the
+ * module_entity_providers table, which nothing populates on a fresh install,
+ * so every module-provided entity (Groups among them) was reported as
+ * unavailable and its navigation entry stayed hidden.
+ */
+async function resolveEntityProviders(
+  organizationId: string
+): Promise<Map<string, string[]>> {
+  const result = await db.query(
+    `SELECT m.slug
+       FROM organization_modules om
+       JOIN modules m ON m.id = om.module_id
+      WHERE om.organization_id = $1 AND om.is_enabled = true`,
+    [organizationId]
+  );
+
+  const moduleKeys = ['core', ...result.rows.map((row: any) => row.slug as string)];
+  const providers = new Map<string, string[]>();
+  for (const moduleKey of moduleKeys) {
+    for (const entity of MODULE_ENTITY_MAP[moduleKey] || []) {
+      const list = providers.get(entity) || [];
+      if (!list.includes(moduleKey)) list.push(moduleKey);
+      providers.set(entity, list);
+    }
+  }
+  return providers;
+}
+
+/**
  * Get all available entities for an organization
  *
- * Uses database function get_available_entities() which queries
- * enabled modules and returns available canonical entities.
+ * Derived from the organization's enabled modules and MODULE_ENTITY_MAP.
  *
  * @param organizationId - Organization UUID
  * @returns Array of available canonical entity names
@@ -58,12 +89,7 @@ export async function getAvailableEntities(
   organizationId: string
 ): Promise<string[]> {
   try {
-    const result = await db.query(
-      'SELECT canonical_name FROM get_available_entities($1)',
-      [organizationId]
-    );
-
-    const entities = result.rows.map((row: any) => row.canonical_name);
+    const entities = [...(await resolveEntityProviders(organizationId)).keys()];
 
     logger.info('Fetched available entities', {
       organizationId,
@@ -93,10 +119,7 @@ export async function getAvailableEntitiesDetailed(
   organizationId: string
 ): Promise<AvailableEntitiesResponse> {
   try {
-    const result = await db.query(
-      'SELECT canonical_name, provided_by FROM get_available_entities($1)',
-      [organizationId]
-    );
+    const providers = await resolveEntityProviders(organizationId);
 
     const availability: AvailableEntitiesResponse = {};
 
@@ -111,16 +134,16 @@ export async function getAvailableEntitiesDetailed(
 
     // Mark which are available
     allEntities.forEach((entity) => {
-      const found = result.rows.find((r: any) => r.canonical_name === entity);
+      const providedBy = providers.get(entity);
       availability[entity] = {
-        available: !!found,
-        providedBy: found?.provided_by || [],
+        available: !!providedBy,
+        providedBy: providedBy || [],
       };
     });
 
     logger.info('Fetched detailed entity availability', {
       organizationId,
-      availableCount: result.rows.length,
+      availableCount: providers.size,
     });
 
     return availability;
@@ -145,13 +168,7 @@ export async function isEntityAvailable(
   canonicalName: string
 ): Promise<boolean> {
   try {
-    const result = await db.query(
-      `SELECT 1 FROM get_available_entities($1)
-       WHERE canonical_name = $2`,
-      [organizationId, canonicalName]
-    );
-
-    return result.rows.length > 0;
+    return (await resolveEntityProviders(organizationId)).has(canonicalName);
   } catch (error: any) {
     logger.error('Failed to check entity availability', {
       organizationId,

@@ -20,6 +20,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { logger } from './utils/logger.js';
+import { getAuditWriteFailures } from './lib/audit-write-failures.js';
 import { setupTokenStore } from './services/setup-token.service.js';
 import { db } from './database/connection.js';
 import { dbInitializer } from './database/init.js';
@@ -60,6 +61,7 @@ import bulkOperationsRoutes from './routes/bulk-operations.routes.js';
 import { authenticateApiKey } from './middleware/api-key-auth.js';
 import { SignatureSchedulerService } from './services/signature-scheduler.service.js';
 import { initializeBulkOperationsGateway } from './websocket/bulk-operations.gateway.js';
+import { bulkOperationWorker } from './workers/bulk-operation.worker.js';
 import { startScheduledActionProcessor, stopScheduledActionProcessor } from './jobs/scheduled-action-processor.js';
 import { startSignatureSyncJob, stopSignatureSyncJob } from './jobs/signature-sync.job.js';
 import { startCampaignSchedulerJob, stopCampaignSchedulerJob } from './jobs/campaign-scheduler.job.js';
@@ -96,8 +98,14 @@ import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
 import { logSafe } from './utils/log-safe.js';
+import { trustProxySetting, servedOverPlainHttp, CLIENT_IP_HEADER } from './config/public-address.js';
 
 const app = express();
+// The visitor's address comes from the proxy in front of the backend. Without
+// this, the audit log, the rate limit and API-key address rules all see the
+// proxy's own address. TRUST_PROXY is the number of proxies in front (default 1,
+// the bundled one).
+app.set('trust proxy', trustProxySetting());
 const httpServer = createServer(app);
 const PORT = process.env['PORT'] || 3001;
 
@@ -124,11 +132,11 @@ const rateLimitEnabled = process.env['RATE_LIMIT_ENABLED'] !== 'false';
 if (rateLimitEnabled) {
   const limiter = rateLimit({
     windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
-    // Behind the bundled nginx every browser shares ONE source IP (the proxy
-    // container), so this budget is effectively org-wide. A single admin page
-    // load issues 10-15 calls; 100 per 15 minutes locked an admin out mid-task
-    // on 2026-09-07 and the UI then showed the setup wizard. Keep the limiter
-    // (it still blunts brute force) but size it for an admin SPA.
+    // Counted per visitor address (see 'trust proxy' above). If TRUST_PROXY is
+    // lower than the real number of proxies, every browser shares one address
+    // and this budget becomes org-wide. A single admin page load issues 10-15
+    // calls; 100 per 15 minutes locked an admin out mid-task on 2026-09-07 and
+    // the UI then showed the setup wizard. Keep it sized for an admin SPA.
     max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '2000'),
     message: {
       error: 'Too many requests from this IP, please try again later.',
@@ -241,6 +249,9 @@ app.get('/health', async (req, res) => {
       status: 'healthy',
       database: dbHealth ? 'connected' : 'disconnected',
       platformSetup: platformSetupComplete ? 'complete' : 'pending',
+      // Audit writes that failed since this process started. Anything above
+      // zero means the audit log is missing entries; the error log names them.
+      auditWriteFailures: getAuditWriteFailures().sinceStart,
       timestamp: new Date().toISOString(),
       version: process.env['npm_package_version'] || '1.0.0',
       requestId: req.requestId,
@@ -594,6 +605,15 @@ app.get('/api/v1/auth/two-factor/status', async (req, res) => {
 //
 // NOTE: Only handle better-auth specific paths, let JWT routes pass through
 const betterAuthPaths = ['/sign-in', '/sign-out', '/sign-up', '/get-session', '/session', '/error', '/callback', '/two-factor', '/passkey'];
+
+// The sign-in library limits attempts per visitor address, and reads that
+// address from a header. Give it the one Express worked out from TRUST_PROXY,
+// replacing anything the client sent under this name. Without it the library
+// has no address and counts every visitor's sign-ins in one shared bucket.
+function runAuthHandler(req: express.Request, res: express.Response) {
+  req.headers[CLIENT_IP_HEADER] = req.ip || req.socket.remoteAddress || '';
+  return authHandler(req, res);
+}
 app.all('/api/v1/auth/*', (req, res, next) => {
   // Check if this is a better-auth path
   const path = req.path.replace('/api/v1/auth', '');
@@ -602,13 +622,13 @@ app.all('/api/v1/auth/*', (req, res, next) => {
   if (isBetterAuthPath) {
     // Rewrite URL from /api/v1/auth/* to /api/auth/* for better-auth
     req.url = req.url.replace('/api/v1/auth/', '/api/auth/');
-    authHandler(req, res);
+    runAuthHandler(req, res);
   } else {
     // Let it pass through to JWT routes
     next();
   }
 });
-app.all('/api/auth/*', (req, res) => authHandler(req, res));
+app.all('/api/auth/*', (req, res) => runAuthHandler(req, res));
 
 // =============================================================================
 // Audit Middleware - Automatic API Request Logging
@@ -620,7 +640,7 @@ app.all('/api/auth/*', (req, res) => authHandler(req, res));
 // - Triggers: WHAT data changed in the database (with before/after values)
 const auditEnabled = process.env['AUDIT_LOGGING_ENABLED'] !== 'false';
 if (auditEnabled) {
-  app.use('/api/v1', auditMiddleware);
+  // Mounted once: '/api' also covers '/api/v1'.
   app.use('/api', auditMiddleware);
   logger.info('🔍 Audit middleware enabled');
 }
@@ -885,6 +905,11 @@ async function startServer(): Promise<void> {
     initializeBulkOperationsGateway(httpServer);
     logger.info('🔌 WebSocket gateway initialized for bulk operations');
 
+    // Run queued bulk operations in this process. The worker was written to be
+    // started as its own process, but nothing ever started one, so every bulk
+    // operation was queued and stayed pending.
+    bulkOperationWorker.start();
+
     // Start scheduled action processor for user lifecycle
     const scheduledActionsEnabled = process.env['SCHEDULED_ACTIONS_ENABLED'] !== 'false';
     if (scheduledActionsEnabled) {
@@ -966,6 +991,13 @@ async function startServer(): Promise<void> {
       logger.info(`⚙️ Platform setup: http://localhost:${PORT}/platform`);
       logger.info(`🔌 WebSocket: ws://localhost:${PORT}/socket.io/`);
       logger.info(`🌍 Environment: ${process.env['NODE_ENV'] || 'development'}`);
+      if (servedOverPlainHttp()) {
+        logger.warn(
+          'PUBLIC_URL is plain http on another machine: sign-in cookies are sent without the Secure flag ' +
+          'and passwords cross the network unencrypted. Use this on a trusted network only. ' +
+          'See docs/guides/domain-and-https.md.'
+        );
+      }
     });
 
   } catch (error) {

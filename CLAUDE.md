@@ -24,6 +24,40 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 **Status:** 85% Complete - Core functionality working, needs Google Workspace integration completion
 **Architecture:** Single-tenant (one organization per installation)
 
+## Commits and identity
+
+These are org-wide standing rules (canonical: the private `obilabs/north-star` repo,
+`PRINCIPLES.md` → Engineering). They are repeated here because this is where an agent
+working in Helios looks.
+
+- Commit as `Michael Agu <36439190+openmoto@users.noreply.github.com>` (or your own
+  GitHub noreply address). Never a personal webmail address: GitHub push protection
+  and the shared hygiene workflow reject it.
+- **No AI co-author trailers** (`Co-authored-by: Claude …`) and no "Generated with
+  Claude Code" lines in commits or PR bodies. AI is a tool, not a per-commit author;
+  AI-assisted development is disclosed once, in the README. `.claude/settings.json`
+  in this repo turns that attribution off — keep it committed.
+- Work on a branch and land it through a pull request. Never commit to, force-push or
+  `git branch -f` `main`.
+- This is a public repository: commit messages, PR titles and PR bodies use routine
+  engineering wording. Never narrate a security finding in public; the reasoning
+  lives in the private north-star repo.
+
+## Upgrades and releases
+
+Read `docs/UPGRADING.md` ("Rules for changes to Helios") before changing the
+schema, a dependency, or anything another ObiLabs product calls. In short:
+
+- Schema changes are new, additive, re-runnable migration files. No renames or
+  drops inside a major. Never edit a merged migration.
+- A dependency major that touches sign-in, sessions or stored data is a
+  migration: test it against a database from the previous build with an existing
+  account, not only against a fresh one.
+- Anything an admin would notice after upgrading gets a line in the upgrade
+  notes in `docs/UPGRADING.md`, in the same PR.
+- Merging to `main` publishes `edge`, not a release. A version is tagged only
+  through the gate in `docs/RELEASING.md`.
+
 ## 🎯 CRITICAL: This is NOT Multi-Tenant
 
 **IMPORTANT:** This is the CLIENT PORTAL for single organizations.
@@ -363,14 +397,14 @@ Helios is the basis for Aegis. When creating derived projects, follow these rule
 
 ### Pin Versions Properly
 - **Docker builds without lockfiles** resolve `^` ranges to latest — which may include breaking majors
-- `better-auth`: Now `~1.6.x` (upgraded 2026-08-25 to clear a **critical** + a high account-takeover advisory; fix ≥1.6.22, resolved to 1.6.30). The 1.5+ removal of the `apiKey` plugin does **NOT** affect Helios — it only uses `twoFactor`/passkey, never better-auth's `apiKey` (Helios has its own typed apiKey infra in `utils/apiKey.ts`). Keep `@better-auth/passkey` version-matched to `better-auth`. Auth verified (sign-in + session) after the bump.
+- `better-auth`: Now `~1.7.x` (moved from `~1.6.x` on 2026-11-25; upstream fixes now ship only on the 1.7 line). Three things 1.7 enforces that 1.6 did not, each handled in migration 103 and `backend/src/lib/auth.ts`: (1) it validates its tables at start-up and refuses to run on a mismatch; (2) a password account must have `account_id` equal to the user's id, not the email, or sign-in returns "user not found"; (3) it needs Node 22. Keep `@better-auth/passkey` version-matched to `better-auth`. Helios still uses only `twoFactor` and passkey, never better-auth's `apiKey`. Before any future bump, run the setup-and-login browser tests against a database from the previous release, not only a fresh one.
 - `zod`: Use `^4.1.0` (Zod 4). better-auth 1.4.x requires Zod 4 features (`z.ipv4()`, `z.record()` with 2 args)
 - When starting a new project from Helios patterns, copy the **exact** dependency versions, not older baselines
 
 ### Helios Baseline Versions (Current)
 ```json
 {
-  "better-auth": "~1.6.30",
+  "better-auth": "~1.7.28",
   "zod": "^4.1.13"
 }
 ```

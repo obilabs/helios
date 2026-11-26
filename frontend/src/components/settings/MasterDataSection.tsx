@@ -3,6 +3,7 @@ import { Building, MapPin, DollarSign, AlertTriangle, ChevronRight, ChevronDown,
 import { authFetch } from '../../config/api';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import './MasterDataSection.css';
+import { useToast } from '../../contexts/ToastContext';
 
 interface MasterDataSectionProps {
   organizationId: string;
@@ -107,6 +108,7 @@ interface CostCenterForm {
 }
 
 export function MasterDataSection({ organizationId }: MasterDataSectionProps) {
+  const { showError } = useToast();
   const [activeTab, setActiveTab] = useState<MasterDataTab>('departments');
   const [departments, setDepartments] = useState<Department[]>([]);
   const [flatDepartments, setFlatDepartments] = useState<Department[]>([]);
@@ -350,11 +352,11 @@ export function MasterDataSection({ organizationId }: MasterDataSectionProps) {
       if (data.success) {
         fetchData();
       } else {
-        alert(data.error || 'Failed to delete');
+        showError(data.error || 'Failed to delete');
       }
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete item');
+      showError('Failed to delete item');
     }
     setItemToDelete(null);
   };

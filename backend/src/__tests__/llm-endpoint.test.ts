@@ -1,5 +1,11 @@
 import { describe, it, expect } from '@jest/globals';
-import { validateLlmEndpoint, LlmEndpointError } from '../lib/llm-endpoint.js';
+import {
+  validateLlmEndpoint,
+  LlmEndpointError,
+  chatBaseUrl,
+  isUnreachable,
+  unreachableMessage,
+} from '../lib/llm-endpoint.js';
 
 describe('validateLlmEndpoint', () => {
   it.each([
@@ -34,3 +40,40 @@ describe('validateLlmEndpoint', () => {
     expect(() => validateLlmEndpoint(42)).toThrow(LlmEndpointError);
   });
 });
+
+describe('chatBaseUrl', () => {
+  it.each([
+    ['http://localhost:11434', 'http://localhost:11434/v1'],
+    ['http://192.168.1.20:11434/', 'http://192.168.1.20:11434/v1'],
+  ])('adds /v1 to an address with no path: %s', (raw, expected) => {
+    expect(chatBaseUrl(validateLlmEndpoint(raw))).toBe(expected);
+  });
+
+  it.each([
+    ['http://localhost:11434/v1', 'http://localhost:11434/v1'],
+    ['https://api.openai.com/v1', 'https://api.openai.com/v1'],
+    ['https://gateway.example.com/openai/deployments/x', 'https://gateway.example.com/openai/deployments/x'],
+  ])('leaves an address with a path alone: %s', (raw, expected) => {
+    expect(chatBaseUrl(validateLlmEndpoint(raw))).toBe(expected);
+  });
+});
+
+describe('isUnreachable / unreachableMessage', () => {
+  it('recognises the errors fetch raises when nothing answers', () => {
+    expect(isUnreachable(new TypeError('fetch failed'))).toBe(true);
+    expect(isUnreachable(Object.assign(new Error('x'), { cause: { code: 'ECONNREFUSED' } }))).toBe(true);
+    expect(isUnreachable(new Error('Failed to list models from http://h:9: fetch failed'))).toBe(true);
+  });
+
+  it('does not treat an answer from the server as unreachable', () => {
+    expect(isUnreachable(new Error('HTTP 404: page not found'))).toBe(false);
+    expect(isUnreachable(undefined)).toBe(false);
+  });
+
+  it('names the address and says where it must be reachable from', () => {
+    const text = unreachableMessage('http://10.0.0.5:11434/v1');
+    expect(text).toContain('http://10.0.0.5:11434');
+    expect(text).toContain('the server Helios runs on');
+  });
+});
+

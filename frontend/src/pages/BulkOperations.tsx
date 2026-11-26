@@ -3,6 +3,7 @@ import { Upload, Download, FileSpreadsheet, Clock, CheckCircle2, XCircle, AlertC
 import { bulkOperationsService, type BulkOperation, type ValidationError } from '../services/bulk-operations.service';
 import { bulkOperationsSocket, type BulkOperationProgressEvent, type BulkOperationFailureEvent } from '../services/bulk-operations-socket.service';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 import './BulkOperations.css';
 
 interface BulkOperationsProps {
@@ -16,6 +17,9 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 25;
 
 export function BulkOperations({ organizationId }: BulkOperationsProps) {
+  // Results are shown in the page. A native alert ignores the theme and blocks
+  // the tab until it is dismissed.
+  const { showSuccess, showError, showWarning } = useToast();
   const [selectedOperation, setSelectedOperation] = useState<OperationType>('user_update');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -288,7 +292,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
 
   const handleSaveAsTemplate = async () => {
     if (!validatedData || !templateName.trim()) {
-      alert('Please provide a template name');
+      showWarning('Please provide a template name');
       return;
     }
 
@@ -300,13 +304,13 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
         templateData: validatedData,
       });
 
-      alert('Template saved successfully!');
+      showSuccess('Template saved successfully!');
       setShowSaveTemplate(false);
       setTemplateName('');
       setTemplateDescription('');
       await loadTemplates();
     } catch (error: any) {
-      alert(`Error saving template: ${error.message}`);
+      showError(`Error saving template: ${error.message}`);
     }
   };
 
@@ -316,9 +320,9 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
       setSelectedOperation(template.operationType);
       setValidatedData(template.templateData);
       setShowTemplates(false);
-      alert('Template loaded successfully!');
+      showSuccess('Template loaded successfully!');
     } catch (error: any) {
-      alert(`Error loading template: ${error.message}`);
+      showError(`Error loading template: ${error.message}`);
     }
   };
 
@@ -331,10 +335,10 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
 
     try {
       await bulkOperationsService.deleteTemplate(templateToDelete);
-      alert('Template deleted successfully!');
+      showSuccess('Template deleted successfully!');
       await loadTemplates();
     } catch (error: any) {
-      alert(`Error deleting template: ${error.message}`);
+      showError(`Error deleting template: ${error.message}`);
     } finally {
       setTemplateToDelete(null);
     }
@@ -354,7 +358,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
 
   const handleDownloadResults = async () => {
     if (!currentOperation || !currentOperation.results) {
-      alert('No results available to download');
+      showWarning('No results available to download');
       return;
     }
 
@@ -366,7 +370,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
         `bulk_operation_results_${currentOperation.id}.csv`
       );
     } catch (error: any) {
-      alert(`Error downloading results: ${error.message}`);
+      showError(`Error downloading results: ${error.message}`);
     }
   };
 
@@ -391,13 +395,13 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
 
       if (result.success) {
         setValidatedData(result.data || []);
-        alert(`CSV validated successfully!\n${result.meta?.validRows} rows are valid and ready to import.`);
+        showSuccess(`CSV validated. ${result.meta?.validRows} rows are valid and ready to import.`);
       } else {
         setValidationErrors(result.errors || []);
-        alert(`CSV validation failed with ${result.errors?.length} errors. Please fix and try again.`);
+        showError(`CSV validation failed with ${result.errors?.length} errors. Fix them and validate again.`);
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      showError(`Error: ${error.message}`);
     } finally {
       setIsValidating(false);
     }
@@ -439,7 +443,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
     activeSubscriptionRef.current = null;
     setIsExecuting(false);
     await loadHistory();
-    alert('Bulk operation completed successfully!');
+    showSuccess('Bulk operation completed successfully!');
 
     // Reset form
     setSelectedFile(null);
@@ -467,12 +471,12 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
     activeSubscriptionRef.current = null;
     setIsExecuting(false);
     await loadHistory();
-    alert(`Bulk operation failed: ${data.error}`);
+    showError(`Bulk operation failed: ${data.error}`);
   }, [selectedOperation]);
 
   const handleExecute = () => {
     if (!validatedData || validatedData.length === 0) {
-      alert('No valid data to execute. Please upload and validate a CSV first.');
+      showWarning('No valid data to execute. Please upload and validate a CSV first.');
       return;
     }
     setShowExecuteConfirm(true);
@@ -526,7 +530,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
         // Reload history
         await loadHistory();
 
-        alert('Bulk operation completed successfully!');
+        showSuccess('Bulk operation completed successfully!');
 
         // Reset form
         setSelectedFile(null);
@@ -535,7 +539,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
         setIsExecuting(false);
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      showError(`Error: ${error.message}`);
       setIsExecuting(false);
     }
   };
@@ -544,7 +548,7 @@ export function BulkOperations({ organizationId }: BulkOperationsProps) {
     try {
       await bulkOperationsService.downloadTemplate(selectedOperation);
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      showError(`Error: ${error.message}`);
     }
   };
 

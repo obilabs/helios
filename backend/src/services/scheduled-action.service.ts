@@ -252,12 +252,33 @@ class ScheduledActionService {
         : dto.recurrenceUntil
       : null;
 
+    // An action on an existing user (an offboard, say) arrives with only the
+    // user id. Store who it is for as well, so the list can show a name instead
+    // of a blank row, and still can after the account is gone.
+    const target = {
+      email: dto.targetEmail || null,
+      firstName: dto.targetFirstName || null,
+      lastName: dto.targetLastName || null,
+    };
+    if (dto.userId && (!target.email || !target.firstName || !target.lastName)) {
+      const found = await db.query(
+        'SELECT email, first_name, last_name FROM organization_users WHERE id = $1 AND organization_id = $2',
+        [dto.userId, organizationId]
+      );
+      const user = found.rows[0];
+      if (user) {
+        target.email = target.email || user.email || null;
+        target.firstName = target.firstName || user.first_name || null;
+        target.lastName = target.lastName || user.last_name || null;
+      }
+    }
+
     const values = [
       organizationId,
       dto.userId || null,
-      dto.targetEmail || null,
-      dto.targetFirstName || null,
-      dto.targetLastName || null,
+      target.email,
+      target.firstName,
+      target.lastName,
       dto.targetPersonalEmail || null,
       dto.actionType,
       dto.onboardingTemplateId || null,
@@ -641,7 +662,7 @@ class ScheduledActionService {
     // Use Google Workspace service to suspend
     // For now, just update local status
     await db.query(
-      `UPDATE organization_users SET user_status = 'suspended', is_active = false WHERE id = $1`,
+      `UPDATE organization_users SET status = 'suspended', is_active = false WHERE id = $1`,
       [action.userId]
     );
 
@@ -667,7 +688,7 @@ class ScheduledActionService {
     }
 
     await db.query(
-      `UPDATE organization_users SET user_status = 'active', is_active = true WHERE id = $1`,
+      `UPDATE organization_users SET status = 'active', is_active = true WHERE id = $1`,
       [action.userId]
     );
 
@@ -693,7 +714,7 @@ class ScheduledActionService {
 
     // Soft delete - mark as deleted instead of removing
     await db.query(
-      `UPDATE organization_users SET user_status = 'deleted', is_active = false, deleted_at = NOW() WHERE id = $1`,
+      `UPDATE organization_users SET status = 'deleted', is_active = false, deleted_at = NOW() WHERE id = $1`,
       [action.userId]
     );
 
@@ -718,7 +739,7 @@ class ScheduledActionService {
     }
 
     await db.query(
-      `UPDATE organization_users SET user_status = 'active', is_active = true, deleted_at = NULL WHERE id = $1`,
+      `UPDATE organization_users SET status = 'active', is_active = true, deleted_at = NULL WHERE id = $1`,
       [action.userId]
     );
 
