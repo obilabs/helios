@@ -246,4 +246,59 @@ test.describe('First-run: setup wizard and login form', () => {
     });
     expect(accepted.status()).toBe(200);
   });
+
+  test('an account an admin creates with a password can sign in through the form', async ({
+    page,
+    context,
+    browser,
+  }) => {
+    // The sign-in library allows a few sign-in attempts per address in a short
+    // window, and the tests above have just used them from this one address.
+    await page.waitForTimeout(11_000);
+    await context.clearCookies();
+    await signInViaForm(page);
+    const csrf = (await context.cookies()).find((c) => c.name === 'helios_csrf');
+    expect(csrf, 'CSRF cookie issued').toBeTruthy();
+
+    // Throwaway fixture values for a disposable DB.
+    const member = { email: 'e2e-member@e2e-firstrun.test', password: 'e2e_member_pw_2026' };
+    const created = await page.request.post('/api/v1/organization/users', {
+      headers: { 'X-CSRF-Token': csrf!.value },
+      data: {
+        email: member.email,
+        firstName: 'Mem',
+        lastName: 'Ber',
+        role: 'user',
+        passwordSetupMethod: 'admin_set',
+        password: member.password,
+      },
+    });
+    expect(created.status(), await created.text()).toBeLessThan(300);
+
+    // An administrator is never created directly, and the message says where to go.
+    const refused = await page.request.post('/api/v1/organization/users', {
+      headers: { 'X-CSRF-Token': csrf!.value },
+      data: {
+        email: 'e2e-second-admin@e2e-firstrun.test',
+        firstName: 'Sec',
+        lastName: 'Ond',
+        role: 'admin',
+        passwordSetupMethod: 'admin_set',
+        password: member.password,
+      },
+    });
+    expect(refused.status()).toBeGreaterThanOrEqual(400);
+    expect(await refused.text()).toContain('Roles & Admins');
+
+    // A separate browser session: the new account signs in with that password.
+    const other = await browser.newContext();
+    const memberPage = await other.newPage();
+    await memberPage.goto('/');
+    await memberPage.fill('input[type="email"]', member.email);
+    await memberPage.fill('input[type="password"]', member.password);
+    await memberPage.click('button[type="submit"]');
+    await memberPage.waitForSelector('input[type="email"]', { state: 'hidden', timeout: 20_000 });
+    expect((await other.cookies()).find((c) => /helios\.session_token/.test(c.name)), 'session cookie').toBeTruthy();
+    await other.close();
+  });
 });

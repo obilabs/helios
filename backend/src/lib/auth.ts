@@ -23,7 +23,14 @@ import { passkey } from '@better-auth/passkey';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { getAuthSecret } from '../config/secrets.js';
-import { publicAddress, appUrl, useSecureCookies, passkeyRpId, passkeyOrigin } from '../config/public-address.js';
+import {
+  publicAddress,
+  appUrl,
+  useSecureCookies,
+  passkeyRpId,
+  passkeyOrigin,
+  CLIENT_IP_HEADER,
+} from '../config/public-address.js';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -211,6 +218,11 @@ export const auth = betterAuth({
     // Secure cookies in production, unless the install is deliberately
     // served over plain http from another machine (config/public-address.ts).
     useSecureCookies: useSecureCookies(),
+    // Per-visitor sign-in limits: the address comes from the header index.ts
+    // sets from Express (see CLIENT_IP_HEADER), not from a client header.
+    ipAddress: {
+      ipAddressHeaders: [CLIENT_IP_HEADER],
+    },
     // Cookie prefix
     cookiePrefix: 'helios',
     // Allow cross-origin requests with credentials
