@@ -700,7 +700,7 @@ function AppContent() {
           try {
             if (autoLogin) {
               // Auto-login with the returned token
-              localStorage.setItem('helios_token', autoLogin.token);
+              if (autoLogin.token) localStorage.setItem('helios_token', autoLogin.token);
               localStorage.setItem('helios_user', JSON.stringify({
                 ...autoLogin.user,
                 organizationId: autoLogin.organization.id

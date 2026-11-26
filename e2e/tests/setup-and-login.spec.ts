@@ -118,8 +118,13 @@ test.describe('First-run: setup wizard and login form', () => {
     // Setup's auto-login side-effects (App.tsx onComplete stores these).
     const storedOrg = await page.evaluate(() => localStorage.getItem('helios_organization'));
     expect(storedOrg).toContain(ORG.name);
-    const token = await page.evaluate(() => localStorage.getItem('helios_token'));
-    expect(token, 'setup auto-login should store helios_token').toBeTruthy();
+    // Setup signs the new admin in with a real session cookie, so a refresh
+    // (or a new tab) stays signed in. A token held only by the page did not.
+    const cookies = await page.context().cookies();
+    expect(cookies.find((c) => /helios\.session_token/.test(c.name)), 'session cookie after setup').toBeTruthy();
+    expect(await page.evaluate(() => localStorage.getItem('helios_token'))).toBeNull();
+    await page.reload();
+    await expectDashboard(page);
   });
 
   test('login form signs the seeded admin in via better-auth and reaches the dashboard', async ({
@@ -185,6 +190,9 @@ test.describe('First-run: setup wizard and login form', () => {
     page,
     context,
   }) => {
+    // The sign-in library allows a few sign-in attempts per address in a short
+    // window; setup and the two tests above have just used them.
+    await page.waitForTimeout(11_000);
     await context.clearCookies();
     await signInViaForm(page);
 
