@@ -160,6 +160,15 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **Image links and uploads.** Three fixes. A public image link that ends in a
+  file name (the form Helios gives out) returned the application page, not the
+  image; this is a proxy change, so restart the proxy once after upgrading:
+  `docker compose restart nginx`. If you keep your own copy of the proxy
+  configuration, change `location /a/` to `location ^~ /a/`. Uploads were
+  refused when no list of allowed file types had been saved; the default image
+  types now apply. Saving one asset setting no longer resets the others to
+  their defaults: if you chose built-in storage and later changed another asset
+  setting, check Settings to confirm the storage choice is still the one you want.
 - **Signatures follow profile changes.** Migration
   `107_signature_requeue_on_profile_change.sql` queues a user's deployed
   signature again when their name, job title, department or contact details

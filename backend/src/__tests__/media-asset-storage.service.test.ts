@@ -65,6 +65,20 @@ describe('MediaAssetStorageService', () => {
     jest.clearAllMocks();
   });
 
+  describe('updateSettings', () => {
+    it('sends NULL for fields the caller left out, so a partial update keeps the stored values', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.updateSettings(testOrgId, { allowedMimeTypes: ['image/png'] });
+
+      expect(result.success).toBe(true);
+      const [sql, params] = mockQuery.mock.calls[0];
+      expect(params).toEqual([testOrgId, null, null, null, null, null, ['image/png'], null]);
+      expect(sql).toContain("COALESCE($2, 'google_drive')");
+      expect(sql).toContain('COALESCE($2, media_asset_settings.storage_backend)');
+    });
+  });
+
   describe('getSettings', () => {
     it.each([
       ['NULL', null],
