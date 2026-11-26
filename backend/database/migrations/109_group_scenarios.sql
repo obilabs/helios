@@ -1,4 +1,4 @@
--- 101_group_scenarios.sql
+-- 109_group_scenarios.sql
 --
 -- Group scenarios (D-048). Built-in scenarios are defined in code
 -- (backend/src/config/group-scenarios.ts) and are never copied into SQL. The
