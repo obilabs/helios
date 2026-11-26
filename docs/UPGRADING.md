@@ -157,6 +157,10 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   Existing rows are kept as they are and still verify. It runs on start-up.
   `GET /health` gains `auditWriteFailures`, which should read 0. See
   `docs/features/AUDIT-LOG-INTEGRITY.md`.
+- **Signatures follow profile changes.** Migration
+  `107_signature_requeue_on_profile_change.sql` queues a user's deployed
+  signature again when their name, job title, department or contact details
+  change. It runs on start-up; the regular signature sync does the rest.
 - **Assistant prompt.** Settings shows the built-in prompt as the starting point
   for a custom one and has a "Reset to default" button. A custom prompt saved
   before this change is used as written; add the line `{{commands}}` to it if
