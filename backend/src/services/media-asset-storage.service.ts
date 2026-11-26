@@ -9,6 +9,16 @@ import type {
   MediaAssetSettings,
 } from '../types/media-assets.js';
 
+/** File types an organization may upload when it has not chosen its own list. */
+export const DEFAULT_ALLOWED_MIME_TYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'image/x-icon',
+];
+
 /**
  * Media Asset Storage Service
  *
@@ -60,7 +70,11 @@ export class MediaAssetStorageService {
         driveRootFolderId: row.drive_root_folder_id,
         cacheTtlSeconds: row.cache_ttl_seconds,
         maxFileSizeMb: row.max_file_size_mb,
-        allowedMimeTypes: row.allowed_mime_types || [],
+        // A settings row saved without a list holds NULL here. An empty list
+        // would refuse every upload, so it means "use the defaults".
+        allowedMimeTypes: row.allowed_mime_types?.length
+          ? row.allowed_mime_types
+          : [...DEFAULT_ALLOWED_MIME_TYPES],
         isConfigured: row.is_configured,
         createdAt: row.created_at,
         updatedAt: row.updated_at,

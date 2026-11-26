@@ -46,7 +46,9 @@ jest.unstable_mockModule('../services/s3.service.js', () => ({
 }));
 
 // Import service after mocking
-const { MediaAssetStorageService } = await import('../services/media-asset-storage.service.js');
+const { MediaAssetStorageService, DEFAULT_ALLOWED_MIME_TYPES } = await import(
+  '../services/media-asset-storage.service.js'
+);
 
 describe('MediaAssetStorageService', () => {
   let service: InstanceType<typeof MediaAssetStorageService>;
@@ -64,6 +66,30 @@ describe('MediaAssetStorageService', () => {
   });
 
   describe('getSettings', () => {
+    it.each([
+      ['NULL', null],
+      ['an empty list', []],
+    ])('falls back to the default file types when the stored list is %s', async (_label, stored) => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ organization_id: testOrgId, storage_backend: 'minio', allowed_mime_types: stored, is_configured: true }],
+      });
+
+      const result = await service.getSettings(testOrgId);
+
+      expect(result?.allowedMimeTypes).toEqual(DEFAULT_ALLOWED_MIME_TYPES);
+      expect(result?.allowedMimeTypes).toContain('image/png');
+    });
+
+    it('keeps a list the organization chose', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ organization_id: testOrgId, storage_backend: 'minio', allowed_mime_types: ['image/png'], is_configured: true }],
+      });
+
+      const result = await service.getSettings(testOrgId);
+
+      expect(result?.allowedMimeTypes).toEqual(['image/png']);
+    });
+
     it('should return null when no settings exist', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
 
