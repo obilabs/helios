@@ -167,9 +167,27 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
       EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:?EMAIL_ENCRYPTION_KEY is required}
 
-      # URLs - use PUBLIC_URL for asset URLs, empty = relative URLs
+      # The address people type to reach Helios, e.g. https://helios.example.com
+      # or http://192.168.1.20. Everything below follows it unless set.
+      # See docs/guides/domain-and-https.md.
       PUBLIC_URL: ${PUBLIC_URL:-}
-      FRONTEND_URL: ${FRONTEND_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-${PUBLIC_URL:-}}
+      APP_URL: ${APP_URL:-${PUBLIC_URL:-}}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
+      PASSKEY_RP_ID: ${PASSKEY_RP_ID:-}
+      PASSKEY_ORIGIN: ${PASSKEY_ORIGIN:-}
+      # Number of proxies in front of the backend. 1 = the proxy shipped here.
+      # Add one for each proxy or tunnel you put in front of it.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+
+      # Outgoing mail (optional; can also be set in Settings)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
 
       # MinIO S3 (internal network)
       S3_ENDPOINT: http://minio:9000
