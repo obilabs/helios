@@ -23,6 +23,7 @@ import { passkey } from '@better-auth/passkey';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { getAuthSecret } from '../config/secrets.js';
+import { publicAddress, appUrl, useSecureCookies, passkeyRpId, passkeyOrigin } from '../config/public-address.js';
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -45,7 +46,7 @@ export const auth = betterAuth({
   secret: getAuthSecret(),
 
   // Base URL for callbacks (backend URL)
-  baseURL: process.env['APP_URL'] || 'http://localhost:3001',
+  baseURL: appUrl() || 'http://localhost:3001',
 
   // Email + Password authentication with custom bcrypt hashing
   emailAndPassword: {
@@ -207,8 +208,9 @@ export const auth = betterAuth({
 
   // Advanced options
   advanced: {
-    // Use secure cookies in production
-    useSecureCookies: process.env['NODE_ENV'] === 'production',
+    // Secure cookies in production, unless the install is deliberately
+    // served over plain http from another machine (config/public-address.ts).
+    useSecureCookies: useSecureCookies(),
     // Cookie prefix
     cookiePrefix: 'helios',
     // Allow cross-origin requests with credentials
@@ -254,8 +256,8 @@ export const auth = betterAuth({
           },
         },
       },
-      rpID: process.env['PASSKEY_RP_ID'] || 'localhost',
-      origin: process.env['PASSKEY_ORIGIN'] || process.env['FRONTEND_URL'] || 'http://localhost:3000',
+      rpID: passkeyRpId(),
+      origin: passkeyOrigin(),
     }),
   ],
 
@@ -278,6 +280,10 @@ export const auth = betterAuth({
         origins.add(frontendUrl.replace(':80', ''));
       }
     }
+
+    // PUBLIC_URL is the address people type; it is always trusted.
+    const publicUrl = publicAddress();
+    if (publicUrl) origins.add(publicUrl);
 
     // Add APP_URL if set (backend URL)
     const appUrl = process.env['APP_URL'];

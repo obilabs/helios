@@ -86,6 +86,8 @@ docker compose up -d --build
 # backend at boot (and stored in the backend_data volume until setup completes)
 docker compose logs backend | grep 'setup token'
 # Access: http://localhost and paste the token into the setup wizard
+# On a domain, or reached by IP address from other machines? Set PUBLIC_URL
+# first: docs/guides/domain-and-https.md
 # (to preset it instead, set HELIOS_SETUP_TOKEN in the backend environment)
 
 # Development (with hot-reload and default admin)

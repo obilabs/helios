@@ -97,8 +97,14 @@ import { requestIdMiddleware, REQUEST_ID_HEADER } from './middleware/request-id.
 import { authHandler, auth } from './lib/auth-handler.js';
 import { auditMiddleware } from './middleware/audit.middleware.js';
 import { logSafe } from './utils/log-safe.js';
+import { trustProxySetting, servedOverPlainHttp } from './config/public-address.js';
 
 const app = express();
+// The visitor's address comes from the proxy in front of the backend. Without
+// this, the audit log, the rate limit and API-key address rules all see the
+// proxy's own address. TRUST_PROXY is the number of proxies in front (default 1,
+// the bundled one).
+app.set('trust proxy', trustProxySetting());
 const httpServer = createServer(app);
 const PORT = process.env['PORT'] || 3001;
 
@@ -125,11 +131,11 @@ const rateLimitEnabled = process.env['RATE_LIMIT_ENABLED'] !== 'false';
 if (rateLimitEnabled) {
   const limiter = rateLimit({
     windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
-    // Behind the bundled nginx every browser shares ONE source IP (the proxy
-    // container), so this budget is effectively org-wide. A single admin page
-    // load issues 10-15 calls; 100 per 15 minutes locked an admin out mid-task
-    // on 2026-09-07 and the UI then showed the setup wizard. Keep the limiter
-    // (it still blunts brute force) but size it for an admin SPA.
+    // Counted per visitor address (see 'trust proxy' above). If TRUST_PROXY is
+    // lower than the real number of proxies, every browser shares one address
+    // and this budget becomes org-wide. A single admin page load issues 10-15
+    // calls; 100 per 15 minutes locked an admin out mid-task on 2026-09-07 and
+    // the UI then showed the setup wizard. Keep it sized for an admin SPA.
     max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '2000'),
     message: {
       error: 'Too many requests from this IP, please try again later.',
@@ -973,6 +979,13 @@ async function startServer(): Promise<void> {
       logger.info(`⚙️ Platform setup: http://localhost:${PORT}/platform`);
       logger.info(`🔌 WebSocket: ws://localhost:${PORT}/socket.io/`);
       logger.info(`🌍 Environment: ${process.env['NODE_ENV'] || 'development'}`);
+      if (servedOverPlainHttp()) {
+        logger.warn(
+          'PUBLIC_URL is plain http on another machine: sign-in cookies are sent without the Secure flag ' +
+          'and passwords cross the network unencrypted. Use this on a trusted network only. ' +
+          'See docs/guides/domain-and-https.md.'
+        );
+      }
     });
 
   } catch (error) {

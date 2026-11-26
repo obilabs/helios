@@ -2,6 +2,7 @@ import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import crypto from 'crypto';
 import { EmailService } from './email.service.js';
+import { appUrl } from '../config/public-address.js';
 
 interface PasswordSetupToken {
   id: string;
@@ -134,7 +135,7 @@ export class PasswordSetupService {
       const token = await this.createPasswordSetupToken(userId, expiryHours);
 
       // Build setup link
-      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      const baseUrl = appUrl() || 'http://localhost:3000';
       const setupLink = `${baseUrl}/setup-password?token=${token}`;
 
       // Send email

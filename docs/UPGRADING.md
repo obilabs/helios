@@ -160,6 +160,20 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **One address setting, and the visitor's real address.** `PUBLIC_URL` is now
+  the single setting for the address people use; `FRONTEND_URL`, `APP_URL` and
+  the passkey settings follow it when empty. Several settings in `.env` were
+  never passed to the backend (`APP_URL`, `TRUSTED_ORIGINS`, `PASSKEY_RP_ID`,
+  `PASSKEY_ORIGIN`, `SMTP_*`); they are now. **Before upgrading, open `.env`:**
+  if `APP_URL`, `PASSKEY_RP_ID` or `PASSKEY_ORIGIN` still hold the old example
+  values (`http://localhost:80`, `localhost`), empty them, and set `PUBLIC_URL`
+  if people reach Helios at anything other than `localhost`. Also new:
+  `TRUST_PROXY` (default `1`). With your own proxy or tunnel in front, set it to
+  `2`, or the audit log, the rate limit and API-key address rules see the
+  proxy's address and not the visitor's. An install reached over plain http at
+  an IP address could accept a password and then show the sign-in form again;
+  it now signs in, and logs a warning that the connection is not encrypted.
+  See `docs/guides/domain-and-https.md`.
 - **Image links and uploads.** Three fixes. A public image link that ends in a
   file name (the form Helios gives out) returned the application page, not the
   image; this is a proxy change, so restart the proxy once after upgrading:

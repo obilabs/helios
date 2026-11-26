@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { errorResponse } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
+import { useSecureCookies } from '../config/public-address.js';
 
 /**
  * CSRF protection for cookie-authenticated requests (double-submit token).
@@ -69,7 +70,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     res.cookie(CSRF_COOKIE, crypto.randomBytes(32).toString('hex'), {
       httpOnly: false, // the page must read it to echo it back
       sameSite: 'strict',
-      secure: process.env['NODE_ENV'] === 'production',
+      secure: useSecureCookies(),
       path: '/',
     });
   }
