@@ -249,8 +249,8 @@ router.get('/', async (req: Request, res: Response) => {
     // Get total count
     const countResult = await db.query(
       `SELECT COUNT(*) as total FROM media_assets WHERE organization_id = $1${
-        folderId ? ` AND folder_id = $${folderId ? 2 : 0}` : ''
-      }${category ? ` AND category = $${category ? (folderId ? 3 : 2) : 0}` : ''}`,
+        folderId ? ' AND folder_id = $2' : ''
+      }${category ? ` AND category = $${folderId ? 3 : 2}` : ''}`,
       folderId ? (category ? [organizationId, folderId, category] : [organizationId, folderId]) :
       (category ? [organizationId, category] : [organizationId])
     );
