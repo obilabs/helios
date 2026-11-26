@@ -160,6 +160,17 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **The user list and Home counts follow Google again.** Four fixes. A person
+  deleted in Google from the Developer Console stayed listed as active in
+  Helios. Looking up deleted accounts (as `gw users undelete` does) copied
+  Google's deleted accounts into Helios as active people. A call to the Google
+  route that asked for only some fields of each user cleared the stored link
+  between each person and their Google account, which made the Home counts
+  wrong. And an install that connected Google after it started (every new
+  install) synced once and then not again until its next restart. After
+  upgrading, run `gw sync users` once in the Developer Console, or wait for the
+  next scheduled sync: it restores the links and marks people who are no longer
+  in Google as deleted.
 - **Accounts an admin creates can sign in.** An account created by an admin with
   a password, or one whose owner set a password from an emailed link, was
   refused by the sign-in form with "Invalid email or password". Migration 108
