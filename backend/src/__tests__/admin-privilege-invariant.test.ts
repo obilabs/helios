@@ -231,7 +231,7 @@ describe('creation: POST /organization/users', () => {
       .send({ ...validBody, role: 'admin' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/privileged roles cannot be assigned/i);
+    expect(res.body.error).toMatch(/Roles & Admins/);
     expect(queriesMatching('INSERT INTO organization_users')).toHaveLength(0);
   });
 
@@ -360,7 +360,7 @@ describe('elevation cannot happen through the generic update route', () => {
       .send({ role: 'admin' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/promote/i);
+    expect(res.body.error).toMatch(/Roles & Admins/);
     expect(queriesMatching('UPDATE organization_users SET')).toHaveLength(0);
   });
 
