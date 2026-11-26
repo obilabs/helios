@@ -70,4 +70,9 @@ else
 fi
 
 echo "==> Running auth-flows Playwright suite"
-( cd e2e && npx playwright test --config=playwright.auth-flows.config.ts )
+if ! ( cd e2e && npx playwright test --config=playwright.auth-flows.config.ts ); then
+  # The page only shows a generic message; the reason is in the backend log.
+  echo "!! Suite failed. Last backend log lines (setup token lines left out):" >&2
+  "${COMPOSE[@]}" logs --no-color --tail=150 backend 2>&1 | grep -vi 'token' || true
+  exit 1
+fi
