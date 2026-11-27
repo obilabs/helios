@@ -28,6 +28,7 @@ import { loadSyncSettings, saveSyncSettings, validateSyncSettingsPatch } from '.
 import { fieldDriftService } from '../services/field-drift.service.js';
 import { ACCOUNT_PURPOSE_LABELS, isAccountPurpose } from '../lib/account-purpose.js';
 import { isEmailFormat } from '../utils/email-format.js';
+import { explainLicenceRefusal } from '../lib/google-licence-errors.js';
 
 const router = Router();
 
@@ -4714,12 +4715,12 @@ router.put('/users/:userId/google-license', authenticateToken, requireAdmin, asy
     if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
     const result = await googleWorkspaceService.assignGoogleLicense(u.organizationId, u.email, skuId, productId);
     if (!result.success) {
-      const autoAssign = /auto-assigned/i.test(result.error || '');
-      return res.status(502).json({
+      const refusal = explainLicenceRefusal('assign', result.error, result.googleStatus);
+      return res.status(refusal.status).json({
         success: false,
-        error: autoAssign
-          ? "Google assigns licences automatically to this user's organizational unit; per-user changes are refused until automatic licensing is turned off for that unit in the Google Admin console."
-          : `Google Workspace rejected the licence change: ${result.error}`
+        error: refusal.message,
+        reason: refusal.reason,
+        googleStatus: refusal.googleStatus ?? null,
       });
     }
     await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {
@@ -4741,12 +4742,12 @@ router.delete('/users/:userId/google-license', authenticateToken, requireAdmin, 
     if (!skuId) return res.status(400).json({ success: false, error: 'skuId is required' });
     const result = await googleWorkspaceService.removeGoogleLicense(u.organizationId, u.email, skuId, productId);
     if (!result.success) {
-      const autoAssign = /auto-assigned/i.test(result.error || '');
-      return res.status(502).json({
+      const refusal = explainLicenceRefusal('remove', result.error, result.googleStatus);
+      return res.status(refusal.status).json({
         success: false,
-        error: autoAssign
-          ? "Google assigns this licence automatically to the user's organizational unit, so it cannot be removed per user. Turn off automatic licensing for that unit in the Google Admin console (Billing > Subscriptions > Licence settings), then try again."
-          : `Google Workspace rejected the licence removal: ${result.error}`
+        error: refusal.message,
+        reason: refusal.reason,
+        googleStatus: refusal.googleStatus ?? null,
       });
     }
     await activityTracker.trackUserChange(u.organizationId, req.params.userId, req.user?.userId || '', req.user?.email || '', 'updated', {

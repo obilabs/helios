@@ -2194,7 +2194,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
                     />
                     <div className="option-content">
                       <strong>Permanently delete from Google Workspace (Recommended)</strong>
-                      <p className="success-text">License will be freed immediately.</p>
+                      <p className="success-text">The licence is released in Google. On an annual or fixed-term plan the bill does not change until renewal.</p>
                       <p className="warning-text">All data will be permanently deleted.</p>
                     </div>
                   </label>

@@ -12,6 +12,7 @@ import {
   googleScopesForPath,
 } from '../config/google-scopes.js';
 import { ACCOUNT_PURPOSE_FIELD, HELIOS_SCHEMA_NAME, type AccountPurpose } from '../lib/account-purpose.js';
+import { googleStatusOf } from '../lib/google-licence-errors.js';
 
 /**
  * A tenant that has not authorised an optional scope refuses the token
@@ -4165,7 +4166,7 @@ export class GoogleWorkspaceService {
     userEmail: string,
     skuId: string,
     productId = 'Google-Apps'
-  ): Promise<{ success: boolean; error?: string; action?: 'assigned' | 'switched' | 'unchanged' }> {
+  ): Promise<{ success: boolean; error?: string; googleStatus?: number; action?: 'assigned' | 'switched' | 'unchanged' }> {
     try {
       const licensing = await this.createLicensingClient(organizationId);
       if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
@@ -4188,7 +4189,7 @@ export class GoogleWorkspaceService {
       return { success: true, action: 'assigned' };
     } catch (error: any) {
       logger.error('Failed to assign Google licence', { userEmail, skuId, error: error.message });
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, googleStatus: googleStatusOf(error) };
     }
   }
 
@@ -4197,7 +4198,7 @@ export class GoogleWorkspaceService {
     userEmail: string,
     skuId: string,
     productId = 'Google-Apps'
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; googleStatus?: number }> {
     try {
       const licensing = await this.createLicensingClient(organizationId);
       if (!licensing) return { success: false, error: 'Failed to create Licensing client' };
@@ -4206,7 +4207,7 @@ export class GoogleWorkspaceService {
       return { success: true };
     } catch (error: any) {
       logger.error('Failed to remove Google licence', { userEmail, skuId, error: error.message });
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, googleStatus: googleStatusOf(error) };
     }
   }
 

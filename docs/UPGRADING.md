@@ -160,6 +160,14 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **Licence changes Google refuses.** When Google refuses to assign or remove
+  one person's licence because automatic licensing is on, Helios now says so
+  for both wordings Google uses, names the right place in the Admin console
+  (Menu > Billing > License settings), and answers `409` with
+  `"reason": "automatic_licensing"`. Other refusals keep Google's own status
+  where it is a 4xx; they were all `502` before. If you script against
+  `PUT` or `DELETE /api/v1/organization/users/{id}/google-license` and check for
+  `502`, check for a non-2xx status. See `docs/guides/licences.md`.
 - **The user list and Home counts follow Google again.** Four fixes. A person
   deleted in Google from the Developer Console stayed listed as active in
   Helios. Looking up deleted accounts (as `gw users undelete` does) copied
