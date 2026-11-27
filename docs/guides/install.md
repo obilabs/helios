@@ -130,7 +130,8 @@ administrator access. This is deliberate.
 1. In the left menu, click **Users**.
 2. Click **Add User**, then **Quick Add**.
 3. Fill in **First Name**, **Last Name** and **Work Email**.
-4. Leave **Access Level** on **User**. Choosing Admin here is refused.
+4. Leave **Access Level** on **User**. Admin is not offered here: it is granted
+   in the next step.
 5. Under **Password Setup**, choose **Set password now** and enter a password
    twice, or choose **Send password setup link via email** if outgoing mail is
    configured.
@@ -170,9 +171,9 @@ Then, in Helios:
 
 ### Screen 2: Configure Domain
 
-1. **Google Workspace Domain:** your Workspace's primary domain. The box may
-   arrive filled in with the domain of your own sign-in address; replace it if
-   that is not your Workspace domain.
+1. **Google Workspace Domain:** your Workspace's primary domain. The box is
+   empty unless Google Workspace was connected before, in which case it shows
+   the domain saved then.
 2. **Admin Email Address:** the address of a Google Workspace super admin.
    Helios acts as this person when it calls Google.
 3. If you have not authorized the scopes yet, the **Authorize API scopes**

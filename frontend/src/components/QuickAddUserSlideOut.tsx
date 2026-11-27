@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, UserPlus, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { authFetch } from '../config/api';
+import { CREATABLE_ROLES, ADMIN_ROLE_HINT } from '../lib/userRoles';
 import './QuickAddUserSlideOut.css';
 
 interface QuickAddUserSlideOutProps {
@@ -436,10 +437,11 @@ export function QuickAddUserSlideOut({ organizationId: _organizationId, onClose,
                                     value={formData.role}
                                     onChange={(e) => handleInputChange('role', e.target.value)}
                                 >
-                                    <option value="user">User</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="admin">Admin</option>
+                                    {CREATABLE_ROLES.map((r) => (
+                                        <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
                                 </select>
+                                <p className="field-hint">{ADMIN_ROLE_HINT}</p>
                             </div>
                         </div>
                     </div>

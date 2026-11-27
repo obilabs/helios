@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, UserPlus, Users, FileSpreadsheet, Trash2, AlertCircle, CheckCircle, X, User, Mail, Key, Save, Loader, Plus } from 'lucide-react';
 import { authFetch } from '../config/api';
+import { CREATABLE_ROLES, ADMIN_ROLE_HINT, roleOptionsFor } from '../lib/userRoles';
 import './AddUser.css';
 
 type ViewMode = 'single' | 'bulk' | 'csv';
@@ -726,10 +727,11 @@ export function AddUser() {
             onChange={(e) => handleInputChange('role', e.target.value)}
             disabled={isSubmitting}
           >
-            <option value="user">User</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
+            {roleOptionsFor(formData.role).map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </select>
+          {!isEditMode && <p className="field-hint">{ADMIN_ROLE_HINT}</p>}
         </div>
       </div>
 
@@ -1245,9 +1247,9 @@ export function AddUser() {
                         value={user.role}
                         onChange={(e) => updateBulkRow(user.id, 'role', e.target.value)}
                       >
-                        <option value="user">User</option>
-                        <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
+                        {CREATABLE_ROLES.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </td>
                     <td data-label="Department">

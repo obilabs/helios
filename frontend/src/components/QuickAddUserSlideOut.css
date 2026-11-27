@@ -112,6 +112,15 @@
   margin-bottom: 2rem;
 }
 
+/* Other stylesheets give `.form-section` a bordered box; this panel's sections
+   are separated by their headings instead. */
+.quick-add-panel .form-section {
+  border: none;
+  padding: 0;
+  background: none;
+  overflow: visible;
+}
+
 .form-section h3 {
   margin: 0 0 1.5rem 0;
   font-size: 1.125rem;
@@ -276,6 +285,25 @@
   width: 16px;
   height: 16px;
   accent-color: var(--theme-primary);
+}
+
+/* GroupSlideOut.css hides `.radio-option input[type="radio"]` globally; show the
+   radio here and mark the chosen option so the selection is visible. */
+.quick-add-panel .radio-option input[type="radio"] {
+  display: inline-block;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.quick-add-panel .radio-option:has(input:checked) {
+  color: var(--color-gray-900);
+  font-weight: 600;
+}
+
+.quick-add-panel .field-hint {
+  margin: 0.375rem 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-gray-500);
 }
 
 /* Advanced Toggle */

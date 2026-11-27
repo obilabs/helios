@@ -899,7 +899,7 @@ export function UserSlideOut({ user, organizationId, onClose, onUserUpdated }: U
         </div>
 
         {/* Tabs */}
-        <div className="slideout-tabs">
+        <div className="slideout-tabs user-slideout-tabs">
           {tabs.map(tab => (
             <button
               key={tab.id}
