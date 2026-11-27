@@ -7,6 +7,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { authFetch } from '../config/api';
 import './GroupSlideOut.css';
 import { useMicrosoftConnected } from '../hooks/useMicrosoftConnected';
+import { useToast } from '../contexts/ToastContext';
 
 // Dynamic group types
 type DynamicGroupField = 'department' | 'location' | 'job_title' | 'reports_to' | 'org_unit_path' | 'employee_type' | 'user_type' | 'email' | 'cost_center';
@@ -114,6 +115,7 @@ const OPERATOR_OPTIONS: { value: DynamicGroupOperator; label: string }[] = [
 ];
 
 export function GroupSlideOut({ groupId, platform, organizationId: _organizationId, onClose, onGroupUpdated }: GroupSlideOutProps) {
+  const { showSuccess, showError, showWarning } = useToast();
   const isMicrosoft = platform === 'microsoft_365';
   const microsoftConnected = useMicrosoftConnected();
   const [activeTab, setActiveTab] = useTabPersistence<TabType>('helios_group_slideout_tab', 'overview');
@@ -282,7 +284,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to update group');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -363,7 +365,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to add member');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setAddingUserId(null);
     }
@@ -393,7 +395,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to remove member');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     }
     setMemberToRemove(null);
   };
@@ -417,7 +419,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to delete group');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -452,7 +454,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
 
   const handleAddRule = async () => {
     if (!newRule.value && !['is_empty', 'is_not_empty'].includes(newRule.operator)) {
-      alert('Please enter a value for the rule');
+      showWarning('Please enter a value for the rule');
       return;
     }
 
@@ -478,7 +480,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to add rule');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsAddingRule(false);
     }
@@ -507,7 +509,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to delete rule');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     }
     setRuleToDelete(null);
   };
@@ -536,7 +538,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to evaluate rules');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsPreviewLoading(false);
     }
@@ -559,14 +561,14 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
 
       const data = await response.json();
       if (data.success) {
-        alert(`Rules applied: ${data.data.added} added, ${data.data.removed} removed`);
+        showSuccess(`Rules applied: ${data.data.added} added, ${data.data.removed} removed`);
         await fetchGroupDetails();
         onGroupUpdated?.();
       } else {
         throw new Error(data.error?.message || data.error ||'Failed to apply rules');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsApplyingRules(false);
     }
@@ -613,7 +615,7 @@ export function GroupSlideOut({ groupId, platform, organizationId: _organization
         throw new Error(data.error?.message || data.error ||'Failed to update membership type');
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showError(`Error: ${err.message}`);
     } finally {
       setIsMembershipTypeChanging(false);
     }

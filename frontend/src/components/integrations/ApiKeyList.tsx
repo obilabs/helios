@@ -3,6 +3,7 @@ import { Key, Plus, Trash2, RefreshCw, Clock, AlertCircle, CheckCircle } from 'l
 import { authFetch } from '../../config/api';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import './ApiKeyList.css';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ApiKey {
   id: string;
@@ -25,6 +26,7 @@ interface ApiKeyListProps {
 }
 
 export function ApiKeyList({ organizationId, onCreateKey }: ApiKeyListProps) {
+  const { showSuccess, showError, showInfo } = useToast();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'revoked'>('all');
@@ -74,20 +76,20 @@ export function ApiKeyList({ organizationId, onCreateKey }: ApiKeyListProps) {
 
       const data = await response.json();
       if (data.success) {
-        alert('API key revoked successfully');
+        showSuccess('API key revoked successfully');
         fetchKeys();
       } else {
-        alert(`Failed to revoke key: ${data.error}`);
+        showError(`Failed to revoke key: ${data.error}`);
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      showError(`Error: ${error.message}`);
     }
     setKeyToRevoke(null);
   };
 
   const handleRenew = async (_keyId: string, keyName: string) => {
     // This would open a renewal dialog - for now just alert
-    alert(`Renewal for "${keyName}" will be implemented in the renewal dialog`);
+    showInfo(`Renewal for "${keyName}" will be implemented in the renewal dialog`);
   };
 
   const getStatusBadge = (status: string) => {

@@ -80,8 +80,16 @@ class ActivityTrackerService {
           metadata,
           ip_address,
           user_agent,
+          source,
+          user_email,
           created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+          -- The affected user's address, so the event still names them after
+          -- the account is renamed or removed.
+          (SELECT email FROM organization_users WHERE id = $2),
+          NOW()
+        )
       `, [
         event.organizationId,
         event.userId || null,
@@ -94,7 +102,9 @@ class ActivityTrackerService {
         event.description || null,
         JSON.stringify(event.metadata || {}),
         event.ipAddress || null,
-        event.userAgent || null
+        event.userAgent || null,
+        // Where the event came from, shown as "Source" on the Security Events page.
+        event.actorType === 'vendor' ? 'vendor' : event.actorType === 'service' ? 'api' : 'helios'
       ]);
 
       // Invalidate cache

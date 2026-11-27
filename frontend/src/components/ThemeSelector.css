@@ -1,6 +1,6 @@
 .theme-selector {
   padding: 24px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -9,11 +9,11 @@
   margin: 0 0 8px 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .theme-description {
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   margin-bottom: 24px;
 }
@@ -27,7 +27,7 @@
 
 .theme-card {
   position: relative;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -35,7 +35,7 @@
 }
 
 .theme-card:hover {
-  border-color: #9ca3af;
+  border-color: var(--color-gray-400);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -107,27 +107,27 @@
 
 .theme-info {
   padding: 12px;
-  background: white;
+  background: var(--card-bg);
 }
 
 .theme-info h4 {
   margin: 0 0 4px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-gray-800);
 }
 
 .theme-info p {
   margin: 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .theme-selected {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: white;
+  background: var(--card-bg);
   color: var(--color-primary, #4f46e5);
   padding: 4px 8px;
   border-radius: 4px;
@@ -141,15 +141,15 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .theme-note code {
-  background: #e5e7eb;
+  background: var(--color-gray-200);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: monospace;

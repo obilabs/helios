@@ -22,13 +22,13 @@
   margin: 0 0 4px 0;
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .header-subtitle {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .btn-refresh {
@@ -36,9 +36,9 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -47,8 +47,8 @@
 }
 
 .btn-refresh:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }
 
 /* Summary Cards */
@@ -64,21 +64,21 @@
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .summary-card:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-gray-300);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .summary-card.active {
-  border-color: #8b5cf6;
-  background: #faf5ff;
+  border-color: var(--theme-primary);
+  background: var(--theme-primary-lighter);
 }
 
 .card-icon {
@@ -91,22 +91,22 @@
 }
 
 .card-icon.pending {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
 }
 
 .card-icon.in-progress {
-  background: #f5f3ff;
-  color: #8b5cf6;
+  background: var(--theme-primary-lighter);
+  color: var(--theme-primary);
 }
 
 .card-icon.overdue {
-  background: #fef2f2;
+  background: var(--color-gray-100);
   color: #ef4444;
 }
 
 .card-icon.completed {
-  background: #ecfdf5;
+  background: var(--color-gray-100);
   color: #10b981;
 }
 
@@ -118,13 +118,13 @@
 .card-value {
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
   line-height: 1;
 }
 
 .card-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   margin-top: 4px;
 }
 
@@ -140,15 +140,15 @@
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   flex: 1;
   max-width: 320px;
 }
 
 .search-box svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
   flex-shrink: 0;
 }
 
@@ -158,7 +158,7 @@
   border: none;
   background: none;
   font-size: 14px;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .search-box input:focus {
@@ -166,7 +166,7 @@
 }
 
 .search-box input::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .filter-group {
@@ -174,13 +174,13 @@
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 6px;
 }
 
 .filter-group svg {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .filter-group select {
@@ -188,7 +188,7 @@
   border: none;
   background: none;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   cursor: pointer;
 }
 
@@ -207,7 +207,7 @@
   justify-content: center;
   gap: 12px;
   padding: 48px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
@@ -238,13 +238,13 @@
   margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .empty-state p {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* Task Sections */
@@ -263,11 +263,11 @@
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .section-title svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .section-title.overdue {
@@ -287,7 +287,7 @@
 }
 
 .section-title.upcoming {
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .section-title.completed {

@@ -199,12 +199,16 @@ const baseSchema = Joi.object({
     .default('')
     .description('SMTP password'),
 
+  // An empty value (the compose file passes one when .env leaves it out)
+  // means "not set", not "invalid".
   SMTP_FROM: Joi.string()
     .email()
+    .empty('')
     .default('noreply@helios.com')
     .description('Default sender email'),
 
   SMTP_FROM_NAME: Joi.string()
+    .empty('')
     .default('Helios Admin Portal')
     .description('Default sender name'),
 

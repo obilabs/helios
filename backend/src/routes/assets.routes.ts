@@ -3,7 +3,7 @@ import multer from 'multer';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
-import { mediaAssetStorageService } from '../services/media-asset-storage.service.js';
+import { mediaAssetStorageService, DEFAULT_ALLOWED_MIME_TYPES } from '../services/media-asset-storage.service.js';
 import { mediaAssetCacheService } from '../services/media-asset-cache.service.js';
 import { googleDriveService } from '../services/google-drive.service.js';
 import type {
@@ -795,9 +795,9 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req: Request,
 
   // Validate mime type
   const settings = await mediaAssetStorageService.getSettings(organizationId);
-  const allowedTypes = settings?.allowedMimeTypes || [
-    'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'
-  ];
+  const allowedTypes = settings?.allowedMimeTypes?.length
+    ? settings.allowedMimeTypes
+    : [...DEFAULT_ALLOWED_MIME_TYPES];
 
   if (!allowedTypes.includes(file.mimetype)) {
     return res.status(400).json({

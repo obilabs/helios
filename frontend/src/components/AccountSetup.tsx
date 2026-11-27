@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Check, Palette, AlertTriangle } from 'lucide-react';
 import { themeService, coreThemes, type ThemeName } from '../services/theme.service';
+import { signInWithEmail } from '../lib/auth-client';
 import './AccountSetup.css';
 
 interface AccountSetupProps {
-  onComplete: (autoLogin?: { token: string; user: any; organization: any }) => void;
+  onComplete: (autoLogin?: { token?: string; user: any; organization: any }) => void;
 }
 
 export function AccountSetup({ onComplete }: AccountSetupProps) {
@@ -98,11 +99,22 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
       // Save the selected theme
       localStorage.setItem('helios_theme', selectedTheme);
 
+      // Sign in properly, the same way the sign-in form does, so the browser
+      // holds a session cookie. The token below only lives in this page: on
+      // its own, a refresh or a new tab landed on the sign-in form.
+      let signedIn = false;
+      try {
+        signedIn = (await signInWithEmail(formData.adminEmail, formData.adminPassword)).success;
+      } catch {
+        signedIn = false;
+      }
+
       console.log('[Setup] Setup complete, calling onComplete...');
 
-      // Auto-login with the returned token and navigate to dashboard
+      // Go to the dashboard. The token is only a fallback for this page view
+      // when the sign-in above did not go through.
       onComplete({
-        token: data.data.token,
+        token: signedIn ? undefined : data.data.token,
         user: data.data.admin,
         organization: data.data.organization
       });

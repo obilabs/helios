@@ -504,9 +504,15 @@ class SignatureCampaignService {
       throw new Error(`Cannot launch campaign with status '${campaign.status}'`);
     }
 
+    // A campaign whose start date has not arrived stays (or becomes) scheduled.
+    // The scheduler activates it at its start date and queues its users for a
+    // signature sync. Marking it active early applied nothing, because a
+    // campaign only counts between its start and end dates, and then nothing
+    // queued its users when the start date came.
     const result = await db.query(
       `UPDATE signature_campaigns
-       SET status = 'active', launched_at = NOW()
+       SET status = CASE WHEN start_date > NOW() THEN 'scheduled' ELSE 'active' END,
+           launched_at = CASE WHEN start_date > NOW() THEN launched_at ELSE NOW() END
        WHERE id = $1
        RETURNING *`,
       [id]
@@ -514,7 +520,7 @@ class SignatureCampaignService {
 
     if (result.rows.length === 0) return null;
 
-    logger.info('Launched signature campaign', { campaignId: id });
+    logger.info('Launched signature campaign', { campaignId: id, status: result.rows[0].status });
 
     return this.mapRowToCampaign(result.rows[0]);
   }

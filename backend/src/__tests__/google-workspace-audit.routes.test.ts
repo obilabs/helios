@@ -21,6 +21,9 @@ const ORG_ID = 'org-1';
 
 type QueryResult = { rows: any[]; rowCount?: number };
 const mockQuery = jest.fn<(text: string, params?: unknown[]) => Promise<QueryResult>>();
+// Connecting Google must also start the periodic sync (not only one sync).
+const mockScheduleFromSettings = jest.fn(async (..._args: any[]) => undefined);
+
 jest.unstable_mockModule('../database/connection.js', () => ({
   db: { query: mockQuery },
 }));
@@ -55,7 +58,11 @@ jest.unstable_mockModule('../services/google-workspace.service.js', () => ({
 }));
 
 jest.unstable_mockModule('../services/sync-scheduler.service.js', () => ({
-  syncScheduler: { manualSync: jest.fn(async () => ({ success: true, stats: {} })) },
+  syncScheduler: {
+    manualSync: jest.fn(async () => ({ success: true, stats: {} })),
+    scheduleFromSettings: mockScheduleFromSettings,
+    startTokenSync: jest.fn(async () => undefined),
+  },
 }));
 
 jest.unstable_mockModule('../services/gw-credentials.js', () => ({
@@ -120,6 +127,7 @@ describe('google-workspace REST mutations write the audit trail', () => {
       });
 
     expect(res.status).toBe(200);
+    expect(mockScheduleFromSettings).toHaveBeenCalledWith(ORG_ID);
     const entry = auditFor('service.account.configure');
     expect(entry).toBeTruthy();
     expect(entry.organizationId).toBe(ORG_ID);

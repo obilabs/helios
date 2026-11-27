@@ -22,6 +22,7 @@ import { Package, Building2, Shield, Lock, Palette, Settings as SettingsIcon, Ke
 import type { LucideIcon } from 'lucide-react';
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { useToast } from '../contexts/ToastContext';
 
 interface SettingsProps {
   organizationName: string;
@@ -61,6 +62,7 @@ const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; icon: LucideIcon;
 ];
 
 export function Settings({ organizationName, domain, organizationId, showPasswordModal: externalShowPasswordModal, onPasswordModalChange, currentUser, onAIConfigChange }: SettingsProps) {
+  const { showSuccess, showError, showWarning } = useToast();
   const [storedTab, setActiveTab] = useTabPersistence<SettingsTabId | 'integrations' | 'features'>('helios_settings_tab', 'modules');
   const { isEnabled } = useFeatureFlags();
   const navigate = useNavigate();
@@ -70,6 +72,14 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
   const requestedTab: SettingsTabId = storedTab === 'integrations' || storedTab === 'features' ? 'advanced' : storedTab;
   const activeTab: SettingsTabId = visibleTabs.some(t => t.id === requestedTab) ? requestedTab : 'modules';
   const [showModuleConfig, setShowModuleConfig] = useState(false);
+  // The outcome of the last connection test or manual sync. It stays on the
+  // card until the next run: these are details an admin reads, not a
+  // confirmation that can disappear with a toast.
+  const [googleActionResult, setGoogleActionResult] = useState<{
+    ok: boolean;
+    title: string;
+    lines: string[];
+  } | null>(null);
   const [configuringModule, setConfiguringModule] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -213,10 +223,10 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
         setConfiguringModule('google-workspace');
         setShowModuleConfig(true);
       } else {
-        alert(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
+        showError(`Failed to enable Google Workspace: ${data.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Failed to enable Google Workspace: ${error.message}`);
+      showError(`Failed to enable Google Workspace: ${error.message}`);
     } finally {
       setEnablingGoogle(false);
     }
@@ -281,13 +291,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
       if (response.ok && data.success) {
         setOriginalSyncSettings({ ...syncSettings });
-        alert('Sync settings saved. The new schedule is already in effect.');
+        showSuccess('Sync settings saved. The new schedule is already in effect.');
       } else {
-        alert(`Failed to save sync settings: ${data.error || response.status}`);
+        showError(`Failed to save sync settings: ${data.error || response.status}`);
       }
     } catch (error) {
       console.error('Failed to save sync settings:', error);
-      alert('Failed to save sync settings');
+      showError('Failed to save sync settings');
     } finally {
       setSavingSyncSettings(false);
     }
@@ -419,13 +429,22 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert(`Sync complete!\n\nTotal users: ${data.stats?.total_users || 0}\nActive: ${data.stats?.active_users || 0}\nSuspended: ${data.stats?.suspended_users || 0}\nAdmins: ${data.stats?.admin_users || 0}`);
+                                      setGoogleActionResult({
+                                        ok: true,
+                                        title: 'Sync complete',
+                                        lines: [
+                                          `Total users: ${data.stats?.total_users || 0}`,
+                                          `Active: ${data.stats?.active_users || 0}`,
+                                          `Suspended: ${data.stats?.suspended_users || 0}`,
+                                          `Admins: ${data.stats?.admin_users || 0}`,
+                                        ],
+                                      });
                                       await fetchModuleStatus();
                                     } else {
-                                      alert(`Sync failed: ${data.message}`);
+                                      setGoogleActionResult({ ok: false, title: 'Sync failed', lines: [String(data.message)] });
                                     }
                                   } catch (error: any) {
-                                    alert(`Sync failed: ${error.message}`);
+                                    showError(`Sync failed: ${error.message}`);
                                   }
                                 }}
                               >
@@ -445,12 +464,20 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert(`Connection successful!\n\nProject: ${data.details?.projectId}\nDomain: ${data.details?.domain}\nUsers accessible: ${data.details?.userCount || 0}`);
+                                      setGoogleActionResult({
+                                        ok: true,
+                                        title: 'Connection successful',
+                                        lines: [
+                                          `Project: ${data.details?.projectId}`,
+                                          `Domain: ${data.details?.domain}`,
+                                          `Users accessible: ${data.details?.userCount || 0}`,
+                                        ],
+                                      });
                                     } else {
-                                      alert(`Connection failed: ${data.message || data.error}`);
+                                      setGoogleActionResult({ ok: false, title: 'Connection failed', lines: [String(data.message || data.error)] });
                                     }
                                   } catch (error: any) {
-                                    alert(`Test failed: ${error.message}`);
+                                    setGoogleActionResult({ ok: false, title: 'Connection test failed', lines: [String(error.message)] });
                                   }
                                 }}
                               >
@@ -500,6 +527,26 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                       <span className="feature-tag">Domain-Wide Delegation</span>
                       <span className="feature-tag">Automation</span>
                     </div>
+                    {googleActionResult && (
+                      <div
+                        role="status"
+                        data-testid="google-action-result"
+                        style={{
+                          marginTop: '12px',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          fontSize: '0.8125rem',
+                          color: 'var(--color-gray-800)',
+                          background: googleActionResult.ok ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
+                          border: `1px solid ${googleActionResult.ok ? 'var(--color-success-border)' : 'var(--color-error-border)'}`,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: '4px' }}>{googleActionResult.title}</div>
+                        {googleActionResult.lines.map((line) => (
+                          <div key={line}>{line}</div>
+                        ))}
+                      </div>
+                    )}
                     {googleWorkspaceStatus.isEnabled && (
                       <div style={{ marginTop: '12px', padding: '12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px' }}>
                         <div style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: '600', marginBottom: '6px' }}>
@@ -585,13 +632,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                                     const data = await response.json();
                                     if (data.success) {
-                                      alert('Sync started! Check back in a few moments.');
+                                      showSuccess('Sync started! Check back in a few moments.');
                                       setTimeout(() => fetchModuleStatus(), 3000);
                                     } else {
-                                      alert(`Sync failed: ${data.message || data.error?.message}`);
+                                      showError(`Sync failed: ${data.message || data.error?.message}`);
                                     }
                                   } catch (error: any) {
-                                    alert(`Sync failed: ${error.message}`);
+                                    showError(`Sync failed: ${error.message}`);
                                   }
                                 }}
                               >
@@ -1214,11 +1261,11 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
                 className="btn-primary"
                 onClick={async () => {
                   if (passwordData.newPassword !== passwordData.confirmPassword) {
-                    alert('Passwords do not match');
+                    showWarning('Passwords do not match');
                     return;
                   }
                   if (passwordData.newPassword.length < 8) {
-                    alert('Password must be at least 8 characters');
+                    showWarning('Password must be at least 8 characters');
                     return;
                   }
 
@@ -1240,15 +1287,15 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
                     const data = await response.json();
                     if (data.success) {
-                      alert('Password changed successfully');
+                      showSuccess('Password changed successfully');
                       setShowPasswordModal(false);
                       onPasswordModalChange?.(false);
                       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                     } else {
-                      alert(`${data.error || 'Failed to change password'}`);
+                      showError(`${data.error || 'Failed to change password'}`);
                     }
                   } catch (err: any) {
-                    alert(`Error: ${err.message}`);
+                    showError(`Error: ${err.message}`);
                   }
                 }}
               >
@@ -1291,13 +1338,13 @@ export function Settings({ organizationName, domain, organizationId, showPasswor
 
             const data = await response.json();
             if (data.success) {
-              alert('Google Workspace has been disabled');
+              showSuccess('Google Workspace has been disabled');
               fetchModuleStatus();
             } else {
-              alert(`Failed to disable: ${data.message}`);
+              showError(`Failed to disable: ${data.message}`);
             }
           } catch (error) {
-            alert('Error disabling Google Workspace');
+            showError('Error disabling Google Workspace');
             console.error(error);
           }
           setShowDisableGoogleConfirm(false);

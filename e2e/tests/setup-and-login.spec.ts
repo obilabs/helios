@@ -118,8 +118,13 @@ test.describe('First-run: setup wizard and login form', () => {
     // Setup's auto-login side-effects (App.tsx onComplete stores these).
     const storedOrg = await page.evaluate(() => localStorage.getItem('helios_organization'));
     expect(storedOrg).toContain(ORG.name);
-    const token = await page.evaluate(() => localStorage.getItem('helios_token'));
-    expect(token, 'setup auto-login should store helios_token').toBeTruthy();
+    // Setup signs the new admin in with a real session cookie, so a refresh
+    // (or a new tab) stays signed in. A token held only by the page did not.
+    const cookies = await page.context().cookies();
+    expect(cookies.find((c) => /helios\.session_token/.test(c.name)), 'session cookie after setup').toBeTruthy();
+    expect(await page.evaluate(() => localStorage.getItem('helios_token'))).toBeNull();
+    await page.reload();
+    await expectDashboard(page);
   });
 
   test('login form signs the seeded admin in via better-auth and reaches the dashboard', async ({
@@ -185,6 +190,9 @@ test.describe('First-run: setup wizard and login form', () => {
     page,
     context,
   }) => {
+    // The sign-in library allows a few sign-in attempts per address in a short
+    // window; setup and the two tests above have just used them.
+    await page.waitForTimeout(11_000);
     await context.clearCookies();
     await signInViaForm(page);
 
@@ -245,5 +253,60 @@ test.describe('First-run: setup wizard and login form', () => {
       headers: { 'X-CSRF-Token': csrf!.value },
     });
     expect(accepted.status()).toBe(200);
+  });
+
+  test('an account an admin creates with a password can sign in through the form', async ({
+    page,
+    context,
+    browser,
+  }) => {
+    // The sign-in library allows a few sign-in attempts per address in a short
+    // window, and the tests above have just used them from this one address.
+    await page.waitForTimeout(11_000);
+    await context.clearCookies();
+    await signInViaForm(page);
+    const csrf = (await context.cookies()).find((c) => c.name === 'helios_csrf');
+    expect(csrf, 'CSRF cookie issued').toBeTruthy();
+
+    // Throwaway fixture values for a disposable DB.
+    const member = { email: 'e2e-member@e2e-firstrun.test', password: 'e2e_member_pw_2026' };
+    const created = await page.request.post('/api/v1/organization/users', {
+      headers: { 'X-CSRF-Token': csrf!.value },
+      data: {
+        email: member.email,
+        firstName: 'Mem',
+        lastName: 'Ber',
+        role: 'user',
+        passwordSetupMethod: 'admin_set',
+        password: member.password,
+      },
+    });
+    expect(created.status(), await created.text()).toBeLessThan(300);
+
+    // An administrator is never created directly, and the message says where to go.
+    const refused = await page.request.post('/api/v1/organization/users', {
+      headers: { 'X-CSRF-Token': csrf!.value },
+      data: {
+        email: 'e2e-second-admin@e2e-firstrun.test',
+        firstName: 'Sec',
+        lastName: 'Ond',
+        role: 'admin',
+        passwordSetupMethod: 'admin_set',
+        password: member.password,
+      },
+    });
+    expect(refused.status()).toBeGreaterThanOrEqual(400);
+    expect(await refused.text()).toContain('Roles & Admins');
+
+    // A separate browser session: the new account signs in with that password.
+    const other = await browser.newContext();
+    const memberPage = await other.newPage();
+    await memberPage.goto('/');
+    await memberPage.fill('input[type="email"]', member.email);
+    await memberPage.fill('input[type="password"]', member.password);
+    await memberPage.click('button[type="submit"]');
+    await memberPage.waitForSelector('input[type="email"]', { state: 'hidden', timeout: 20_000 });
+    expect((await other.cookies()).find((c) => /helios\.session_token/.test(c.name)), 'session cookie').toBeTruthy();
+    await other.close();
   });
 });

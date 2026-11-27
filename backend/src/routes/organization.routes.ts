@@ -279,11 +279,15 @@ router.post('/setup', async (req: Request, res: Response) => {
       );
       const admin = userResult.rows[0];
 
-      // Create auth_accounts entry for better-auth login
+      // Create auth_accounts entry for better-auth login.
+      // account_id is the user's id. The sign-in library matches a credential
+      // account on it and will not sign in a user whose account_id is anything else.
       await db.query(
         `INSERT INTO auth_accounts (id, user_id, account_id, provider_id, password, created_at, updated_at)
-         VALUES (gen_random_uuid()::text, $1, $2, 'credential', $3, NOW(), NOW())`,
-        [admin.id, adminEmail, passwordHash]
+         VALUES (gen_random_uuid()::text, $1, $2, 'credential', $3, NOW(), NOW())
+         ON CONFLICT (provider_id, account_id) DO UPDATE
+           SET password = EXCLUDED.password, updated_at = NOW()`,
+        [admin.id, String(admin.id), passwordHash]
       );
 
       // Create default organization settings
@@ -1415,7 +1419,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req: Request, res:
     if (PRIVILEGED_ROLES.includes(userRole)) {
       return res.status(400).json({
         success: false,
-        error: 'Privileged roles cannot be assigned at account creation. Create the user first, then promote via POST /organization/admins/promote/:userId'
+        error: 'An administrator cannot be created directly. Create the account as a user, then grant administrator access in Settings > Roles & Admins.'
       });
     }
     const validRoles = ['manager', 'user'];
@@ -2028,7 +2032,7 @@ router.put('/users/:userId', authenticateToken, requireAdmin, async (req: Reques
     if (role && PRIVILEGED_ROLES.includes(role) && role !== currentRole) {
       return res.status(400).json({
         success: false,
-        error: 'Privileged roles cannot be assigned through user update. Use POST /organization/admins/promote/:userId'
+        error: 'Administrator access cannot be granted by editing a user. Grant it in Settings > Roles & Admins.'
       });
     }
 
@@ -2952,7 +2956,10 @@ router.patch('/users/:userId/restore', authenticateToken, requireAdmin, async (r
       ? Math.floor((Date.now() - new Date(user.deleted_at).getTime()) / 86400000)
       : 0;
 
-    if (user.status !== 'deleted') {
+    // deleted_at is the record of a deletion. status alone is not enough: a row
+    // whose status was overwritten while deleted_at stayed set must still be
+    // restorable.
+    if (user.status !== 'deleted' && !user.deleted_at) {
       return res.status(400).json({
         success: false,
         error: 'User is not deleted'

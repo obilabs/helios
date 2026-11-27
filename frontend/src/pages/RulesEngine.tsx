@@ -28,6 +28,7 @@ import {
 import { authFetch } from '../config/api';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import './RulesEngine.css';
+import { useToast } from '../contexts/ToastContext';
 
 // Types
 interface NamedCondition {
@@ -124,6 +125,7 @@ const OPERATOR_LABELS: Record<string, string> = {
 };
 
 const RulesEnginePage: React.FC = () => {
+  const { showError } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('conditions');
   const [conditions, setConditions] = useState<NamedCondition[]>([]);
   const [rules, setRules] = useState<AutomationRule[]>([]);
@@ -234,7 +236,7 @@ const RulesEnginePage: React.FC = () => {
         setDeleteTarget(null);
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to delete');
+        showError(data.error || 'Failed to delete');
       }
     } catch (error) {
       console.error('Error deleting:', error);

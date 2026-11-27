@@ -45,6 +45,9 @@ interface AuditSummary {
   mediumRiskFiles: number;
   lowRiskFiles: number;
   lastScanAt?: string;
+  accountsScanned?: number;
+  accountsNotScanned?: Array<{ email: string; reason: string }>;
+  truncated?: boolean;
 }
 
 type RiskFilter = 'all' | 'high' | 'medium' | 'low';
@@ -127,7 +130,7 @@ export const ExternalSharingManager: React.FC = () => {
 
     const sharesToRevoke = shares
       .filter(s => selectedShares.has(`${s.fileId}-${s.permissionId}`))
-      .map(s => ({ fileId: s.fileId, permissionId: s.permissionId }));
+      .map(s => ({ fileId: s.fileId, permissionId: s.permissionId, ownerEmail: s.sharedByEmail }));
 
     try {
       const response = await authFetch('/api/v1/external-sharing/bulk-revoke', {
@@ -170,7 +173,8 @@ export const ExternalSharingManager: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileId: shareToRevoke.fileId,
-          permissionId: shareToRevoke.permissionId
+          permissionId: shareToRevoke.permissionId,
+          ownerEmail: shareToRevoke.sharedByEmail
         })
       });
       const data = await response.json();
@@ -338,6 +342,21 @@ export const ExternalSharingManager: React.FC = () => {
         </div>
       )}
 
+      {/* A scan that skipped accounts or stopped early is not a clean result. */}
+      {summary && ((summary.accountsNotScanned?.length ?? 0) > 0 || summary.truncated) && (
+        <div className="error-banner" role="alert" data-testid="scan-incomplete">
+          <AlertTriangle size={16} />
+          <span>
+            This scan is incomplete.
+            {summary.truncated && ' It stopped at the file limit.'}
+            {(summary.accountsNotScanned?.length ?? 0) > 0 &&
+              ` Not scanned: ${summary.accountsNotScanned!
+                .map(a => `${a.email} (${a.reason})`)
+                .join(', ')}.`}
+          </span>
+        </div>
+      )}
+
       {/* Summary Cards */}
       {summary && (
         <div className="summary-grid">
@@ -384,11 +403,30 @@ export const ExternalSharingManager: React.FC = () => {
       {!loading && shares.length === 0 && !scanning && (
         <div className="empty-state">
           <Shield size={48} />
-          <h2>No scan results yet</h2>
-          <p>Run a full scan to discover files shared outside your organization.</p>
+          {/* The cards above come from the summary; the list of files only
+              comes from a scan run on this page. Say which of the two is
+              missing, so counts are never shown above "no results". */}
+          {summary && summary.totalSharedExternally > 0 ? (
+            <>
+              <h2>
+                {summary.totalSharedExternally} external {summary.totalSharedExternally === 1 ? 'share' : 'shares'} found
+              </h2>
+              <p>Run a scan to list the files and who they are shared with.</p>
+            </>
+          ) : summary ? (
+            <>
+              <h2>No external shares found</h2>
+              <p>The last check found no files shared outside your organization. Run a scan to check again.</p>
+            </>
+          ) : (
+            <>
+              <h2>No scan results yet</h2>
+              <p>Run a full scan to discover files shared outside your organization.</p>
+            </>
+          )}
           <button className="btn btn-primary" onClick={runFullScan}>
             <RefreshCw size={16} />
-            Start Scan
+            {summary && summary.totalSharedExternally > 0 ? 'List the files' : 'Start Scan'}
           </button>
         </div>
       )}

@@ -22,7 +22,7 @@
   padding: 8px 12px;
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
   cursor: pointer;
   margin-bottom: 16px;
@@ -31,15 +31,15 @@
 }
 
 .back-btn:hover {
-  color: #374151;
-  background: #f3f4f6;
+  color: var(--color-gray-700);
+  background: var(--color-gray-100);
 }
 
 .editor-header h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 /* Loading State */
@@ -49,7 +49,7 @@
   justify-content: center;
   gap: 12px;
   padding: 48px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
@@ -68,7 +68,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-gray-100);
   border: 1px solid #fecaca;
   border-radius: 6px;
   color: #991b1b;
@@ -95,8 +95,8 @@
 
 /* Form Sections */
 .form-section {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -107,14 +107,14 @@
   align-items: center;
   width: 100%;
   padding: 16px 20px;
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border: none;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .section-header:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .section-title {
@@ -123,11 +123,11 @@
   gap: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .section-title svg {
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .section-title .badge {
@@ -137,7 +137,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   font-size: 11px;
   font-weight: 500;
@@ -146,7 +146,7 @@
 
 .section-content {
   padding: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Form Groups */
@@ -163,7 +163,7 @@
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .form-group input[type="text"],
@@ -173,11 +173,11 @@
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
-  color: #111827;
-  background: white;
+  color: var(--color-gray-900);
+  background: var(--card-bg);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -185,19 +185,19 @@
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #8b5cf6;
+  border-color: var(--theme-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .form-hint {
   margin: 6px 0 0 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .form-row {
@@ -231,13 +231,13 @@
   height: 18px;
   margin: 0;
   cursor: pointer;
-  accent-color: #8b5cf6;
+  accent-color: var(--theme-primary);
   flex-shrink: 0;
 }
 
 .checkbox-label span {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-gray-700);
   line-height: 1.4;
 }
 
@@ -260,13 +260,13 @@
 
 .group-item {
   padding: 12px;
-  background: #f9fafb;
+  background: var(--color-gray-50);
   border-radius: 6px;
   transition: background 0.15s ease;
 }
 
 .group-item:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 
 .group-info {
@@ -277,18 +277,18 @@
 
 .group-name {
   font-weight: 500;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .group-email {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 .empty-message {
   padding: 24px;
   text-align: center;
-  color: #6b7280;
+  color: var(--color-gray-500);
   font-size: 14px;
 }
 
@@ -305,21 +305,21 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .radio-label:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-300);
 }
 
 .radio-label:has(input:checked) {
-  background: #f5f3ff;
-  border-color: #8b5cf6;
+  background: var(--theme-primary-lighter);
+  border-color: var(--theme-primary);
 }
 
 .radio-label input[type="radio"] {
@@ -327,7 +327,7 @@
   height: 18px;
   margin: 2px 0 0 0;
   cursor: pointer;
-  accent-color: #8b5cf6;
+  accent-color: var(--theme-primary);
   flex-shrink: 0;
 }
 
@@ -340,12 +340,12 @@
 .radio-title {
   font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 
 .radio-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-gray-500);
   line-height: 1.4;
 }
 
@@ -356,7 +356,7 @@
   gap: 12px;
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
 }
 
 /* Buttons */
@@ -365,7 +365,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #8b5cf6;
+  background: var(--theme-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -376,7 +376,7 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #7c3aed;
+  background: var(--theme-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -389,9 +389,9 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--card-bg);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -400,8 +400,8 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }
 
 .btn-secondary:disabled {

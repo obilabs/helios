@@ -14,6 +14,7 @@ import {
   UpdateCampaignDTO,
   CampaignStatus,
 } from '../services/signature-campaign.service.js';
+import { signatureSyncService } from '../services/signature-sync.service.js';
 
 const router = Router();
 
@@ -468,10 +469,25 @@ router.post('/:campaignId/launch', requireAuth, requirePermission('admin'), asyn
 
     const campaign = await signatureCampaignService.launchCampaign(campaignId);
 
+    // A campaign that is live now has to reach mailboxes: queue its users for
+    // the next signature sync, as the scheduler does when it activates one.
+    let queuedUsers = 0;
+    if (campaign?.status === 'active') {
+      const affected = await signatureCampaignService.getCampaignAffectedUsers(campaignId);
+      queuedUsers = affected.length;
+      if (queuedUsers > 0) {
+        await signatureSyncService.markUsersPending(affected.map((u) => u.userId));
+      }
+    }
+
     return res.json({
       success: true,
-      message: 'Campaign launched successfully',
+      message:
+        campaign?.status === 'scheduled'
+          ? 'Campaign scheduled. It starts on its start date.'
+          : `Campaign launched. ${queuedUsers} user signature(s) queued for the next sync.`,
       data: campaign,
+      queuedUsers,
     });
   } catch (error: unknown) {
     console.error('Error launching campaign:', error);

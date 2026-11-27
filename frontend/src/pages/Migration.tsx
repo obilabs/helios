@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Download, PlayCircle, ExternalLink, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { authFetch, apiPath } from '../config/api';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import './Migration.css';
 
 /**
@@ -120,6 +121,7 @@ export default function Migration() {
   const [provisioning, setProvisioning] = useState(false);
   const [provisionResult, setProvisionResult] = useState<ProvisionResult | null>(null);
   const [status, setStatus] = useState<MigrationStatus | null>(null);
+  const [showProvisionConfirm, setShowProvisionConfirm] = useState(false);
 
   const loadPlan = async () => {
     setLoading(true);
@@ -152,10 +154,20 @@ export default function Migration() {
     loadStatus();
   }, []);
 
-  const provision = async (execute: boolean) => {
-    if (execute && !window.confirm('This creates real Google accounts and consumes licenses for each mapped destination. Continue?')) {
+  const provision = (execute: boolean) => {
+    if (execute) {
+      setShowProvisionConfirm(true);
       return;
     }
+    void runProvision(false);
+  };
+
+  const confirmProvision = () => {
+    setShowProvisionConfirm(false);
+    void runProvision(true);
+  };
+
+  const runProvision = async (execute: boolean) => {
     setProvisioning(true);
     setProvisionResult(null);
     try {
@@ -403,6 +415,17 @@ export default function Migration() {
           </p>
         )}
       </div>
+
+      {/* Provision Accounts Confirmation */}
+      <ConfirmDialog
+        isOpen={showProvisionConfirm}
+        title="Provision Accounts"
+        message="This creates real Google accounts and consumes licenses for each mapped destination. Continue?"
+        variant="warning"
+        confirmText="Continue"
+        onConfirm={confirmProvision}
+        onCancel={() => setShowProvisionConfirm(false)}
+      />
     </div>
   );
 }

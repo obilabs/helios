@@ -336,7 +336,9 @@ export class SyncSchedulerService {
             SET google_workspace_id = $1,
                 first_name = $2,
                 last_name = $3,
-                is_active = $4,
+                -- A deleted row stays inactive even while Google still lists
+                -- the account.
+                is_active = CASE WHEN deleted_at IS NOT NULL THEN false ELSE $4 END,
                 updated_at = NOW()
             WHERE id = $5
           `, [
@@ -638,7 +640,7 @@ export class SyncSchedulerService {
     // Get stats from organization_users for Google Workspace users
     const result = await db.query(
       `SELECT COUNT(*) as total_users,
-              COUNT(CASE WHEN user_status = 'suspended' AND deleted_at IS NULL THEN 1 END) as suspended_users
+              COUNT(CASE WHEN status = 'suspended' AND deleted_at IS NULL THEN 1 END) as suspended_users
        FROM organization_users
        WHERE organization_id = $1
          AND google_workspace_id IS NOT NULL

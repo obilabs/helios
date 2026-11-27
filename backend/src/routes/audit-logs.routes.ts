@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
 import { logger } from '../utils/logger.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { verifyAuditChain } from '../lib/audit-chain.js';
 
 const router = Router();
 
@@ -537,6 +538,85 @@ router.post('/console', async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error('Failed to log console command', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to log console command' });
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/organization/audit-logs/integrity:
+ *   get:
+ *     summary: Verify the security audit chain
+ *     description: >
+ *       Walks the hash chain on `security_audit_logs` (migration 101) and
+ *       reports the first break with its row id. Read-only; it cannot repair
+ *       anything, because a repairable audit trail is not evidence.
+ *       Returns 200 with `data.ok: false` when the chain is broken — a broken
+ *       chain is a successful verification with a bad answer, not a request
+ *       failure.
+ *     tags: [Audit Logs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: fromSeq
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Verify only from this chain_seq, for a suffix from a known-good point
+ *       - in: query
+ *         name: legacyTimezone
+ *         schema:
+ *           type: string
+ *         description: >
+ *           The TimeZone pre-101 rows were written under, if not this session's.
+ *           A default install writes under UTC.
+ *     responses:
+ *       200:
+ *         description: Verification result
+ *       400:
+ *         description: Invalid query parameter
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin access required
+ *       500:
+ *         description: Verification failed
+ */
+// Admin-only: the response says exactly where the trail stops being
+// trustworthy, which is also exactly what someone covering their tracks would
+// want to know.
+router.get('/integrity', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { fromSeq, legacyTimezone } = req.query;
+
+  let parsedFromSeq: number | undefined;
+  if (fromSeq !== undefined) {
+    parsedFromSeq = Number(fromSeq);
+    if (!Number.isInteger(parsedFromSeq) || parsedFromSeq < 1) {
+      res.status(400).json({ success: false, error: 'fromSeq must be a positive integer' });
+      return;
+    }
+  }
+
+  // Passed to set_config('TimeZone', ...), so keep it to the shape a timezone
+  // name has rather than forwarding arbitrary text.
+  let parsedTimezone: string | undefined;
+  if (legacyTimezone !== undefined) {
+    if (typeof legacyTimezone !== 'string' || !/^[A-Za-z0-9+\-_/]{1,64}$/.test(legacyTimezone)) {
+      res.status(400).json({ success: false, error: 'legacyTimezone is not a timezone name' });
+      return;
+    }
+    parsedTimezone = legacyTimezone;
+  }
+
+  try {
+    const verification = await verifyAuditChain({
+      fromSeq: parsedFromSeq,
+      legacyTimezone: parsedTimezone,
+    });
+    res.json({ success: true, data: verification });
+  } catch (error: any) {
+    logger.error('Audit chain verification failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to verify the audit chain' });
   }
 });
 

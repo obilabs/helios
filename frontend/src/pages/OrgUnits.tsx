@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { googleWorkspaceService } from '../services/google-workspace.service';
-import { Building2, MapPin, User, FolderTree, Plus, Pencil, Trash2, Check, AlertTriangle, FileEdit, Loader, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react';
+import { Building2, MapPin, User, FolderTree, Pencil, Check, AlertTriangle, FileEdit, Loader, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react';
 import { useEntityLabels } from '../contexts/LabelsContext';
 import { ENTITIES } from '../config/entities';
 import './Pages.css';
@@ -172,11 +172,6 @@ export function OrgUnits({ organizationId, customLabel }: OrgUnitsProps) {
               </span>
             )}
           </div>
-          <div className="org-unit-actions">
-            <button className="btn-icon" title="Add sub-unit"><Plus size={16} /></button>
-            <button className="btn-icon" title="Edit"><Pencil size={16} /></button>
-            <button className="btn-icon danger" title="Delete"><Trash2 size={16} /></button>
-          </div>
         </div>
         {isExpanded && children.map(child => renderOrgUnit(child, level + 1))}
       </div>
@@ -190,11 +185,8 @@ export function OrgUnits({ organizationId, customLabel }: OrgUnitsProps) {
       <div className="page-header">
         <div>
           <h1>{label}</h1>
-          <p>Manage organizational structure and hierarchy</p>
+          <p>Organizational structure and hierarchy, synced from Google Workspace. Create, rename and delete units in the Google Admin console, then sync.</p>
         </div>
-        <button className="btn-primary">
-          <Plus size={16} /> Create {customLabel || 'Unit'}
-        </button>
       </div>
 
       <div className="org-units-tree">

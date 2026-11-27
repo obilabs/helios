@@ -74,6 +74,7 @@ import { UserPlus, Upload, RefreshCw, AlertCircle, Info, Edit3, Building, Buildi
 import { getPageFromPath, getPageDef, getPathForPage } from './config/navigation'
 import { FeatureNotEnabled } from './components/FeatureNotEnabled'
 import { SetupChecklist, isSetupComplete } from './components/SetupChecklist'
+import { useToast } from './contexts/ToastContext'
 
 // Loading fallback for lazy-loaded components
 const PageLoader = () => (
@@ -138,6 +139,7 @@ interface OrganizationStats {
 }
 
 function AppContent() {
+  const { showError } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -620,11 +622,11 @@ function AppContent() {
       if (data.success) {
         setVisibleWidgets(widgets);
       } else {
-        alert('Failed to save widget preferences');
+        showError('Failed to save widget preferences');
       }
     } catch (err) {
       console.error('Failed to save widget preferences:', err);
-      alert('Failed to save widget preferences');
+      showError('Failed to save widget preferences');
     }
   };
 
@@ -658,11 +660,11 @@ function AppContent() {
           setSyncLoading(false);
         }, 30000);
       } else {
-        alert(`Sync failed: ${data.message}`);
+        showError(`Sync failed: ${data.message}`);
         setSyncLoading(false);
       }
     } catch (err: any) {
-      alert(`Sync failed: ${err.message}`);
+      showError(`Sync failed: ${err.message}`);
       setSyncLoading(false);
     }
   };
@@ -698,7 +700,7 @@ function AppContent() {
           try {
             if (autoLogin) {
               // Auto-login with the returned token
-              localStorage.setItem('helios_token', autoLogin.token);
+              if (autoLogin.token) localStorage.setItem('helios_token', autoLogin.token);
               localStorage.setItem('helios_user', JSON.stringify({
                 ...autoLogin.user,
                 organizationId: autoLogin.organization.id

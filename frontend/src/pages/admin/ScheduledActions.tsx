@@ -182,9 +182,13 @@ const ScheduledActions: React.FC<ScheduledActionsProps> = ({ organizationId: _or
         return (
           <div className="user-info">
             <span className="user-name">
-              {action.targetFirstName} {action.targetLastName}
+              {[action.targetFirstName, action.targetLastName].filter(Boolean).join(' ') ||
+                action.targetEmail ||
+                'Unknown user'}
             </span>
-            <span className="user-email">{action.targetEmail}</span>
+            {action.targetEmail && (action.targetFirstName || action.targetLastName) && (
+              <span className="user-email">{action.targetEmail}</span>
+            )}
           </div>
         );
       },

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Search, Trash2, AlertTriangle, CheckCircle, Clock, User } from 'lucide-react';
 import './EmailSecurity.css';
 import { authFetch } from '../config/api';
+import { useToast } from '../contexts/ToastContext';
 
 interface MessageSearchResult {
   messageId: string;
@@ -19,6 +20,7 @@ interface DeletionResult {
 }
 
 export const EmailSecurity: React.FC = () => {
+  const { showError, showWarning } = useToast();
   const [searchBy, setSearchBy] = useState<'sender' | 'messageId' | 'subject'>('sender');
   const [searchValue, setSearchValue] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -50,11 +52,11 @@ export const EmailSecurity: React.FC = () => {
       if (data.success) {
         setSearchResults(data.data.messages || []);
       } else {
-        alert(`Search failed: ${data.error}`);
+        showError(`Search failed: ${data.error}`);
       }
     } catch (error: any) {
       console.error('Search error:', error);
-      alert(`Search failed: ${error.message}`);
+      showError(`Search failed: ${error.message}`);
     } finally {
       setSearching(false);
     }
@@ -62,7 +64,7 @@ export const EmailSecurity: React.FC = () => {
 
   const handleDeleteMessages = async () => {
     if (!deletionReason.trim()) {
-      alert('Please provide a reason for deletion');
+      showWarning('Please provide a reason for deletion');
       return;
     }
 
@@ -92,11 +94,11 @@ export const EmailSecurity: React.FC = () => {
         setSearchValue('');
         setDeletionReason('');
       } else {
-        alert(`Deletion failed: ${data.error}`);
+        showError(`Deletion failed: ${data.error}`);
       }
     } catch (error: any) {
       console.error('Deletion error:', error);
-      alert(`Deletion failed: ${error.message}`);
+      showError(`Deletion failed: ${error.message}`);
     } finally {
       setDeleting(false);
     }
