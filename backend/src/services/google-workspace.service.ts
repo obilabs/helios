@@ -14,6 +14,9 @@ import {
 import { ACCOUNT_PURPOSE_FIELD, HELIOS_SCHEMA_NAME, type AccountPurpose } from '../lib/account-purpose.js';
 import { googleStatusOf } from '../lib/google-licence-errors.js';
 
+/** Upper bound on Reports API pages read by one login activity pull (1,000 events each). */
+export const LOGIN_ACTIVITY_MAX_PAGES = 20;
+
 /**
  * A tenant that has not authorised an optional scope refuses the token
  * exchange with a bare `unauthorized_client`. Name the missing scope so the
@@ -3532,7 +3535,8 @@ export class GoogleWorkspaceService {
 
   /**
    * Fetch login activity from Google Workspace Reports API
-   * Returns login events from the last 24 hours by default
+   * Returns login events from the last 24 hours by default, all pages up to
+   * LOGIN_ACTIVITY_MAX_PAGES
    */
   async fetchLoginActivity(
     organizationId: string,
@@ -3540,6 +3544,7 @@ export class GoogleWorkspaceService {
       startTime?: Date;
       endTime?: Date;
       maxResults?: number;
+      maxPages?: number;
     } = {}
   ): Promise<{ success: boolean; events: any[]; error?: string }> {
     try {
@@ -3562,16 +3567,38 @@ export class GoogleWorkspaceService {
       // Create Reports API client
       const reportsClient = this.createReportsClient(credentials, adminEmail);
 
-      // Fetch login events
-      const response = await reportsClient.activities.list({
-        userKey: 'all',
-        applicationName: 'login',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        maxResults
-      });
+      // Fetch login events, following nextPageToken across the window. One page
+      // holds at most 1,000 events, so a busy workspace's 7-day first pull was
+      // cut short. Bounded so one pull cannot run away; hitting the bound warns.
+      const maxPages = options.maxPages || LOGIN_ACTIVITY_MAX_PAGES;
+      const items: any[] = [];
+      let pageToken: string | undefined;
+      let pages = 0;
+      do {
+        const response = await reportsClient.activities.list({
+          userKey: 'all',
+          applicationName: 'login',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          maxResults,
+          ...(pageToken ? { pageToken } : {})
+        });
+        items.push(...(response.data.items || []));
+        pageToken = response.data.nextPageToken || undefined;
+        pages++;
+      } while (pageToken && pages < maxPages);
 
-      const events = (response.data.items || []).map((item: any) => ({
+      if (pageToken) {
+        logger.warn('Login activity pull stopped at the page limit; older events in this window were not read', {
+          organizationId,
+          pages,
+          eventCount: items.length,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString()
+        });
+      }
+
+      const events = items.map((item: any) => ({
         eventId: item.id?.uniqueQualifier,
         userEmail: item.actor?.email,
         userId: item.actor?.profileId,
