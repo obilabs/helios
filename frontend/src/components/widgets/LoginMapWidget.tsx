@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Globe, AlertTriangle, MapPin, Users, RefreshCw, Loader2 } from 'lucide-react';
 import { authFetch, apiPath } from '../../config/api';
+import { MAP_WIDTH, MAP_HEIGHT, latLongToSvg } from './loginMapProjection';
+import { WORLD_OUTLINE_PATH } from './worldOutline';
 import './LoginMapWidget.css';
 
 interface CountryData {
@@ -118,14 +120,6 @@ export function LoginMapWidget() {
     }
   };
 
-  // Convert lat/long to SVG coordinates (simple equirectangular projection)
-  const latLongToSvg = (lat: number, lng: number): { x: number; y: number } => {
-    // SVG viewBox is 0 0 1000 500
-    const x = ((lng + 180) / 360) * 1000;
-    const y = ((90 - lat) / 180) * 500;
-    return { x, y };
-  };
-
   // Get marker size based on login count
   const getMarkerSize = (count: number): number => {
     if (count > 100) return 12;
@@ -186,17 +180,14 @@ export function LoginMapWidget() {
         <>
           {hasLocations && data && (
           <div className="login-map-container">
-            <svg viewBox="0 0 1000 500" className="world-map">
-              {/* Simple world map outline - continents */}
-              <path
-                className="map-land"
-                d="M150,180 L170,160 L200,150 L230,160 L250,180 L260,220 L240,260 L200,280 L160,260 L140,220 Z
-                   M280,100 L380,80 L480,100 L520,150 L500,220 L450,280 L380,300 L300,280 L260,220 L270,150 Z
-                   M540,120 L620,100 L700,120 L750,180 L740,250 L700,300 L620,320 L560,300 L530,240 L540,180 Z
-                   M770,180 L850,160 L920,200 L940,280 L900,340 L840,360 L780,340 L760,280 L770,220 Z
-                   M200,320 L280,300 L340,320 L360,380 L320,440 L240,460 L180,420 L180,360 Z
-                   M620,340 L680,320 L740,340 L760,400 L720,450 L660,460 L620,420 L620,380 Z"
-              />
+            <svg
+              viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+              className="world-map"
+              role="img"
+              aria-label="World map of sign-in locations"
+            >
+              {/* Land outline, Natural Earth 1:110m, in the same frame as the markers */}
+              <path className="map-land" d={WORLD_OUTLINE_PATH} />
               {/* Country markers */}
               {data.countries.map((country) => {
                 const pos = latLongToSvg(country.latitude, country.longitude);

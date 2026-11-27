@@ -263,7 +263,8 @@ See [LICENSE](LICENSE) for details.
 
 Login locations use the DB-IP "IP to City Lite" database, looked up on your own
 server: <a href='https://db-ip.com'>IP Geolocation by DB-IP</a>, licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The map outline is
+[Natural Earth](https://www.naturalearthdata.com/) (public domain) via world-atlas (ISC). See
 [docs/guides/login-locations.md](docs/guides/login-locations.md).
 
 ---

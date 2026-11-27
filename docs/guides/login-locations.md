@@ -95,3 +95,37 @@ Where locations are shown, Helios displays "IP Geolocation by DB-IP" linked to
 in the Developer Console.
 
 The reader library is `mmdb-lib` (MIT licence, pure JavaScript, no native build step).
+
+## The map
+
+The land outline behind the markers is built into Helios; drawing it calls no
+map or tile service. It is generated once by
+`frontend/scripts/build-world-outline.mjs` into
+`frontend/src/components/widgets/worldOutline.ts`, using the same frame as the
+markers (`loginMapProjection.ts`). A test checks that known inland places
+(Edmonton, Abia State, London, central Australia) fall on land and open ocean
+does not, so the outline and the markers cannot drift apart again.
+
+Sources, none of which is a Helios dependency at run time:
+
+| Part | Licence |
+|---|---|
+| Natural Earth 1:110m land, <https://www.naturalearthdata.com/> | Public domain |
+| world-atlas 2.0.2 (Natural Earth as TopoJSON) | ISC, notice below |
+| d3-geo 3.1.1 and topojson-client 3.1.0 (used by the generator only) | ISC |
+
+world-atlas licence notice:
+
+> Copyright 2013-2019 Michael Bostock
+>
+> Permission to use, copy, modify, and/or distribute this software for any
+> purpose with or without fee is hereby granted, provided that the above
+> copyright notice and this permission notice appear in all copies.
+>
+> THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+> REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+> AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+> INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+> LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+> OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+> PERFORMANCE OF THIS SOFTWARE.
