@@ -37,7 +37,6 @@ const ROUTES_DIR = join(BACKEND_SRC, 'routes');
  * to this list to make CI pass.
  */
 const KNOWN_BROKEN = new Set([
-  '/departments',
   '/groups',
   '/helpdesk/stats',
   '/helpdesk/tickets',

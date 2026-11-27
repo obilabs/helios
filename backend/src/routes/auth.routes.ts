@@ -16,6 +16,7 @@ import {
 } from '../utils/response.js';
 import { ErrorCode } from '../types/error-codes.js';
 import { securityAudit, AuditActions } from '../services/security-audit.service.js';
+import { recordLastLogin } from '../lib/last-login.js';
 
 const router = Router();
 
@@ -181,8 +182,8 @@ router.post('/login',
       { expiresIn: '7d' }
     );
 
-    // Update last login
-    await db.query('UPDATE organization_users SET last_login = NOW() WHERE id = $1', [user.id]);
+    // Update last login (the same helper the session sign-in path uses)
+    await recordLastLogin(user.id);
 
     // Log login to legacy audit_logs table (for backwards compatibility)
     await db.query(

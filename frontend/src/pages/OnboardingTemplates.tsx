@@ -93,7 +93,7 @@ const OnboardingTemplates: React.FC<OnboardingTemplatesProps> = ({
   // Fetch departments
   const fetchDepartments = async () => {
     try {
-      const response = await authFetch('/api/v1/departments');
+      const response = await authFetch('/api/v1/organization/departments');
 
       if (response.ok) {
         const data = await response.json();

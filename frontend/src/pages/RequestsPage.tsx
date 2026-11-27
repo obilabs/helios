@@ -585,7 +585,7 @@ const NewRequestModal = ({
     const fetchData = async () => {
       try {
         const [deptRes, mgrRes, tplRes] = await Promise.all([
-          authFetchJson<{ success: boolean; data: Array<{ id: string; name: string }> }>('/api/v1/departments'),
+          authFetchJson<{ success: boolean; data: Array<{ id: string; name: string }> }>('/api/v1/organization/departments'),
           authFetchJson<{ success: boolean; data: Array<{ id: string; first_name: string; last_name: string }> }>('/api/v1/users?role=admin,manager'),
           authFetchJson<{ success: boolean; data: Array<{ id: string; name: string }> }>('/api/v1/lifecycle/onboarding-templates?isActive=true'),
         ]);

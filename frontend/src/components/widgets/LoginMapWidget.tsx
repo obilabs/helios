@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Globe, AlertTriangle, MapPin, Users, RefreshCw, Loader2 } from 'lucide-react';
 import { authFetch, apiPath } from '../../config/api';
 import './LoginMapWidget.css';
@@ -36,12 +36,26 @@ export function LoginMapWidget() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
+  const autoSyncTried = useRef(false);
 
   useEffect(() => {
-    fetchData();
+    (async () => {
+      const storedIsEmpty = await fetchData();
+      // Login events reach login_activity only through a sync from Google
+      // (POST /login-activity/sync); no scheduled job pulls them. Reading the
+      // table on an install that has never synced returned nothing, so the
+      // block stayed empty until the admin pressed the sync button. Run that
+      // sync once here when nothing is stored yet.
+      if (storedIsEmpty && !autoSyncTried.current) {
+        autoSyncTried.current = true;
+        await handleSync();
+      }
+    })();
   }, []);
 
-  const fetchData = async () => {
+  /** Loads stored login data. Resolves true only when the load succeeded and nothing is stored. */
+  const fetchData = async (): Promise<boolean> => {
+    let storedIsEmpty = false;
     setIsLoading(true);
     setError(null);
 
@@ -62,6 +76,7 @@ export function LoginMapWidget() {
         const mapData = await mapResponse.json();
         if (mapData.success) {
           setData(mapData.data);
+          storedIsEmpty = statsResponse.ok && (mapData.data?.countries?.length ?? 0) === 0;
         }
       }
 
@@ -76,6 +91,7 @@ export function LoginMapWidget() {
     } finally {
       setIsLoading(false);
     }
+    return storedIsEmpty;
   };
 
   const handleSync = async () => {
