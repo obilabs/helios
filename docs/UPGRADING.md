@@ -160,6 +160,14 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 - **A command for each row of a CSV file.** The Developer Console has `csv load`,
   `csv preview` and `csv run`. The file is read in the browser and is not
   uploaded or stored. See `docs/guides/console-csv.md`.
+- **More settings in `.env` now take effect.** Usage reporting
+  (`HELIOS_TELEMETRY_ENABLED`, off unless you set it to `true`), the licence
+  key and its server address, the log level, and the intervals and on/off
+  switches for scheduled actions, signature sync and campaigns were documented
+  in `.env.example` but never passed to the backend, so changing them did
+  nothing. They are passed now, with the same defaults as before. **Check your
+  `.env` before upgrading:** a value you set earlier and forgot, for example
+  `HELIOS_TELEMETRY_ENABLED=true` or a job switched off, starts to apply.
 - **Licence changes Google refuses.** When Google refuses to assign or remove
   one person's licence because automatic licensing is on, Helios now says so
   for both wordings Google uses, names the right place in the Admin console
