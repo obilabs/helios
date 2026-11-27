@@ -142,7 +142,7 @@ const NewUserOnboarding: React.FC<NewUserOnboardingProps> = ({
     try {
       const [templatesRes, departmentsRes, groupsRes, managersRes] = await Promise.all([
         authFetch('/api/v1/lifecycle/onboarding-templates'),
-        authFetch('/api/v1/departments'),
+        authFetch('/api/v1/organization/departments'),
         authFetch('/api/v1/groups'),
         authFetch('/api/v1/users?role=manager,admin'),
       ]);

@@ -102,6 +102,20 @@ export const auth = betterAuth({
     }),
   },
 
+  // Stamp organization_users.last_login whenever a sign-in completes. Every
+  // completed sign-in through these endpoints (password, two-factor, passkey)
+  // creates one session, so this is the single point they all pass through.
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (session) => {
+          const { recordLastLoginForSession } = await import('./last-login.js');
+          await recordLastLoginForSession(session);
+        },
+      },
+    },
+  },
+
   // Session configuration
   session: {
     // 8 hours session expiry

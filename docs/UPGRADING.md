@@ -138,6 +138,13 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 
 ### Unreleased (will be part of 1.0.0)
 
+- **Last login, login map and onboarding departments.** Signing in through the
+  sign-in form now records the time, so the Users list and Roles & Admins stop
+  showing "Never" for people who use it; earlier form sign-ins were not
+  recorded and stay "Never" until that person next signs in. The Home "Login
+  Locations" block syncs once from Google when nothing is stored yet, instead
+  of waiting for its refresh button. The onboarding pages load departments
+  again.
 - **Node.js 22.** Images and CI moved from Node 20. Only matters if you build
   from source or run the backend outside Docker.
 - **Sign-in library updated** to its 1.7 line. Migration
