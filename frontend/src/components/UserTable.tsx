@@ -719,7 +719,7 @@ export function UserTable({
                     />
                     <div className="option-content">
                       <strong>Permanently delete from Google Workspace</strong>
-                      <p className="success-text">License will be freed immediately.</p>
+                      <p className="success-text">The licence is released in Google. On an annual or fixed-term plan the bill does not change until renewal.</p>
                     </div>
                   </label>
                 </div>

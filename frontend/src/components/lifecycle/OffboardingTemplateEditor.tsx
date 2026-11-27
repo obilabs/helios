@@ -983,7 +983,7 @@ const OffboardingTemplateEditor: React.FC<OffboardingTemplateEditorProps> = ({
               </div>
 
               <div className="form-group" style={{ marginTop: '20px' }}>
-                <label>When should licenses be removed?</label>
+                <label>When should Microsoft 365 licenses be removed?</label>
                 <div className="radio-group">
                   {(Object.entries(licenseActionLabels) as [LicenseAction, typeof licenseActionLabels[LicenseAction]][]).map(([value, info]) => (
                     <label key={value} className="radio-label">
