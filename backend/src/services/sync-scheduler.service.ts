@@ -8,6 +8,7 @@ import { loadSyncSettings } from '../lib/sync-settings.js';
 import { microsoftSyncService } from './microsoft-sync.service.js';
 import { fieldDriftService } from './field-drift.service.js';
 import { purposeFromGoogle } from '../lib/account-purpose.js';
+import { loginActivitySync } from './login-activity-sync.service.js';
 
 interface SyncConfig {
   minInterval: number; // Platform minimum in seconds
@@ -85,6 +86,9 @@ export class SyncSchedulerService {
     await this.syncOrganizationData(organizationId).catch((error) =>
       logger.error('Scheduled Google sync failed', { organizationId, error: error?.message }),
     );
+    // Login events for the Login Locations block, at most once an hour. Not
+    // awaited, so it never delays the rest of the tick; it never throws.
+    this.pullLoginActivity(organizationId);
     try {
       const ms = await db.query(
         'SELECT 1 FROM ms_credentials WHERE organization_id = $1 AND is_active = true',
@@ -94,6 +98,17 @@ export class SyncSchedulerService {
     } catch (error: any) {
       logger.error('Scheduled Microsoft 365 sync failed', { organizationId, error: error?.message });
     }
+  }
+
+  /**
+   * Start a login activity pull if one is due (at most once an hour). Returns the
+   * pull so a caller may wait for it; it resolves even when the pull fails.
+   */
+  pullLoginActivity(organizationId: string): Promise<unknown> {
+    return loginActivitySync.pullIfDue(organizationId).catch((error: any): null => {
+      logger.warn('Login activity pull failed', { organizationId, reason: error?.message });
+      return null;
+    });
   }
 
   /** For the header stamp: the schedule as it actually is, not as a setting says it should be. */

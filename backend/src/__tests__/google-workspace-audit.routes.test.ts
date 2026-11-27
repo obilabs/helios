@@ -62,6 +62,7 @@ jest.unstable_mockModule('../services/sync-scheduler.service.js', () => ({
     manualSync: jest.fn(async () => ({ success: true, stats: {} })),
     scheduleFromSettings: mockScheduleFromSettings,
     startTokenSync: jest.fn(async () => undefined),
+    pullLoginActivity: jest.fn(async () => null),
   },
 }));
 

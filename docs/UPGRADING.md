@@ -138,13 +138,20 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 
 ### Unreleased (will be part of 1.0.0)
 
-- **Last login, login map and onboarding departments.** Signing in through the
+- **Login data is collected by the backend.** The Home "Login Locations" block
+  now reads only what is stored; opening Home no longer asks Google. The
+  backend pulls login events right after Google is connected, at start-up, and
+  with the scheduled sync, at most once an hour. The first pull covers the last
+  7 days, so the 7-day figure fills without anyone opening Home. The refresh
+  icon still pulls immediately. If the service account lacks the
+  `admin.reports.audit.readonly` scope, the backend logs one warning per start
+  and the block stays empty; the directory sync is not affected.
+- **Last login and onboarding departments.** Signing in through the
   sign-in form now records the time, so the Users list and Roles & Admins stop
   showing "Never" for people who use it; earlier form sign-ins were not
-  recorded and stay "Never" until that person next signs in. The Home "Login
-  Locations" block syncs once from Google when nothing is stored yet, instead
-  of waiting for its refresh button. The onboarding pages load departments
-  again.
+  recorded and stay "Never" until that person next signs in. The onboarding
+  pages load departments again. (The Home "Login Locations" change from the
+  same release is described in the entry above.)
 - **Node.js 22.** Images and CI moved from Node 20. Only matters if you build
   from source or run the backend outside Docker.
 - **Sign-in library updated** to its 1.7 line. Migration

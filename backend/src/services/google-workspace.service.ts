@@ -3593,7 +3593,9 @@ export class GoogleWorkspaceService {
 
       return { success: true, events };
     } catch (error: any) {
-      logger.error('Failed to fetch login activity', {
+      // The caller (login-activity-sync.service) reports the failure: at warn
+      // level, and only once per backend start when the scope is missing.
+      logger.debug('Failed to fetch login activity', {
         organizationId,
         error: error.message
       });
@@ -3966,11 +3968,11 @@ export class GoogleWorkspaceService {
   async syncLoginActivity(
     organizationId: string,
     options: { startTime?: Date; endTime?: Date } = {}
-  ): Promise<{ success: boolean; fetched: number; stored: number; errors: number }> {
+  ): Promise<{ success: boolean; fetched: number; stored: number; errors: number; error?: string }> {
     // Fetch login events
     const fetchResult = await this.fetchLoginActivity(organizationId, options);
     if (!fetchResult.success) {
-      return { success: false, fetched: 0, stored: 0, errors: 1 };
+      return { success: false, fetched: 0, stored: 0, errors: 1, error: fetchResult.error };
     }
 
     // Store events

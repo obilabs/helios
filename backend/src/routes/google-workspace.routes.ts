@@ -257,6 +257,10 @@ router.post('/setup', requireAdmin, [
           domain,
           error: err.message
         });
+      }).finally(() => {
+        // Then the first login activity pull (the last 7 days), so the Login
+        // Locations block has data without anyone opening Home.
+        syncScheduler.pullLoginActivity(organizationId);
       });
 
       res.json({
