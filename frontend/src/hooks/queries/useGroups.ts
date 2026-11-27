@@ -22,6 +22,8 @@ export interface GroupFilters {
 }
 
 interface CreateGroupData {
+  /** Required by POST /google-workspace/groups. */
+  organizationId?: string;
   email: string;
   name: string;
   description?: string;

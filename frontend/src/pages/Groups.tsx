@@ -7,6 +7,17 @@ import { GroupSlideOut } from '../components/GroupSlideOut';
 import { DataTable, createColumnHelper } from '../components/ui/DataTable';
 import { useGroups, useSyncGroups, useCreateGroup, useCreateMicrosoftGroup } from '../hooks/queries/useGroups';
 import type { Group } from '../hooks/queries/useGroups';
+import { useFeatureFlags } from '../contexts/FeatureFlagsContext';
+import {
+  GROUP_SCENARIOS_FLAG,
+  useCreateGroupFromScenario,
+  useGroupScenarioStatus,
+  useGroupScenarios,
+  type CreateFromScenarioResult,
+} from '../hooks/queries/useGroupScenarios';
+import { GroupScenarioPanel } from '../components/groups/GroupScenarioPanel';
+import { GroupScenarioResult } from '../components/groups/GroupScenarioResult';
+import { parseList, parseMembers, scopeView } from '../components/groups/groupScenarioView';
 import './Pages.css';
 
 interface GroupsProps {
@@ -28,6 +39,18 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [scenarioKey, setScenarioKey] = useState('');
+  const [aliasesText, setAliasesText] = useState('');
+  const [membersText, setMembersText] = useState('');
+  const [scenarioResult, setScenarioResult] = useState<CreateFromScenarioResult | null>(null);
+
+  // Group scenarios (preview flag). Scenario content and the scope state come from the API.
+  const { isEnabled } = useFeatureFlags();
+  const scenariosOn = isEnabled(GROUP_SCENARIOS_FLAG);
+  const scenariosQuery = useGroupScenarios();
+  const scenarioStatusQuery = useGroupScenarioStatus();
+  const createFromScenarioMutation = useCreateGroupFromScenario();
+  const scenarioScope = scopeView(scenarioStatusQuery.data, scenarioStatusQuery.isLoading);
 
   // TanStack Query hooks
   const { data: groups = [], isLoading, error, refetch } = useGroups({
@@ -38,7 +61,9 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
   const syncMutation = useSyncGroups();
   const createMutation = useCreateGroup();
   const createMsMutation = useCreateMicrosoftGroup();
-  const creating = createMutation.isPending || createMsMutation.isPending;
+  const creating = createMutation.isPending || createMsMutation.isPending || createFromScenarioMutation.isPending;
+  const showScenarios = scenariosOn && newGroupPlatform === 'google_workspace';
+  const useScenario = showScenarios && scenarioKey !== '';
 
   const handleSyncGroups = async () => {
     try {
@@ -54,6 +79,10 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
     setNewGroupName('');
     setNewGroupDescription('');
     setCreateError(null);
+    setScenarioKey('');
+    setAliasesText('');
+    setMembersText('');
+    setScenarioResult(null);
   };
 
   const handleCreateGroup = async () => {
@@ -65,6 +94,24 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
 
     try {
       setCreateError(null);
+      if (useScenario) {
+        const { members, problems } = parseMembers(membersText);
+        if (problems.length) {
+          setCreateError(problems.join(' '));
+          return;
+        }
+        // Stay open: the result (verified, mismatch or partial) must be read.
+        const result = await createFromScenarioMutation.mutateAsync({
+          scenarioKey,
+          email: newGroupEmail,
+          name: newGroupName,
+          description: newGroupDescription,
+          aliases: parseList(aliasesText),
+          members,
+        });
+        setScenarioResult(result);
+        return;
+      }
       if (isMicrosoft) {
         // App-only Graph can create pure security groups; Unified/mail-enabled
         // need extra support, so we create a security group here.
@@ -76,6 +123,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
         });
       } else {
         await createMutation.mutateAsync({
+          organizationId,
           email: newGroupEmail,
           name: newGroupName,
           description: newGroupDescription,
@@ -238,7 +286,7 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
             justifyContent: 'center',
             zIndex: 1000
           }}
-          onClick={() => setShowCreateModal(false)}
+          onClick={() => { if (!creating) resetCreateForm(); }}
         >
           <div
             style={{
@@ -246,12 +294,24 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
               borderRadius: '12px',
               padding: '2rem',
               width: '90%',
-              maxWidth: '500px',
+              maxWidth: showScenarios ? '760px' : '500px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
               boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Create New Group</h2>
+            <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>{scenarioResult ? 'Group created from scenario' : 'Create New Group'}</h2>
+
+            {scenarioResult ? (
+              <>
+                <GroupScenarioResult result={scenarioResult} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn-primary" onClick={resetCreateForm}>Done</button>
+                </div>
+              </>
+            ) : (
+            <>
 
             {createError && (
               <div className="error-message" style={{ margin: '1rem 0', padding: '1rem', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626' }}>
@@ -279,6 +339,18 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                 <option value="microsoft_365">Microsoft 365 (security group)</option>
               </select>
             </div>
+
+            {showScenarios && (
+              <GroupScenarioPanel
+                scenarios={scenariosQuery.data || []}
+                loading={scenariosQuery.isLoading}
+                loadError={scenariosQuery.error ? (scenariosQuery.error as Error).message : null}
+                scope={scenarioScope}
+                selectedKey={scenarioKey}
+                onSelect={setScenarioKey}
+                disabled={creating}
+              />
+            )}
 
             {newGroupPlatform !== 'microsoft_365' && (
               <div style={{ marginBottom: '1.5rem' }}>
@@ -343,16 +415,41 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
               />
             </div>
 
+            {useScenario && (
+              <>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
+                    Aliases (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={aliasesText}
+                    onChange={(e) => setAliasesText(e.target.value)}
+                    placeholder="info@example.com, sales@example.com"
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '1rem' }}
+                    disabled={creating}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>
+                    Members (optional, one per line: email and OWNER, MANAGER or MEMBER)
+                  </label>
+                  <textarea
+                    value={membersText}
+                    onChange={(e) => setMembersText(e.target.value)}
+                    placeholder={'owner@example.com OWNER\nstaff@example.com MANAGER'}
+                    rows={3}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '1rem', resize: 'vertical' }}
+                    disabled={creating}
+                  />
+                </div>
+              </>
+            )}
+
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
               <button
                 className="btn-secondary"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewGroupEmail('');
-                  setNewGroupName('');
-                  setNewGroupDescription('');
-                  setCreateError(null);
-                }}
+                onClick={resetCreateForm}
                 disabled={creating}
               >
                 Cancel
@@ -363,9 +460,11 @@ export function Groups({ organizationId, customLabel: _customLabel, onSelectGrou
                 disabled={creating || !newGroupName || (newGroupPlatform !== 'microsoft_365' && !newGroupEmail)}
               >
                 <Plus size={14} />
-                {creating ? 'Creating...' : 'Create Group'}
+                {creating ? (useScenario ? 'Creating and verifying...' : 'Creating...') : useScenario ? 'Create and verify' : 'Create Group'}
               </button>
             </div>
+            </>
+            )}
           </div>
         </div>
       )}
