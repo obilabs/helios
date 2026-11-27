@@ -179,28 +179,36 @@ class GeoIPService {
       this.triedMtimeMs = null;
       this.invalidFile = false;
     }
-    let mtimeMs: number;
+    // Open the file once and take both its timestamp and its contents from that
+    // one open file. Checking the path and then reading it again could describe
+    // two different files if the monthly refresh replaced it in between.
+    let fd: number;
     try {
-      mtimeMs = fs.statSync(databasePath).mtimeMs;
+      fd = fs.openSync(databasePath, 'r');
     } catch {
       this.readerPath = databasePath;
       return null;
     }
-    if (this.triedMtimeMs === mtimeMs) return null; // already tried this file and it failed
-    this.triedMtimeMs = mtimeMs;
-    this.readerPath = databasePath;
     try {
-      this.reader = openVerifiedDatabase(fs.readFileSync(databasePath));
-      this.invalidFile = false;
-      logger.info('Location database opened', { databasePath });
-      return this.reader;
-    } catch (error: any) {
-      this.invalidFile = true;
-      logger.warn('Location database could not be opened; login locations stay empty', {
-        databasePath,
-        reason: error?.message,
-      });
-      return null;
+      const mtimeMs = fs.fstatSync(fd).mtimeMs;
+      if (this.triedMtimeMs === mtimeMs) return null; // already tried this file and it failed
+      this.triedMtimeMs = mtimeMs;
+      this.readerPath = databasePath;
+      try {
+        this.reader = openVerifiedDatabase(fs.readFileSync(fd));
+        this.invalidFile = false;
+        logger.info('Location database opened', { databasePath });
+        return this.reader;
+      } catch (error: any) {
+        this.invalidFile = true;
+        logger.warn('Location database could not be opened; login locations stay empty', {
+          databasePath,
+          reason: error?.message,
+        });
+        return null;
+      }
+    } finally {
+      fs.closeSync(fd);
     }
   }
 
