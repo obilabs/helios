@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../database/connection.js';
-import { googleWorkspaceService } from '../services/google-workspace.service.js';
+import { loginActivitySync } from '../services/login-activity-sync.service.js';
 import { geoipService } from '../services/geoip.service.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
@@ -210,7 +210,9 @@ router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
         totalLogins7d: parseInt(totalResult.rows[0]?.count || '0', 10),
         suspiciousLogins7d: parseInt(suspiciousResult.rows[0]?.count || '0', 10),
         uniqueCountries7d: parseInt(countriesResult.rows[0]?.count || '0', 10),
-        logins24h: parseInt(recentResult.rows[0]?.count || '0', 10)
+        logins24h: parseInt(recentResult.rows[0]?.count || '0', 10),
+        // Whether locations can be shown, why not, and the data credit to display.
+        locations: geoipService.status()
       }
     });
   } catch (error: any) {
@@ -234,29 +236,27 @@ router.post('/sync', requireAdmin, async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'No organization context' });
     }
 
-    // Sync login activity from Google
-    const syncResult = await googleWorkspaceService.syncLoginActivity(organizationId);
+    // Pull login activity from Google now (the refresh icon). The same service
+    // runs on the sync schedule, at backend start and when Google is connected.
+    const result = await loginActivitySync.pull(organizationId);
 
-    if (syncResult.success && syncResult.stored > 0) {
-      // Enrich with GeoIP data
-      const geoResult = await geoipService.enrichLoginActivity(organizationId, syncResult.stored);
-
+    if (result.success && result.stored > 0) {
       res.json({
         success: true,
         data: {
-          fetched: syncResult.fetched,
-          stored: syncResult.stored,
-          geoEnriched: geoResult.updated,
-          errors: syncResult.errors + geoResult.errors
+          fetched: result.fetched,
+          stored: result.stored,
+          geoEnriched: result.geoEnriched,
+          errors: result.errors
         }
       });
     } else {
       res.json({
-        success: syncResult.success,
+        success: result.success,
         data: {
-          fetched: syncResult.fetched,
-          stored: syncResult.stored,
-          errors: syncResult.errors
+          fetched: result.fetched,
+          stored: result.stored,
+          errors: result.errors
         }
       });
     }

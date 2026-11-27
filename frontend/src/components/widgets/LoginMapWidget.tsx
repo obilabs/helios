@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Globe, AlertTriangle, MapPin, Users, RefreshCw, Loader2 } from 'lucide-react';
 import { authFetch, apiPath } from '../../config/api';
 import './LoginMapWidget.css';
@@ -22,11 +22,30 @@ interface LoginMapData {
   };
 }
 
+interface LocationStatus {
+  available: boolean;
+  reason?: 'not_downloaded' | 'downloads_disabled' | 'invalid';
+  attribution: { text: string; url: string };
+}
+
 interface LoginStats {
   totalLogins7d: number;
   suspiciousLogins7d: number;
   uniqueCountries7d: number;
   logins24h: number;
+  locations?: LocationStatus;
+}
+
+/** Why locations are missing, in one short line. */
+function locationsUnavailableText(reason: LocationStatus['reason']): string {
+  switch (reason) {
+    case 'downloads_disabled':
+      return 'Locations unavailable: the location database download is turned off and no database file is in place.';
+    case 'invalid':
+      return 'Locations unavailable: the location database file could not be read.';
+    default:
+      return 'Locations unavailable: the location database has not been downloaded yet.';
+  }
 }
 
 export function LoginMapWidget() {
@@ -36,26 +55,16 @@ export function LoginMapWidget() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
-  const autoSyncTried = useRef(false);
 
+  // Reads stored login data only. The backend pulls login events from Google
+  // on its sync schedule (at most hourly), at start-up and when Google is
+  // connected; opening Home never calls Google. The refresh icon pulls now.
   useEffect(() => {
-    (async () => {
-      const storedIsEmpty = await fetchData();
-      // Login events reach login_activity only through a sync from Google
-      // (POST /login-activity/sync); no scheduled job pulls them. Reading the
-      // table on an install that has never synced returned nothing, so the
-      // block stayed empty until the admin pressed the sync button. Run that
-      // sync once here when nothing is stored yet.
-      if (storedIsEmpty && !autoSyncTried.current) {
-        autoSyncTried.current = true;
-        await handleSync();
-      }
-    })();
+    fetchData();
   }, []);
 
-  /** Loads stored login data. Resolves true only when the load succeeded and nothing is stored. */
-  const fetchData = async (): Promise<boolean> => {
-    let storedIsEmpty = false;
+  /** Loads stored login data. */
+  const fetchData = async () => {
     setIsLoading(true);
     setError(null);
 
@@ -76,7 +85,6 @@ export function LoginMapWidget() {
         const mapData = await mapResponse.json();
         if (mapData.success) {
           setData(mapData.data);
-          storedIsEmpty = statsResponse.ok && (mapData.data?.countries?.length ?? 0) === 0;
         }
       }
 
@@ -91,7 +99,6 @@ export function LoginMapWidget() {
     } finally {
       setIsLoading(false);
     }
-    return storedIsEmpty;
   };
 
   const handleSync = async () => {
@@ -146,7 +153,10 @@ export function LoginMapWidget() {
     );
   }
 
-  const hasData = data && data.countries.length > 0;
+  const hasLocations = !!data && data.countries.length > 0;
+  // Logins are stored and counted even when no location could be found for them.
+  const hasData = hasLocations || (stats?.totalLogins7d ?? 0) > 0;
+  const locations = stats?.locations;
   const hasSuspicious = stats && stats.suspiciousLogins7d > 0;
 
   return (
@@ -174,6 +184,7 @@ export function LoginMapWidget() {
 
       {hasData ? (
         <>
+          {hasLocations && data && (
           <div className="login-map-container">
             <svg viewBox="0 0 1000 500" className="world-map">
               {/* Simple world map outline - continents */}
@@ -217,6 +228,11 @@ export function LoginMapWidget() {
               })}
             </svg>
           </div>
+          )}
+
+          {locations && !locations.available && (
+            <p className="login-map-notice">{locationsUnavailableText(locations.reason)}</p>
+          )}
 
           {selectedCountry && (
             <div className="country-detail">
@@ -250,6 +266,14 @@ export function LoginMapWidget() {
               <span className="stat-label">7d total</span>
             </div>
           </div>
+
+          {hasLocations && locations && (
+            <p className="login-map-attribution">
+              <a href={locations.attribution.url} target="_blank" rel="noopener noreferrer">
+                {locations.attribution.text}
+              </a>
+            </p>
+          )}
         </>
       ) : (
         <div className="login-map-empty">

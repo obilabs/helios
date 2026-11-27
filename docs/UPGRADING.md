@@ -138,13 +138,33 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 
 ### Unreleased (will be part of 1.0.0)
 
-- **Last login, login map and onboarding departments.** Signing in through the
+- **Login data is collected by the backend.** The Home "Login Locations" block
+  now reads only what is stored; opening Home no longer asks Google. The
+  backend pulls login events right after Google is connected, at start-up, and
+  with the scheduled sync, at most once an hour. The first pull covers the last
+  7 days, so the 7-day figure fills without anyone opening Home. The refresh
+  icon still pulls immediately. If the service account lacks the
+  `admin.reports.audit.readonly` scope, the backend logs one warning per start
+  and the block stays empty; the directory sync is not affected.
+- **Login locations are looked up locally.** The country and state/province
+  of each sign-in now come from a database file on your own server
+  (`/app/data/geoip/` in the backend data volume); login IP addresses are not
+  sent to any outside service. The backend downloads the file (about 60 MB)
+  on first start after the upgrade and refreshes it monthly; that download
+  carries no login data. Nothing else to do. To turn the download off, set
+  `GEOIP_DATABASE_AUTO_DOWNLOAD=false` and place the file yourself (see
+  `docs/guides/login-locations.md`). Until a file is present, sign-ins are
+  still counted and the block says locations are unavailable. Sign-ins
+  stored earlier as "Private Network" keep that label; city is no longer
+  recorded for new sign-ins. Allow about 120 MB more memory for the backend.
+  Login pulls now read every page of Google's report (up to 20 pages of 1,000
+  events), so a busy workspace's first 7-day pull is no longer cut short.
+- **Last login and onboarding departments.** Signing in through the
   sign-in form now records the time, so the Users list and Roles & Admins stop
   showing "Never" for people who use it; earlier form sign-ins were not
-  recorded and stay "Never" until that person next signs in. The Home "Login
-  Locations" block syncs once from Google when nothing is stored yet, instead
-  of waiting for its refresh button. The onboarding pages load departments
-  again.
+  recorded and stay "Never" until that person next signs in. The onboarding
+  pages load departments again. (The Home "Login Locations" change from the
+  same release is described in the entry above.)
 - **Node.js 22.** Images and CI moved from Node 20. Only matters if you build
   from source or run the backend outside Docker.
 - **Sign-in library updated** to its 1.7 line. Migration

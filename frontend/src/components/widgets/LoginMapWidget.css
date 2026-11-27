@@ -209,6 +209,26 @@
   color: var(--color-gray-500);
 }
 
+/* Location notices */
+.login-map-notice {
+  margin: 0;
+  padding: 12px 20px;
+  font-size: 12px;
+  color: var(--color-gray-500);
+}
+
+.login-map-attribution {
+  margin: 0;
+  padding: 0 20px 12px;
+  font-size: 11px;
+  text-align: right;
+  color: var(--color-gray-500);
+}
+
+.login-map-attribution a {
+  color: inherit;
+}
+
 /* Empty State */
 .login-map-empty {
   display: flex;

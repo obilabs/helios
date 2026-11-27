@@ -67,6 +67,7 @@ import { startSignatureSyncJob, stopSignatureSyncJob } from './jobs/signature-sy
 import { startCampaignSchedulerJob, stopCampaignSchedulerJob } from './jobs/campaign-scheduler.job.js';
 import { startTrackingRetentionJob, stopTrackingRetentionJob } from './jobs/tracking-retention.job.js';
 import { syncScheduler } from './services/sync-scheduler.service.js';
+import { geoipService } from './services/geoip.service.js';
 import { telemetryService } from './services/telemetry.service.js';
 import { licenseService } from './services/license.service.js';
 
@@ -955,6 +956,11 @@ async function startServer(): Promise<void> {
       logger.warn('License initialization failed (non-critical, fail-open)', err);
     }
 
+    // Location database for the Login Locations block: download it if missing
+    // or a month old (unless GEOIP_DATABASE_AUTO_DOWNLOAD=false). Not awaited;
+    // lookups run locally and simply return nothing until a file is present.
+    geoipService.start();
+
     // Start Google Workspace sync scheduler for configured organizations
     try {
       const orgsWithGW = await db.query(`
@@ -1029,6 +1035,7 @@ process.on('SIGTERM', async () => {
   stopCampaignSchedulerJob();
   stopTrackingRetentionJob();
   syncScheduler.stopAll();
+  geoipService.stop();
   telemetryService.shutdown();
   licenseService.shutdown();
   await db.close();
@@ -1042,6 +1049,7 @@ process.on('SIGINT', async () => {
   stopCampaignSchedulerJob();
   stopTrackingRetentionJob();
   syncScheduler.stopAll();
+  geoipService.stop();
   telemetryService.shutdown();
   licenseService.shutdown();
   await db.close();
