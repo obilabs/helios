@@ -84,14 +84,16 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
         const parsedOrgData = orgData ? JSON.parse(orgData) : null;
         const organizationId = parsedOrgData?.organizationId || parsedOrgData?.id;
 
-        // Pre-populate domain from organization data
-        if (parsedOrgData?.domain && !domain) {
-          setDomain(parsedOrgData.domain);
-        }
-
         if (organizationId) {
           const response = await authFetch(`/api/v1/google-workspace/module-status/${organizationId}`);
           const result = await response.json();
+
+          // Show a Google Workspace domain only when one is already stored. The
+          // organization's primary domain can differ from it, so it is not used.
+          const storedDomain = result.success ? result.data?.configuration?.domain : undefined;
+          if (typeof storedDomain === 'string' && storedDomain) {
+            setDomain((current) => current || storedDomain);
+          }
 
           // Stored credentials (even for a disabled module) mean saving will
           // overwrite an existing configuration — warn before doing so.
@@ -140,8 +142,6 @@ const GoogleWorkspaceWizard: React.FC<GoogleWorkspaceWizardProps> = ({
         }
 
         setServiceAccountData(json);
-        // Domain is pre-populated from organization data on component mount
-        // No need to set it here again
       } catch (err) {
         setError('Invalid JSON file. Please upload a valid service account key file.');
         setServiceAccountFile(null);

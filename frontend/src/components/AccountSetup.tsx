@@ -198,7 +198,7 @@ export function AccountSetup({ onComplete }: AccountSetupProps) {
                   placeholder="acme.com"
                 />
                 <div className="form-hint">
-                  This will be used for Google Workspace integration and user management
+                  Your organization's main email domain. The Google Workspace domain is set when you connect Google.
                 </div>
               </div>
 

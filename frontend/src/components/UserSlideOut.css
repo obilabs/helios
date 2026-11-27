@@ -185,6 +185,20 @@
   font-size: 0.75rem;
 }
 
+/* The user panel has nine tabs in a 600px panel. Size each tab to its label
+   (never narrower than its longest word) and let a two-word label wrap, so
+   every tab fits without a scrollbar. */
+.user-slideout-tabs .slideout-tab {
+  flex: 1 1 auto;
+  min-width: auto;
+  padding: 0.75rem 0.375rem;
+}
+
+.user-slideout-tabs .tab-label {
+  text-align: center;
+  line-height: 1.2;
+}
+
 /* Content */
 .slideout-content {
   flex: 1;
