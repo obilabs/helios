@@ -32,6 +32,7 @@ import { logger } from '../utils/logger.js';
 import { getOrCreateInstanceId } from './instance-identity.js';
 import { getHeliosVersion } from '../utils/version.js';
 import { deriveBaseUrl } from './license-config.js';
+import { isTelemetryKillSwitchOn } from '../lib/telemetry-policy.js';
 
 const LICENSE_STATE_KEY = 'license_state';
 const DEFAULT_INTERVAL_MS = 20 * 60 * 1000; // 20 min — matches the Aegis heartbeat cadence.
@@ -66,10 +67,17 @@ class LicenseService {
       return;
     }
 
-    // Setting a licence key IS the opt-in to validate it, so — unlike usage
-    // telemetry (HELIOS_TELEMETRY_ENABLED, default off) — the licence heartbeat
-    // runs whenever a key is present. A community install (no key) never phones
-    // home from here.
+    // HELIOS_TELEMETRY_ENABLED=false is the master kill-switch: no outbound
+    // calls at all, licence re-validation included. Nothing is gated, so the
+    // product runs exactly the same.
+    if (isTelemetryKillSwitchOn()) {
+      logger.info('[License] HELIOS_TELEMETRY_ENABLED=false — licence re-validation disabled.');
+      return;
+    }
+
+    // Setting a licence key IS the opt-in to validate it, so the licence
+    // heartbeat runs whenever a key is present. A community install (no key)
+    // never phones home from here.
     this.cachedSnapshot = await this.loadCachedSnapshot();
     await this.validate();
 
@@ -89,7 +97,7 @@ class LicenseService {
    */
   async validate(): Promise<LicenseResult | null> {
     const licenseKey = process.env.HELIOS_LICENSE_KEY;
-    if (!licenseKey) return null;
+    if (!licenseKey || isTelemetryKillSwitchOn()) return null;
 
     this.shutdownController = new AbortController();
     const result = await validateLicenseRemote(licenseKey, {
