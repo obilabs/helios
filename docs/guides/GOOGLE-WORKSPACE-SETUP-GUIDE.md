@@ -41,6 +41,7 @@ Each organization MUST use their own service account for:
    - **Gmail API** — `gmail.settings.basic` / `gmail.settings.sharing` (signatures, delegation, forwarding)
    - **Google Drive API** — `drive`, `drive.file`, `drive.readonly` (external-sharing audit, file access)
    - **Google Calendar API** — `calendar` (calendar resource management and hand-off)
+   - **Groups Settings API** — `apps.groups.settings` (optional: apply and verify group settings when a group is created from a scenario)
 3. Click **"Enable"** for each API
 
 > **Note:** the Admin Reports and Data Transfer capabilities are part of the
@@ -144,13 +145,14 @@ Each organization MUST use their own service account for:
      https://www.googleapis.com/auth/admin.directory.group.readonly
      https://www.googleapis.com/auth/admin.directory.orgunit.readonly
      https://www.googleapis.com/auth/admin.directory.domain.readonly
+     https://www.googleapis.com/auth/apps.groups.settings
      ```
      > **Source of truth:** this is the full delegation set (`DELEGATION_SCOPES`) from
      > [`backend/src/config/google-scopes.ts`](../../backend/src/config/google-scopes.ts),
      > where each scope carries the reason Helios needs it. Authorise all of them once:
-     > the last eight cover optional features (Vault holds, the account-purpose
-     > attribute, calendar rooms and buildings, and read-only directory access for the
-     > API relay), and Helios only ever requests the ones a given call needs. A test
+     > the last nine cover optional features (Vault holds, the account-purpose
+     > attribute, calendar rooms and buildings, read-only directory access for the
+     > API relay, and group settings for group scenarios), and Helios only ever requests the ones a given call needs. A test
      > fails if this list and that file drift apart.
 3. Click **"Authorize"**
 

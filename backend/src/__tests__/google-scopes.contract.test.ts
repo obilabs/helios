@@ -76,6 +76,8 @@ describe('scope contract v1 is frozen', () => {
       ['POST', 'gmail/v1/users/me/settings/delegates'],
       ['GET', 'calendar/v3/calendars/primary/events'],
       ['GET', 'drive/v3/files'],
+      ['GET', 'groups/v1/groups/team%40example.com'],
+      ['PATCH', 'groups/v1/groups/team%40example.com'],
     ];
     for (const [method, path] of paths) {
       const { scopes, fellBack } = googleScopesForPath(method, path);
@@ -166,6 +168,23 @@ describe('per-call minting', () => {
     // Sibling customer paths are not captured by the new rule.
     expect(googleScopesForPath('GET', 'admin/directory/v1/customer/my_customer/orgunits').scopes).toEqual([`${G}admin.directory.orgunit`]);
     expect(googleScopesForPath('GET', 'admin/directory/v1/users').scopes).not.toContain(read);
+  });
+
+  it('group settings mint only the optional apps.groups.settings scope (D-048)', () => {
+    // Group scenarios apply and read back settings through the Groups Settings
+    // API. The scope is optional and minted per call: a workspace that has not
+    // authorised it loses that one step, and plain group creation (directory
+    // scope) is untouched.
+    const scope = `${G}apps.groups.settings`;
+    expect(googleScopesForPath('GET', 'groups/v1/groups/team%40example.com')).toEqual({ scopes: [scope], fellBack: false });
+    expect(googleScopesForPath('PATCH', '/groups/v1/groups/team%40example.com')).toEqual({ scopes: [scope], fellBack: false });
+    expect(OPTIONAL_SCOPE_DETAILS.map((s) => s.scope)).toContain(scope);
+    expect(REQUIRED_SCOPES).not.toContain(scope);
+    // Creating the group itself still uses the contract directory scope only.
+    expect(googleScopesForPath('POST', 'admin/directory/v1/groups').scopes).toEqual([`${G}admin.directory.group`]);
+    // The Groups Migration upload path is a different API and is not captured.
+    expect(googleScopesForPath('POST', 'upload/groups/v1/groups/x/archive').fellBack).toBe(true);
+    for (const scopes of Object.values(ADMIN_SDK_CLIENT_SCOPES)) expect(scopes).not.toContain(scope);
   });
 
   it('an unknown path falls back to the frozen contract and says so', () => {

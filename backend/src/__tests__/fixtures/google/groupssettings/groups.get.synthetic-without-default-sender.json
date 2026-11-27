@@ -1,0 +1,54 @@
+{
+  "family": "groupssettings",
+  "name": "groups.get.synthetic-without-default-sender",
+  "note": "SYNTHETIC, not recorded: shaped from the Groups Settings API v1 reference (resource fields and string booleans) for the public-contact-inbox scenario. Replace with a live recording from backend/src/scripts/verify-group-scenario.ts run with HELIOS_GOOGLE_RECORD=1.",
+  "recordedAt": null,
+  "request": {
+    "method": "GET",
+    "host": "www.googleapis.com",
+    "path": "groups/v1/groups/user1%40example.com",
+    "query": {
+      "alt": "json"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "data": {
+      "kind": "groupsSettings#groups",
+      "email": "user1@example.com",
+      "name": "E2E Team (seed for offboarding)",
+      "description": "",
+      "whoCanLeaveGroup": "ALL_MEMBERS_CAN_LEAVE",
+      "primaryLanguage": "en_US",
+      "customReplyTo": "",
+      "includeCustomFooter": "false",
+      "customFooterText": "",
+      "sendMessageDenyNotification": "false",
+      "defaultMessageDenyNotificationText": "",
+      "archiveOnly": "false",
+      "allowWebPosting": "true",
+      "includeInGlobalAddressList": "true",
+      "whoCanModerateContent": "OWNERS_AND_MANAGERS",
+      "customRolesEnabledForSettingsToBeMerged": "false",
+      "whoCanPostMessage": "ANYONE_CAN_POST",
+      "whoCanViewGroup": "ALL_MEMBERS_CAN_VIEW",
+      "whoCanDiscoverGroup": "ALL_IN_DOMAIN_CAN_DISCOVER",
+      "whoCanViewMembership": "ALL_MANAGERS_CAN_VIEW",
+      "whoCanContactOwner": "ANYONE_CAN_CONTACT",
+      "whoCanModerateMembers": "OWNERS_AND_MANAGERS",
+      "whoCanJoin": "INVITED_CAN_JOIN",
+      "allowExternalMembers": "false",
+      "isArchived": "true",
+      "enableCollaborativeInbox": "true",
+      "messageModerationLevel": "MODERATE_NONE",
+      "spamModerationLevel": "ALLOW",
+      "membersCanPostAsTheGroup": "true",
+      "whoCanAssistContent": "ALL_MEMBERS",
+      "replyTo": "REPLY_TO_IGNORE"
+    },
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    }
+  }
+}
