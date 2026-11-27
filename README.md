@@ -259,6 +259,15 @@ See [LICENSE](LICENSE) for details.
 
 ---
 
+## Acknowledgements
+
+Login locations use the DB-IP "IP to City Lite" database, looked up on your own
+server: <a href='https://db-ip.com'>IP Geolocation by DB-IP</a>, licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See
+[docs/guides/login-locations.md](docs/guides/login-locations.md).
+
+---
+
 ## About
 
 Built by [ObiLabs](https://obilabs.dev) — self-hostable IT and security tools for organizations that want to own their data. We also offer:

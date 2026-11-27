@@ -26,6 +26,9 @@ export const LOGIN_PULL_MAX_WINDOW_MS = 7 * 24 * HOUR_MS;
 /** Automatic pulls run at most this often, however short the directory sync interval. */
 export const LOGIN_PULL_MIN_INTERVAL_MS = HOUR_MS;
 
+/** Stored logins without a location that each pull fills in, newest first. */
+export const LOCATION_BATCH = 5000;
+
 export interface LoginPullResult {
   success: boolean;
   fetched: number;
@@ -114,13 +117,11 @@ export class LoginActivitySyncService {
         return { ...syncResult, geoEnriched: 0, window };
       }
 
-      let geoEnriched = 0;
-      let errors = syncResult.errors;
-      if (syncResult.stored > 0) {
-        const geo = await geoipService.enrichLoginActivity(organizationId, syncResult.stored);
-        geoEnriched = geo.updated;
-        errors += geo.errors;
-      }
+      // Locations come from the local database (no network request). Also
+      // fills in logins stored before a database was present.
+      const geo = await geoipService.enrichLoginActivity(organizationId, LOCATION_BATCH);
+      const geoEnriched = geo.updated;
+      const errors = syncResult.errors + geo.errors;
       return { success: true, fetched: syncResult.fetched, stored: syncResult.stored, geoEnriched, errors, window };
     } catch (error: any) {
       const message = String(error?.message || error);

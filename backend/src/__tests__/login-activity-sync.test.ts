@@ -46,6 +46,7 @@ const {
   loginActivitySync,
   LOGIN_PULL_OVERLAP_MS,
   LOGIN_PULL_MAX_WINDOW_MS,
+  LOCATION_BATCH,
 } = await import('../services/login-activity-sync.service.js');
 const { SyncSchedulerService } = await import('../services/sync-scheduler.service.js');
 
@@ -120,13 +121,20 @@ describe('pull', () => {
     expect(query.mock.calls[0][1]).toEqual(['org-1']);
   });
 
-  it('enriches with GeoIP only what was stored', async () => {
+  it('adds locations to stored logins that have none, including older ones', async () => {
     query.mockResolvedValueOnce(newestStored(null));
     syncLoginActivity.mockResolvedValueOnce({ success: true, fetched: 9, stored: 4, errors: 0 });
     enrichLoginActivity.mockResolvedValueOnce({ updated: 3, errors: 1 });
     const r = await new LoginActivitySyncService().pull('org-1', NOW);
-    expect(enrichLoginActivity).toHaveBeenCalledWith('org-1', 4);
+    expect(enrichLoginActivity).toHaveBeenCalledWith('org-1', LOCATION_BATCH);
     expect(r).toMatchObject({ success: true, fetched: 9, stored: 4, geoEnriched: 3, errors: 1 });
+  });
+
+  it('fills in locations even when no new logins were stored (a database that arrived later)', async () => {
+    query.mockResolvedValueOnce(newestStored('2026-06-15T09:30:00.000Z'));
+    syncLoginActivity.mockResolvedValueOnce({ success: true, fetched: 0, stored: 0, errors: 0 });
+    await new LoginActivitySyncService().pull('org-1', NOW);
+    expect(enrichLoginActivity).toHaveBeenCalledWith('org-1', LOCATION_BATCH);
   });
 
   it('overlapping callers share one pull instead of racing on inserts', async () => {

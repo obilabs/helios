@@ -146,6 +146,19 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   icon still pulls immediately. If the service account lacks the
   `admin.reports.audit.readonly` scope, the backend logs one warning per start
   and the block stays empty; the directory sync is not affected.
+- **Login locations are looked up locally.** The country and state/province
+  of each sign-in now come from a database file on your own server
+  (`/app/data/geoip/` in the backend data volume); login IP addresses are not
+  sent to any outside service. The backend downloads the file (about 60 MB)
+  on first start after the upgrade and refreshes it monthly; that download
+  carries no login data. Nothing else to do. To turn the download off, set
+  `GEOIP_DATABASE_AUTO_DOWNLOAD=false` and place the file yourself (see
+  `docs/guides/login-locations.md`). Until a file is present, sign-ins are
+  still counted and the block says locations are unavailable. Sign-ins
+  stored earlier as "Private Network" keep that label; city is no longer
+  recorded for new sign-ins. Allow about 120 MB more memory for the backend.
+  Login pulls now read every page of Google's report (up to 20 pages of 1,000
+  events), so a busy workspace's first 7-day pull is no longer cut short.
 - **Last login and onboarding departments.** Signing in through the
   sign-in form now records the time, so the Users list and Roles & Admins stop
   showing "Never" for people who use it; earlier form sign-ins were not

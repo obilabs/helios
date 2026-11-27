@@ -210,7 +210,9 @@ router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
         totalLogins7d: parseInt(totalResult.rows[0]?.count || '0', 10),
         suspiciousLogins7d: parseInt(suspiciousResult.rows[0]?.count || '0', 10),
         uniqueCountries7d: parseInt(countriesResult.rows[0]?.count || '0', 10),
-        logins24h: parseInt(recentResult.rows[0]?.count || '0', 10)
+        logins24h: parseInt(recentResult.rows[0]?.count || '0', 10),
+        // Whether locations can be shown, why not, and the data credit to display.
+        locations: geoipService.status()
       }
     });
   } catch (error: any) {

@@ -1544,7 +1544,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
         addOutput('info', '');
         addOutput('info', 'Login Activity');
         addOutput('info', '═'.repeat(100));
-        addOutput('info', `TIMESTAMP${' '.repeat(14)}USER${' '.repeat(31)}IP ADDRESS${' '.repeat(8)}COUNTRY${' '.repeat(5)}STATUS`);
+        addOutput('info', `TIMESTAMP${' '.repeat(14)}USER${' '.repeat(31)}IP ADDRESS${' '.repeat(8)}LOCATION${' '.repeat(16)}STATUS`);
         addOutput('info', '─'.repeat(100));
 
         if (logins.length === 0) {
@@ -1554,7 +1554,9 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
             const timestamp = new Date(login.timestamp || login.login_time).toLocaleString().padEnd(22);
             const email = (login.user_email || login.email || 'unknown').substring(0, 33).padEnd(35);
             const ip = (login.ip_address || 'N/A').padEnd(18);
-            const country = (login.country_name || login.country_code || 'N/A').substring(0, 10).padEnd(12);
+            // Country, with the state/province when the location database has it.
+            const place = [login.region, login.country_name || login.country_code].filter(Boolean).join(', ');
+            const country = (place || 'N/A').substring(0, 22).padEnd(24);
             const success = login.is_successful !== false;
             const status = success ? 'OK' : 'FAILED';
             const statusType = success ? 'success' : 'error';
@@ -1564,6 +1566,7 @@ export function DeveloperConsole({ organizationId, isPopup = false }: DeveloperC
 
         addOutput('info', '');
         addOutput('info', `Showing ${logins.length} logins`);
+        addOutput('info', 'Locations: IP Geolocation by DB-IP (https://db-ip.com)');
         addOutput('info', 'Filters: --limit=N, --user=<email>');
         addOutput('info', 'Sync: POST /api/v1/login-activity/sync to fetch latest from Google');
       } else {
