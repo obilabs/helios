@@ -221,6 +221,32 @@ services:
       # exists: docker compose logs backend | grep 'setup token'
       HELIOS_SETUP_TOKEN: ${HELIOS_SETUP_TOKEN:-}
 
+      # Usage reporting (optional, OFF unless you turn it on). Anonymous counts
+      # only; see the Telemetry section of .env.example for exactly what is sent.
+      HELIOS_TELEMETRY_ENABLED: ${HELIOS_TELEMETRY_ENABLED:-false}
+      HELIOS_TELEMETRY_URL: ${HELIOS_TELEMETRY_URL:-https://api.obilabs.dev/api/instances/heartbeat}
+
+      # Licence key (optional). Nothing is gated without one. With a key set,
+      # the install checks in with the licence server; without one it never does.
+      HELIOS_LICENSE_KEY: ${HELIOS_LICENSE_KEY:-}
+      HELIOS_LICENSE_BASE_URL: ${HELIOS_LICENSE_BASE_URL:-https://api.obilabs.dev}
+      HELIOS_LICENSE_URL: ${HELIOS_LICENSE_URL:-}
+      HELIOS_LICENSE_HEARTBEAT_INTERVAL_MS: ${HELIOS_LICENSE_HEARTBEAT_INTERVAL_MS:-1200000}
+
+      # Background jobs and logging. The defaults match .env.example.
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AUDIT_LOGGING_ENABLED: ${AUDIT_LOGGING_ENABLED:-true}
+      SCHEDULED_ACTIONS_ENABLED: ${SCHEDULED_ACTIONS_ENABLED:-true}
+      SCHEDULED_ACTIONS_INTERVAL_MS: ${SCHEDULED_ACTIONS_INTERVAL_MS:-60000}
+      SCHEDULED_ACTIONS_BATCH_SIZE: ${SCHEDULED_ACTIONS_BATCH_SIZE:-10}
+      SCHEDULED_ACTIONS_MAX_RETRIES: ${SCHEDULED_ACTIONS_MAX_RETRIES:-3}
+      SIGNATURE_SYNC_JOB_ENABLED: ${SIGNATURE_SYNC_JOB_ENABLED:-true}
+      SIGNATURE_SYNC_INTERVAL_MS: ${SIGNATURE_SYNC_INTERVAL_MS:-300000}
+      SIGNATURE_SYNC_BATCH_SIZE: ${SIGNATURE_SYNC_BATCH_SIZE:-50}
+      SIGNATURE_DETECT_EXTERNAL_CHANGES: ${SIGNATURE_DETECT_EXTERNAL_CHANGES:-false}
+      CAMPAIGN_SCHEDULER_ENABLED: ${CAMPAIGN_SCHEDULER_ENABLED:-true}
+      CAMPAIGN_SCHEDULER_INTERVAL_MS: ${CAMPAIGN_SCHEDULER_INTERVAL_MS:-60000}
+
     volumes:
       # Mount schema file for database initialization
       - ./database/schema_organization.sql:/app/database/schema_organization.sql:ro
