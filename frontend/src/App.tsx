@@ -70,7 +70,7 @@ import { EmailEngagementWidget } from './components/widgets/EmailEngagementWidge
 import { LoginMapWidget } from './components/widgets/LoginMapWidget'
 import { getWidgetData } from './utils/widget-data'
 import { getEnabledWidgets, type WidgetId } from './config/widgets'
-import { UserPlus, Upload, RefreshCw, AlertCircle, Info, Edit3, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon, Menu, X } from 'lucide-react'
+import { UserPlus, UserCheck, UserMinus, AppWindow, Upload, RefreshCw, AlertCircle, Info, Edit3, Building, Building2, HelpCircle, Search, Users as UsersIcon, Loader2, MessageSquare, User, Network, Settings as SettingsIcon, Menu, X } from 'lucide-react'
 import { getPageFromPath, getPageDef, getPathForPage } from './config/navigation'
 import { FeatureNotEnabled } from './components/FeatureNotEnabled'
 import { SetupChecklist, isSetupComplete } from './components/SetupChecklist'
@@ -1204,6 +1204,24 @@ function AppContent() {
                     <UserPlus size={16} />
                     Add User
                   </button>
+                  {isEnabled('lifecycle.onboarding') && (
+                    <button className="quick-action-btn" onClick={() => setCurrentPage('new-user-onboarding')}>
+                      <UserCheck size={16} />
+                      Onboard a user
+                    </button>
+                  )}
+                  {isEnabled('lifecycle.offboarding') && (
+                    <button className="quick-action-btn" onClick={() => setCurrentPage('user-offboarding')}>
+                      <UserMinus size={16} />
+                      Offboard a user
+                    </button>
+                  )}
+                  {isEnabled('security.oauth_apps') && (
+                    <button className="quick-action-btn" onClick={() => setCurrentPage('oauth-apps')}>
+                      <AppWindow size={16} />
+                      Review connected apps
+                    </button>
+                  )}
                   {isEnabled('directory.bulk_operations') && (
                     <button className="quick-action-btn" onClick={() => setCurrentPage('bulk-operations')}>
                       <Upload size={16} />

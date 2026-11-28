@@ -2006,11 +2006,11 @@
   margin: 0 0 1rem 0;
 }
 
+/* Buttons share the row; how many there are depends on which features are on. */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
-  max-width: 600px;
 }
 
 @media (max-width: 640px) {

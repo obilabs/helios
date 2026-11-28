@@ -308,6 +308,66 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
         ? { twoFactor: twoFactorStats, oauthApps: oauthAppsStats }
         : null;
 
+      // Cards that need action: recently deleted, inactive, failed syncs and
+      // pending lifecycle work. Each is counted on its own so one failing query
+      // shows as "unavailable" on its card rather than blanking the others.
+      const countOrNull = async (label: string, sql: string, params: unknown[]): Promise<number | null> => {
+        try {
+          const r = await db.query(sql, params);
+          return parseInt(r.rows[0]?.count) || 0;
+        } catch (err) {
+          logger.warn(`Failed to count ${label} for dashboard`, { organizationId, error: (err as Error).message });
+          return null;
+        }
+      };
+
+      // Google keeps a deleted account restorable for 20 days.
+      const googleRecentlyDeleted = isGoogleConfigured
+        ? await countOrNull('recently deleted users', `
+            SELECT COUNT(*) as count FROM organization_users
+             WHERE organization_id = $1 AND google_workspace_id IS NOT NULL
+               AND deleted_at > NOW() - INTERVAL '20 days'`, [organizationId])
+        : null;
+
+      // Active (not suspended) Google accounts with no sign-in for 30 days,
+      // including accounts that have never signed in. These still hold licences.
+      const googleInactive30d = isGoogleConfigured
+        ? await countOrNull('inactive users', `
+            SELECT COUNT(*) as count FROM gw_synced_users
+             WHERE organization_id = $1 AND COALESCE(is_suspended, false) = false
+               AND (last_login_time IS NULL OR last_login_time < NOW() - INTERVAL '30 days')`, [organizationId])
+        : null;
+
+      // The last sync outcome per connected platform.
+      const syncErrors: Array<{ platform: 'google' | 'microsoft'; error: string | null; at: string | null }> = [];
+      let syncErrorsKnown = true;
+      for (const [platform, table, configured] of [
+        ['google', 'gw_credentials', isGoogleConfigured],
+        ['microsoft', 'ms_credentials', isMicrosoftConfigured],
+      ] as const) {
+        if (!configured) continue;
+        try {
+          const r = await db.query(
+            `SELECT sync_status, sync_error, last_sync_at FROM ${table} WHERE organization_id = $1 LIMIT 1`,
+            [organizationId]
+          );
+          const row = r.rows[0];
+          if (row && (row.sync_status === 'failed' || row.sync_status === 'error')) {
+            syncErrors.push({ platform, error: row.sync_error || null, at: row.last_sync_at || null });
+          }
+        } catch (err) {
+          syncErrorsKnown = false;
+          logger.warn('Failed to read sync status for dashboard', { organizationId, platform, error: (err as Error).message });
+        }
+      }
+
+      const scheduledActionsPending = await countOrNull('scheduled actions', `
+        SELECT COUNT(*) as count FROM scheduled_user_actions
+         WHERE organization_id = $1 AND status IN ('pending', 'in_progress')`, [organizationId]);
+      const offboardingPending = await countOrNull('pending offboarding', `
+        SELECT COUNT(*) as count FROM scheduled_user_actions
+         WHERE organization_id = $1 AND action_type = 'offboard' AND status IN ('pending', 'in_progress')`, [organizationId]);
+
       return {
         google: isGoogleConfigured ? {
           connected: true,
@@ -315,14 +375,18 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           suspendedUsers: parseInt(googleSuspendedUsers.rows[0].count),
           adminUsers: parseInt(admins.rows[0].count),
           lastSync: lastSync,
-          licenses: googleLicenses
+          licenses: googleLicenses,
+          recentlyDeleted: googleRecentlyDeleted,
+          inactive30d: googleInactive30d
         } : {
           connected: false,
           totalUsers: 0,
           suspendedUsers: 0,
           adminUsers: 0,
           lastSync: null as string | null,
-          licenses: null
+          licenses: null as typeof googleLicenses,
+          recentlyDeleted: null as number | null,
+          inactive30d: null as number | null
         },
         helios: {
           totalUsers: parseInt(localUsers.rows[0].count),
@@ -337,7 +401,15 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
           lastSync: microsoftStats.lastSync,
           licenses: microsoftLicenses
         },
-        security: securityStats
+        security: securityStats,
+        sync: {
+          // null when the status could not be read, so the card can say so.
+          errors: syncErrorsKnown ? syncErrors : null
+        },
+        lifecycle: {
+          scheduledActions: scheduledActionsPending,
+          pendingOffboarding: offboardingPending
+        }
       };
     }, 60); // Cache for 1 minute
 
@@ -577,18 +649,9 @@ router.get('/widgets', async (req: Request, res: Response): Promise<void> => {
         ORDER BY position
       `, [userId]);
 
-      // If no widgets configured, return defaults matching frontend widget registry
-      if (result.rows.length === 0) {
-        return [
-          { widgetId: 'google-total-users', position: 0, isVisible: true },
-          { widgetId: 'google-suspended', position: 1, isVisible: true },
-          { widgetId: 'google-admins', position: 2, isVisible: true },
-          { widgetId: 'helios-total-users', position: 3, isVisible: true },
-          { widgetId: 'helios-guests', position: 4, isVisible: true },
-          { widgetId: 'system-alerts', position: 5, isVisible: true }
-        ];
-      }
-
+      // Nothing saved: an empty list, and the frontend shows the default cards
+      // from its widget registry (frontend/src/config/widgets.tsx), the one
+      // place defaults are defined. A second list here used to override it.
       return result.rows.map((row: any) => ({
         widgetId: row.widget_id,
         position: row.position,

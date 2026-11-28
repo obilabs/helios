@@ -159,6 +159,16 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   recorded for new sign-ins. Allow about 120 MB more memory for the backend.
   Login pulls now read every page of Google's report (up to 20 pages of 1,000
   events), so a busy workspace's first 7-day pull is no longer cut short.
+- **Home shows the cards that need action.** Recently deleted (restorable for
+  20 days), inactive for 30 days, failed syncs, scheduled actions and pending
+  offboarding now have real counts and are on by default; before, choosing them
+  showed nothing. The 2FA card leads with how many people are without 2FA.
+  Microsoft 365 cards appear once Microsoft 365 is connected. Local and guest
+  user counts and the sync cards are off by default (the header shows sync
+  state). This changes the default only: if you saved your own card choice,
+  it is kept; add the new cards from **Customize Dashboard**. Quick Actions
+  now includes onboarding, offboarding and connected apps when those features
+  are on.
 - **Last login and onboarding departments.** Signing in through the
   sign-in form now records the time, so the Users list and Roles & Admins stop
   showing "Never" for people who use it; earlier form sign-ins were not
