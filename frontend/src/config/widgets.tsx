@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, UserX, Shield, Package, RefreshCw, AlertCircle, UserPlus, Trash2, Clock, UserMinus, Key, Calendar, ShieldCheck, AppWindow, AlertTriangle } from 'lucide-react';
+import { Users, UserX, Shield, Package, RefreshCw, AlertCircle, UserPlus, Trash2, Clock, UserMinus, Calendar, ShieldCheck, AppWindow, AlertTriangle } from 'lucide-react';
 
 export type WidgetId = string;
 export type WidgetCategory = 'google' | 'microsoft' | 'helios' | 'system' | 'security';
@@ -58,7 +58,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Last Sync',
     icon: <RefreshCw size={16} />,
     gridColumn: 3,
-    enabled: false, // Hidden by default
+    enabled: false, // The header already shows sync state
     platformColor: '#4285f4',
   },
   {
@@ -67,7 +67,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Recently Deleted',
     icon: <Trash2 size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true, // Restorable for 20 days: act while you can
     platformColor: '#4285f4',
   },
   {
@@ -76,18 +76,20 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Inactive (30d)',
     icon: <Clock size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true, // Active accounts still holding licences
     platformColor: '#4285f4',
   },
 
-  // Microsoft 365 Widgets
+  // Microsoft 365 Widgets. Recently deleted, inactive and password-expiring
+  // cards for Microsoft were listed here with no data behind them (choosing
+  // one showed nothing); they return when the counts exist.
   {
     id: 'microsoft-total-users',
     category: 'microsoft',
     title: 'Microsoft 365',
     icon: <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" style={{ width: 16, height: 16 }} />,
     gridColumn: 3,
-    enabled: false, // Only show when Microsoft is connected
+    enabled: true, // Shown only when Microsoft 365 is connected
     platformColor: '#00a4ef',
   },
   {
@@ -96,7 +98,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Disabled',
     icon: <UserX size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true, // Shown only when Microsoft 365 is connected
     platformColor: '#00a4ef',
   },
   {
@@ -105,7 +107,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Admins',
     icon: <Shield size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true, // Shown only when Microsoft 365 is connected
     platformColor: '#00a4ef',
   },
   {
@@ -114,34 +116,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'License Usage',
     icon: <Package size={16} />,
     gridColumn: 3,
-    enabled: false,
-    platformColor: '#00a4ef',
-  },
-  {
-    id: 'microsoft-recently-deleted',
-    category: 'microsoft',
-    title: 'Recently Deleted',
-    icon: <Trash2 size={16} />,
-    gridColumn: 3,
-    enabled: false,
-    platformColor: '#00a4ef',
-  },
-  {
-    id: 'microsoft-inactive-users',
-    category: 'microsoft',
-    title: 'Inactive (30d)',
-    icon: <Clock size={16} />,
-    gridColumn: 3,
-    enabled: false,
-    platformColor: '#00a4ef',
-  },
-  {
-    id: 'microsoft-password-expiring',
-    category: 'microsoft',
-    title: 'Password Expiring',
-    icon: <Key size={16} />,
-    gridColumn: 3,
-    enabled: false,
+    enabled: true, // Shown only when Microsoft 365 is connected
     platformColor: '#00a4ef',
   },
 
@@ -152,7 +127,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Local Users',
     icon: <Users size={16} />,
     gridColumn: 3,
-    enabled: true,
+    enabled: false, // A count; the Users page has it
     platformColor: 'var(--theme-primary)',
   },
   {
@@ -161,7 +136,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Guest Users',
     icon: <UserPlus size={16} />,
     gridColumn: 3,
-    enabled: true,
+    enabled: false, // A count; the Users page has it
     platformColor: 'var(--theme-primary)',
   },
 
@@ -181,7 +156,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Sync Status',
     icon: <RefreshCw size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: false, // The header already shows sync state
     platformColor: '#6b7280',
   },
   {
@@ -190,7 +165,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Pending Offboarding',
     icon: <UserMinus size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true,
     platformColor: '#ef4444',
   },
   {
@@ -199,7 +174,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Scheduled Actions',
     icon: <Calendar size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true,
     platformColor: '#8b5cf6',
   },
   {
@@ -208,7 +183,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Sync Errors',
     icon: <AlertCircle size={16} />,
     gridColumn: 3,
-    enabled: false,
+    enabled: true, // A failed sync must not be silent
     platformColor: '#ef4444',
   },
 
@@ -237,7 +212,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     title: 'Users Without 2FA',
     icon: <AlertTriangle size={16} />,
     gridColumn: 3,
-    enabled: false, // Hidden by default
+    enabled: false, // Folded into the 2FA card, which names the count
     platformColor: '#ef4444', // red
   },
 

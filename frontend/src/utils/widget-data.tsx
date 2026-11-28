@@ -16,7 +16,7 @@ export interface WidgetData {
   onClick?: () => void;
 }
 
-interface OrganizationStats {
+export interface OrganizationStats {
   google?: {
     connected: boolean;
     totalUsers: number;
@@ -30,6 +30,17 @@ interface OrganizationStats {
       skuName?: string | null;
       skus?: Array<{ name: string; used: number; total: number; available: number }>;
     } | null;
+    /** null when the count could not be read. */
+    recentlyDeleted?: number | null;
+    inactive30d?: number | null;
+  };
+  sync?: {
+    /** Platforms whose last sync failed; null when the status could not be read. */
+    errors: Array<{ platform: 'google' | 'microsoft'; error: string | null; at: string | null }> | null;
+  };
+  lifecycle?: {
+    scheduledActions: number | null;
+    pendingOffboarding: number | null;
   };
   microsoft?: {
     connected: boolean;
@@ -84,6 +95,15 @@ const formatLastSync = (syncTime: string | null): string => {
   if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
   return date.toLocaleDateString();
 };
+
+/** A card whose count could not be read says so, instead of showing a reassuring zero. */
+const unavailable = <T extends object>(base: T, what: string): T & Pick<WidgetData, 'value' | 'label' | 'footer' | 'state'> => ({
+  ...base,
+  value: 'N/A',
+  label: `${what} unavailable`,
+  footer: 'Could not be read; see the backend log',
+  state: 'default',
+});
 
 export const getWidgetData = (
   widgetId: WidgetId,
@@ -163,6 +183,35 @@ export const getWidgetData = (
       label: 'last sync',
       state: needsSync ? 'warning' : 'default',
     };
+  }
+
+  if (widgetId === 'google-recently-deleted') {
+    const n = stats?.google?.recentlyDeleted;
+    if (n == null) return unavailable(baseData, 'deleted users');
+    return {
+      ...baseData,
+      value: n,
+      label: 'deleted in the last 20 days',
+      footer: n > 0 ? 'Google can restore them for 20 days' : 'None to restore',
+      state: n > 0 ? 'warning' : 'success',
+    };
+  }
+
+  if (widgetId === 'google-inactive-users') {
+    const n = stats?.google?.inactive30d;
+    if (n == null) return unavailable(baseData, 'inactive users');
+    return {
+      ...baseData,
+      value: n,
+      label: 'no sign-in for 30 days',
+      footer: n > 0 ? 'Active accounts that may still hold licences' : 'Everyone signed in recently',
+      state: n > 0 ? 'warning' : 'success',
+    };
+  }
+
+  // Microsoft 365 cards are on by default and appear once Microsoft 365 is connected.
+  if (widgetId.startsWith('microsoft-') && !stats?.microsoft?.connected) {
+    return null;
   }
 
   // Microsoft 365 Widgets
@@ -269,6 +318,45 @@ export const getWidgetData = (
     };
   }
 
+  if (widgetId === 'system-sync-errors') {
+    const errors = stats?.sync?.errors;
+    if (errors == null) return unavailable(baseData, 'sync status');
+    const names = errors.map(e => (e.platform === 'google' ? 'Google Workspace' : 'Microsoft 365'));
+    return {
+      ...baseData,
+      value: errors.length,
+      label: errors.length === 1 ? 'failed sync' : 'failed syncs',
+      footer: errors.length > 0
+        ? `${names.join(' and ')}: ${errors[0].error || 'last sync failed'}`.slice(0, 120)
+        : 'Last syncs succeeded',
+      state: errors.length > 0 ? 'error' : 'success',
+    };
+  }
+
+  if (widgetId === 'system-pending-offboarding') {
+    const n = stats?.lifecycle?.pendingOffboarding;
+    if (n == null) return unavailable(baseData, 'offboarding');
+    return {
+      ...baseData,
+      value: n,
+      label: n === 1 ? 'offboarding scheduled' : 'offboardings scheduled',
+      footer: n > 0 ? 'Scheduled and not yet finished' : 'Nothing in progress',
+      state: 'default',
+    };
+  }
+
+  if (widgetId === 'system-scheduled-actions') {
+    const n = stats?.lifecycle?.scheduledActions;
+    if (n == null) return unavailable(baseData, 'scheduled actions');
+    return {
+      ...baseData,
+      value: n,
+      label: n === 1 ? 'action waiting' : 'actions waiting',
+      footer: n > 0 ? 'Onboarding, offboarding and other scheduled changes' : 'Nothing scheduled',
+      state: 'default',
+    };
+  }
+
   // Security Widgets
   if (widgetId === 'security-2fa-adoption') {
     const twoFactor = stats?.security?.twoFactor;
@@ -301,12 +389,15 @@ export const getWidgetData = (
       }
     }
 
+    // The number of people without 2FA is the actionable part, so it leads the label.
     return {
       ...baseData,
       value: `${twoFactor.percentage}%`,
-      label: `${twoFactor.enrolled} of ${twoFactor.total} users`,
+      label: twoFactor.notEnrolled > 0
+        ? `${twoFactor.notEnrolled} of ${twoFactor.total} without 2FA`
+        : `all ${twoFactor.total} users enrolled`,
       footer,
-      state: twoFactor.percentage >= 90 ? 'success' : twoFactor.percentage >= 70 ? 'default' : 'warning',
+      state: twoFactor.notEnrolled > 0 ? 'warning' : 'success',
     };
   }
 
