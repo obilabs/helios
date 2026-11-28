@@ -159,6 +159,9 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   recorded for new sign-ins. Allow about 120 MB more memory for the backend.
   Login pulls now read every page of Google's report (up to 20 pages of 1,000
   events), so a busy workspace's first 7-day pull is no longer cut short.
+- **The Login Locations map shows a real world outline.** The placeholder
+  shapes are replaced by a Natural Earth outline built into Helios, so each
+  marker now sits on its country. Nothing to do; no map service is called.
 - **Home shows the cards that need action.** Recently deleted (restorable for
   20 days), inactive for 30 days, failed syncs, scheduled actions and pending
   offboarding now have real counts and are on by default; before, choosing them

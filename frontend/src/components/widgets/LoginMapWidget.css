@@ -90,6 +90,9 @@
   width: 100%;
   height: auto;
   max-height: 200px;
+  display: block;
+  /* Parts of islands that cross the date line are drawn past the edge on purpose. */
+  overflow: hidden;
 }
 
 .map-land {
@@ -102,6 +105,9 @@
 .country-marker {
   cursor: pointer;
   transition: transform 0.2s;
+  /* Grow on hover around the marker itself, not the map's top-left corner. */
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .country-marker:hover {
