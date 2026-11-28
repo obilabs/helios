@@ -154,9 +154,14 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
   carries no login data. Nothing else to do. To turn the download off, set
   `GEOIP_DATABASE_AUTO_DOWNLOAD=false` and place the file yourself (see
   `docs/guides/login-locations.md`). Until a file is present, sign-ins are
-  still counted and the block says locations are unavailable. Sign-ins
-  stored earlier as "Private Network" keep that label; city is no longer
-  recorded for new sign-ins. Allow about 120 MB more memory for the backend.
+  still counted and the block says locations are unavailable. Migration
+  `110_login_locations_local_only.sql` clears the location of sign-ins that
+  were located by the outside service used before, including the city,
+  network provider and time zone it stored, and the next login pull works
+  out their country and state/province again from the local database. City,
+  network provider and time zone are no longer kept for any sign-in. Sign-ins
+  from private addresses, labelled "Private Network" before, now have no
+  location, like new ones. Allow about 120 MB more memory for the backend.
   Login pulls now read every page of Google's report (up to 20 pages of 1,000
   events), so a busy workspace's first 7-day pull is no longer cut short.
 - **The Login Locations map shows a real world outline.** The placeholder
