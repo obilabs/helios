@@ -1958,45 +1958,11 @@
   flex: 1;
 }
 
-/* Ensure buttons have proper styling in this section */
+/* Quick action buttons are styled by .quick-action-btn below: one filled
+   primary action, the rest outlined. Rules left from a removed button
+   component used to make every button here filled. */
 .quick-actions-section button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
   min-height: 40px;
-}
-
-/* Primary button styling for shadcn Button */
-.quick-actions-section button:not([data-variant]),
-.quick-actions-section button[data-variant="default"] {
-  background: var(--theme-primary, var(--color-primary));
-  color: white;
-  border: none;
-}
-
-.quick-actions-section button:not([data-variant]):hover,
-.quick-actions-section button[data-variant="default"]:hover {
-  background: var(--theme-primary-hover, var(--color-primary-hover));
-}
-
-/* Outline variant */
-.quick-actions-section button[data-variant="outline"] {
-  background: var(--card-bg);
-  color: var(--color-gray-700);
-  border: 1px solid var(--color-gray-200);
-}
-
-.quick-actions-section button[data-variant="outline"]:hover {
-  background: var(--color-gray-50);
-  border-color: var(--theme-primary, var(--color-primary));
-  color: var(--theme-primary, var(--color-primary));
 }
 
 .section-title {

@@ -1219,7 +1219,7 @@ function AppContent() {
                   {isEnabled('security.oauth_apps') && (
                     <button className="quick-action-btn" onClick={() => setCurrentPage('oauth-apps')}>
                       <AppWindow size={16} />
-                      Review connected apps
+                      Connected apps
                     </button>
                   )}
                   {isEnabled('directory.bulk_operations') && (
