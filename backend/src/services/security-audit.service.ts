@@ -86,6 +86,10 @@ export const AuditActions = {
   SECURITY_ANOMALY: 'security.anomaly.detected',
   SECURITY_TOKEN_REVOKE: 'security.token.revoke',
   SECURITY_BULK_REVOKE: 'security.bulk.revoke',
+  // Written before a revoke at Google and required: no revoke without a record
+  // (D-072 tier 1). The matching action above records the outcome afterwards.
+  SECURITY_TOKEN_REVOKE_REQUESTED: 'security.token.revoke.requested',
+  SECURITY_BULK_REVOKE_REQUESTED: 'security.bulk.revoke.requested',
 
   // Settings
   SETTINGS_UPDATE: 'settings.update',
@@ -137,71 +141,96 @@ class SecurityAuditService {
    * Log a security event
    */
   async log(entry: AuditLogEntry): Promise<string | null> {
-    // Derive action category from action name if not provided
-    const actionCategory = entry.actionCategory || this.deriveCategory(entry.action);
-    const actorType = entry.actorType || 'user';
-
     try {
-      // previous_hash and record_hash are NOT passed. record_hash is NOT
-      // NULL, but the BEFORE INSERT trigger from migration 101 fills it (plus
-      // chain_seq, hash_version and previous_hash) from the row it is about to
-      // write, under an advisory lock, before the constraint is checked.
-      // Anything sent from here was overwritten.
-      const result = await db.query(`
-        INSERT INTO security_audit_logs (
-          actor_id, actor_type, actor_email, actor_ip, actor_user_agent,
-          action, action_category,
-          target_type, target_id, target_identifier,
-          session_id, organization_id, request_id, ticket_reference,
-          outcome, error_code, error_message,
-          changes_before, changes_after,
-          risk_score, flagged
-        ) VALUES (
-          $1, $2, $3, $4, $5,
-          $6, $7,
-          $8, $9, $10,
-          $11, $12, $13, $14,
-          $15, $16, $17,
-          $18, $19,
-          $20, $21
-        )
-        RETURNING id
-      `, [
-        entry.actorId || null,
-        actorType,
-        entry.actorEmail || null,
-        entry.actorIp || null,
-        entry.actorUserAgent || null,
-        entry.action,
-        actionCategory,
-        entry.targetType || null,
-        entry.targetId || null,
-        entry.targetIdentifier || null,
-        entry.sessionId || null,
-        entry.organizationId,
-        entry.requestId || null,
-        entry.ticketReference || null,
-        entry.outcome,
-        entry.errorCode || null,
-        entry.errorMessage || null,
-        entry.changesBefore ? JSON.stringify(entry.changesBefore) : null,
-        entry.changesAfter ? JSON.stringify(entry.changesAfter) : null,
-        entry.riskScore || null,
-        entry.flagged || false,
-      ]);
-
-      return result.rows[0]?.id || null;
+      return await this.insert(entry);
     } catch (error: any) {
       // Best-effort: the caller carries on. The failure is logged with the
       // action and the actor, and counted for /health.
       recordAuditWriteFailure({
         action: entry.action,
-        actor: entry.actorEmail || entry.actorId || actorType,
+        actor: entry.actorEmail || entry.actorId || entry.actorType || 'user',
         source: 'security-audit.service',
         error,
       });
       return null;
     }
+  }
+
+  /**
+   * Log an event that must be recorded before the act it describes may happen
+   * (D-072 tier 1). Throws when the row cannot be written, so the caller can
+   * refuse the act. The failure is still logged and counted.
+   */
+  async logRequired(entry: AuditLogEntry): Promise<string> {
+    try {
+      const id = await this.insert(entry);
+      if (!id) throw new Error('audit insert returned no id');
+      return id;
+    } catch (error: any) {
+      recordAuditWriteFailure({
+        action: entry.action,
+        actor: entry.actorEmail || entry.actorId || entry.actorType || 'user',
+        source: 'security-audit.service (required)',
+        error,
+      });
+      throw error;
+    }
+  }
+
+  private async insert(entry: AuditLogEntry): Promise<string | null> {
+    // Derive action category from action name if not provided
+    const actionCategory = entry.actionCategory || this.deriveCategory(entry.action);
+    const actorType = entry.actorType || 'user';
+
+    // previous_hash and record_hash are NOT passed. record_hash is NOT
+    // NULL, but the BEFORE INSERT trigger from migration 101 fills it (plus
+    // chain_seq, hash_version and previous_hash) from the row it is about to
+    // write, under an advisory lock, before the constraint is checked.
+    // Anything sent from here was overwritten.
+    const result = await db.query(`
+      INSERT INTO security_audit_logs (
+        actor_id, actor_type, actor_email, actor_ip, actor_user_agent,
+        action, action_category,
+        target_type, target_id, target_identifier,
+        session_id, organization_id, request_id, ticket_reference,
+        outcome, error_code, error_message,
+        changes_before, changes_after,
+        risk_score, flagged
+      ) VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7,
+        $8, $9, $10,
+        $11, $12, $13, $14,
+        $15, $16, $17,
+        $18, $19,
+        $20, $21
+      )
+      RETURNING id
+    `, [
+      entry.actorId || null,
+      actorType,
+      entry.actorEmail || null,
+      entry.actorIp || null,
+      entry.actorUserAgent || null,
+      entry.action,
+      actionCategory,
+      entry.targetType || null,
+      entry.targetId || null,
+      entry.targetIdentifier || null,
+      entry.sessionId || null,
+      entry.organizationId,
+      entry.requestId || null,
+      entry.ticketReference || null,
+      entry.outcome,
+      entry.errorCode || null,
+      entry.errorMessage || null,
+      entry.changesBefore ? JSON.stringify(entry.changesBefore) : null,
+      entry.changesAfter ? JSON.stringify(entry.changesAfter) : null,
+      entry.riskScore || null,
+      entry.flagged || false,
+    ]);
+
+    return result.rows[0]?.id || null;
   }
 
   /**

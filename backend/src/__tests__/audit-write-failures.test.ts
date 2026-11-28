@@ -64,3 +64,35 @@ describe('failed audit writes', () => {
     expect(getAuditWriteFailures().lastAction).toBe('a.two');
   });
 });
+
+describe('required audit writes (D-072 tier 1)', () => {
+  beforeEach(() => {
+    query.mockReset();
+    error.mockReset();
+    resetAuditWriteFailures();
+  });
+
+  it('returns the row id when the write succeeds', async () => {
+    query.mockResolvedValue({ rows: [{ id: 'row-9' }] });
+    await expect(securityAudit.logRequired({
+      action: 'security.bulk.revoke.requested', organizationId: 'org-1', outcome: 'success',
+    } as any)).resolves.toBe('row-9');
+  });
+
+  it('throws when the write fails, so the caller can refuse the act, and still counts it', async () => {
+    query.mockRejectedValue(new Error('insert refused'));
+    await expect(securityAudit.logRequired({
+      action: 'security.bulk.revoke.requested', actorEmail: 'admin@corp.test', organizationId: 'org-1', outcome: 'success',
+    } as any)).rejects.toThrow('insert refused');
+    expect(getAuditWriteFailures().sinceStart).toBe(1);
+    const [, meta] = error.mock.calls[0] as [string, Record<string, unknown>];
+    expect(meta).toMatchObject({ action: 'security.bulk.revoke.requested', source: 'security-audit.service (required)' });
+  });
+
+  it('throws when the insert returns no row', async () => {
+    query.mockResolvedValue({ rows: [] });
+    await expect(securityAudit.logRequired({
+      action: 'security.token.revoke.requested', organizationId: 'org-1', outcome: 'success',
+    } as any)).rejects.toThrow();
+  });
+});

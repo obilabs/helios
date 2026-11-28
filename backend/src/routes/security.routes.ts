@@ -549,17 +549,43 @@ router.delete('/oauth-apps/:clientId', requireAdmin, async (req: Request, res: R
 
     const { clientId } = req.params;
 
-    // Audit log the action
-    await securityAudit.log({
+    // D-072 tier 1: a revocation must not happen without a record. The revoke
+    // happens at Google, outside any database transaction, so the request is
+    // recorded first and the revoke is refused if that write fails. The app is
+    // named by target_identifier: its client id is not a uuid, and putting it in
+    // target_id made every write fail.
+    const audit = {
       organizationId,
-      action: AuditActions.SECURITY_BULK_REVOKE,
       actorId: req.user?.userId,
       actorEmail: req.user?.email || 'unknown',
-      targetId: clientId,
-      outcome: 'success'
-    });
+      targetType: 'oauth_app',
+      targetIdentifier: clientId,
+    };
+    try {
+      await securityAudit.logRequired({
+        ...audit,
+        action: AuditActions.SECURITY_BULK_REVOKE_REQUESTED,
+        outcome: 'success',
+      });
+    } catch {
+      return errorResponse(res, ErrorCode.INTERNAL_ERROR,
+        'Not revoked: the action could not be recorded in the audit log. Nothing was changed.');
+    }
 
     const result = await oauthTokenSyncService.revokeAppFromAll(organizationId, clientId);
+
+    // The outcome, after the act. Best-effort: the revoke is done at Google and
+    // the requested row already exists; a failure here is logged and counted.
+    await securityAudit.log({
+      ...audit,
+      action: AuditActions.SECURITY_BULK_REVOKE,
+      outcome: result.failedCount === 0 ? 'success' : result.revokedCount > 0 ? 'partial' : 'failure',
+      changesAfter: {
+        revokedCount: result.revokedCount,
+        failedCount: result.failedCount,
+        ...(result.errors.length > 0 ? { errors: result.errors } : {}),
+      },
+    });
 
     successResponse(res, {
       message: result.success ? 'App revoked from all users' : 'Partial revocation completed',
@@ -695,17 +721,36 @@ router.delete('/users/:email/oauth-tokens/:clientId', requireAdmin, async (req: 
 
     const { email, clientId } = req.params;
 
-    // Audit log the action
-    await securityAudit.log({
+    // D-072 tier 1, as for the all-users revoke above: record the request first
+    // (refuse if that fails), revoke, then record the real outcome. The record
+    // names the app as well as the person.
+    const audit = {
       organizationId,
-      action: AuditActions.SECURITY_TOKEN_REVOKE,
       actorId: req.user?.userId,
       actorEmail: req.user?.email || 'unknown',
+      targetType: 'oauth_token',
       targetIdentifier: email,
-      outcome: 'success'
-    });
+      changesBefore: { clientId },
+    };
+    try {
+      await securityAudit.logRequired({
+        ...audit,
+        action: AuditActions.SECURITY_TOKEN_REVOKE_REQUESTED,
+        outcome: 'success',
+      });
+    } catch {
+      return errorResponse(res, ErrorCode.INTERNAL_ERROR,
+        'Not revoked: the action could not be recorded in the audit log. Nothing was changed.');
+    }
 
     const result = await oauthTokenSyncService.revokeToken(organizationId, email, clientId);
+
+    await securityAudit.log({
+      ...audit,
+      action: AuditActions.SECURITY_TOKEN_REVOKE,
+      outcome: result.success ? 'success' : 'failure',
+      ...(result.success ? {} : { errorMessage: result.error }),
+    });
 
     if (!result.success) {
       return errorResponse(res, ErrorCode.INTERNAL_ERROR, result.error || 'Failed to revoke token');

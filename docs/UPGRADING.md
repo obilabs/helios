@@ -138,6 +138,15 @@ Newest first. Before 1.0.0 these are for people testing `edge` builds.
 
 ### Unreleased (will be part of 1.0.0)
 
+- **Revoking a connected app is recorded in the audit log.** Each revoke now
+  writes two entries: `security.bulk.revoke.requested` (or
+  `security.token.revoke.requested` for one person) before the revoke, and
+  `security.bulk.revoke` / `security.token.revoke` afterwards with the real
+  outcome (success, partial or failure) and how many people were revoked. The
+  entries name the app by its client ID. If the first entry cannot be written,
+  the revoke is refused and nothing changes. Before this, revoking an app from
+  all users was not recorded at all, and a failed revoke was recorded as a
+  success. Nothing to do.
 - **Login data is collected by the backend.** The Home "Login Locations" block
   now reads only what is stored; opening Home no longer asks Google. The
   backend pulls login events right after Google is connected, at start-up, and
